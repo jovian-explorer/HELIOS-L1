@@ -515,6 +515,54 @@ SCIENTIFIC_REFERENCES = [
         "formula": "Classes: alpha (unipolar), beta (bipolar), beta-gamma (mixed polarity), beta-gamma-delta (extreme shear)",
         "parameters": ["delta-configuration (opposite polarity umbrae within same penumbra < 2 deg)"],
         "physical_meaning": "Establishes magnetic complexity criteria for active regions that determine the probability of M-class and X-class solar eruptive flares."
+    },
+    {
+        "id": "sauer_drap_2008",
+        "title": "Global D-region absorption model (D-RAP) for HF communications",
+        "authors": "Sauer, H. H., & Wilkinson, D. C.",
+        "journal": "Space Weather",
+        "year": 2008,
+        "volume": "6",
+        "issue": "12",
+        "pages": "S12002",
+        "doi": "10.1029/2008SW000396",
+        "doi_url": "https://doi.org/10.1029/2008SW000396",
+        "category": "Ionospheric D-Region & Radio Blackout",
+        "formula": "A(f, chi) = 10 * sqrt(F_x / 1e-4) * (10 / f)^1.5 * cos(chi)^0.75,  HAF = 10 * A_0^(2/3)",
+        "parameters": ["F_x (GOES soft X-ray flux in W/m^2)", "chi (solar zenith angle)", "f (frequency in MHz)", "HAF (Highest Affected Frequency)"],
+        "physical_meaning": "Empirical model computing dayside HF radio signal attenuation (dB) and total blackout thresholds across polar and trans-oceanic aviation corridors."
+    },
+    {
+        "id": "boteler_gic_2017",
+        "title": "Modeling geomagnetically induced currents from regional geoelectric fields",
+        "authors": "Boteler, D. H., & Pirjola, R. J.",
+        "journal": "Space Weather",
+        "year": 2017,
+        "volume": "15",
+        "issue": "1",
+        "pages": "258-276",
+        "doi": "10.1002/2016SW001499",
+        "doi_url": "https://doi.org/10.1002/2016SW001499",
+        "category": "Geomagnetically Induced Currents (GIC)",
+        "formula": "E_H = sqrt(rho / (mu_0 * omega)) * |dB_H / dt|,  I_neutral = (E_H * L) / R_loop",
+        "parameters": ["rho (Earth subsurface resistivity in ohm-m)", "dB_H/dt (geomagnetic perturbation rate in nT/min)", "I_neutral (quasi-DC transformer current)"],
+        "physical_meaning": "Relates ground magnetic disturbances to horizontal induced electric fields that drive damaging quasi-DC saturation currents through high-voltage transformer neutrals."
+    },
+    {
+        "id": "hathaway_solar_cycle_2015",
+        "title": "The Solar Cycle",
+        "authors": "Hathaway, D. H.",
+        "journal": "Living Reviews in Solar Physics",
+        "year": 2015,
+        "volume": "12",
+        "issue": "1",
+        "pages": "4",
+        "doi": "10.1007/lrsp-2015-4",
+        "doi_url": "https://doi.org/10.1007/lrsp-2015-4",
+        "category": "Solar Cycle 25 Dynamo & Modulation",
+        "formula": "SSN(t) = a * (t - t0)^c / (exp((t - t0)^2 / b^2) - 1),  F10.7 = 63.7 + 0.728*SSN + 0.00089*SSN^2",
+        "parameters": ["SSN (monthly smoothed sunspot number)", "F10.7 (10.7 cm radio flux in s.f.u.)", "t0 (cycle minimum epoch)"],
+        "physical_meaning": "Comprehensive empirical dynamo model describing 11-year sunspot cycle progression, solar maximum timing, and EUV/radio irradiance variations."
     }
 ]
 
@@ -589,5 +637,38 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "formula": "R_mp = (10.22 + 1.29 * tanh(0.184 * (Bz + 8.14))) * (P_dyn)^(-1/6.6)",
         "description": "The distance from Earth's center along the Sun-Earth line to the balance point where Earth's internal magnetic pressure balances solar wind dynamic pressure.",
         "doi": "10.1029/97JA00196"
+    },
+    "haf_mhz": {
+        "name": "Highest Affected Frequency (D-RAP)",
+        "symbol": "HAF",
+        "unit": "MHz",
+        "nominal_range": "0 MHz (No HF absorption)",
+        "disturbed_range": "> 10 MHz (Moderate R2 Blackout), > 25 MHz (Severe R4/R5 Complete HF Blackout)",
+        "formula": "HAF = 10 * (10 * sqrt(F_x / 1e-4))^(2/3) [MHz]",
+        "instrument": "GOES X-Ray Sensor (XRS) & Ground Riometer Arrays",
+        "description": "The highest radio frequency in the High-Frequency (HF, 3-30 MHz) spectrum experiencing at least 1 dB of ionospheric D-region absorption during solar flares.",
+        "doi": "10.1029/2008SW000396"
+    },
+    "f107_flux": {
+        "name": "10.7 cm Solar Radio Flux",
+        "symbol": "F10.7",
+        "unit": "s.f.u. (10⁻²² W m⁻² Hz⁻¹)",
+        "nominal_range": "65 - 80 s.f.u. (Solar Minimum)",
+        "disturbed_range": "> 150 s.f.u. (Elevated Solar Maximum), > 220 s.f.u. (Intense Solar Flaring Period)",
+        "formula": "F10.7 ~ 63.7 + 0.728 * SSN + 0.00089 * SSN²",
+        "instrument": "Penticton Radio Observatory (NRC Canada) & Learmonth Observatory",
+        "description": "Standard solar activity indicator measuring radio emissions at 2800 MHz (10.7 cm wavelength), tightly correlated with solar EUV radiation driving upper atmosphere satellite drag.",
+        "doi": "10.1007/lrsp-2015-4"
+    },
+    "gic_efield": {
+        "name": "Surface Geoelectric Field",
+        "symbol": "E_H",
+        "unit": "V/km",
+        "nominal_range": "< 0.1 V/km (Quiet conditions)",
+        "disturbed_range": "> 1.0 V/km (Elevated Grid GIC), > 4.8 V/km (Catastrophic Hydro-Quebec / Carrington Level)",
+        "formula": "E_H = sqrt(rho / (mu_0 * omega)) * |dB_H / dt|",
+        "instrument": "Ground Magnetometer Stations (INTERMAGNET) & Magnetotelluric Arrays",
+        "description": "Horizontal electric field induced at the Earth's surface by rapid geomagnetic perturbations (dB/dt), driving quasi-DC currents through grounded power grids and pipelines.",
+        "doi": "10.1002/2016SW001499"
     }
 }

@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse
 import os
+from datetime import datetime, timezone
 
 from helios.config import (
     MISSIONS, STATIC_DIR, DATA_PROVIDERS,
@@ -25,6 +26,9 @@ from helios.core.parker_spiral import ParkerSpiralModel
 from helios.core.report_generator import ScientificReportGenerator
 from helios.core.importer import TelemetryImporter
 from helios.core.ml_forecast import SpaceWeatherForecaster
+from helios.core.solar_cycle import SolarCycleEngine
+from helios.core.ionosphere import IonosphericModel
+from helios.core.gic_model import GICHazardModel
 
 app = FastAPI(
     title="HELIOS-L1 API",
@@ -272,6 +276,26 @@ async def import_custom_data(req: CustomImportRequest):
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return res
+
+@app.get("/api/solar_cycle")
+async def get_solar_cycle(year: Optional[float] = None):
+    cur_year = year if year is not None else (datetime.now(timezone.utc).year + datetime.now(timezone.utc).timetuple().tm_yday / 365.25)
+    return SolarCycleEngine.calculate_cycle_25_progression(current_year_float=cur_year)
+
+@app.get("/api/ionosphere/absorption")
+async def get_ionospheric_absorption(
+    xray_flux: float = Query(2.5e-5, description="Soft X-ray flux (Watts/m^2)"),
+    zenith_angle: float = Query(30.0, ge=0.0, le=90.0, description="Solar zenith angle (degrees)")
+):
+    return IonosphericModel.calculate_drap_absorption(xray_flux_watts_m2=xray_flux, zenith_angle_deg=zenith_angle)
+
+@app.get("/api/gic/hazard")
+async def get_gic_hazard(
+    db_dt: float = Query(120.0, description="Rate of magnetic change dB/dt (nT/min)"),
+    geology: str = Query("precambrian_shield", description="Geological conductivity profile")
+):
+    return GICHazardModel.calculate_geoelectric_field(db_dt_nt_per_min=db_dt, geology_type=geology)
+
 
 @app.get("/api/report/html")
 async def get_html_report(mission_id: str = "DSCOVR"):

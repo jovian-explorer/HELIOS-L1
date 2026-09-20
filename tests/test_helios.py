@@ -286,4 +286,59 @@ def test_scientific_references_and_data_provenance():
     not_found = client.get("/api/parameters/unknown_param_xyz")
     assert not_found.status_code == 404
 
+def test_solar_cycle_progression():
+    from helios.core.solar_cycle import SolarCycleEngine
+    prog = SolarCycleEngine.calculate_cycle_25_progression(2024.75)
+    assert prog["solar_cycle"] == 25
+    assert prog["smoothed_sunspot_number"] > 140.0
+    assert prog["f107_radio_flux_sfu"] > 150.0
+    assert len(prog["timeline"]) > 30
+
+    res = client.get("/api/solar_cycle?year=2024.5")
+    assert res.status_code == 200
+    assert "smoothed_sunspot_number" in res.json()
+
+def test_drap_ionospheric_absorption():
+    from helios.core.ionosphere import IonosphericModel
+    # M5 flare (5e-5 W/m^2)
+    abs_m5 = IonosphericModel.calculate_drap_absorption(5.0e-5, zenith_angle_deg=0.0)
+    assert abs_m5["highest_affected_frequency_mhz"] > 10.0
+    assert abs_m5["attenuation_at_10mhz_db"] > 3.0
+    assert "R2" in abs_m5["r_scale"]
+
+    # X10 flare (1e-3 W/m^2)
+    abs_x10 = IonosphericModel.calculate_drap_absorption(1.0e-3, zenith_angle_deg=20.0)
+    assert abs_x10["highest_affected_frequency_mhz"] > 25.0
+    assert "R4" in abs_x10["r_scale"]
+
+    res = client.get("/api/ionosphere/absorption?xray_flux=1e-4&zenith_angle=30")
+    assert res.status_code == 200
+    assert "highest_affected_frequency_mhz" in res.json()
+    assert len(res.json()["absorption_spectrum"]) > 5
+
+def test_gic_geoelectric_hazard():
+    from helios.core.gic_model import GICHazardModel
+    # Hydro-Quebec benchmark ~ 400 nT/min on resistive shield
+    gic = GICHazardModel.calculate_geoelectric_field(
+        db_dt_nt_per_min=400.0,
+        geology_type="precambrian_shield",
+        transmission_line_length_km=300.0
+    )
+    assert gic["geoelectric_field_v_km"] > 2.0
+    assert gic["transformer_neutral_current_amps"] > 300.0
+    assert "CRITICAL" in gic["hazard_classification"] or "SEVERE" in gic["hazard_classification"]
+
+    # Sedimentary basin attenuation
+    gic_sed = GICHazardModel.calculate_geoelectric_field(
+        db_dt_nt_per_min=400.0,
+        geology_type="sedimentary_basin",
+        transmission_line_length_km=300.0
+    )
+    assert gic_sed["geoelectric_field_v_km"] < gic["geoelectric_field_v_km"]
+
+    res = client.get("/api/gic/hazard?db_dt=250&geology=precambrian_shield")
+    assert res.status_code == 200
+    assert "geoelectric_field_v_km" in res.json()
+
+
 

@@ -170,6 +170,10 @@
         <i class="fa-solid fa-chart-line text-blue-400"></i>
         <span>AI / ML Storm Forecast</span>
       </button>
+      <button onclick="switchTab('hazards')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-tower-broadcast text-amber-400"></i>
+        <span>Hazards &amp; Solar Cycle 25</span>
+      </button>
       <button onclick="switchTab('missions')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
         <i class="fa-solid fa-satellite text-blue-400"></i>
         <span>Fleet Catalog</span>
@@ -1259,6 +1263,261 @@
             <span id="hazard-satellite-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
           </div>
           <p id="hazard-satellite-desc" class="text-xs text-slate-400 leading-relaxed">Standard orbit ephemeris and downlink nominal.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 12: TERRESTRIAL HAZARDS & SOLAR CYCLE 25 OBSERVATORY (NEW!) -->
+    <!-- ========================================================================= -->
+    <section id="tab-hazards" class="tab-content hidden space-y-6">
+      <!-- Section Header -->
+      <div class="glass-panel p-5 space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <i class="fa-solid fa-tower-broadcast text-lg"></i>
+            </div>
+            <div>
+              <h3 class="font-tech font-bold text-base text-slate-100">Terrestrial Space Weather Hazards &amp; Solar Cycle 25 Observatory</h3>
+              <p class="text-xs text-slate-400">Critical Infrastructure Impact: D-Region HF Radio Absorption (D-RAP), Ground Geoelectric Currents (GIC), and 11-Year Solar Cycle Progression.</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="loadHazardsAndCycle()" class="px-3 py-1.5 rounded-lg bg-space-950/80 hover:bg-space-900 text-amber-400 text-xs font-semibold border border-amber-500/30 transition flex items-center space-x-1.5 shadow-sm">
+              <i class="fa-solid fa-arrows-rotate"></i>
+              <span>Refresh Hazards</span>
+            </button>
+            <button onclick="showParameterDetail('f107_flux')" title="Handbook: F10.7 Radio Flux" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-sky-300 text-xs border border-slate-700 transition">
+              <i class="fa-solid fa-circle-info"></i> F10.7
+            </button>
+            <button onclick="showParameterDetail('haf_mhz')" title="Handbook: Highest Affected Frequency" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-sky-300 text-xs border border-slate-700 transition">
+              <i class="fa-solid fa-circle-info"></i> HAF
+            </button>
+            <button onclick="showParameterDetail('gic_efield')" title="Handbook: Geoelectric Field" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-sky-300 text-xs border border-slate-700 transition">
+              <i class="fa-solid fa-circle-info"></i> E_H (GIC)
+            </button>
+          </div>
+        </div>
+
+        <!-- 1. Solar Cycle 25 Tracker Gauges -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 pt-1">
+          <div class="metric-card" style="border-left: 3px solid #f59e0b;">
+            <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+              <span>Smoothed Sunspot No. (SSN)</span>
+              <i class="fa-solid fa-sun text-amber-400"></i>
+            </div>
+            <div class="flex items-baseline space-x-1.5">
+              <span id="sc25-ssn" class="text-2xl font-hud font-black text-amber-300">---</span>
+              <span class="text-xs text-slate-400 font-hud">SSN</span>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-1">Solar Max Peak: ~172.0</div>
+          </div>
+
+          <div class="metric-card" style="border-left: 3px solid #38bdf8;">
+            <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+              <span>10.7 cm Solar Radio Flux</span>
+              <i class="fa-solid fa-satellite-dish text-sky-400"></i>
+            </div>
+            <div class="flex items-baseline space-x-1.5">
+              <span id="sc25-f107" class="text-2xl font-hud font-black text-sky-300">---</span>
+              <span class="text-xs text-slate-400 font-hud">s.f.u.</span>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-1">Coronal EUV proxy (2800 MHz)</div>
+          </div>
+
+          <div class="metric-card" style="border-left: 3px solid #10b981;">
+            <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+              <span>Solar Cycle 25 Progress</span>
+              <i class="fa-solid fa-chart-pie text-emerald-400"></i>
+            </div>
+            <div class="flex items-baseline space-x-1.5">
+              <span id="sc25-progress" class="text-2xl font-hud font-black text-emerald-300">---%</span>
+              <span class="text-xs text-slate-400 font-hud">11-yr Schwabe</span>
+            </div>
+            <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-1.5 overflow-hidden border border-slate-700/40">
+              <div id="sc25-progress-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 60%"></div>
+            </div>
+          </div>
+
+          <div class="metric-card" style="border-left: 3px solid #a855f7;">
+            <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+              <span>Solar Dynamo Polar Field</span>
+              <i class="fa-solid fa-arrows-spin text-purple-400"></i>
+            </div>
+            <div id="sc25-reversal" class="text-xs font-bold text-purple-300 mt-1">Reversal in Progress</div>
+            <div class="text-[10px] text-slate-400 mt-1">Solar Max Dipole Inversion</div>
+          </div>
+        </div>
+
+        <!-- Solar Cycle 25 Trajectory Chart -->
+        <div class="bg-space-900/60 p-4 rounded-xl border border-slate-800/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-xs text-slate-200 flex items-center space-x-2">
+              <i class="fa-solid fa-chart-area text-amber-400"></i>
+              <span>Solar Cycle 25 (2019–2031) Monthly Smoothed SSN Trajectory vs. Cycle 24 Baseline</span>
+            </h4>
+            <span class="text-[11px] text-amber-300 font-hud">Hathaway Dynamo Model (2015)</span>
+          </div>
+          <div class="h-60 w-full">
+            <canvas id="chart-solar-cycle"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. D-Region Ionospheric Radio Absorption (D-RAP Model) -->
+      <div class="glass-panel p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 pulse-beacon"></span>
+              <h3 class="font-tech font-bold text-base text-slate-100">D-Region Ionospheric Radio Absorption (D-RAP) &amp; HF Blackout Simulator</h3>
+            </div>
+            <p class="text-xs text-slate-400">Quantifies 3–30 MHz signal attenuation and Highest Affected Frequency (HAF) for trans-polar aviation routes based on Sauer &amp; Wilkinson (2008).</p>
+          </div>
+
+          <!-- Controls -->
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <div class="flex items-center space-x-1.5 bg-space-950/80 p-1 rounded-xl border border-slate-700/60">
+              <span class="text-slate-400 text-[10px] font-bold uppercase px-2">X-Ray Flare:</span>
+              <button onclick="setDrapXrayPreset(1e-7)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-slate-300 transition">B-Class</button>
+              <button onclick="setDrapXrayPreset(2e-6)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-slate-300 transition">C2</button>
+              <button onclick="setDrapXrayPreset(1e-5)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-yellow-400 font-bold transition">M1 (R1)</button>
+              <button onclick="setDrapXrayPreset(5e-5)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-amber-400 font-bold transition">M5 (R2)</button>
+              <button onclick="setDrapXrayPreset(1e-4)" class="px-2 py-1 rounded text-[11px] bg-rose-700 text-white font-bold transition">X1 (R3)</button>
+              <button onclick="setDrapXrayPreset(1e-3)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-rose-400 font-bold transition">X10 (R4)</button>
+              <button onclick="setDrapXrayPreset(2e-3)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-rose-500 font-black transition">X20+ (R5)</button>
+            </div>
+
+            <div class="flex items-center space-x-2 bg-space-950/80 px-3 py-1.5 rounded-xl border border-slate-700/60">
+              <span class="text-slate-400 text-[10px] font-bold uppercase">Solar Zenith (χ):</span>
+              <input type="range" id="drap-zenith-slider" min="0" max="85" step="5" value="30" oninput="onDrapZenithChange(this.value)" class="w-20 accent-rose-500 cursor-pointer">
+              <span id="drap-zenith-val" class="font-hud font-bold text-rose-400 w-10 text-right">30°</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- D-RAP Metrics Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+          <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-xs font-semibold mb-1">NOAA Radio Scale</div>
+            <div id="drap-r-scale" class="text-xl font-hud font-black text-rose-400">R3 - Strong</div>
+            <div id="drap-hazard-desc" class="text-[10px] text-slate-400 mt-0.5">Wide Area Loss of HF Radio</div>
+          </div>
+
+          <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-xs font-semibold mb-1">Highest Affected Freq (HAF)</div>
+            <div id="drap-haf" class="text-xl font-hud font-black text-amber-400">21.5 MHz</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Frequencies below suffer &gt;1 dB loss</div>
+          </div>
+
+          <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-xs font-semibold mb-1">10 MHz Signal Attenuation</div>
+            <div id="drap-att10" class="text-xl font-hud font-black text-sky-400">6.8 dB</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">~79.1% Signal Power Loss</div>
+          </div>
+
+          <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-xs font-semibold mb-1">Polar Aviation ATC Impact</div>
+            <div id="drap-atc-impact" class="text-xs font-bold text-rose-300 mt-1">Loss of primary trans-polar ATC</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Mandatory rerouting or SATCOM fallback</div>
+          </div>
+        </div>
+
+        <!-- D-RAP Attenuation Spectrum Chart -->
+        <div class="bg-space-900/60 p-4 rounded-xl border border-slate-800/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-xs text-slate-200 flex items-center space-x-2">
+              <i class="fa-solid fa-wave-square text-rose-400"></i>
+              <span>High-Frequency (HF) Spectrum Attenuation Curve (3 MHz to 30 MHz in dB)</span>
+            </h4>
+            <span class="text-[11px] text-rose-400 font-hud">Blackout Threshold: &gt;10 dB</span>
+          </div>
+          <div class="h-56 w-full">
+            <canvas id="chart-drap-spectrum"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Geomagnetically Induced Currents (GIC) Geoelectric Hazard Simulator -->
+      <div class="glass-panel p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 pulse-beacon"></span>
+              <h3 class="font-tech font-bold text-base text-slate-100">Geomagnetically Induced Currents (GIC) &amp; Surface Geoelectric Field Model</h3>
+            </div>
+            <p class="text-xs text-slate-400">Simulates horizontal electric field induction ($E_H = \sqrt{\rho / \mu_0 \omega} \cdot |dB/dt|$) and transformer quasi-DC neutral saturation based on Boteler &amp; Pirjola (2017).</p>
+          </div>
+
+          <!-- GIC Controls -->
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <div class="flex items-center space-x-2 bg-space-950/80 px-3 py-1.5 rounded-xl border border-slate-700/60">
+              <span class="text-slate-400 text-[10px] font-bold uppercase">Rate of Change (dB/dt):</span>
+              <input type="range" id="gic-dbdt-slider" min="20" max="600" step="20" value="180" oninput="onGicDbDtChange(this.value)" class="w-28 accent-cyan-400 cursor-pointer">
+              <span id="gic-dbdt-val" class="font-hud font-bold text-cyan-400 w-16 text-right">180 nT/min</span>
+            </div>
+
+            <div>
+              <select id="gic-geology-select" onchange="onGicGeologyChange(this.value)" class="bg-space-950 text-slate-200 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none">
+                <option value="precambrian_shield">Precambrian Shield (Granitic / High Resistivity ρ=5000 Ω·m)</option>
+                <option value="coastal_margin">Coastal Ocean Margin (Edge Effect ρ=500 Ω·m)</option>
+                <option value="sedimentary_basin">Sedimentary Basin (Conductive Silt ρ=50 Ω·m)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- GIC Diagnostic Metrics -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+          <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-xs font-semibold mb-1">Induced Electric Field (E_H)</div>
+            <div id="gic-efield" class="text-2xl font-hud font-black text-cyan-400">--- V/km</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Horizontal ground gradient</div>
+          </div>
+
+          <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-xs font-semibold mb-1">Line Potential (200 km Line)</div>
+            <div id="gic-voltage" class="text-2xl font-hud font-black text-amber-400">--- Volts</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">End-to-end induced EMF</div>
+          </div>
+
+          <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-xs font-semibold mb-1">Transformer Neutral DC Current</div>
+            <div id="gic-neutral-amps" class="text-2xl font-hud font-black text-rose-400">--- Amps</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Quasi-DC saturation current</div>
+          </div>
+
+          <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+            <div class="text-slate-400 text-xs font-semibold mb-1">NERC Grid Vulnerability</div>
+            <div id="gic-hazard-status" class="text-sm font-bold text-amber-300 mt-1">Assessing Risk...</div>
+            <div id="gic-hazard-desc" class="text-[10px] text-slate-400 mt-0.5">Monitoring core temperature</div>
+          </div>
+        </div>
+
+        <!-- Historical Benchmark Comparison Callouts -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs bg-space-950/70 p-3.5 rounded-xl border border-slate-800">
+          <div class="space-y-1">
+            <div class="font-bold text-rose-400 flex items-center space-x-1.5">
+              <i class="fa-solid fa-bolt"></i>
+              <span>Hydro-Québec Blackout (1989):</span>
+            </div>
+            <p class="text-slate-400 text-[11px]">E_H reached <strong class="text-slate-200">~4.8 V/km</strong> on Canadian shield. Tripped static VAR compensators in 90 seconds, causing a 9-hour total grid collapse for 6 million people.</p>
+          </div>
+          <div class="space-y-1">
+            <div class="font-bold text-amber-400 flex items-center space-x-1.5">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <span>Malmö Grid Outage (2003):</span>
+            </div>
+            <p class="text-slate-400 text-[11px]">Halloween storms induced <strong class="text-slate-200">~3.5 V/km</strong> in southern Sweden. Tripped 130 kV busbar breaker due to 3rd harmonic distortion from transformer saturation.</p>
+          </div>
+          <div class="space-y-1">
+            <div class="font-bold text-purple-400 flex items-center space-x-1.5">
+              <i class="fa-solid fa-radiation"></i>
+              <span>Carrington Event Benchmark (1859):</span>
+            </div>
+            <p class="text-slate-400 text-[11px]">Estimated to exceed <strong class="text-slate-200">&gt;10 V/km</strong>. Induced voltages sufficient to operate telegraph lines without batteries and ignite station fires.</p>
+          </div>
         </div>
       </div>
     </section>

@@ -157,6 +157,8 @@ function switchTab(tabId) {
     loadFleetMatrix();
   } else if (tabId === 'forecast') {
     loadMLForecast();
+  } else if (tabId === 'hazards') {
+    loadHazardsAndCycle();
   } else if (tabId === 'turbulence') {
     loadSpectralAnalysis();
   }
@@ -1554,5 +1556,245 @@ function renderHandbookTab(container) {
     </div>
   `;
 }
+
+// =============================================================================
+// TERRESTRIAL HAZARDS, D-RAP IONOSPHERE & SOLAR CYCLE 25 ENGINE
+// =============================================================================
+let chartSolarCycle = null;
+let chartDrapSpectrum = null;
+let currentDrapXray = 1e-4;
+let currentDrapZenith = 30.0;
+let currentGicDbDt = 180.0;
+let currentGicGeology = 'precambrian_shield';
+
+async function loadHazardsAndCycle() {
+  try {
+    const [resCycle, resDrap, resGic] = await Promise.all([
+      fetch('/api/solar_cycle'),
+      fetch(`/api/ionosphere/absorption?xray_flux=${currentDrapXray}&zenith_angle=${currentDrapZenith}`),
+      fetch(`/api/gic/hazard?db_dt=${currentGicDbDt}&geology=${currentGicGeology}`)
+    ]);
+
+    const sc = await resCycle.json();
+    const drap = await resDrap.json();
+    const gic = await resGic.json();
+
+    // 1. Update Solar Cycle 25 Gauges
+    const ssnEl = document.getElementById('sc25-ssn');
+    if (ssnEl) ssnEl.innerText = sc.smoothed_sunspot_number;
+
+    const f107El = document.getElementById('sc25-f107');
+    if (f107El) f107El.innerText = sc.f107_radio_flux_sfu;
+
+    const progEl = document.getElementById('sc25-progress');
+    if (progEl) progEl.innerText = `${sc.cycle_progress_percent}%`;
+
+    const progBar = document.getElementById('sc25-progress-bar');
+    if (progBar) progBar.style.width = `${sc.cycle_progress_percent}%`;
+
+    const revEl = document.getElementById('sc25-reversal');
+    if (revEl) revEl.innerText = sc.polar_magnetic_reversal;
+
+    renderSolarCycleChart(sc.timeline || []);
+
+    // 2. Update D-RAP Absorption Metrics
+    updateDrapReadouts(drap);
+    renderDrapSpectrumChart(drap.absorption_spectrum || []);
+
+    // 3. Update GIC Hazard Metrics
+    updateGicReadouts(gic);
+
+  } catch (err) {
+    console.error('Error loading terrestrial hazards & solar cycle:', err);
+  }
+}
+
+function updateDrapReadouts(drap) {
+  const rScaleEl = document.getElementById('drap-r-scale');
+  if (rScaleEl) rScaleEl.innerText = drap.r_scale;
+
+  const hazDescEl = document.getElementById('drap-hazard-desc');
+  if (hazDescEl) hazDescEl.innerText = drap.hazard_level;
+
+  const hafEl = document.getElementById('drap-haf');
+  if (hafEl) hafEl.innerText = `${drap.highest_affected_frequency_mhz} MHz`;
+
+  const att10El = document.getElementById('drap-att10');
+  if (att10El) att10El.innerText = `${drap.attenuation_at_10mhz_db} dB`;
+
+  const atcEl = document.getElementById('drap-atc-impact');
+  if (atcEl) atcEl.innerText = drap.polar_aviation_impact;
+}
+
+function updateGicReadouts(gic) {
+  const eFieldEl = document.getElementById('gic-efield');
+  if (eFieldEl) {
+    eFieldEl.innerText = `${gic.geoelectric_field_v_km} V/km`;
+    eFieldEl.style.color = gic.status_color || '#38bdf8';
+  }
+
+  const vEl = document.getElementById('gic-voltage');
+  if (vEl) vEl.innerText = `${gic.induced_voltage_volts} V`;
+
+  const ampsEl = document.getElementById('gic-neutral-amps');
+  if (ampsEl) ampsEl.innerText = `${gic.transformer_neutral_current_amps} A`;
+
+  const statEl = document.getElementById('gic-hazard-status');
+  if (statEl) {
+    statEl.innerText = gic.hazard_classification;
+    statEl.style.color = gic.status_color || '#eab308';
+  }
+
+  const descEl = document.getElementById('gic-hazard-desc');
+  if (descEl) descEl.innerText = gic.grid_impact_assessment;
+}
+
+async function setDrapXrayPreset(flux) {
+  currentDrapXray = flux;
+  try {
+    const res = await fetch(`/api/ionosphere/absorption?xray_flux=${currentDrapXray}&zenith_angle=${currentDrapZenith}`);
+    const drap = await res.json();
+    updateDrapReadouts(drap);
+    renderDrapSpectrumChart(drap.absorption_spectrum || []);
+    window.playBlip?.();
+  } catch (err) {
+    console.error('Error updating D-RAP X-ray preset:', err);
+  }
+}
+
+async function onDrapZenithChange(deg) {
+  currentDrapZenith = parseFloat(deg);
+  const valEl = document.getElementById('drap-zenith-val');
+  if (valEl) valEl.innerText = `${currentDrapZenith}°`;
+
+  try {
+    const res = await fetch(`/api/ionosphere/absorption?xray_flux=${currentDrapXray}&zenith_angle=${currentDrapZenith}`);
+    const drap = await res.json();
+    updateDrapReadouts(drap);
+    renderDrapSpectrumChart(drap.absorption_spectrum || []);
+  } catch (err) {
+    console.error('Error updating D-RAP zenith angle:', err);
+  }
+}
+
+async function onGicDbDtChange(val) {
+  currentGicDbDt = parseFloat(val);
+  const valEl = document.getElementById('gic-dbdt-val');
+  if (valEl) valEl.innerText = `${currentGicDbDt} nT/min`;
+
+  try {
+    const res = await fetch(`/api/gic/hazard?db_dt=${currentGicDbDt}&geology=${currentGicGeology}`);
+    const gic = await res.json();
+    updateGicReadouts(gic);
+  } catch (err) {
+    console.error('Error updating GIC dB/dt:', err);
+  }
+}
+
+async function onGicGeologyChange(geology) {
+  currentGicGeology = geology;
+  try {
+    const res = await fetch(`/api/gic/hazard?db_dt=${currentGicDbDt}&geology=${currentGicGeology}`);
+    const gic = await res.json();
+    updateGicReadouts(gic);
+    window.playBlip?.();
+  } catch (err) {
+    console.error('Error updating GIC geology:', err);
+  }
+}
+
+function renderSolarCycleChart(timeline) {
+  const ctx = document.getElementById('chart-solar-cycle')?.getContext('2d');
+  if (!ctx || !timeline || timeline.length === 0) return;
+
+  if (chartSolarCycle) chartSolarCycle.destroy();
+
+  const labels = timeline.map(t => t.year_month);
+  const ssnVals = timeline.map(t => t.ssn_smoothed);
+  const c24Vals = timeline.map(t => t.cycle_24_comparison_ssn);
+
+  chartSolarCycle = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Solar Cycle 25 (Observed / Modeled SSN)',
+          data: ssnVals,
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.15)',
+          fill: true,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3
+        },
+        {
+          label: 'Cycle 24 Baseline (Smoothed SSN Comparison)',
+          data: c24Vals,
+          borderColor: '#64748b',
+          borderDash: [4, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      ...darkChartOptions,
+      scales: {
+        x: {
+          ...darkChartOptions.scales.x,
+          ticks: {
+            ...darkChartOptions.scales.x.ticks,
+            maxTicksLimit: 12
+          }
+        },
+        y: {
+          ...darkChartOptions.scales.y,
+          title: { display: true, text: 'Smoothed Sunspot Number', color: '#94a3b8' }
+        }
+      }
+    }
+  });
+}
+
+function renderDrapSpectrumChart(spectrum) {
+  const ctx = document.getElementById('chart-drap-spectrum')?.getContext('2d');
+  if (!ctx || !spectrum || spectrum.length === 0) return;
+
+  if (chartDrapSpectrum) chartDrapSpectrum.destroy();
+
+  const freqs = spectrum.map(s => `${s.frequency_mhz} MHz`);
+  const atts = spectrum.map(s => s.attenuation_db);
+
+  chartDrapSpectrum = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: freqs,
+      datasets: [
+        {
+          label: 'HF Signal Attenuation (dB)',
+          data: atts,
+          backgroundColor: atts.map(a => a >= 10.0 ? 'rgba(244, 63, 94, 0.75)' : (a >= 3.0 ? 'rgba(245, 158, 11, 0.75)' : 'rgba(56, 189, 248, 0.65)')),
+          borderColor: atts.map(a => a >= 10.0 ? '#f43f5e' : (a >= 3.0 ? '#f59e0b' : '#38bdf8')),
+          borderWidth: 1,
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      ...darkChartOptions,
+      scales: {
+        x: darkChartOptions.scales.x,
+        y: {
+          ...darkChartOptions.scales.y,
+          beginAtZero: true,
+          title: { display: true, text: 'Signal Attenuation [dB]', color: '#f43f5e' }
+        }
+      }
+    }
+  });
+}
+
 
 
