@@ -812,29 +812,98 @@ async function loadMissions() {
     if (!container) return;
 
     container.innerHTML = missions.map(m => `
-      <div class="mission-card bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-lg flex flex-col justify-between">
+      <div class="mission-card bg-space-800/90 p-5 rounded-xl border border-slate-800 hover:border-slate-700 shadow-xl flex flex-col justify-between space-y-4">
         <div>
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-bold px-2.5 py-1 rounded bg-slate-700/80 text-sky-400 border border-slate-600">${m.name}</span>
-            <span class="text-[11px] font-semibold text-emerald-400 flex items-center space-x-1">
-              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>${m.status.split(' ')[0]}</span>
-            </span>
+          <!-- Card Header -->
+          <div class="flex items-center justify-between gap-2 mb-2.5 pb-2.5 border-b border-slate-800/80">
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-hud font-bold px-2.5 py-1 rounded bg-slate-900 text-sky-400 border border-slate-700">${m.name}</span>
+              <span class="text-[11px] font-semibold text-slate-400">${m.agency}</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-sky-950/70 text-sky-300 border border-sky-800/40">${m.license_badge || 'Open Science'}</span>
+              <span class="text-[11px] font-semibold text-emerald-400 flex items-center space-x-1 ml-1" title="${m.status}">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>${m.status.split(' ')[0]}</span>
+              </span>
+            </div>
           </div>
+
+          <!-- Mission Name & Launch -->
           <h4 class="font-bold text-sm text-slate-100 mb-1">${m.full_name}</h4>
-          <p class="text-xs text-slate-400 mb-3">${m.agency} • Launched ${m.launch_year}</p>
-          <div class="text-xs text-slate-300 bg-space-900/60 p-2.5 rounded-lg border border-slate-800 mb-3">
-            <strong class="text-sky-400">Orbit / Location:</strong> ${m.location}
+          <p class="text-xs text-slate-400 mb-3 flex items-center space-x-2">
+            <span>Launched: <strong class="text-slate-200">${m.launch_year}</strong></span>
+            <span>•</span>
+            <span>Ephemeris: <strong class="text-slate-200">${(m.orbit_distance_km || 0).toLocaleString()} km</strong></span>
+          </p>
+
+          <!-- Orbit, Coordinate System & Cadence Details -->
+          <div class="grid grid-cols-1 gap-1.5 text-xs bg-space-950/70 p-3 rounded-lg border border-slate-800/80 mb-3.5">
+            <div>
+              <span class="text-slate-400 font-semibold">Orbit / Target:</span>
+              <span class="text-slate-200 font-mono text-[11px] ml-1">${m.location}</span>
+            </div>
+            ${m.coordinate_system ? `
+              <div>
+                <span class="text-slate-400 font-semibold">Coordinate Frame:</span>
+                <span class="text-sky-300 font-mono text-[11px] ml-1">${m.coordinate_system}</span>
+              </div>
+            ` : ''}
+            ${m.cadence ? `
+              <div>
+                <span class="text-slate-400 font-semibold">Telemetry Cadence:</span>
+                <span class="text-amber-300 font-mono text-[11px] ml-1">${m.cadence}</span>
+              </div>
+            ` : ''}
+            ${m.data_license ? `
+              <div>
+                <span class="text-slate-400 font-semibold">Data Policy:</span>
+                <span class="text-emerald-300 text-[11px] ml-1">${m.data_license}</span>
+              </div>
+            ` : ''}
           </div>
-          <div class="space-y-1.5">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Key Scientific Payloads:</div>
+
+          <!-- Key Scientific Payloads -->
+          <div class="space-y-1.5 mb-3.5">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+              <span>Scientific Payloads &amp; Sensors:</span>
+              <span class="text-slate-500 font-normal">(${m.instruments.length} onboard)</span>
+            </div>
             ${m.instruments.map(inst => `
-              <div class="text-xs text-slate-300 flex items-start space-x-1.5">
-                <span class="text-amber-400 font-bold">• ${inst.name}:</span>
-                <span class="text-slate-400">${inst.measures}</span>
+              <div class="text-xs text-slate-300 flex items-start space-x-1.5 bg-space-900/40 p-1.5 rounded border border-slate-800/50">
+                <span class="text-amber-400 font-bold font-mono shrink-0">${inst.id}:</span>
+                <span class="text-slate-300"><strong class="text-slate-200">${inst.name}</strong> — <span class="text-slate-400">${inst.measures}</span></span>
               </div>
             `).join('')}
           </div>
+
+          <!-- Primary Literature Citation -->
+          ${m.primary_citation ? `
+            <div class="p-2.5 rounded-lg bg-space-900/50 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <div class="font-semibold text-slate-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-graduation-cap text-sky-400"></i>
+                <span>Primary Literature Citation:</span>
+              </div>
+              <p class="italic text-slate-400 leading-snug">${m.primary_citation}</p>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Card Footer Actions: DOI & Official Data Portal -->
+        <div class="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+          ${m.doi ? `
+            <a href="https://doi.org/${m.doi}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300 text-xs font-mono flex items-center space-x-1 bg-sky-950/50 hover:bg-sky-900/50 px-2.5 py-1 rounded border border-sky-800/40 transition">
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+              <span>DOI: ${m.doi}</span>
+            </a>
+          ` : `<span></span>`}
+
+          ${m.data_portal_url ? `
+            <a href="${m.data_portal_url}" target="_blank" rel="noopener" class="text-emerald-400 hover:text-emerald-300 text-xs font-semibold flex items-center space-x-1.5 bg-emerald-950/50 hover:bg-emerald-900/50 px-3 py-1 rounded border border-emerald-800/40 transition">
+              <i class="fa-solid fa-satellite-dish text-[11px]"></i>
+              <span>Official Data Portal</span>
+            </a>
+          ` : ''}
         </div>
       </div>
     `).join('');
@@ -1047,4 +1116,443 @@ function downloadBulletinHTML() {
   const sat = satSelect ? satSelect.value : 'DSCOVR';
   window.location.href = `/api/report/html?mission_id=${sat}`;
 }
+
+// =============================================================================
+// SCIENTIFIC LITERATURE, DATA OBSERVATORIES & OPEN LICENSES SYSTEM
+// =============================================================================
+let referencesCache = null;
+let currentRefTab = 'equations';
+let refSearchQuery = '';
+
+async function openReferencesModal(initialTab = 'equations') {
+  const modal = document.getElementById('modal-references');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  window.playBlip?.();
+
+  currentRefTab = initialTab;
+  refSearchQuery = '';
+  const searchInput = document.getElementById('ref-search-input');
+  if (searchInput) searchInput.value = '';
+
+  updateRefTabButtons();
+
+  if (!referencesCache) {
+    try {
+      const res = await fetch('/api/references');
+      referencesCache = await res.json();
+    } catch (err) {
+      console.error('Error fetching references repository:', err);
+      const body = document.getElementById('modal-references-body');
+      if (body) {
+        body.innerHTML = `<div class="p-6 text-center text-rose-400">Failed to load scientific references: ${err.message}</div>`;
+      }
+      return;
+    }
+  }
+
+  renderReferencesContent();
+}
+
+function closeReferencesModal() {
+  const modal = document.getElementById('modal-references');
+  if (modal) modal.classList.add('hidden');
+}
+
+function switchReferencesTab(tabKey) {
+  window.playBlip?.();
+  currentRefTab = tabKey;
+  refSearchQuery = '';
+  const searchInput = document.getElementById('ref-search-input');
+  if (searchInput) searchInput.value = '';
+  updateRefTabButtons();
+  renderReferencesContent();
+}
+
+function updateRefTabButtons() {
+  const tabs = ['equations', 'providers', 'licenses', 'handbook'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`tab-btn-ref-${t}`);
+    if (btn) {
+      if (t === currentRefTab) {
+        btn.className = 'px-3 py-1.5 rounded-lg font-semibold bg-sky-600 text-white transition flex items-center space-x-1.5 shadow-sm';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition flex items-center space-x-1.5';
+      }
+    }
+  });
+}
+
+function onRefSearchInput(val) {
+  refSearchQuery = (val || '').toLowerCase().trim();
+  renderReferencesContent();
+}
+
+function showParameterDetail(paramKey) {
+  openReferencesModal('handbook');
+  refSearchQuery = (paramKey || '').toLowerCase();
+  const searchInput = document.getElementById('ref-search-input');
+  if (searchInput) searchInput.value = paramKey;
+  renderReferencesContent();
+}
+
+function renderReferencesContent() {
+  const body = document.getElementById('modal-references-body');
+  if (!body || !referencesCache) return;
+
+  if (currentRefTab === 'equations') {
+    renderEquationsTab(body);
+  } else if (currentRefTab === 'providers') {
+    renderProvidersTab(body);
+  } else if (currentRefTab === 'licenses') {
+    renderLicensesTab(body);
+  } else if (currentRefTab === 'handbook') {
+    renderHandbookTab(body);
+  }
+}
+
+function renderEquationsTab(container) {
+  const refs = referencesCache.scientific_references || [];
+  const q = refSearchQuery;
+  const filtered = refs.filter(r => {
+    if (!q) return true;
+    return (
+      (r.title && r.title.toLowerCase().includes(q)) ||
+      (r.authors && r.authors.toLowerCase().includes(q)) ||
+      (r.category && r.category.toLowerCase().includes(q)) ||
+      (r.formula && r.formula.toLowerCase().includes(q)) ||
+      (r.doi && r.doi.toLowerCase().includes(q)) ||
+      (r.physical_meaning && r.physical_meaning.toLowerCase().includes(q))
+    );
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="text-center py-12 text-slate-400">No scientific papers matched "${refSearchQuery}".</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="mb-3 flex items-center justify-between text-xs text-slate-400">
+      <span>Found <strong class="text-sky-400">${filtered.length}</strong> foundational peer-reviewed heliophysics papers:</span>
+      <span class="text-[11px] text-slate-500">Direct DOI cross-references to original academic literature</span>
+    </div>
+    <div class="space-y-4">
+      ${filtered.map(r => `
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition shadow-lg space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/50 uppercase tracking-wider">${r.category}</span>
+            <div class="text-xs text-slate-400 font-medium">
+              <span class="text-slate-200 font-semibold">${r.journal}</span> (${r.year})
+              ${r.volume ? `• Vol. ${r.volume}` : ''}
+              ${r.pages ? `• pp. ${r.pages}` : ''}
+            </div>
+          </div>
+
+          <div>
+            <h4 class="text-sm font-bold text-slate-100">${r.title}</h4>
+            <p class="text-xs text-slate-400 mt-1 font-medium"><i class="fa-solid fa-user-pen text-slate-500 mr-1.5"></i>${r.authors}</p>
+          </div>
+
+          <!-- Mathematical Formulation -->
+          <div class="bg-space-950/90 p-3 rounded-lg border border-slate-800 font-mono text-xs space-y-1.5">
+            <div class="text-[10px] uppercase font-bold tracking-wider text-amber-400 flex items-center space-x-1.5">
+              <i class="fa-solid fa-square-root-variable"></i>
+              <span>Governing Mathematical Formulation:</span>
+            </div>
+            <div class="text-amber-300 text-xs font-semibold pl-2 border-l-2 border-amber-500/50 py-0.5 overflow-x-auto">${r.formula}</div>
+            ${r.parameters ? `
+              <div class="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                <span class="font-bold text-slate-300">Variables:</span> ${r.parameters.join(' • ')}
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Physical Meaning -->
+          <p class="text-xs text-slate-300 leading-relaxed"><strong class="text-slate-200">Physical Significance:</strong> ${r.physical_meaning}</p>
+
+          <!-- Action Footer -->
+          <div class="pt-2.5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+            ${r.doi ? `
+              <a href="${r.doi_url || ('https://doi.org/' + r.doi)}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300 text-xs font-mono font-semibold flex items-center space-x-1.5 bg-sky-950/60 hover:bg-sky-900/60 px-3 py-1.5 rounded-lg border border-sky-800/50 transition shadow-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                <span>doi:${r.doi}</span>
+              </a>
+            ` : '<span></span>'}
+            <span class="text-[11px] text-slate-500 font-mono">ID: ${r.id}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderProvidersTab(container) {
+  const providers = referencesCache.data_providers || [];
+  const q = refSearchQuery;
+  const filtered = providers.filter(p => {
+    if (!q) return true;
+    return (
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.agency && p.agency.toLowerCase().includes(q)) ||
+      (p.country && p.country.toLowerCase().includes(q)) ||
+      (p.data_license && p.data_license.toLowerCase().includes(q)) ||
+      (p.terms_of_use && p.terms_of_use.toLowerCase().includes(q)) ||
+      (p.data_products && p.data_products.some(prod => prod.toLowerCase().includes(q)))
+    );
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="text-center py-12 text-slate-400">No data observatories matched "${refSearchQuery}".</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="mb-3 flex items-center justify-between text-xs text-slate-400">
+      <span>Active Open Science Observatories &amp; Data Centers (<strong class="text-emerald-400">${filtered.length}</strong>):</span>
+      <span class="text-[11px] text-slate-500">Live operational &amp; archival scientific portals</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${filtered.map(p => `
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition shadow-lg flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800">
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/50">${p.id}</span>
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">${p.country}</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/40">${p.license_badge || 'Open Data'}</span>
+              </div>
+            </div>
+
+            <h4 class="text-sm font-bold text-slate-100">${p.name}</h4>
+            <p class="text-xs text-slate-400 mb-3 font-medium">${p.agency}</p>
+
+            <div class="space-y-1.5 mb-3.5">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Data Products &amp; Telemetry Sets:</div>
+              ${p.data_products ? p.data_products.map(prod => `
+                <div class="text-xs text-slate-300 flex items-start space-x-1.5 bg-space-950/60 p-1.5 rounded border border-slate-800/50">
+                  <i class="fa-solid fa-satellite-dish text-sky-400 text-[10px] mt-0.5 shrink-0"></i>
+                  <span>${prod}</span>
+                </div>
+              `).join('') : ''}
+            </div>
+
+            <div class="p-2.5 rounded-lg bg-space-900/60 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <div class="font-semibold text-slate-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-scale-balanced text-emerald-400"></i>
+                <span>License &amp; Terms of Use:</span>
+              </div>
+              <p class="text-slate-300 leading-snug"><strong class="text-emerald-300">${p.data_license}</strong>: ${p.terms_of_use}</p>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-800 flex justify-end">
+            <a href="${p.url}" target="_blank" rel="noopener" class="text-emerald-400 hover:text-emerald-300 text-xs font-semibold flex items-center space-x-1.5 bg-emerald-950/60 hover:bg-emerald-900/60 px-3 py-1.5 rounded-lg border border-emerald-800/50 transition">
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+              <span>Access Official Portal</span>
+            </a>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderLicensesTab(container) {
+  container.innerHTML = `
+    <div class="space-y-5">
+      <div class="bg-space-950/80 p-4 rounded-xl border border-emerald-500/30">
+        <div class="flex items-center space-x-2 text-emerald-400 font-bold text-sm mb-1">
+          <i class="fa-solid fa-certificate"></i>
+          <span>Open Science &amp; Multi-Agency Data Compliance Framework</span>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          HELIOS-L1 integrates observational data from six premier sovereign space agencies and institutes. All telemetry access strictly adheres to the open data policies, academic fair use charters, and Creative Commons licensing established by each provider.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- NOAA -->
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-100 flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>NOAA Space Weather Prediction Center</span>
+            </h4>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Public Domain</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>Policy:</strong> U.S. Federal Government Works (17 U.S.C. § 105). Data is in the public domain worldwide and may be distributed, processed, and utilized freely for commercial, educational, and scientific endeavors.
+          </p>
+          <div class="text-[11px] text-slate-400 bg-space-950 p-2 rounded border border-slate-800 font-mono">
+            Attribution: NOAA Space Weather Prediction Center (SWPC), Boulder, Colorado, USA.
+          </div>
+        </div>
+
+        <!-- NASA -->
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-100 flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span>NASA CDAWeb / SPDF</span>
+            </h4>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">CC0 1.0 Universal</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>Policy:</strong> NASA Open Data Policy &amp; Creative Commons CC0 1.0 Universal Public Domain Dedication. Archival solar wind sets from ACE, WIND, and OMNI are freely accessible.
+          </p>
+          <div class="text-[11px] text-slate-400 bg-space-950 p-2 rounded border border-slate-800 font-mono">
+            Attribution: NASA Goddard Space Flight Center Space Physics Data Facility (SPDF) / CDAWeb.
+          </div>
+        </div>
+
+        <!-- ISRO -->
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-100 flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span>ISRO Aditya-L1 / ISSDC PRADAN</span>
+            </h4>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">ISRO Open Science</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>Policy:</strong> ISRO Science Data Policy for Aditya-L1 Payloads. Data is released via PRADAN for academic research, education, and international heliophysics collaborative studies.
+          </p>
+          <div class="text-[11px] text-slate-400 bg-space-950 p-2 rounded border border-slate-800 font-mono">
+            Attribution: Indian Space Research Organisation (ISRO) &amp; Aditya-L1 Science Teams (ASPEX, PAPA, MAG, VELC).
+          </div>
+        </div>
+
+        <!-- ESA -->
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-100 flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+              <span>European Space Agency (ESA) SOAR</span>
+            </h4>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">CC-BY-SA 3.0 IGO</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>Policy:</strong> ESA Open Access Policy under Creative Commons Attribution-ShareAlike 3.0 Intergovernmental Organisation (CC-BY-SA 3.0 IGO).
+          </p>
+          <div class="text-[11px] text-slate-400 bg-space-950 p-2 rounded border border-slate-800 font-mono">
+            Attribution: European Space Agency (ESA) Solar and Heliospheric Science Archive (SOAR / ESAC).
+          </div>
+        </div>
+
+        <!-- GFZ -->
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-100 flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+              <span>GFZ German Research Centre for Geosciences</span>
+            </h4>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">CC-BY 4.0</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>Policy:</strong> Creative Commons Attribution 4.0 International (CC-BY 4.0). Real-time and definitive planetary Kp geomagnetic indices.
+          </p>
+          <div class="text-[11px] text-slate-400 bg-space-950 p-2 rounded border border-slate-800 font-mono">
+            Citation: Matzka, J., et al. (2021). The Geomagnetic Kp Index. doi:10.5880/Hpo.0001.
+          </div>
+        </div>
+
+        <!-- WDC Kyoto -->
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-100 flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span>WDC for Geomagnetism, Kyoto University</span>
+            </h4>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">ICSU Fair Use</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong>Policy:</strong> ICSU World Data System Fair Use Policy. Definitive and quicklook ring current Dst and Auroral Electrojet (AE) indices.
+          </p>
+          <div class="text-[11px] text-slate-400 bg-space-950 p-2 rounded border border-slate-800 font-mono">
+            Attribution: World Data Center for Geomagnetism, Kyoto, Japan (Sugiura &amp; Kamei).
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderHandbookTab(container) {
+  const params = referencesCache.parameter_definitions || {};
+  const q = refSearchQuery;
+  const entries = Object.entries(params).filter(([k, v]) => {
+    if (!q) return true;
+    return (
+      k.toLowerCase().includes(q) ||
+      (v.name && v.name.toLowerCase().includes(q)) ||
+      (v.symbol && v.symbol.toLowerCase().includes(q)) ||
+      (v.unit && v.unit.toLowerCase().includes(q)) ||
+      (v.formula && v.formula.toLowerCase().includes(q)) ||
+      (v.description && v.description.toLowerCase().includes(q)) ||
+      (v.instrument && v.instrument.toLowerCase().includes(q))
+    );
+  });
+
+  if (entries.length === 0) {
+    container.innerHTML = `<div class="text-center py-12 text-slate-400">No physical parameters matched "${refSearchQuery}".</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="mb-3 flex items-center justify-between text-xs text-slate-400">
+      <span>Physical Parameters &amp; Sensor Origins (<strong class="text-sky-400">${entries.length}</strong>):</span>
+      <span class="text-[11px] text-slate-500">Standardized heliophysics units, typical ranges, and formulations</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${entries.map(([k, p]) => `
+        <div id="param-card-${k}" class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-sky-500/50 transition shadow-lg flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800">
+              <div class="flex items-baseline space-x-2">
+                <span class="font-hud font-black text-lg text-sky-400">${p.symbol}</span>
+                <span class="text-xs font-hud text-slate-400 font-semibold">[${p.unit}]</span>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">${k}</span>
+            </div>
+
+            <h4 class="text-sm font-bold text-slate-100 mb-2">${p.name}</h4>
+
+            <div class="grid grid-cols-1 gap-1.5 text-xs bg-space-950/70 p-3 rounded-lg border border-slate-800 mb-3 font-sans">
+              <div>
+                <span class="text-slate-400 font-semibold">Nominal Solar Wind:</span>
+                <span class="text-emerald-300 text-[11px] ml-1 font-medium">${p.nominal_range}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 font-semibold">Disturbed / Storm:</span>
+                <span class="text-rose-300 text-[11px] ml-1 font-medium">${p.disturbed_range}</span>
+              </div>
+              ${p.formula ? `
+                <div class="pt-1 border-t border-slate-800 font-mono text-[11px] text-amber-300">
+                  <span class="text-slate-400 font-semibold">Equation:</span> ${p.formula}
+                </div>
+              ` : ''}
+              ${p.instrument ? `
+                <div class="pt-1 border-t border-slate-800 text-[11px] text-slate-300">
+                  <span class="text-slate-400 font-semibold">Payload Sensors:</span> ${p.instrument}
+                </div>
+              ` : ''}
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed">${p.description}</p>
+          </div>
+
+          ${p.doi ? `
+            <div class="pt-2 border-t border-slate-800 flex justify-end">
+              <a href="https://doi.org/${p.doi}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300 text-xs font-mono font-semibold flex items-center space-x-1 bg-sky-950/50 hover:bg-sky-900/50 px-2.5 py-1 rounded border border-sky-800/40 transition">
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                <span>doi:${p.doi}</span>
+              </a>
+            </div>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 

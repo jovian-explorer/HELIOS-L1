@@ -10,7 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse
 import os
 
-from helios.config import MISSIONS, STATIC_DIR
+from helios.config import (
+    MISSIONS, STATIC_DIR, DATA_PROVIDERS,
+    SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS
+)
 from helios.core.downloader import DataDownloader
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
@@ -62,6 +65,67 @@ async def get_status():
 @app.get("/api/missions")
 async def get_missions():
     return list(MISSIONS.values())
+
+@app.get("/api/references")
+async def get_scientific_references():
+    """Returns comprehensive peer-reviewed citations, equations, data repositories, and licenses."""
+    return {
+        "status": "success",
+        "total_references": len(SCIENTIFIC_REFERENCES),
+        "references": SCIENTIFIC_REFERENCES,
+        "scientific_references": SCIENTIFIC_REFERENCES,
+        "data_providers": list(DATA_PROVIDERS.values()),
+        "parameter_definitions": PARAMETER_DEFINITIONS
+    }
+
+@app.get("/api/providers")
+async def get_data_providers():
+    """Returns global space weather data observatories and their open science licenses."""
+    return {
+        "status": "success",
+        "total_providers": len(DATA_PROVIDERS),
+        "providers": list(DATA_PROVIDERS.values())
+    }
+
+@app.get("/api/parameters")
+async def get_parameter_catalog():
+    """Returns dictionary of all physical space weather parameters with formulas and units."""
+    return {
+        "status": "success",
+        "total_parameters": len(PARAMETER_DEFINITIONS),
+        "parameters": PARAMETER_DEFINITIONS
+    }
+
+@app.get("/api/parameters/{param_id}")
+async def get_parameter_detail(param_id: str):
+    p_id = param_id.lower()
+    if p_id in PARAMETER_DEFINITIONS:
+        return PARAMETER_DEFINITIONS[p_id]
+    alias_map = {
+        "v_sw": "speed",
+        "vsw": "speed",
+        "velocity": "speed",
+        "bz": "bz_gsm",
+        "b_z": "bz_gsm",
+        "imf_bz": "bz_gsm",
+        "b_t": "bt",
+        "total_b": "bt",
+        "np": "density",
+        "n_p": "density",
+        "proton_density": "density",
+        "p_dyn": "pdyn",
+        "pressure": "pdyn",
+        "rmp": "standoff",
+        "r_mp": "standoff",
+        "magnetopause": "standoff",
+        "akasofu": "epsilon",
+        "poynting": "epsilon",
+        "propagation_delay": "speed"
+    }
+    if p_id in alias_map:
+        return PARAMETER_DEFINITIONS[alias_map[p_id]]
+    raise HTTPException(status_code=404, detail=f"Parameter '{param_id}' not found in scientific handbook.")
+
 
 @app.get("/api/telemetry/{mission_id}")
 async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
@@ -266,6 +330,7 @@ async def export_plot(mission_id: str = "DSCOVR", span_days: int = 1):
     return Response(content=png_bytes, media_type="image/png", headers={
         "Content-Disposition": f"attachment; filename=HELIOS_{mission_id}_chart.png"
     })
+
 
 # Mount frontend static directory if exists
 def get_resolved_static_dir():

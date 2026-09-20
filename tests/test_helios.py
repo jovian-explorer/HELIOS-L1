@@ -227,3 +227,63 @@ def test_space_weather_ml_forecaster():
     assert "aviation_hf" in forecast["hazard_assessment"]
     assert "satellite_ops" in forecast["hazard_assessment"]
 
+def test_scientific_references_and_data_provenance():
+    # 1. Scientific references catalog
+    ref_res = client.get("/api/references")
+    assert ref_res.status_code == 200
+    refs = ref_res.json()["references"]
+    assert len(refs) >= 10
+    assert any("Newell" in r["authors"] for r in refs)
+    assert any("Akasofu" in r["authors"] for r in refs)
+    assert any("Parker" in r["authors"] for r in refs)
+    for r in refs:
+        assert "doi" in r
+        assert "doi_url" in r
+        assert r["doi_url"].startswith("https://doi.org/")
+
+    # 2. Data Providers catalog
+    prov_res = client.get("/api/providers")
+    assert prov_res.status_code == 200
+    provs = prov_res.json()["providers"]
+    assert len(provs) >= 6
+    prov_ids = [p["id"] for p in provs]
+    assert "NOAA_SWPC" in prov_ids
+    assert "NASA_CDAWEB" in prov_ids
+    assert "ISRO_ISSDC" in prov_ids
+    assert "ESA_SOAR" in prov_ids
+    assert "GFZ_POTSDAM" in prov_ids
+    assert "WDC_KYOTO" in prov_ids
+    for p in provs:
+        assert "data_license" in p
+        assert "terms_of_use" in p
+        assert "url" in p
+
+    # 3. Parameter definitions handbook
+    param_res = client.get("/api/parameters")
+    assert param_res.status_code == 200
+    params = param_res.json()["parameters"]
+    assert "speed" in params
+    assert "bz_gsm" in params
+    assert "bt" in params
+    assert "density" in params
+    assert "pdyn" in params
+    assert "epsilon" in params
+    assert "standoff" in params
+
+    # 4. Individual parameter detail and aliases
+    speed_res = client.get("/api/parameters/speed")
+    assert speed_res.status_code == 200
+    assert speed_res.json()["unit"] == "km/s"
+
+    bz_res = client.get("/api/parameters/bz_gsm")
+    assert bz_res.status_code == 200
+    assert bz_res.json()["unit"] == "nT"
+
+    alias_res = client.get("/api/parameters/rmp")
+    assert alias_res.status_code == 200
+    assert "Subsolar Magnetopause" in alias_res.json()["name"]
+
+    not_found = client.get("/api/parameters/unknown_param_xyz")
+    assert not_found.status_code == 404
+
+
