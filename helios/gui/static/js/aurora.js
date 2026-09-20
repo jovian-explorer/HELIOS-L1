@@ -423,10 +423,8 @@ class AuroralMapRenderer {
       else ctx.lineTo(x, y);
     });
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
-    ctx.lineWidth = 16;
-    ctx.shadowColor = '#f43f5e';
-    ctx.shadowBlur = 24;
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.22)';
+    ctx.lineWidth = 12;
     ctx.stroke();
 
     // Mid Layer: 557.7 nm Atomic Oxygen Emerald-Green Main Ionization Curtain
@@ -437,12 +435,10 @@ class AuroralMapRenderer {
       else ctx.lineTo(x, y);
     });
     ctx.closePath();
-    ctx.fillStyle = 'rgba(0, 255, 157, 0.22)';
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.14)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0, 255, 157, 0.85)';
-    ctx.lineWidth = 4.5;
-    ctx.shadowColor = '#00ff9d';
-    ctx.shadowBlur = 18;
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.7)';
+    ctx.lineWidth = 3.0;
     ctx.stroke();
 
     // Core Layer: 427.8 nm N2+ Molecular Ion Violet Ribbon
@@ -453,10 +449,8 @@ class AuroralMapRenderer {
       else ctx.lineTo(x, y);
     });
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(168, 85, 247, 0.9)';
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = '#a855f7';
-    ctx.shadowBlur = 10;
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
     // Pulsing auroral nodes / rays along the oval
@@ -558,8 +552,8 @@ class AuroralMapRenderer {
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#00f0ff';
-    ctx.font = 'bold 10px "Chakra Petch", sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('STARKOV-FELDSTEIN AURORAL OVAL MODEL', 18, 26);
 
     ctx.fillStyle = '#94a3b8';

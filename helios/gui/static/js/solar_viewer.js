@@ -469,8 +469,8 @@ class SolarDiskViewer {
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#00f0ff';
-    ctx.font = 'bold 10px "Chakra Petch", sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('HELIOPHYSICAL SOLAR DISK & CORONA ANALYZER', 24, 30);
 
     ctx.fillStyle = '#e2e8f0';

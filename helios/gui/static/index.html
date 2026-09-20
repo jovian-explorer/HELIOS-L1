@@ -83,49 +83,48 @@
   </div>
 
   <!-- TOP APP BAR -->
-  <header class="border-b border-slate-800/80 bg-space-800/90 backdrop-blur sticky top-0 z-40 px-6 py-3 flex items-center justify-between shadow-2xl">
+  <header class="border-b border-slate-800/80 bg-slate-900/95 backdrop-blur sticky top-0 z-40 px-6 py-2.5 flex items-center justify-between shadow-lg">
     <div class="flex items-center space-x-3.5">
-      <div class="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 via-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/25 ring-1 ring-white/20">
-        <i class="fa-solid fa-sun text-yellow-200 text-xl animate-spin-slow"></i>
-        <span class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900 animate-pulse"></span>
+      <div class="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700/80 flex items-center justify-center text-amber-400 shadow-sm">
+        <i class="fa-solid fa-sun text-amber-400 text-lg"></i>
       </div>
       <div>
         <div class="flex items-center space-x-2.5">
-          <h1 class="text-2xl font-tech font-black tracking-wider bg-gradient-to-r from-sky-400 via-amber-300 to-rose-400 bg-clip-text text-transparent">
-            HELIOS-L1
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center space-x-2">
+            <span>HELIOS-L1</span>
           </h1>
-          <span class="text-[10px] uppercase font-hud font-bold tracking-widest px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm shadow-sky-500/20">
-            v1.2 SciSuite
+          <span class="text-[10px] uppercase font-hud font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 tracking-wider">
+            v1.0 SciSuite
           </span>
         </div>
         <p class="text-xs text-slate-400">
-          <span class="text-sky-300 font-semibold">H</span>eliophysical <span class="text-sky-300 font-semibold">E</span>xploration, <span class="text-sky-300 font-semibold">L</span>1 <span class="text-sky-300 font-semibold">I</span>nterplanetary <span class="text-sky-300 font-semibold">O</span>bservation & <span class="text-sky-300 font-semibold">S</span>pace-weather Suite
+          Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite
         </p>
       </div>
     </div>
 
-    <div class="flex items-center space-x-3">
-      <div id="noaa-g-badge" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shadow-sm">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+    <div class="flex items-center space-x-2.5">
+      <div id="noaa-g-badge" class="flex items-center space-x-2 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700 text-emerald-400 text-xs font-medium">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
         <span id="g-scale-text">G0 Quiet</span>
       </div>
-      <div id="bz-alert-badge" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shadow-sm">
-        <i class="fa-solid fa-magnet text-sky-400"></i>
+      <div id="bz-alert-badge" class="flex items-center space-x-2 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700 text-sky-400 text-xs font-medium">
+        <i class="fa-solid fa-magnet text-[11px]"></i>
         <span id="bz-alert-text">Bz Northward</span>
       </div>
-      <button id="btn-refresh" onclick="refreshCurrentView()" class="btn-cyber px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-2">
-        <i class="fa-solid fa-arrows-rotate" id="refresh-icon"></i>
+      <button id="btn-refresh" onclick="refreshCurrentView()" class="btn-cyber px-3 py-1.5 rounded text-xs font-medium transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-arrows-rotate text-[11px]" id="refresh-icon"></i>
         <span>Live Fetch</span>
       </button>
-      <a href="/api/report/html" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold transition flex items-center space-x-2 shadow-md shadow-purple-600/30">
-        <i class="fa-solid fa-file-invoice"></i>
-        <span>Bulletin</span>
-      </a>
+      <button onclick="openBulletinModal()" class="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm">
+        <i class="fa-solid fa-file-shield text-[11px]"></i>
+        <span>Advisory Bulletin</span>
+      </button>
     </div>
   </header>
 
   <!-- NAVIGATION TABS -->
-  <nav class="bg-space-800/50 border-b border-slate-800/80 px-6 flex items-center justify-between text-xs overflow-x-auto">
+  <nav class="bg-slate-900/90 border-b border-slate-800/80 px-6 flex items-center justify-between text-xs overflow-x-auto">
     <div class="flex space-x-1" id="nav-tabs">
       <button onclick="switchTab('dashboard')" class="tab-btn active px-3.5 py-3 font-semibold border-b-2 border-sky-400 text-sky-400 flex items-center space-x-1.5 whitespace-nowrap">
         <i class="fa-solid fa-gauge-high"></i>
@@ -136,35 +135,35 @@
         <span>Multi-Satellite Comparator</span>
       </button>
       <button onclick="switchTab('orbits')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
-        <i class="fa-solid fa-atom"></i>
-        <span>Lagrange Orbits</span>
+        <i class="fa-solid fa-circle-nodes text-sky-400"></i>
+        <span>Position of Probes & Orbits</span>
       </button>
       <button onclick="switchTab('aurora')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
-        <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i>
+        <i class="fa-solid fa-earth-americas text-emerald-400"></i>
         <span>Auroral Oval & Map</span>
       </button>
       <button onclick="switchTab('coronagraph')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
-        <i class="fa-solid fa-camera-retro text-amber-400"></i>
+        <i class="fa-solid fa-sun text-amber-400"></i>
         <span>Coronagraph & CME</span>
       </button>
       <button onclick="switchTab('parker')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
-        <i class="fa-solid fa-tornado text-cyan-400"></i>
+        <i class="fa-solid fa-wind text-cyan-400"></i>
         <span>Parker Spiral</span>
       </button>
       <button onclick="switchTab('import')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
-        <i class="fa-solid fa-file-arrow-up text-indigo-400"></i>
+        <i class="fa-solid fa-database text-indigo-400"></i>
         <span>Custom Ingestion & OMNI</span>
       </button>
       <button onclick="switchTab('events')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
-        <i class="fa-solid fa-bolt-lightning text-rose-400"></i>
+        <i class="fa-solid fa-clock-rotate-left text-rose-400"></i>
         <span>Storms Archive</span>
       </button>
       <button onclick="switchTab('turbulence')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
-        <i class="fa-solid fa-chart-line text-purple-400"></i>
+        <i class="fa-solid fa-wave-square text-purple-400"></i>
         <span>FFT Turbulence</span>
       </button>
       <button onclick="switchTab('forecast')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
-        <i class="fa-solid fa-brain text-purple-400"></i>
+        <i class="fa-solid fa-chart-line text-blue-400"></i>
         <span>AI / ML Storm Forecast</span>
       </button>
       <button onclick="switchTab('missions')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
@@ -243,8 +242,8 @@
             <span id="metric-speed" class="text-3xl font-hud font-black text-amber-300">---</span>
             <span class="text-xs text-slate-400 font-hud">km/s</span>
           </div>
-          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="bar-speed" class="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full transition-all duration-500" style="width: 45%"></div>
+          <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="bar-speed" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 45%"></div>
           </div>
           <div id="metric-speed-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal slow wind</div>
         </div>
@@ -258,8 +257,8 @@
             <span id="metric-bz" class="text-3xl font-hud font-black text-rose-300">---</span>
             <span class="text-xs text-slate-400 font-hud">nT</span>
           </div>
-          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="bar-bz" class="bg-gradient-to-r from-emerald-400 to-rose-500 h-full rounded-full transition-all duration-500" style="width: 50%"></div>
+          <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="bar-bz" class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 50%"></div>
           </div>
           <div id="metric-bz-status" class="text-[10px] mt-1 text-emerald-400 font-medium">Northward (Shielded)</div>
         </div>
@@ -273,8 +272,8 @@
             <span id="metric-bt" class="text-3xl font-hud font-black text-sky-300">---</span>
             <span class="text-xs text-slate-400 font-hud">nT</span>
           </div>
-          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="bar-bt" class="bg-gradient-to-r from-sky-500 to-blue-400 h-full rounded-full transition-all duration-500" style="width: 30%"></div>
+          <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="bar-bt" class="bg-sky-500 h-full rounded-full transition-all duration-500" style="width: 30%"></div>
           </div>
           <div id="metric-bt-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal background</div>
         </div>
@@ -288,8 +287,8 @@
             <span id="metric-density" class="text-3xl font-hud font-black text-emerald-300">---</span>
             <span class="text-xs text-slate-400 font-hud">cm⁻³</span>
           </div>
-          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="bar-density" class="bg-gradient-to-r from-emerald-500 to-teal-300 h-full rounded-full transition-all duration-500" style="width: 25%"></div>
+          <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="bar-density" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 25%"></div>
           </div>
           <div id="metric-density-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal plasma</div>
         </div>
@@ -303,8 +302,8 @@
             <span id="metric-pdyn" class="text-3xl font-hud font-black text-orange-300">---</span>
             <span class="text-xs text-slate-400 font-hud">nPa</span>
           </div>
-          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="bar-pdyn" class="bg-gradient-to-r from-orange-500 to-amber-300 h-full rounded-full transition-all duration-500" style="width: 20%"></div>
+          <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="bar-pdyn" class="bg-orange-500 h-full rounded-full transition-all duration-500" style="width: 20%"></div>
           </div>
           <div id="metric-pdyn-status" class="text-[10px] mt-1 text-slate-400 font-medium">Standard compression</div>
         </div>
@@ -318,8 +317,8 @@
             <span id="metric-delay" class="text-3xl font-hud font-black text-cyan-300">---</span>
             <span class="text-xs text-slate-400 font-hud">min</span>
           </div>
-          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="bar-delay" class="bg-gradient-to-r from-cyan-500 to-sky-300 h-full rounded-full transition-all duration-500" style="width: 75%"></div>
+          <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="bar-delay" class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: 75%"></div>
           </div>
           <div id="metric-delay-status" class="text-[10px] mt-1 text-slate-400 font-medium">Early warning buffer</div>
         </div>
@@ -1138,8 +1137,8 @@
             <span>Minor Storm (G1, Kp≥5)</span>
             <span id="gauge-g1-val" class="text-xs font-hud font-bold text-yellow-400">---%</span>
           </div>
-          <div class="w-full bg-space-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="gauge-g1-bar" class="bg-gradient-to-r from-yellow-500 to-amber-300 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          <div class="w-full bg-slate-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="gauge-g1-bar" class="bg-yellow-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
           <div class="text-[10px] text-slate-400 mt-1">6-hour forecast window</div>
         </div>
@@ -1149,8 +1148,8 @@
             <span>Strong Storm (G3, Kp≥7)</span>
             <span id="gauge-g3-val" class="text-xs font-hud font-bold text-orange-400">---%</span>
           </div>
-          <div class="w-full bg-space-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="gauge-g3-bar" class="bg-gradient-to-r from-orange-500 to-amber-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          <div class="w-full bg-slate-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="gauge-g3-bar" class="bg-orange-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
           <div class="text-[10px] text-slate-400 mt-1">Sub-auroral reach</div>
         </div>
@@ -1160,8 +1159,8 @@
             <span>Extreme Storm (G5, Kp≥9)</span>
             <span id="gauge-g5-val" class="text-xs font-hud font-bold text-rose-400">---%</span>
           </div>
-          <div class="w-full bg-space-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/50">
-            <div id="gauge-g5-bar" class="bg-gradient-to-r from-rose-600 to-rose-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          <div class="w-full bg-slate-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/40">
+            <div id="gauge-g5-bar" class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
           <div class="text-[10px] text-slate-400 mt-1">Historic Carrington-level</div>
         </div>

@@ -372,8 +372,8 @@ class ParkerSpiralRenderer {
     const midTheta = cirAngle - (this.omegaSun * midR * this.auKm) / (this.speedKms * 0.85);
     const lx = cx + midR * scale * Math.cos(midTheta);
     const ly = cy - midR * scale * Math.sin(midTheta);
-    ctx.fillStyle = '#ffb703';
-    ctx.font = 'bold 9px "Chakra Petch", sans-serif';
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('CIR FORWARD SHOCK', lx + 10, ly);
 
     ctx.restore();
@@ -411,16 +411,14 @@ class ParkerSpiralRenderer {
 
       if (isEarthConnected) {
         // High-priority SEP Highway to Earth
-        ctx.strokeStyle = '#00f0ff';
-        ctx.lineWidth = 2.8;
-        ctx.shadowColor = '#00f0ff';
-        ctx.shadowBlur = 12;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.2;
         ctx.stroke();
 
         // Trace footpoint tag back on Sun
         const fpX = cx + 0.05 * scale * Math.cos(phi_0);
         const fpY = cy - 0.05 * scale * Math.sin(phi_0);
-        ctx.fillStyle = '#00f0ff';
+        ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
         ctx.arc(fpX, fpY, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -477,10 +475,8 @@ class ParkerSpiralRenderer {
     const earthY = cy;
 
     // Magnetosphere bow shock front
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.8)';
-    ctx.lineWidth = 1.8;
-    ctx.shadowColor = '#00f0ff';
-    ctx.shadowBlur = 8;
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.arc(earthX, earthY, 14, Math.PI * 0.6, Math.PI * 1.4);
     ctx.stroke();
@@ -499,7 +495,7 @@ class ParkerSpiralRenderer {
     ctx.stroke();
 
     ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 10px "Chakra Petch", sans-serif';
+    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('EARTH', earthX + 12, earthY - 4);
     ctx.fillStyle = '#38bdf8';
     ctx.font = '9px "JetBrains Mono", monospace';
@@ -585,7 +581,7 @@ class ParkerSpiralRenderer {
     }
 
     ctx.fillStyle = '#fef08a';
-    ctx.font = 'bold 10px "Chakra Petch", sans-serif';
+    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('SUN', cx, cy + 24);
 
@@ -605,8 +601,8 @@ class ParkerSpiralRenderer {
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#00f0ff';
-    ctx.font = 'bold 11px "Chakra Petch", sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('PARKER HELIOSPHERIC SPIRAL DYNAMICS', 24, 32);
 
     ctx.fillStyle = '#cbd5e1';

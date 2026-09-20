@@ -225,7 +225,7 @@ class CMESimulator {
     ctx.fill();
 
     ctx.fillStyle = '#fef08a';
-    ctx.font = 'bold 9px "Chakra Petch", sans-serif';
+    ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('SUN', sunX, plotCenterY + 22);
 
@@ -238,7 +238,7 @@ class CMESimulator {
     // 1. Earth at 1.0 AU
     const earthX = auToX(1.0);
     // Earth Bow Shock
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.7)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(earthX, plotCenterY, 14, Math.PI * 0.6, Math.PI * 1.4);
@@ -250,7 +250,7 @@ class CMESimulator {
     ctx.fill();
 
     ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 10px "Chakra Petch", sans-serif';
+    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText('EARTH', earthX + 12, plotCenterY - 4);
     ctx.fillStyle = '#94a3b8';
@@ -306,10 +306,8 @@ class CMESimulator {
     // Shock Wave Arc (Leading Edge)
     ctx.beginPath();
     ctx.arc(sunX, plotCenterY, distPx, -coneAngle, coneAngle);
-    ctx.strokeStyle = '#ff2a6d';
-    ctx.lineWidth = 3.5;
-    ctx.shadowColor = '#ff2a6d';
-    ctx.shadowBlur = 15;
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2.4;
     ctx.stroke();
 
     // Magnetic Flux Rope Core (Toroidal Cloud)
@@ -319,16 +317,14 @@ class CMESimulator {
 
     ctx.beginPath();
     ctx.ellipse(coreX, plotCenterY, coreRadiusX, coreRadiusY, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(168, 85, 247, 0.35)';
+    ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
     ctx.fill();
     ctx.strokeStyle = '#a855f7';
-    ctx.lineWidth = 1.8;
-    ctx.shadowColor = '#a855f7';
-    ctx.shadowBlur = 10;
+    ctx.lineWidth = 1.4;
     ctx.stroke();
 
     // Helical Magnetic Field Lines in Flux Rope Core
-    ctx.strokeStyle = 'rgba(216, 180, 254, 0.6)';
+    ctx.strokeStyle = 'rgba(216, 180, 254, 0.5)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     for (let k = -2; k <= 2; k++) {
@@ -336,10 +332,11 @@ class CMESimulator {
       ctx.ellipse(coreX, plotCenterY + k * (coreRadiusY * 0.35), coreRadiusX * 0.65, coreRadiusY * 0.2, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
+    ctx.setLineDash([]);
 
     // Shock Label
-    ctx.fillStyle = '#ff2a6d';
-    ctx.font = 'bold 10px "Chakra Petch", sans-serif';
+    ctx.fillStyle = '#f87171';
+    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(`CME SHOCK FRONT (V = ${shock.vKms.toFixed(0)} km/s)`, shockX + 8, plotCenterY - distPx * Math.tan(coneAngle) + 12);
 
@@ -356,15 +353,15 @@ class CMESimulator {
     const hudY = 14;
 
     ctx.fillStyle = 'rgba(7, 14, 34, 0.9)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(hudX, hudY, hudW, hudH, 8);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#00f0ff';
-    ctx.font = 'bold 11px "Chakra Petch", sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText('CME AERODYNAMIC PROPAGATION HUD', hudX + 12, hudY + 20);
 
     ctx.fillStyle = '#f8fafc';
@@ -380,10 +377,10 @@ class CMESimulator {
 
     // Alerts for L1 & Earth Interception
     if (shock.isEarthHit) {
-      this.drawAlertBanner(ctx, 'GEOMAGNETIC SUDDEN COMMENCEMENT (SC) - EARTH IMPACT!', '#ff2a6d');
+      this.drawAlertBanner(ctx, 'GEOMAGNETIC SUDDEN COMMENCEMENT (SC) - EARTH IMPACT!', '#ef4444');
     } else if (shock.isL1Hit) {
       const remainingMin = ((this.transitEarthHrs - this.timeHrs) * 60).toFixed(0);
-      this.drawAlertBanner(ctx, `L1 INTERCEPTION - EARLY WARNING ACTIVE: +${remainingMin} MIN TO EARTH`, '#ffb703');
+      this.drawAlertBanner(ctx, `L1 INTERCEPTION - EARLY WARNING ACTIVE: +${remainingMin} MIN TO EARTH`, '#f59e0b');
     }
 
     ctx.restore();
@@ -398,16 +395,14 @@ class CMESimulator {
 
     ctx.fillStyle = 'rgba(7, 14, 34, 0.95)';
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 14;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.roundRect(bx, by, bw, bh, 6);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = color;
-    ctx.font = 'bold 11px "Chakra Petch", sans-serif';
+    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(text, this.width / 2, by + 20);
 
