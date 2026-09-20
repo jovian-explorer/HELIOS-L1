@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HELIOS-L1 | Space Weather & L1 Heliophysics Observatory</title>
+  <link rel="stylesheet" href="/static/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="/static/js/tailwind.min.js"></script>
+  <script>
+    if (typeof tailwind === 'undefined') {
+      document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
+    }
+  </script>
+  <script src="/static/js/chart.min.js"></script>
+  <script>
+    if (typeof Chart === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>');
+    }
+  </script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            space: {
+              900: '#060a12',
+              800: '#0b1329',
+              700: '#111e3e',
+              600: '#1b2d5a',
+              accent: '#38bdf8',
+              solar: '#f59e0b',
+              plasma: '#10b981',
+              danger: '#f43f5e'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-space-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white">
+
+  <!-- REAL-TIME SPACE WEATHER CONDITION TICKER -->
+  <div class="bg-space-950/95 border-b border-sky-500/20 px-6 py-1.5 flex flex-wrap items-center justify-between text-[11px] font-hud tracking-wider text-slate-400 backdrop-blur z-50">
+    <div class="flex items-center space-x-4 overflow-x-auto py-0.5">
+      <div class="flex items-center space-x-1.5 text-slate-300">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-beacon"></span>
+        <span class="font-bold text-sky-400">NOAA SWPC LIVE:</span>
+      </div>
+      <div class="flex items-center space-x-1.5">
+        <span class="text-slate-500">GEOMAGNETIC</span>
+        <span id="ticker-g-scale" class="font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">G0 QUIET</span>
+      </div>
+      <div class="text-slate-700">|</div>
+      <div class="flex items-center space-x-1.5">
+        <span class="text-slate-500">SOLAR RAD</span>
+        <span id="ticker-s-scale" class="font-bold text-emerald-400">S0 NOMINAL</span>
+      </div>
+      <div class="text-slate-700">|</div>
+      <div class="flex items-center space-x-1.5">
+        <span class="text-slate-500">RADIO BLACKOUT</span>
+        <span id="ticker-r-scale" class="font-bold text-emerald-400">R0 NONE</span>
+      </div>
+      <div class="text-slate-700">|</div>
+      <div class="flex items-center space-x-1.5">
+        <span class="text-slate-500">STANDOFF</span>
+        <span id="ticker-rmp" class="font-bold text-sky-400 font-hud">10.4 RE</span>
+      </div>
+      <div class="text-slate-700">|</div>
+      <div class="flex items-center space-x-1.5">
+        <span class="text-slate-500">COUPLING</span>
+        <span id="ticker-epsilon" class="font-bold text-amber-400 font-hud">14.2 GW</span>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3 text-slate-400">
+      <i class="fa-solid fa-satellite-dish text-sky-400 animate-pulse"></i>
+      <span id="utc-clock" class="font-hud font-bold text-sky-300">00:00:00 UTC</span>
+      <span class="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] uppercase font-bold">L1 Frame Active</span>
+    </div>
+  </div>
+
+  <!-- TOP APP BAR -->
+  <header class="border-b border-slate-800/80 bg-space-800/90 backdrop-blur sticky top-0 z-40 px-6 py-3 flex items-center justify-between shadow-2xl">
+    <div class="flex items-center space-x-3.5">
+      <div class="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 via-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/25 ring-1 ring-white/20">
+        <i class="fa-solid fa-sun text-yellow-200 text-xl animate-spin-slow"></i>
+        <span class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900 animate-pulse"></span>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2.5">
+          <h1 class="text-2xl font-tech font-black tracking-wider bg-gradient-to-r from-sky-400 via-amber-300 to-rose-400 bg-clip-text text-transparent">
+            HELIOS-L1
+          </h1>
+          <span class="text-[10px] uppercase font-hud font-bold tracking-widest px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm shadow-sky-500/20">
+            v1.2 SciSuite
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">
+          <span class="text-sky-300 font-semibold">H</span>eliophysical <span class="text-sky-300 font-semibold">E</span>xploration, <span class="text-sky-300 font-semibold">L</span>1 <span class="text-sky-300 font-semibold">I</span>nterplanetary <span class="text-sky-300 font-semibold">O</span>bservation & <span class="text-sky-300 font-semibold">S</span>pace-weather Suite
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-3">
+      <div id="noaa-g-badge" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="g-scale-text">G0 Quiet</span>
+      </div>
+      <div id="bz-alert-badge" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shadow-sm">
+        <i class="fa-solid fa-magnet text-sky-400"></i>
+        <span id="bz-alert-text">Bz Northward</span>
+      </div>
+      <button id="btn-refresh" onclick="refreshCurrentView()" class="btn-cyber px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-2">
+        <i class="fa-solid fa-arrows-rotate" id="refresh-icon"></i>
+        <span>Live Fetch</span>
+      </button>
+      <a href="/api/report/html" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold transition flex items-center space-x-2 shadow-md shadow-purple-600/30">
+        <i class="fa-solid fa-file-invoice"></i>
+        <span>Bulletin</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="bg-space-800/50 border-b border-slate-800/80 px-6 flex items-center justify-between text-xs overflow-x-auto">
+    <div class="flex space-x-1" id="nav-tabs">
+      <button onclick="switchTab('dashboard')" class="tab-btn active px-3.5 py-3 font-semibold border-b-2 border-sky-400 text-sky-400 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-gauge-high"></i>
+        <span>L1 Telemetry</span>
+      </button>
+      <button onclick="switchTab('comparator')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-code-compare"></i>
+        <span>Multi-Satellite Comparator</span>
+      </button>
+      <button onclick="switchTab('orbits')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-atom"></i>
+        <span>Lagrange Orbits</span>
+      </button>
+      <button onclick="switchTab('aurora')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i>
+        <span>Auroral Oval & Map</span>
+      </button>
+      <button onclick="switchTab('coronagraph')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-camera-retro text-amber-400"></i>
+        <span>Coronagraph & CME</span>
+      </button>
+      <button onclick="switchTab('parker')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-tornado text-cyan-400"></i>
+        <span>Parker Spiral</span>
+      </button>
+      <button onclick="switchTab('import')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-file-arrow-up text-indigo-400"></i>
+        <span>Custom Ingestion & OMNI</span>
+      </button>
+      <button onclick="switchTab('events')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-bolt-lightning text-rose-400"></i>
+        <span>Storms Archive</span>
+      </button>
+      <button onclick="switchTab('turbulence')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-chart-line text-purple-400"></i>
+        <span>FFT Turbulence</span>
+      </button>
+      <button onclick="switchTab('forecast')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-brain text-purple-400"></i>
+        <span>AI / ML Storm Forecast</span>
+      </button>
+      <button onclick="switchTab('missions')" class="tab-btn px-3.5 py-3 font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-satellite text-blue-400"></i>
+        <span>Fleet Catalog</span>
+      </button>
+    </div>
+
+    <div class="flex items-center space-x-2 py-2">
+      <button id="btn-audio-toggle" onclick="toggleAudio()" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 text-xs border border-slate-700 transition flex items-center space-x-1.5 shadow-sm">
+        <i id="icon-audio" class="fa-solid fa-volume-high text-cyan-400"></i>
+        <span id="text-audio">Audio: ON</span>
+      </button>
+      <button onclick="openBulletinModal()" class="px-2.5 py-1.5 rounded-lg bg-indigo-900/70 hover:bg-indigo-800 text-indigo-200 text-xs border border-indigo-500/40 transition flex items-center space-x-1.5 shadow-sm">
+        <i class="fa-solid fa-file-shield text-indigo-400"></i>
+        <span>Bulletin</span>
+      </button>
+      <button onclick="exportData('csv')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center space-x-1.5 shadow-sm">
+        <i class="fa-solid fa-file-csv text-emerald-400"></i>
+        <span>CSV</span>
+      </button>
+      <button onclick="exportData('plot')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center space-x-1.5 shadow-sm">
+        <i class="fa-solid fa-image text-sky-400"></i>
+        <span>Plot</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN VIEWPORT CONTAINER -->
+  <main class="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: L1 OBSERVATORY & TELEMETRY DASHBOARD -->
+    <!-- ========================================================================= -->
+    <section id="tab-dashboard" class="tab-content space-y-6">
+      <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Active Spacecraft</label>
+            <select id="telemetry-satellite-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
+              <option value="DSCOVR">DSCOVR (Sun-Earth L1 Lissajous)</option>
+              <option value="ACE">ACE (Sun-Earth L1 Halo)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO L1 Halo)</option>
+              <option value="WIND">WIND (L1 Baseline)</option>
+              <option value="SOHO">SOHO (L1 Solar Halo)</option>
+              <option value="GOES_16">GOES-16 (Geostationary 35.7k km)</option>
+              <option value="STEREO_A">STEREO-A (Heliocentric 0.96 AU)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Observation Horizon</label>
+            <select id="telemetry-span-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
+              <option value="1">Last 24 Hours (High Res)</option>
+              <option value="7">Last 7 Days (Synoptic)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="satellite-mission-badge" class="flex items-center space-x-3 text-xs bg-space-900/80 px-4 py-2 rounded-xl border border-sky-500/20 shadow-inner">
+          <i class="fa-solid fa-satellite-dish text-sky-400 text-xl"></i>
+          <div>
+            <div id="sat-name-full" class="font-bold text-slate-200">Deep Space Climate Observatory</div>
+            <div id="sat-agency-orbit" class="text-slate-400 text-[11px]">NOAA / NASA • Sun-Earth L1 • ~1,500,000 km from Earth</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Scientific HUD Gauges -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+        <div class="metric-card speed-card">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
+            <span>Solar Wind Speed</span>
+            <i class="fa-solid fa-wind text-amber-400"></i>
+          </div>
+          <div class="flex items-baseline space-x-1.5">
+            <span id="metric-speed" class="text-3xl font-hud font-black text-amber-300">---</span>
+            <span class="text-xs text-slate-400 font-hud">km/s</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="bar-speed" class="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full transition-all duration-500" style="width: 45%"></div>
+          </div>
+          <div id="metric-speed-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal slow wind</div>
+        </div>
+
+        <div class="metric-card bz-card">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
+            <span>IMF Bz (GSM)</span>
+            <i class="fa-solid fa-compass text-rose-400"></i>
+          </div>
+          <div class="flex items-baseline space-x-1.5">
+            <span id="metric-bz" class="text-3xl font-hud font-black text-rose-300">---</span>
+            <span class="text-xs text-slate-400 font-hud">nT</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="bar-bz" class="bg-gradient-to-r from-emerald-400 to-rose-500 h-full rounded-full transition-all duration-500" style="width: 50%"></div>
+          </div>
+          <div id="metric-bz-status" class="text-[10px] mt-1 text-emerald-400 font-medium">Northward (Shielded)</div>
+        </div>
+
+        <div class="metric-card bt-card">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
+            <span>Total IMF |B|</span>
+            <i class="fa-solid fa-circle-nodes text-sky-400"></i>
+          </div>
+          <div class="flex items-baseline space-x-1.5">
+            <span id="metric-bt" class="text-3xl font-hud font-black text-sky-300">---</span>
+            <span class="text-xs text-slate-400 font-hud">nT</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="bar-bt" class="bg-gradient-to-r from-sky-500 to-blue-400 h-full rounded-full transition-all duration-500" style="width: 30%"></div>
+          </div>
+          <div id="metric-bt-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal background</div>
+        </div>
+
+        <div class="metric-card density-card">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
+            <span>Proton Density</span>
+            <i class="fa-solid fa-atom text-emerald-400"></i>
+          </div>
+          <div class="flex items-baseline space-x-1.5">
+            <span id="metric-density" class="text-3xl font-hud font-black text-emerald-300">---</span>
+            <span class="text-xs text-slate-400 font-hud">cm⁻³</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="bar-density" class="bg-gradient-to-r from-emerald-500 to-teal-300 h-full rounded-full transition-all duration-500" style="width: 25%"></div>
+          </div>
+          <div id="metric-density-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal plasma</div>
+        </div>
+
+        <div class="metric-card pressure-card">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
+            <span>Dynamic Pressure</span>
+            <i class="fa-solid fa-weight-hanging text-orange-400"></i>
+          </div>
+          <div class="flex items-baseline space-x-1.5">
+            <span id="metric-pdyn" class="text-3xl font-hud font-black text-orange-300">---</span>
+            <span class="text-xs text-slate-400 font-hud">nPa</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="bar-pdyn" class="bg-gradient-to-r from-orange-500 to-amber-300 h-full rounded-full transition-all duration-500" style="width: 20%"></div>
+          </div>
+          <div id="metric-pdyn-status" class="text-[10px] mt-1 text-slate-400 font-medium">Standard compression</div>
+        </div>
+
+        <div class="metric-card delay-card">
+          <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
+            <span>L1 → Earth Lead Time</span>
+            <i class="fa-solid fa-hourglass-half text-cyan-400"></i>
+          </div>
+          <div class="flex items-baseline space-x-1.5">
+            <span id="metric-delay" class="text-3xl font-hud font-black text-cyan-300">---</span>
+            <span class="text-xs text-slate-400 font-hud">min</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="bar-delay" class="bg-gradient-to-r from-cyan-500 to-sky-300 h-full rounded-full transition-all duration-500" style="width: 75%"></div>
+          </div>
+          <div id="metric-delay-status" class="text-[10px] mt-1 text-slate-400 font-medium">Early warning buffer</div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="space-y-4">
+        <div class="glass-panel hud-frame p-4">
+          <div class="flex items-center justify-between mb-3 border-b border-sky-500/15 pb-2">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 pulse-beacon"></span>
+              <h3 class="font-tech font-bold text-sm text-slate-100 tracking-wide">Interplanetary Magnetic Field (IMF Vector in GSM Coordinates)</h3>
+            </div>
+            <span class="text-xs text-slate-400 font-hud">Reconnection Threshold: <strong class="text-rose-400 font-bold">Bz &lt; -10 nT</strong></span>
+          </div>
+          <div class="h-64 w-full">
+            <canvas id="chart-mag"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel hud-frame p-4">
+          <div class="flex items-center justify-between mb-3 border-b border-sky-500/15 pb-2">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 pulse-beacon"></span>
+              <h3 class="font-tech font-bold text-sm text-slate-100 tracking-wide">Solar Wind Bulk Velocity (Vsw) & Proton Density (Np)</h3>
+            </div>
+            <span class="text-xs text-slate-400 font-hud">Fast Stream Threshold: <strong class="text-amber-400 font-bold">&gt; 500 km/s</strong></span>
+          </div>
+          <div class="h-64 w-full">
+            <canvas id="chart-plasma"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel hud-frame p-4">
+          <div class="flex items-center justify-between mb-3 border-b border-sky-500/15 pb-2">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 pulse-beacon"></span>
+              <h3 class="font-tech font-bold text-sm text-slate-100 tracking-wide">Magnetopause Standoff Distance (R_mp) & Akasofu Energy Coupling (ε)</h3>
+            </div>
+            <span class="text-xs text-slate-400 font-hud">GEO Orbit Boundary: <strong class="text-amber-400 font-bold">6.6 R_E</strong></span>
+          </div>
+          <div class="h-64 w-full">
+            <canvas id="chart-magnetosphere"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shocks Table -->
+      <div class="glass-panel p-5 space-y-3">
+        <div class="flex items-center justify-between border-b border-sky-500/20 pb-3">
+          <div class="flex items-center space-x-2.5">
+            <i class="fa-solid fa-radiation text-amber-400 text-lg"></i>
+            <div>
+              <h3 class="font-tech font-bold text-sm text-slate-100">Interplanetary Shocks & CME Fronts (Rankine-Hugoniot Detection)</h3>
+              <p class="text-xs text-slate-400">Automated hydrodynamic jump condition analysis across bulk velocity, plasma density, and magnetic vectors.</p>
+            </div>
+          </div>
+          <span id="shock-count-badge" class="text-xs px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-hud font-bold">0 shocks detected</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-700/80 text-slate-400 uppercase tracking-wider">
+                <th class="py-2 px-3">Arrival Timestamp</th>
+                <th class="py-2 px-3">Classification</th>
+                <th class="py-2 px-3">Velocity Jump (ΔV)</th>
+                <th class="py-2 px-3">Density Ratio (N2/N1)</th>
+                <th class="py-2 px-3">Magnetic Jump (B2/B1)</th>
+                <th class="py-2 px-3">Mach Proxy</th>
+              </tr>
+            </thead>
+            <tbody id="shocks-table-body" class="divide-y divide-slate-800">
+              <tr>
+                <td colspan="6" class="py-4 text-center text-slate-500 italic">No abrupt CME shock discontinuities detected in the current window.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: MULTI-SATELLITE COMPARATOR -->
+    <!-- ========================================================================= -->
+    <section id="tab-comparator" class="tab-content hidden space-y-6">
+      <!-- Fleet Correlation Matrix Heatmap -->
+      <div class="glass-panel p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <h3 class="font-tech font-bold text-base text-slate-100">Fleet-Wide Mutual Cross-Calibration Heatmap Matrix</h3>
+            </div>
+            <p class="text-xs text-slate-400">Pairwise Pearson correlation coefficients (r) across the Sun-Earth L1 fleet. Click any cell to cross-calibrate that pair.</p>
+          </div>
+          <button onclick="loadFleetMatrix()" class="px-3 py-1.5 rounded-lg bg-space-950/80 hover:bg-space-900 text-cyan-400 text-xs font-semibold border border-cyan-500/30 transition flex items-center space-x-1.5 shadow-sm">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Refresh Heatmap</span>
+          </button>
+        </div>
+        <div id="fleet-matrix-container" class="w-full"></div>
+      </div>
+
+      <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-4 shadow-md">
+        <div class="flex flex-wrap items-center gap-4">
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Primary Spacecraft (A)</label>
+            <select id="comp-sat-a" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
+              <option value="DSCOVR">DSCOVR (L1 Lissajous)</option>
+              <option value="ACE">ACE (L1 Halo)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo)</option>
+              <option value="WIND">WIND (L1 Baseline)</option>
+              <option value="SOHO">SOHO (L1 Solar)</option>
+            </select>
+          </div>
+          <div class="text-slate-500 font-bold self-end pb-2">VS</div>
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Comparative Spacecraft (B)</label>
+            <select id="comp-sat-b" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
+              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo)</option>
+              <option value="ACE" selected>ACE (L1 Halo)</option>
+              <option value="DSCOVR">DSCOVR (L1 Lissajous)</option>
+              <option value="WIND">WIND (L1 Baseline)</option>
+              <option value="SOHO">SOHO (L1 Solar)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Telemetry Parameter</label>
+            <select id="comp-param" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
+              <option value="bz_gsm">IMF Bz (GSM) [nT]</option>
+              <option value="bt">Total IMF |B| [nT]</option>
+              <option value="speed">Solar Wind Speed [km/s]</option>
+              <option value="density">Proton Density [cm⁻³]</option>
+              <option value="dynamic_pressure">Dynamic Pressure [nPa]</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="runComparison()" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center space-x-2 shadow-md shadow-sky-600/30">
+          <i class="fa-solid fa-play"></i>
+          <span>Execute Cross-Calibration</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+          <div class="text-slate-400 text-xs mb-1 font-semibold">Pearson Correlation (r)</div>
+          <div id="stat-r" class="text-2xl font-black text-sky-400">---</div>
+          <div class="text-[10px] text-slate-400 mt-1">Instrument linearity</div>
+        </div>
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+          <div class="text-slate-400 text-xs mb-1 font-semibold">Coeff. of Determ. (R²)</div>
+          <div id="stat-r2" class="text-2xl font-black text-emerald-400">---</div>
+          <div class="text-[10px] text-slate-400 mt-1">Variance explained</div>
+        </div>
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+          <div class="text-slate-400 text-xs mb-1 font-semibold">Root Mean Sq. Error</div>
+          <div id="stat-rmse" class="text-2xl font-black text-amber-400">---</div>
+          <div class="text-[10px] text-slate-400 mt-1">Absolute divergence</div>
+        </div>
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+          <div class="text-slate-400 text-xs mb-1 font-semibold">Sensor Bias (A - B)</div>
+          <div id="stat-bias" class="text-2xl font-black text-rose-400">---</div>
+          <div class="text-[10px] text-slate-400 mt-1">Zero-level offset</div>
+        </div>
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+          <div class="text-slate-400 text-xs mb-1 font-semibold">Optimal Lag (τ)</div>
+          <div id="stat-lag" class="text-2xl font-black text-cyan-400">---</div>
+          <div class="text-[10px] text-slate-400 mt-1">Transit phase offset</div>
+        </div>
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+          <div class="text-slate-400 text-xs mb-1 font-semibold">Linear Fit Curve</div>
+          <div id="stat-fit" class="text-xs font-mono font-bold text-purple-400 truncate mt-2">---</div>
+          <div class="text-[10px] text-slate-400 mt-1">Calibration equation</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-sm text-slate-200">Synchronized Time-Series Alignment</h3>
+            <span class="text-xs text-slate-400" id="comp-overlay-legend">A vs B</span>
+          </div>
+          <div class="h-64 w-full">
+            <canvas id="chart-comp-overlay"></canvas>
+          </div>
+        </div>
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-sm text-slate-200">Cross-Correlation vs Time Lag (τ)</h3>
+            <span class="text-xs text-slate-400">Peak identifies transit delay</span>
+          </div>
+          <div class="h-64 w-full">
+            <canvas id="chart-comp-lag"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-sm text-slate-200">Scatter Cross-Calibration & Regression Line</h3>
+            <span class="text-xs text-slate-400">Sensor A vs Sensor B</span>
+          </div>
+          <div class="h-64 w-full">
+            <canvas id="chart-comp-scatter"></canvas>
+          </div>
+        </div>
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-sm text-slate-200">Residual Discrepancy Over Time (A - B)</h3>
+            <span class="text-xs text-slate-400">Zero-line indicates ideal calibration</span>
+          </div>
+          <div class="h-64 w-full">
+            <canvas id="chart-comp-residual"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: 3D/2D LAGRANGE ORBITS -->
+    <!-- ========================================================================= -->
+    <section id="tab-orbits" class="tab-content hidden space-y-6">
+      <div class="glass-panel p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-sky-500/20 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+              <h3 class="font-tech font-bold text-lg text-slate-100 tracking-wide">Sun-Earth L1 Orbital Geometry Simulator</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Interactive GSE rotating reference frame. Real-time solar wind flux, magnetopause standoff dynamics, and 3D out-of-plane Halo oscillations.</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <!-- 2D / 3D Mode Switcher -->
+            <div class="flex items-center bg-space-950/80 p-1 rounded-xl border border-sky-500/30 shadow-inner">
+              <button id="btn-orbit-2d" onclick="toggleOrbitViewMode('2d')" class="px-3 py-1 rounded-lg bg-sky-600 text-white font-bold transition flex items-center space-x-1.5 shadow-sm">
+                <i class="fa-solid fa-layer-group text-[10px]"></i>
+                <span>2D Ecliptic</span>
+              </button>
+              <button id="btn-orbit-3d" onclick="toggleOrbitViewMode('3d')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-white font-bold transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-cube text-[10px]"></i>
+                <span>3D Halo View</span>
+              </button>
+            </div>
+
+            <!-- Zoom & View Tools -->
+            <div class="flex items-center space-x-1 bg-space-950/80 p-1 rounded-xl border border-slate-700/60">
+              <button onclick="zoomOrbit(1.2)" title="Zoom In" class="px-2.5 py-1 rounded hover:bg-slate-700 text-slate-200 transition">
+                <i class="fa-solid fa-magnifying-glass-plus"></i>
+              </button>
+              <button onclick="zoomOrbit(0.8)" title="Zoom Out" class="px-2.5 py-1 rounded hover:bg-slate-700 text-slate-200 transition">
+                <i class="fa-solid fa-magnifying-glass-minus"></i>
+              </button>
+              <button onclick="resetOrbitView()" title="Reset Camera" class="px-2.5 py-1 rounded hover:bg-slate-700 text-sky-400 font-bold transition">
+                <i class="fa-solid fa-compress"></i>
+              </button>
+            </div>
+
+            <label class="flex items-center space-x-2 cursor-pointer bg-space-950/80 px-3 py-1.5 rounded-xl border border-slate-700/60">
+              <input type="checkbox" id="orbit-anim-toggle" checked class="rounded text-sky-500">
+              <span class="text-slate-300 font-medium">Solar Wind Stream</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="relative w-full h-[580px] bg-space-950 rounded-xl overflow-hidden border border-sky-500/25 shadow-2xl">
+          <canvas id="orbit-canvas" class="w-full h-full block cursor-grab"></canvas>
+          <div id="orbit-tooltip" class="hud-tooltip hidden"></div>
+
+          <!-- Top-Right Mission HUD Telemetry Box -->
+          <div class="absolute top-4 right-4 bg-space-950/90 backdrop-blur border border-sky-500/30 p-3 rounded-xl text-xs space-y-1.5 pointer-events-none shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-700/60 pb-1">
+              <span class="text-[10px] font-tech font-bold uppercase tracking-wider text-sky-400">Orbital Telemetry HUD</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            </div>
+            <div class="font-hud text-[11px] text-slate-300 space-y-0.5">
+              <div>L1 DISTANCE: <span class="text-amber-400 font-bold">1,496,000 km</span></div>
+              <div>SOLAR DIST: <span class="text-yellow-300 font-bold">0.99 AU (Sunward)</span></div>
+              <div>SIM FLUX: <span id="hud-flux-speed" class="text-cyan-400 font-bold">450 km/s</span></div>
+              <div>BOW SHOCK: <span id="hud-bow-standoff" class="text-emerald-400 font-bold">10.5 R_E</span></div>
+            </div>
+          </div>
+          
+          <!-- Bottom-Left Fleet Legend -->
+          <div class="absolute bottom-4 left-4 bg-space-950/85 backdrop-blur p-3.5 rounded-xl border border-slate-700/70 text-xs space-y-1.5 pointer-events-none shadow-2xl">
+            <div class="font-tech font-bold text-slate-200 text-xs mb-1.5 tracking-wide">ACTIVE MISSION EPHEMERIDES:</div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-sm shadow-sky-400"></span><span class="font-semibold text-slate-300">DSCOVR (Lissajous)</span></div>
+              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span><span class="font-semibold text-slate-300">ACE (Halo)</span></div>
+              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400"></span><span class="font-semibold text-slate-300">Aditya-L1 (ISRO Halo)</span></div>
+              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400"></span><span class="font-semibold text-slate-300">WIND (Baseline)</span></div>
+              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-sm shadow-purple-400"></span><span class="font-semibold text-slate-300">SOHO (Solar Halo)</span></div>
+              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-pink-400 shadow-sm shadow-pink-400"></span><span class="font-semibold text-slate-300">GOES-16 (GEO Ring)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 4: AURORAL OVAL & WORLD MAP -->
+    <!-- ========================================================================= -->
+    <section id="tab-aurora" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="metric-card" style="border-left: 3px solid var(--neon-plasma);">
+          <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+            <span>Equatorward Midnight Boundary</span>
+            <i class="fa-solid fa-moon text-emerald-400"></i>
+          </div>
+          <div id="aurora-midnight-lat" class="text-3xl font-hud font-black text-emerald-300">---°</div>
+          <div class="text-[11px] text-slate-400 mt-1">Geomagnetic Equatorward Reach (Magnetic Local Midnight)</div>
+        </div>
+        <div class="metric-card" style="border-left: 3px solid var(--neon-solar);">
+          <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+            <span>Hemispheric Power Index (HPI)</span>
+            <i class="fa-solid fa-bolt text-amber-400"></i>
+          </div>
+          <div id="aurora-power-gw" class="text-3xl font-hud font-black text-amber-300">--- GW</div>
+          <div class="text-[11px] text-slate-400 mt-1">Total Auroral Particle Precipitation Energy</div>
+        </div>
+        <div class="metric-card" style="border-left: 3px solid var(--neon-cyan);">
+          <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+            <span>Flank (Dawn/Dusk) Latitude</span>
+            <i class="fa-solid fa-sun-plant-wilt text-sky-400"></i>
+          </div>
+          <div id="aurora-flank-lat" class="text-3xl font-hud font-black text-sky-300">---°</div>
+          <div class="text-[11px] text-slate-400 mt-1">Magnetic Local Time 06:00 & 18:00 Boundaries</div>
+        </div>
+      </div>
+
+      <!-- Interactive Auroral World Map Canvas -->
+      <div class="glass-panel p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h3 class="font-tech font-bold text-base text-slate-100">Global Geographic Auroral Oval Visibility Map</h3>
+            </div>
+            <p class="text-xs text-slate-400">Dynamic 557.7 nm atomic oxygen luminescence curtain with real-time astronomical day/night terminator and ground observatories.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
+              <input type="checkbox" id="aurora-toggle-shadow" checked onchange="toggleAuroraLayer('shadow', this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300">Night Shadow</span>
+            </label>
+            <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
+              <input type="checkbox" id="aurora-toggle-south" checked onchange="toggleAuroraLayer('south', this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300">South Oval</span>
+            </label>
+            <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
+              <input type="checkbox" id="aurora-toggle-stations" checked onchange="toggleAuroraLayer('stations', this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300">Ground Stations</span>
+            </label>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold flex items-center space-x-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-beacon"></span>
+              <span>Starkov-Feldstein Dynamic Model</span>
+            </span>
+          </div>
+        </div>
+        <div class="relative w-full h-[420px] bg-space-950 rounded-xl overflow-hidden border border-emerald-500/30 shadow-2xl">
+          <canvas id="aurora-map-canvas" class="w-full h-full block"></canvas>
+          <div id="aurora-tooltip" class="hud-tooltip hidden"></div>
+        </div>
+      </div>
+
+      <!-- Visibility Regions & Dst Ring Current Forecast -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center space-x-2 mb-3">
+            <i class="fa-solid fa-earth-americas text-emerald-400"></i>
+            <h3 class="font-bold text-sm text-slate-200">Current Auroral Visibility Horizon</h3>
+          </div>
+          <p class="text-xs text-slate-400 mb-3">Geographic locations with sighting probability based on current solar wind coupling:</p>
+          <ul id="aurora-regions-list" class="space-y-2 text-xs text-slate-300">
+            <li class="p-2 rounded bg-space-900/60 border border-slate-800">Loading forecast...</li>
+          </ul>
+        </div>
+
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-wave-square text-rose-400"></i>
+              <h3 class="font-bold text-sm text-slate-200">Dst Ring Current Prediction (Burton Model)</h3>
+            </div>
+            <span class="text-xs text-rose-400 font-bold" id="dst-current-val">Dst: --- nT</span>
+          </div>
+          <div class="h-60 w-full">
+            <canvas id="chart-dst"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 5: SOLAR CORONAGRAPH & CME KINEMATICS -->
+    <!-- ========================================================================= -->
+    <section id="tab-coronagraph" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-bold text-xs text-rose-400">SOHO / LASCO C2 (L1)</div>
+            <span class="text-[10px] text-slate-400">2.0 - 6.0 R☉</span>
+          </div>
+          <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c2/latest.jpg" onerror="this.src='/static/img/lasco_fallback.png'" alt="SOHO LASCO C2" class="w-full h-full object-cover">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Inner coronagraph tracking CME inception.</p>
+        </div>
+
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-bold text-xs text-sky-400">SOHO / LASCO C3 (L1)</div>
+            <span class="text-[10px] text-slate-400">3.7 - 32.0 R☉</span>
+          </div>
+          <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c3/latest.jpg" onerror="this.src='/static/img/lasco_fallback.png'" alt="SOHO LASCO C3" class="w-full h-full object-cover">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Wide-angle coronagraph tracking halo CMEs towards Earth.</p>
+        </div>
+
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-bold text-xs text-amber-400">SDO / SUVI 195 Å (EUV)</div>
+            <span class="text-[10px] text-slate-400">1.25 Million K Corona</span>
+          </div>
+          <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+            <img src="https://services.swpc.noaa.gov/images/animations/suvi-primary-195/latest.png" alt="SDO SUVI 195" class="w-full h-full object-cover">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">Coronal holes & flaring active regions.</p>
+        </div>
+      <!-- Interactive Multi-Wavelength Solar Disk & Active Region Scanner -->
+      <div class="glass-panel p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+              <h3 class="font-tech font-bold text-base text-slate-100">Solar Disk EUV Spectrum & Active Region Flare Scanner</h3>
+            </div>
+            <p class="text-xs text-slate-400">Multi-wavelength solar corona diagnostics, coronal loops, and magnetic shear active region flare tracking.</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-1.5 bg-space-950/80 p-1 rounded-xl border border-slate-700/60 text-xs">
+            <button id="btn-wl-193" onclick="setSolarWavelength('193')" class="px-2.5 py-1 rounded bg-amber-600 text-white font-bold transition">AIA 193 Å</button>
+            <button id="btn-wl-304" onclick="setSolarWavelength('304')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">AIA 304 Å</button>
+            <button id="btn-wl-171" onclick="setSolarWavelength('171')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">AIA 171 Å</button>
+            <button id="btn-wl-131" onclick="setSolarWavelength('131')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">AIA 131 Å</button>
+            <button id="btn-wl-c2" onclick="setSolarWavelength('C2')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">LASCO C2</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-2 relative h-[380px] bg-space-950 rounded-xl overflow-hidden border border-amber-500/25 shadow-2xl">
+            <canvas id="solar-disk-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+            <div id="solar-tooltip" class="hud-tooltip hidden"></div>
+          </div>
+
+          <!-- Active Region Telemetry Card -->
+          <div class="bg-space-900/80 p-4 rounded-xl border border-slate-800 space-y-3 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-slate-700/70 pb-2 mb-2">
+                <div>
+                  <div id="solar-ar-id" class="font-tech font-bold text-base text-amber-400">AR 3664</div>
+                  <div id="solar-ar-name" class="text-xs text-slate-400">Carrington-Class Complex</div>
+                </div>
+                <span id="solar-ar-class" class="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">β-γ-δ</span>
+              </div>
+              
+              <div class="space-y-2 text-xs">
+                <div>
+                  <span class="text-slate-400 text-[11px] block">Recent High-Energy Flare:</span>
+                  <span id="solar-ar-flare" class="font-hud font-bold text-rose-400">X8.7 (May 14, 2024)</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 text-[11px] block">24h Flare Probability:</span>
+                  <span id="solar-ar-prob" class="font-hud text-amber-300">C: 99% • M: 85% • X: 45%</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 text-[11px] block">Magnetic Topology:</span>
+                  <p id="solar-ar-desc" class="text-slate-300 text-[11px] leading-relaxed mt-0.5">Massive complex sunspot cluster responsible for G5 geomagnetic superstorm. Extreme magnetic shear along neutral inversion line.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-[10px] text-slate-500 italic pt-2 border-t border-slate-800">
+              Click any active region on the solar disk to load detailed magnetic shear telemetry.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
+          <div>
+            <h3 class="font-bold text-sm text-slate-200">CME Plane-of-Sky Kinematic Solver & Aerodynamic Shock Simulator</h3>
+            <p class="text-xs text-slate-400">Computes CME expansion velocity, Gopalswamy aerodynamic drag deceleration, and transit time to L1 & Earth.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Height 1 (r1 in R☉)</label>
+            <input type="number" id="cme-r1" value="2.5" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Height 2 (r2 in R☉)</label>
+            <input type="number" id="cme-r2" value="6.0" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Time Elapsed (Δt in minutes)</label>
+            <input type="number" id="cme-dt" value="35" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+          </div>
+          <div class="flex items-end">
+            <button onclick="calculateCMEKinematics()" class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-md shadow-amber-600/30 flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-meteor"></i>
+              <span>Simulate CME Transit</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="cme-results-panel" class="hidden space-y-4 pt-2">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
+              <div class="text-[11px] text-slate-400 font-semibold">Expansion Velocity</div>
+              <div id="cme-v-init" class="text-xl font-black text-sky-400 mt-1">--- km/s</div>
+              <div id="cme-class" class="text-[10px] text-amber-400 mt-0.5">Fast CME</div>
+            </div>
+            <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
+              <div class="text-[11px] text-slate-400 font-semibold">Transit to L1 Point</div>
+              <div id="cme-transit-l1" class="text-xl font-black text-emerald-400 mt-1">--- hrs</div>
+              <div id="cme-arrival-l1" class="text-[10px] text-slate-400 mt-0.5">Arrival date</div>
+            </div>
+            <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
+              <div class="text-[11px] text-slate-400 font-semibold">Transit to Earth (1 AU)</div>
+              <div id="cme-transit-earth" class="text-xl font-black text-rose-400 mt-1">--- hrs</div>
+              <div id="cme-arrival-earth" class="text-[10px] text-slate-400 mt-0.5">Impact date</div>
+            </div>
+            <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
+              <div class="text-[11px] text-slate-400 font-semibold">L1 Warning Lead Time</div>
+              <div id="cme-lead-time" class="text-xl font-black text-cyan-400 mt-1">--- min</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Actionable mitigation window</div>
+            </div>
+          </div>
+
+          <!-- Interactive 2D CME Interplanetary Shock Propagation Radar Canvas -->
+          <div class="space-y-2 border-t border-slate-800 pt-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                <span class="font-tech font-bold text-slate-200 text-sm">2D Interplanetary Propagation Radar</span>
+              </div>
+              <div class="flex items-center space-x-2 text-xs">
+                <button onclick="toggleCMEPlay()" id="btn-cme-play" class="px-3 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white font-bold transition flex items-center space-x-1.5">
+                  <i id="icon-cme-play" class="fa-solid fa-play"></i>
+                  <span id="text-cme-play">Play</span>
+                </button>
+                <button onclick="resetCMESim()" class="px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold transition">
+                  <i class="fa-solid fa-arrow-rotate-left"></i>
+                </button>
+                <div class="flex items-center space-x-2 bg-space-900 px-3 py-1 rounded-lg border border-slate-700">
+                  <span class="text-slate-400 text-[11px]">Timeline:</span>
+                  <input type="range" id="cme-timeline-slider" min="0" max="60" step="0.2" value="0" oninput="onCMESliderChange(this.value)" class="w-36 accent-sky-400 cursor-pointer">
+                </div>
+              </div>
+            </div>
+
+            <div class="relative w-full h-80 bg-space-950 rounded-xl overflow-hidden border border-rose-500/25 shadow-2xl">
+              <canvas id="cme-radar-canvas" class="w-full h-full block"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 6: PARKER SPIRAL -->
+    <!-- ========================================================================= -->
+    <section id="tab-parker" class="tab-content hidden space-y-6">
+      <div class="glass-panel p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-sky-500/20 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <h3 class="font-tech font-bold text-base text-slate-100">Heliospheric Parker Spiral & Solar Wind Stream Simulator</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Archimedean magnetic field lines wound by solar rotation. Corotating Interaction Regions (CIRs) and Solar Energetic Particle (SEP) connectivity.</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <!-- Speed Slider Control -->
+            <div class="flex items-center space-x-2.5 bg-space-950/80 px-3 py-1.5 rounded-xl border border-sky-500/30 shadow-inner">
+              <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Solar Wind:</span>
+              <input type="range" id="parker-speed-slider" min="250" max="1100" step="10" value="440" oninput="onParkerSpeedChange(this.value)" class="w-28 accent-cyan-400 cursor-pointer">
+              <span id="parker-speed-readout" class="font-hud font-bold text-cyan-400 w-16 text-right">440 km/s</span>
+            </div>
+
+            <!-- Speed Presets -->
+            <div class="flex items-center space-x-1 bg-space-950/80 p-1 rounded-xl border border-slate-700/60">
+              <button onclick="setParkerSpeedPreset(350)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-slate-300 transition">Slow (350)</button>
+              <button onclick="setParkerSpeedPreset(450)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-sky-400 font-bold transition">Nominal (450)</button>
+              <button onclick="setParkerSpeedPreset(750)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-amber-400 font-bold transition">CH Stream (750)</button>
+              <button onclick="setParkerSpeedPreset(1100)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-rose-400 font-bold transition">CME (1100)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-space-900/60 p-2.5 rounded-xl border border-slate-800">
+          <div class="flex items-center space-x-4">
+            <span class="text-slate-300">Spiral Pitch at 1 AU: <strong id="parker-pitch-val" class="text-cyan-400 font-hud">45.0°</strong></span>
+            <span class="text-slate-300">Earth Connected Footpoint: <strong id="parker-footpoint-val" class="text-amber-400 font-hud">~52.1° W</strong></span>
+          </div>
+
+          <div class="flex items-center space-x-3">
+            <label class="flex items-center space-x-1.5 cursor-pointer">
+              <input type="checkbox" id="parker-toggle-cir" checked onchange="toggleParkerFeature('cir', this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300">CIR Shocks</span>
+            </label>
+            <label class="flex items-center space-x-1.5 cursor-pointer">
+              <input type="checkbox" id="parker-toggle-flow" checked onchange="toggleParkerFeature('flow', this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300">Plasma Flow</span>
+            </label>
+            <label class="flex items-center space-x-1.5 cursor-pointer">
+              <input type="checkbox" id="parker-toggle-sectors" checked onchange="toggleParkerFeature('sectors', this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300">Magnetic Sectors</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="relative w-full h-[540px] bg-space-950 rounded-xl overflow-hidden border border-cyan-500/25 shadow-2xl">
+          <canvas id="parker-canvas" class="w-full h-full block cursor-grab"></canvas>
+          <div id="parker-tooltip" class="hud-tooltip hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 7: CUSTOM INGESTION & OMNI STUDIO (NEW!) -->
+    <!-- ========================================================================= -->
+    <section id="tab-import" class="tab-content hidden space-y-6">
+      <div class="bg-space-800/80 p-6 rounded-xl border border-slate-800 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
+          <div>
+            <h3 class="font-bold text-base text-slate-200">Custom Telemetry & NASA OMNI Ingestion Studio</h3>
+            <p class="text-xs text-slate-400">Upload or paste CSV / OMNI ASCII telemetry from any satellite or simulation model for instant scientific analysis.</p>
+          </div>
+          <button onclick="loadSampleCSV()" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition">
+            Load Sample OMNI Format
+          </button>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex items-center space-x-4">
+            <div class="flex-1">
+              <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Spacecraft / Dataset Name</label>
+              <input type="text" id="import-mission-name" value="User Research Spacecraft" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            </div>
+            <div class="self-end">
+              <input type="file" id="import-file-input" onchange="handleFileUpload(event)" class="hidden">
+              <button onclick="document.getElementById('import-file-input').click()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition flex items-center space-x-2">
+                <i class="fa-solid fa-folder-open text-sky-400"></i>
+                <span>Choose Local File</span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Telemetry Content (CSV / Delimited ASCII)</label>
+            <textarea id="import-content" rows="7" placeholder="time,speed,density,bz_gsm,bt&#10;2026-09-20 12:00:00,420.5,5.2,-3.4,6.8&#10;2026-09-20 12:05:00,580.2,14.8,-18.2,22.1" class="w-full bg-space-900 font-mono text-xs text-slate-200 border border-slate-700 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-sky-400"></textarea>
+          </div>
+
+          <div class="flex justify-end">
+            <button onclick="submitCustomImport()" class="px-5 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-sky-600/30">
+              <i class="fa-solid fa-microchip"></i>
+              <span>Ingest & Process Telemetry</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Ingestion Status / Result Box -->
+        <div id="import-result-box" class="hidden p-4 rounded-lg bg-space-900 border border-slate-700 text-xs space-y-2">
+          <div class="text-emerald-400 font-bold flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="import-result-title">Telemetry Ingested Successfully!</span>
+          </div>
+          <div id="import-result-details" class="text-slate-300 font-mono text-[11px]"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 8: HISTORICAL SOLAR STORMS ARCHIVE -->
+    <!-- ========================================================================= -->
+    <section id="tab-events" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="event-cards-container"></div>
+
+      <div id="event-detail-card" class="bg-space-800/80 p-6 rounded-xl border border-slate-800 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
+          <div>
+            <h3 id="event-title" class="text-lg font-bold text-slate-100">May 10-12, 2024 Extreme G5 Solar Superstorm</h3>
+            <p id="event-desc" class="text-xs text-slate-400 max-w-3xl mt-1">Historic space weather benchmark.</p>
+          </div>
+          <span id="event-severity-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+            Extreme G5 (Kp=9)
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
+            <span class="text-slate-400 text-xs">Peak Kp Index</span>
+            <div id="event-peak-kp" class="text-xl font-black text-rose-400 mt-0.5">9.0</div>
+          </div>
+          <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
+            <span class="text-slate-400 text-xs">Minimum IMF Bz</span>
+            <div id="event-min-bz" class="text-xl font-black text-rose-400 mt-0.5">-48.5 nT</div>
+          </div>
+          <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
+            <span class="text-slate-400 text-xs">Peak Solar Wind Velocity</span>
+            <div id="event-peak-v" class="text-xl font-black text-sky-400 mt-0.5">985 km/s</div>
+          </div>
+          <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
+            <span class="text-slate-400 text-xs">Peak Dynamic Pressure</span>
+            <div id="event-peak-pdyn" class="text-xl font-black text-amber-400 mt-0.5">48.0 nPa</div>
+          </div>
+        </div>
+
+        <div class="h-72 w-full">
+          <canvas id="chart-event-telemetry"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 9: TURBULENCE & SPECTRAL PSD -->
+    <!-- ========================================================================= -->
+    <section id="tab-turbulence" class="tab-content hidden space-y-6">
+      <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-base text-slate-200">Solar Wind Turbulence & Power Spectral Density (PSD)</h3>
+            <p class="text-xs text-slate-400">Fast Fourier Transform (FFT) analysis of IMF fluctuations. Benchmarks Kolmogorov f⁻⁵/³ inertial subrange.</p>
+          </div>
+          <button onclick="loadSpectralAnalysis()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium transition">
+            Recompute FFT
+          </button>
+        </div>
+        <div class="h-80 w-full">
+          <canvas id="chart-spectrum"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 10: FLEET CATALOG -->
+    <!-- ========================================================================= -->
+    <section id="tab-missions" class="tab-content hidden space-y-6">
+      <div>
+        <h3 class="text-base font-bold text-slate-200 mb-1">Global Sun-Earth L1 & Space Weather Spacecraft Fleet</h3>
+        <p class="text-xs text-slate-400">Comprehensive catalog of scientific spacecraft observing the heliosphere and near-Earth space environment.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="fleet-cards-container"></div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 11: MACHINE LEARNING & GEOMAGNETIC STORM FORECAST -->
+    <!-- ========================================================================= -->
+    <section id="tab-forecast" class="tab-content hidden space-y-6">
+      <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse"></span>
+            <h3 class="font-tech font-bold text-base text-slate-100">AI / MHD Magnetospheric Coupling & Storm Horizon Engine</h3>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Predictive solar wind coupling rates, ring current Dst* injection simulations, and 12-hour probabilistic storm forecasting.</p>
+        </div>
+
+        <div class="flex items-center space-x-3 text-xs">
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Observation Telemetry Source</label>
+            <select id="forecast-satellite-select" onchange="loadMLForecast()" class="rounded-lg px-3 py-1.5 text-xs font-semibold focus:outline-none">
+              <option value="DSCOVR">DSCOVR (L1 Primary)</option>
+              <option value="ACE">ACE (L1 Secondary)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo)</option>
+              <option value="WIND">WIND (Baseline)</option>
+            </select>
+          </div>
+          <button onclick="loadMLForecast()" class="self-end px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition flex items-center space-x-1.5 shadow-md shadow-purple-600/30">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Recompute ML</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Coupling & Storm Probability Gauges -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        <div class="metric-card" style="border-left: 3px solid var(--neon-cyan);">
+          <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+            <span>Newell Coupling dΦ/dt</span>
+            <i class="fa-solid fa-bolt text-cyan-400"></i>
+          </div>
+          <div id="forecast-newell-val" class="text-2xl font-hud font-black text-cyan-300">--- Wb/s</div>
+          <div id="forecast-newell-state" class="text-[10px] text-slate-400 mt-1">Calculating coupling...</div>
+        </div>
+
+        <div class="metric-card" style="border-left: 3px solid #38bdf8;">
+          <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+            <span>Estimated Ring Current Dst*</span>
+            <i class="fa-solid fa-circle-dot text-sky-400"></i>
+          </div>
+          <div id="forecast-dst-val" class="text-2xl font-hud font-black text-sky-300">--- nT</div>
+          <div class="text-[10px] text-slate-400 mt-1">Burton DPS model</div>
+        </div>
+
+        <div class="metric-card" style="border-left: 3px solid #eab308;">
+          <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+            <span>Minor Storm (G1, Kp≥5)</span>
+            <span id="gauge-g1-val" class="text-xs font-hud font-bold text-yellow-400">---%</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="gauge-g1-bar" class="bg-gradient-to-r from-yellow-500 to-amber-300 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1">6-hour forecast window</div>
+        </div>
+
+        <div class="metric-card" style="border-left: 3px solid #f97316;">
+          <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+            <span>Strong Storm (G3, Kp≥7)</span>
+            <span id="gauge-g3-val" class="text-xs font-hud font-bold text-orange-400">---%</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="gauge-g3-bar" class="bg-gradient-to-r from-orange-500 to-amber-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1">Sub-auroral reach</div>
+        </div>
+
+        <div class="metric-card" style="border-left: 3px solid #ef4444;">
+          <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
+            <span>Extreme Storm (G5, Kp≥9)</span>
+            <span id="gauge-g5-val" class="text-xs font-hud font-bold text-rose-400">---%</span>
+          </div>
+          <div class="w-full bg-space-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/50">
+            <div id="gauge-g5-bar" class="bg-gradient-to-r from-rose-600 to-rose-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1">Historic Carrington-level</div>
+        </div>
+      </div>
+
+      <!-- Predictive 12-Hour Horizon Chart -->
+      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-xl space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-chart-line text-purple-400"></i>
+            <h3 class="font-bold text-sm text-slate-200">12-Hour Multi-Horizon Geomagnetic Kp & Dst Predictive Trajectory</h3>
+          </div>
+          <span class="text-xs text-purple-400 font-mono">Confidence Band: 95% CI</span>
+        </div>
+        <div class="h-72 w-full">
+          <canvas id="chart-ml-timeline"></canvas>
+        </div>
+      </div>
+
+      <!-- Critical Infrastructure Hazard Advisories -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div id="hazard-gic" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
+              <i class="fa-solid fa-tower-broadcast text-sky-400"></i>
+              <span>Power Grid & GIC Risks</span>
+            </div>
+            <span id="hazard-gic-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
+          </div>
+          <p id="hazard-gic-desc" class="text-xs text-slate-400 leading-relaxed">No high-latitude transmission line fluctuations anticipated.</p>
+        </div>
+
+        <div id="hazard-aviation" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
+              <i class="fa-solid fa-plane-departure text-amber-400"></i>
+              <span>Polar Aviation & HF Radio</span>
+            </div>
+            <span id="hazard-aviation-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
+          </div>
+          <p id="hazard-aviation-desc" class="text-xs text-slate-400 leading-relaxed">Normal trans-polar communications and navigational accuracy.</p>
+        </div>
+
+        <div id="hazard-satellite" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
+              <i class="fa-solid fa-satellite text-rose-400"></i>
+              <span>Satellite Charging & Drag</span>
+            </div>
+            <span id="hazard-satellite-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
+          </div>
+          <p id="hazard-satellite-desc" class="text-xs text-slate-400 leading-relaxed">Standard orbit ephemeris and downlink nominal.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- SPACE WEATHER BULLETIN MODAL -->
+  <div id="bulletin-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-space-900 border border-sky-500/40 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-slate-700/80 flex items-center justify-between bg-space-950">
+        <div class="flex items-center space-x-2.5">
+          <i class="fa-solid fa-file-shield text-sky-400 text-lg"></i>
+          <div>
+            <h3 class="font-tech font-bold text-slate-100 text-sm">Official Space Weather Operations Bulletin</h3>
+            <p class="text-[11px] text-slate-400">Standard Heliophysics Hazard Advisory for Power Grids, Aviation & Spacecraft</p>
+          </div>
+        </div>
+        <button onclick="closeBulletinModal()" class="text-slate-400 hover:text-white px-2 py-1 rounded">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6 space-y-4 text-xs font-mono" id="bulletin-content">
+        <div class="text-center text-slate-400 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Generating bulletin...</div>
+      </div>
+
+      <div class="p-4 border-t border-slate-700/80 bg-space-950 flex items-center justify-between">
+        <span class="text-[11px] text-slate-500">HELIOS-L1 Automated Hazard Diagnostic Engine</span>
+        <div class="flex items-center space-x-2">
+          <button onclick="downloadBulletinHTML()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-download"></i>
+            <span>Download HTML Report</span>
+          </button>
+          <button onclick="window.print()" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-print"></i>
+            <span>Print / PDF</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-800/80 bg-space-800/50 py-3 px-6 text-xs text-slate-500 flex flex-wrap items-center justify-between">
+    <div>
+      <span class="font-semibold text-slate-400">HELIOS-L1 Science Suite</span> • Developed for Sun-Earth L1 Lagrange and Space Weather Analysis
+    </div>
+    <div class="flex items-center space-x-4">
+      <span>Data Sources: NOAA SWPC • NASA CDAWeb • ISRO Aditya-L1</span>
+      <span class="text-emerald-400 flex items-center space-x-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        <span>Telemetry Online</span>
+      </span>
+    </div>
+  </footer>
+
+  <script src="/static/js/audio.js"></script>
+  <script src="/static/js/orbits.js"></script>
+  <script src="/static/js/aurora.js"></script>
+  <script src="/static/js/parker.js"></script>
+  <script src="/static/js/cme_sim.js"></script>
+  <script src="/static/js/solar_viewer.js"></script>
+  <script src="/static/js/matrix.js"></script>
+  <script src="/static/js/forecast.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+dist/
+build/
+*.exe
+*.zip
+*.spec
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+*.log

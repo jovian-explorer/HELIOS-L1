@@ -1,0 +1,229 @@
+"""
+Expanded Test Suite for HELIOS-L1 Scientific and Telemetry Engines.
+"""
+import pytest
+import numpy as np
+from fastapi.testclient import TestClient
+
+from helios.core.science import SpaceWeatherPhysics
+from helios.core.downloader import DataDownloader
+from helios.core.comparator import SatelliteComparator
+from helios.core.orbital_mechanics import OrbitalMechanics
+from helios.core.exporter import DataExporter
+from helios.core.aurora_model import AuroralModel
+from helios.core.coronagraph import CoronagraphAnalyzer
+from helios.core.parker_spiral import ParkerSpiralModel
+from helios.core.report_generator import ScientificReportGenerator
+from helios.api.server import app
+
+client = TestClient(app)
+
+def test_space_weather_physics_equations():
+    # 1. Dynamic pressure
+    pdyn = SpaceWeatherPhysics.dynamic_pressure(5.0, 400.0)
+    assert 1.3 < pdyn < 1.4
+
+    # 2. Magnetopause standoff
+    rmp = SpaceWeatherPhysics.magnetopause_standoff(2.0, 0.0)
+    assert 9.0 < rmp < 11.5
+
+    # 3. Akasofu Epsilon
+    eps = SpaceWeatherPhysics.akasofu_epsilon(500.0, 11.18, 5.0, -10.0)
+    assert eps > 50.0
+
+    # 4. Propagation delay
+    delay = SpaceWeatherPhysics.propagation_delay_minutes(1500000.0, 500.0)
+    assert 40.0 < delay < 55.0
+
+    # 5. NOAA Scale classification
+    cls_quiet = SpaceWeatherPhysics.classify_noaa_scales(kp=1.0, bz_gsm=2.0, xray_flux=1e-7)
+    assert "Quiet" in cls_quiet["g_scale"]
+    assert "Northward" in cls_quiet["bz_alert"]
+
+    cls_storm = SpaceWeatherPhysics.classify_noaa_scales(kp=9.0, bz_gsm=-25.0, xray_flux=1.5e-4)
+    assert "G5" in cls_storm["g_scale"]
+    assert "CRITICAL" in cls_storm["bz_alert"]
+    assert "R3" in cls_storm["r_scale"]
+
+def test_interplanetary_shock_detection():
+    records = []
+    for i in range(10):
+        records.append({
+            "time_tag": f"2026-09-20 12:{i*5:02d}:00",
+            "speed": 350.0 if i < 5 else 620.0,
+            "density": 4.0 if i < 5 else 18.0,
+            "bt": 5.0 if i < 5 else 16.0
+        })
+    shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(records)
+    assert len(shocks) > 0
+    assert shocks[0]["delta_speed_kms"] >= 200.0
+
+def test_power_spectral_density():
+    t = np.linspace(0, 100, 128)
+    signal = np.sin(2 * np.pi * 0.05 * t) + np.random.normal(0, 0.1, 128)
+    psd = SpaceWeatherPhysics.power_spectral_density(signal.tolist())
+    assert len(psd["frequencies_hz"]) > 0
+    assert len(psd["power_density"]) > 0
+
+def test_synthetic_telemetry_generation():
+    dl = DataDownloader()
+    telemetry = dl.generate_synthetic_telemetry("DSCOVR", hours=6, condition="active")
+    assert len(telemetry) == (6 * 60) // 5
+    first = telemetry[0]
+    assert "speed" in first
+    assert "bz_gsm" in first
+    assert "dynamic_pressure" in first
+    assert "l1_travel_time_min" in first
+
+def test_satellite_comparator():
+    dl = DataDownloader()
+    data_a = dl.generate_synthetic_telemetry("DSCOVR", hours=12, condition="active")
+    data_b = dl.generate_synthetic_telemetry("ADITYA_L1", hours=12, condition="active")
+
+    comp = SatelliteComparator.compare_satellites(
+        data_a, data_b, "DSCOVR", "Aditya-L1", parameter="bz_gsm"
+    )
+    assert comp["status"] == "success"
+    assert "correlation_r" in comp["metrics"]
+    assert "r_squared" in comp["metrics"]
+    assert "optimal_lag_minutes" in comp["lag_analysis"]
+    assert len(comp["scatter_points"]) > 0
+
+def test_orbital_mechanics():
+    lagrange = OrbitalMechanics.get_lagrange_points()
+    assert "L1" in lagrange
+    assert "L2" in lagrange
+    assert lagrange["L1"]["x_mkm"] == -1.496
+
+    orbits = OrbitalMechanics.get_satellite_orbits()
+    assert "DSCOVR" in orbits
+    assert "ADITYA_L1" in orbits
+    assert "ACE" in orbits
+    assert len(orbits["DSCOVR"]["path"]) > 0
+
+def test_auroral_model():
+    res = AuroralModel.calculate_auroral_boundaries(kp=7.0, bz_gsm=-12.0)
+    assert res["equatorward_midnight_lat"] < 52.0
+    assert res["hemispheric_power_gw"] > 50.0
+    assert len(res["visible_regions"]) > 0
+
+    dl = DataDownloader()
+    sample = dl.generate_synthetic_telemetry("DSCOVR", hours=4, condition="storm")
+    dst_sim = AuroralModel.simulate_dst_evolution(sample)
+    assert len(dst_sim) == len(sample)
+    assert "dst_predicted_nt" in dst_sim[-1]
+
+def test_coronagraph_kinematics():
+    feeds = CoronagraphAnalyzer.get_coronagraph_feeds()
+    assert "SOHO_LASCO_C2" in feeds
+    assert "SOHO_LASCO_C3" in feeds
+
+    # Test CME moving from 2.5 to 6.0 R_sun in 30 minutes
+    kin = CoronagraphAnalyzer.calculate_cme_kinematics(r1_rsun=2.5, r2_rsun=6.0, dt_minutes=30.0)
+    assert kin["initial_speed_kms"] > 1000.0
+    assert kin["transit_to_earth_hours"] > 10.0
+    assert kin["l1_to_earth_lead_time_minutes"] > 10.0
+
+def test_parker_spiral():
+    pitch = ParkerSpiralModel.spiral_pitch_angle(400.0)
+    assert 40.0 < pitch < 52.0
+
+    footpoint = ParkerSpiralModel.magnetic_footpoint_longitude(400.0)
+    assert 45.0 < footpoint < 65.0
+
+    streamlines = ParkerSpiralModel.generate_parker_spiral_lines(400.0, num_streamlines=6)
+    assert len(streamlines) == 6
+    assert len(streamlines[0]["points"]) > 10
+
+def test_report_generator():
+    dl = DataDownloader()
+    data = dl.generate_synthetic_telemetry("DSCOVR", hours=2)
+    cls = SpaceWeatherPhysics.classify_noaa_scales(3.0, -2.0, 1e-6)
+    shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
+    auroral = AuroralModel.calculate_auroral_boundaries(3.0, -2.0)
+
+    html = ScientificReportGenerator.generate_html_bulletin("DSCOVR", data, cls, shocks, auroral)
+    assert "HELIOS-L1" in html
+    assert "Solar Wind Velocity" in html
+
+def test_api_endpoints():
+    # 1. Status
+    res = client.get("/api/status")
+    assert res.status_code == 200
+    assert res.json()["app_name"] == "HELIOS-L1"
+
+    # 2. Missions
+    res = client.get("/api/missions")
+    assert res.status_code == 200
+
+    # 3. Telemetry
+    res = client.get("/api/telemetry/DSCOVR?span_days=1")
+    assert res.status_code == 200
+
+    # 4. Compare
+    res = client.get("/api/compare?mission_a=DSCOVR&mission_b=ADITYA_L1&parameter=bz_gsm")
+    assert res.status_code == 200
+
+    # 5. Aurora
+    res = client.get("/api/aurora?kp=4.0&bz_gsm=-5.0")
+    assert res.status_code == 200
+    assert "boundaries" in res.json()
+
+    # 6. Coronagraph
+    res = client.get("/api/coronagraph/feeds")
+    assert res.status_code == 200
+    kin_res = client.post("/api/coronagraph/kinematics", json={"r1_rsun": 2.0, "r2_rsun": 5.0, "dt_minutes": 25.0})
+    assert kin_res.status_code == 200
+    assert kin_res.json()["initial_speed_kms"] > 0
+
+    # 7. Parker Spiral
+    res = client.get("/api/parker_spiral?speed_kms=450")
+    assert res.status_code == 200
+    assert "streamlines" in res.json()
+
+    # 8. HTML Report
+    res = client.get("/api/report/html?mission_id=DSCOVR")
+    assert res.status_code == 200
+    assert "text/html" in res.headers["content-type"]
+
+    # 9. Custom Import
+    csv_sample = "time,speed,density,bz_gsm\n2026-09-20 12:00:00,420,5.5,-4.2\n2026-09-20 12:05:00,680,18.2,-15.8"
+    import_res = client.post("/api/custom/import", json={"content": csv_sample, "mission_name": "TestSat"})
+    assert import_res.status_code == 200
+    assert import_res.json()["status"] == "success"
+    assert import_res.json()["total_records"] == 2
+
+    # 10. Fleet Matrix
+    res = client.get("/api/compare/matrix?parameter=bz_gsm")
+    assert res.status_code == 200
+    assert "matrix_r" in res.json()
+    assert len(res.json()["missions"]) == 5
+
+    # 11. ML Forecast
+    res = client.get("/api/forecast/ml?mission_id=DSCOVR")
+    assert res.status_code == 200
+    assert "predictions_timeline" in res.json()
+    assert "hazard_assessment" in res.json()
+
+def test_telemetry_importer_direct():
+    from helios.core.importer import TelemetryImporter
+    csv_data = "Epoch,V_bulk,N_p,B_z\n2026-09-20 01:00:00,400.5,4.2,2.5\n2026-09-20 01:05:00,550.0,12.0,-9.2"
+    parsed = TelemetryImporter.parse_csv_or_text(csv_data, "Custom-OMNI")
+    assert parsed["status"] == "success"
+    assert parsed["total_records"] == 2
+    assert parsed["records"][0]["speed"] == 400.5
+    assert parsed["records"][1]["bz_gsm"] == -9.2
+
+def test_space_weather_ml_forecaster():
+    from helios.core.ml_forecast import SpaceWeatherForecaster
+    dl = DataDownloader()
+    data = dl.generate_synthetic_telemetry("DSCOVR", hours=6)
+    forecast = SpaceWeatherForecaster.forecast_geomagnetic_storm(data)
+
+    assert "model_version" in forecast
+    assert "predictions_timeline" in forecast
+    assert len(forecast["predictions_timeline"]) == 12
+    assert "power_grid_gic" in forecast["hazard_assessment"]
+    assert "aviation_hf" in forecast["hazard_assessment"]
+    assert "satellite_ops" in forecast["hazard_assessment"]
+

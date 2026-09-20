@@ -1,0 +1,353 @@
+/* ==========================================================================
+   HELIOS-L1: HIGH-TECH HELIOPHYSICS OBSERVATORY THEME
+   Mission Control Glassmorphism, Neon Plasma Glows, HUD Displays & Animations
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,300;0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --color-bg-deep: #030712;
+  --color-bg-navy: #070e24;
+  --color-bg-card: rgba(11, 19, 43, 0.72);
+  --color-bg-glass: rgba(17, 30, 62, 0.55);
+  --color-border-subtle: rgba(56, 189, 248, 0.14);
+  --color-border-bright: rgba(56, 189, 248, 0.4);
+  
+  --neon-cyan: #00f0ff;
+  --neon-solar: #ffb703;
+  --neon-plasma: #00ff9d;
+  --neon-danger: #ff2a6d;
+  --neon-purple: #b5179e;
+  --neon-blue: #3a86ff;
+  
+  --glow-cyan: 0 0 15px rgba(0, 240, 255, 0.35);
+  --glow-solar: 0 0 18px rgba(255, 183, 3, 0.4);
+  --glow-plasma: 0 0 16px rgba(0, 255, 157, 0.35);
+  --glow-danger: 0 0 20px rgba(255, 42, 109, 0.45);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(3, 7, 18, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.25);
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.5);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+
+/* Base Body with Cosmic Starfield Gradient */
+body {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--color-bg-deep);
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(58, 134, 255, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 85% 20%, rgba(255, 183, 3, 0.06) 0%, transparent 35%),
+    radial-gradient(circle at 50% 80%, rgba(0, 255, 157, 0.05) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% -20%, rgba(13, 27, 62, 0.8) 0%, var(--color-bg-deep) 70%);
+  background-attachment: fixed;
+  color: #f1f5f9;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Monospace numerals and telemetry labels */
+.font-hud {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.02em;
+}
+
+.font-tech {
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+/* Space HUD Scanline subtle overlay */
+body::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.005), rgba(0, 0, 255, 0.01));
+  z-index: 999;
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+/* Top Navigation Bar Glassmorphism */
+header {
+  background: rgba(7, 14, 36, 0.85) !important;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.18) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Navigation Tabs */
+nav {
+  background: rgba(5, 10, 26, 0.75) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12) !important;
+}
+
+.tab-btn {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.02em;
+}
+
+.tab-btn:hover {
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.tab-btn.active {
+  border-bottom-color: var(--neon-cyan) !important;
+  color: var(--neon-cyan) !important;
+  background: linear-gradient(to top, rgba(0, 240, 255, 0.12), transparent);
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+  border-radius: 2px;
+}
+
+/* Glassmorphism Containers & Cards */
+.glass-panel {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-panel:hover {
+  border-color: rgba(56, 189, 248, 0.32);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Futuristic HUD Corner Accents */
+.hud-frame {
+  position: relative;
+}
+
+.hud-frame::before, .hud-frame::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+}
+
+.hud-frame::before {
+  top: 0; left: 0;
+  border-top: 2px solid var(--neon-cyan);
+  border-left: 2px solid var(--neon-cyan);
+}
+
+.hud-frame::after {
+  bottom: 0; right: 0;
+  border-bottom: 2px solid var(--neon-cyan);
+  border-right: 2px solid var(--neon-cyan);
+}
+
+/* Live Telemetry KPI Metric Cards */
+.metric-card {
+  background: linear-gradient(135deg, rgba(14, 25, 55, 0.75) 0%, rgba(7, 14, 34, 0.85) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  border-radius: 12px;
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent);
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 240, 255, 0.4);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.metric-card:hover::before {
+  opacity: 1;
+}
+
+/* Speed Gauge Radial Accent */
+.metric-card.speed-card { border-left: 3px solid var(--neon-solar); }
+.metric-card.bz-card { border-left: 3px solid var(--neon-danger); }
+.metric-card.bt-card { border-left: 3px solid var(--neon-blue); }
+.metric-card.density-card { border-left: 3px solid var(--neon-plasma); }
+.metric-card.pressure-card { border-left: 3px solid #f97316; }
+.metric-card.delay-card { border-left: 3px solid var(--neon-cyan); }
+
+/* Live Pulsing Glow Status Indicators */
+.pulse-beacon {
+  position: relative;
+}
+
+.pulse-beacon::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%; height: 100%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  animation: beaconPing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes beaconPing {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  75%, 100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+/* Solar Spinner Animation */
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 28s linear infinite;
+}
+
+/* Shimmer Wave for Alerts */
+@keyframes shimmerGlow {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #38bdf8 0%, #fde047 50%, #38bdf8 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerGlow 6s linear infinite;
+}
+
+/* Mission Badges & Buttons */
+.btn-cyber {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 14px 0 rgba(2, 132, 199, 0.35);
+  transition: all 0.2s ease;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.btn-cyber:hover {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 6px 20px 0 rgba(14, 165, 233, 0.5), 0 0 12px rgba(14, 165, 233, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-cyber:active {
+  transform: translateY(0);
+}
+
+/* Fleet Mission Card High-Polish */
+.mission-card {
+  background: linear-gradient(145deg, rgba(17, 30, 62, 0.65) 0%, rgba(8, 14, 32, 0.85) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 12px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.mission-card::after {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.mission-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  border-color: rgba(0, 240, 255, 0.4);
+  box-shadow: 0 14px 30px -8px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.2);
+}
+
+.mission-card:hover::after {
+  opacity: 1;
+}
+
+/* Interactive Canvas Styling */
+canvas#orbit-canvas, canvas#aurora-map-canvas, canvas#parker-canvas {
+  background: radial-gradient(circle at center, #070d22 0%, #030612 100%);
+  border-radius: 12px;
+  cursor: grab;
+}
+
+canvas#orbit-canvas:active {
+  cursor: grabbing;
+}
+
+/* Custom Checkbox & Form Controls */
+input[type="checkbox"] {
+  accent-color: var(--neon-cyan);
+}
+
+select, input[type="text"], input[type="number"] {
+  background-color: rgba(15, 27, 58, 0.8) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+  color: #f1f5f9 !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+select:focus, input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--neon-cyan) !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3) !important;
+}
+
+/* Tooltip floating HUD */
+.hud-tooltip {
+  position: absolute;
+  background: rgba(7, 14, 34, 0.95);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #f8fafc;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 240, 255, 0.3);
+  backdrop-filter: blur(8px);
+}
