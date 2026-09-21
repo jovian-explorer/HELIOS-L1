@@ -563,6 +563,69 @@ SCIENTIFIC_REFERENCES = [
         "formula": "SSN(t) = a * (t - t0)^c / (exp((t - t0)^2 / b^2) - 1),  F10.7 = 63.7 + 0.728*SSN + 0.00089*SSN^2",
         "parameters": ["SSN (monthly smoothed sunspot number)", "F10.7 (10.7 cm radio flux in s.f.u.)", "t0 (cycle minimum epoch)"],
         "physical_meaning": "Comprehensive empirical dynamo model describing 11-year sunspot cycle progression, solar maximum timing, and EUV/radio irradiance variations."
+    },
+    {
+        "id": "kolmogorov_turbulence_1941",
+        "title": "The Local Structure of Turbulence in Incompressible Viscous Fluid for Very Large Reynolds Numbers",
+        "authors": "Kolmogorov, A. N.",
+        "journal": "Proceedings of the USSR Academy of Sciences",
+        "year": 1941,
+        "volume": "30",
+        "pages": "301-305",
+        "doi": "10.1098/rspa.1991.0075",
+        "doi_url": "https://doi.org/10.1098/rspa.1991.0075",
+        "category": "MHD Turbulence & Spectral Cascade",
+        "formula": "P(k) = C_K * epsilon^(2/3) * k^(-5/3),  log10 P(f) = -5/3 * log10 f + C",
+        "parameters": ["epsilon (turbulent energy transfer rate)", "k (wavenumber)", "f (Doppler frequency under Taylor hypothesis)"],
+        "physical_meaning": "Governing law of hydrodynamic and plasma turbulence, predicting the universal -5/3 (-1.67) inertial range power spectral density cascade in interplanetary space."
+    },
+    {
+        "id": "iroshnikov_kraichnan_mhd_1965",
+        "title": "Inertial-Range Spectrum of Hydromagnetic Turbulence",
+        "authors": "Iroshnikov, R. S. (1963) / Kraichnan, R. H. (1965)",
+        "journal": "The Physics of Fluids",
+        "year": 1965,
+        "volume": "8",
+        "issue": "7",
+        "pages": "1385-1387",
+        "doi": "10.1063/1.1761412",
+        "doi_url": "https://doi.org/10.1063/1.1761412",
+        "category": "MHD Wave & Alfvénic Cascades",
+        "formula": "P(k) = C_IK * (epsilon * v_A)^(1/2) * k^(-3/2),  alpha = -1.50",
+        "parameters": ["v_A (Alfvén velocity B / sqrt(mu_0 * rho))", "epsilon (energy cascade rate)", "alpha (spectral slope)"],
+        "physical_meaning": "Weak MHD wave turbulence model describing the resonant three-wave interaction of counter-propagating Alfvén wave packets in magnetized solar wind plasma."
+    },
+    {
+        "id": "vinas_scudder_shocks_1986",
+        "title": "Fast and slow Rankine-Hugoniot shock solution for any arbitrary equation of state and magnetic field orientation",
+        "authors": "Viñas, A. F., & Scudder, J. D.",
+        "journal": "Journal of Geophysical Research: Space Physics",
+        "year": 1986,
+        "volume": "91",
+        "issue": "A1",
+        "pages": "39-58",
+        "doi": "10.1029/JA091iA01p00039",
+        "doi_url": "https://doi.org/10.1029/JA091iA01p00039",
+        "category": "Interplanetary Shocks & Discontinuities",
+        "formula": "[rho * v_n] = 0,  [rho * v_n^2 + P + B_t^2 / (2 * mu_0)] = 0,  Delta v > 50 km/s,  r = rho_2 / rho_1 > 1.2",
+        "parameters": ["rho (mass density)", "v_n (shock normal velocity)", "P (plasma pressure)", "B_t (transverse magnetic field)"],
+        "physical_meaning": "Fundamental conservation laws across fast-forward interplanetary shock boundaries driven by super-Alfvénic coronal mass ejection fronts."
+    },
+    {
+        "id": "gopalswamy_cme_acceleration_2001",
+        "title": "Predicting the arrival times of coronal mass ejections",
+        "authors": "Gopalswamy, N., Lara, A., Yashiro, S., Kaiser, M. L., & Howard, R. A.",
+        "journal": "Journal of Geophysical Research: Space Physics",
+        "year": 2001,
+        "volume": "106",
+        "issue": "A12",
+        "pages": "29207-29217",
+        "doi": "10.1029/2001JA000177",
+        "doi_url": "https://doi.org/10.1029/2001JA000177",
+        "category": "Coronal Mass Ejection Kinematics",
+        "formula": "a_cme = 2.19 - 0.0054 * v_cme [m/s^2],  T_transit = (-v_0 + sqrt(v_0^2 + 2 * a * d)) / a",
+        "parameters": ["v_cme (initial coronagraph plane-of-sky CME velocity in km/s)", "a_cme (interplanetary acceleration / deceleration)", "d (1 AU distance)"],
+        "physical_meaning": "Empirical heliospheric aerodynamic interaction formula establishing that fast CMEs (>405 km/s) decelerate while slow CMEs accelerate toward background solar wind."
     }
 ]
 
@@ -670,5 +733,49 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "instrument": "Ground Magnetometer Stations (INTERMAGNET) & Magnetotelluric Arrays",
         "description": "Horizontal electric field induced at the Earth's surface by rapid geomagnetic perturbations (dB/dt), driving quasi-DC currents through grounded power grids and pipelines.",
         "doi": "10.1002/2016SW001499"
+    },
+    "spectral_slope": {
+        "name": "MHD Turbulence Spectral Index",
+        "symbol": "alpha (α)",
+        "unit": "dimensionless (log-log slope)",
+        "nominal_range": "1.50 - 1.67 (Inertial Range)",
+        "disturbed_range": "> 1.80 (Dissipation Range), < 1.30 (Alfvénic / Energy Reservoir)",
+        "formula": "log10 P(f) = -alpha * log10 f + C [Kolmogorov -5/3 = -1.67, Iroshnikov-Kraichnan -3/2 = -1.50]",
+        "instrument": "High-Cadence Tri-Axial Magnetometers (DSCOVR PlasMag / ACE MAG / WIND MFI)",
+        "description": "Logarithmic power-law slope of magnetic and velocity field fluctuations characterizing the turbulent energy cascade through the heliosphere.",
+        "doi": "10.12942/lrsp-2013-2"
+    },
+    "taylor_scale": {
+        "name": "Taylor Frozen-in-Flow Spatial Scale",
+        "symbol": "lambda (λ)",
+        "unit": "km (or Earth Radii R_E)",
+        "nominal_range": "300,000 - 550,000 km at 1 mHz (~47 - 86 R_E)",
+        "disturbed_range": "> 800,000 km (Fast Solar Wind Stream > 800 km/s)",
+        "formula": "lambda = v_sw / f",
+        "instrument": "Cross-correlation between solar wind bulk speed and temporal frequency",
+        "description": "Spatial wavenumber conversion derived from Taylor's hypothesis: temporal fluctuations measured at a stationary probe reflect spatial turbulent structures swept past at bulk speed.",
+        "doi": "10.1098/rspa.1938.0032"
+    },
+    "alfven_mach": {
+        "name": "Alfvén Mach Number",
+        "symbol": "M_A",
+        "unit": "dimensionless",
+        "nominal_range": "6.0 - 10.0 (Super-Alfvénic Wind)",
+        "disturbed_range": "< 2.0 (Sub-Alfvénic / Coronal Stream), > 15.0 (Extreme Fast Shock Front)",
+        "formula": "M_A = v_sw / v_A,  v_A = B_t / sqrt(mu_0 * rho)",
+        "instrument": "Combined Ion Plasma Moments & Magnetometer Telemetry",
+        "description": "Ratio of bulk solar wind velocity to local Alfvén wave speed. Dictates bow shock strength and compressibility of heliospheric plasma.",
+        "doi": "10.1029/JA091iA01p00039"
+    },
+    "convective_efield": {
+        "name": "Interplanetary Convection Electric Field",
+        "symbol": "E_y",
+        "unit": "mV/m",
+        "nominal_range": "-1.5 to +1.5 mV/m",
+        "disturbed_range": "> 5.0 mV/m (Moderate Reconnection), > 15.0 mV/m (Extreme Storm Injection)",
+        "formula": "E_y = -v_sw * B_z * 1e-3 [with v_sw in km/s and B_z in nT]",
+        "instrument": "Derived from Plasma Flow Speed & Vector IMF",
+        "description": "Dawn-to-dusk interplanetary electric field driving dayside magnetic reconnection, polar cap potential saturation, and equatorial ring current intensification.",
+        "doi": "10.1126/science.189.4204.717"
     }
 }

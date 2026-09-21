@@ -198,12 +198,43 @@ def test_api_endpoints():
     assert res.status_code == 200
     assert "text/html" in res.headers["content-type"]
 
-    # 9. Custom Import
-    csv_sample = "time,speed,density,bz_gsm\n2026-09-20 12:00:00,420,5.5,-4.2\n2026-09-20 12:05:00,680,18.2,-15.8"
+    # 9. Custom Import & Presets Suite
+    presets_res = client.get("/api/custom/presets")
+    assert presets_res.status_code == 200
+    assert len(presets_res.json()["presets"]) >= 4
+
+    preset_item_res = client.get("/api/custom/presets/may2024_g5")
+    assert preset_item_res.status_code == 200
+    assert "csv_content" in preset_item_res.json()["preset"]
+
+    # Ingest custom dataset matching current DSCOVR timestamps for cross-comparison
+    dscovr_data = client.get("/api/telemetry/DSCOVR?span_days=1").json()["records"]
+    csv_rows = ["time,speed,density,bz_gsm"]
+    for r in dscovr_data[:10]:
+        csv_rows.append(f"{r['time_tag']},{r['speed']},{r['density']},{r['bz_gsm']}")
+    csv_sample = "\n".join(csv_rows)
+
     import_res = client.post("/api/custom/import", json={"content": csv_sample, "mission_name": "TestSat"})
     assert import_res.status_code == 200
     assert import_res.json()["status"] == "success"
-    assert import_res.json()["total_records"] == 2
+    assert import_res.json()["total_records"] == 10
+    assert "summary" in import_res.json()
+
+    latest_res = client.get("/api/custom/latest")
+    assert latest_res.status_code == 200
+    assert latest_res.json()["mission_name"] == "TestSat"
+
+    csv_export_res = client.get("/api/custom/export/csv")
+    assert csv_export_res.status_code == 200
+    assert "text/csv" in csv_export_res.headers["content-type"]
+
+    json_export_res = client.get("/api/custom/export/json")
+    assert json_export_res.status_code == 200
+    assert "application/json" in json_export_res.headers["content-type"]
+
+    comp_custom_res = client.get("/api/compare?mission_a=DSCOVR&mission_b=CUSTOM&parameter=bz_gsm")
+    assert comp_custom_res.status_code == 200
+    assert comp_custom_res.json()["status"] == "success"
 
     # 10. Fleet Matrix
     res = client.get("/api/compare/matrix?parameter=bz_gsm")
@@ -236,6 +267,28 @@ def test_telemetry_importer_direct():
     assert parsed["total_records"] == 2
     assert parsed["records"][0]["speed"] == 400.5
     assert parsed["records"][1]["bz_gsm"] == -9.2
+    assert "summary" in parsed
+    assert parsed["summary"]["speed_min"] == 400.5
+    assert parsed["summary"]["speed_max"] == 550.0
+    assert parsed["summary"]["bz_min"] == -9.2
+    assert parsed["summary"]["bz_max"] == 2.5
+
+    # Test Presets
+    presets = TelemetryImporter.get_presets_list()
+    assert len(presets) >= 4
+    preset_ids = [p["id"] for p in presets]
+    assert "may2024_g5" in preset_ids
+    assert "bastille_2000" in preset_ids
+    assert "carrington_1859" in preset_ids
+
+    detail = TelemetryImporter.get_preset("may2024_g5")
+    assert detail is not None
+    assert "csv_content" in detail
+    parsed_preset = TelemetryImporter.parse_csv_or_text(detail["csv_content"], detail["name"])
+    assert parsed_preset["status"] == "success"
+    assert parsed_preset["summary"]["speed_max"] >= 800.0
+    assert parsed_preset["summary"]["bz_min"] <= -40.0
+    assert len(parsed_preset["detected_shocks"]) >= 1
 
 def test_space_weather_ml_forecaster():
     from helios.core.ml_forecast import SpaceWeatherForecaster

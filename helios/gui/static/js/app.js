@@ -1089,16 +1089,40 @@ function toggleParkerFeature(feature, state) {
   else if (feature === 'sectors') parkerRenderer.showSectors = state;
 }
 
-// CUSTOM INGESTION STUDIO
+// =========================================================================
+// CUSTOM INGESTION & OMNI STUDIO
+// =========================================================================
+let customIngestChart = null;
+let currentCustomDataset = null;
+
+async function loadCustomPreset(presetId) {
+  window.playBlip?.();
+  try {
+    const res = await fetch(`/api/custom/presets/${presetId}`);
+    if (!res.ok) throw new Error('Preset not found');
+    const data = await res.json();
+    const preset = data.preset;
+    if (preset) {
+      document.getElementById('import-mission-name').value = preset.name;
+      document.getElementById('import-content').value = preset.csv_content;
+      await submitCustomImport();
+    }
+  } catch (e) {
+    console.error('Failed to load preset:', e);
+  }
+}
+
+function clearCustomImportEditor() {
+  window.playBlip?.();
+  document.getElementById('import-mission-name').value = "Custom Research Spacecraft";
+  document.getElementById('import-content').value = "";
+  const dash = document.getElementById('import-result-dashboard');
+  if (dash) dash.classList.add('hidden');
+  currentCustomDataset = null;
+}
+
 function loadSampleCSV() {
-  const sample = `time,speed,density,bz_gsm,bt
-2026-09-20 00:00:00,360.2,4.8,2.1,5.2
-2026-09-20 01:00:00,380.5,5.1,-1.2,4.9
-2026-09-20 02:00:00,450.0,8.2,-8.5,10.1
-2026-09-20 03:00:00,680.4,22.4,-19.6,24.8
-2026-09-20 04:00:00,750.1,18.0,-14.2,18.5
-2026-09-20 05:00:00,710.0,12.5,-6.4,12.1`;
-  document.getElementById('import-content').value = sample;
+  loadCustomPreset('may2024_g5');
 }
 
 function handleFileUpload(event) {
@@ -1108,17 +1132,27 @@ function handleFileUpload(event) {
   reader.onload = (e) => {
     document.getElementById('import-content').value = e.target.result;
     document.getElementById('import-mission-name').value = file.name.replace(/\.[^/.]+$/, "");
+    submitCustomImport();
   };
   reader.readAsText(file);
 }
 
 async function submitCustomImport() {
-  const missionName = document.getElementById('import-mission-name').value;
-  const content = document.getElementById('import-content').value;
+  const missionNameInput = document.getElementById('import-mission-name');
+  const contentInput = document.getElementById('import-content');
+  const btn = document.getElementById('btn-submit-import');
+  const btnText = document.getElementById('btn-submit-import-text');
+
+  const missionName = (missionNameInput ? missionNameInput.value : '').trim() || "Custom Spacecraft";
+  const content = contentInput ? contentInput.value : '';
+
   if (!content.trim()) {
-    alert("Please enter or upload telemetry data first.");
+    alert("Please enter or upload telemetry data first, or select one of the historical presets.");
     return;
   }
+
+  if (btnText) btnText.innerText = "Processing Telemetry...";
+  if (btn) btn.disabled = true;
 
   try {
     const res = await fetch('/api/custom/import', {
@@ -1129,17 +1163,231 @@ async function submitCustomImport() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Import failed');
 
-    const resultBox = document.getElementById('import-result-box');
-    resultBox.classList.remove('hidden');
-    document.getElementById('import-result-title').innerText = `Ingested ${data.total_records} data records for "${data.mission_name}"!`;
-    document.getElementById('import-result-details').innerHTML = `
-      <div>Time coverage: ${data.records[0]?.time_tag} to ${data.records[data.records.length - 1]?.time_tag}</div>
-      <div>Shocks detected: ${data.detected_shocks.length}</div>
-      <div class="text-sky-400 mt-1">Available for cross-comparison and analysis.</div>
-    `;
+    currentCustomDataset = data;
+    window.playBlip?.();
+
+    // Show dashboard
+    const dash = document.getElementById('import-result-dashboard');
+    if (dash) dash.classList.remove('hidden');
+
+    renderCustomIngestUI(data);
+    loadMissions(); // Refresh fleet list so CUSTOM shows up if active
   } catch (err) {
     alert("Ingestion error: " + err.message);
+  } finally {
+    if (btnText) btnText.innerText = "Ingest & Process Telemetry";
+    if (btn) btn.disabled = false;
   }
+}
+
+function renderCustomIngestUI(data) {
+  const summary = data.summary || {};
+  const records = data.records || [];
+  const shocks = data.detected_shocks || [];
+
+  // Update HUD KPIs
+  const elRecords = document.getElementById('import-kpi-records');
+  const elTimeSpan = document.getElementById('import-kpi-time-span');
+  const elSpdMax = document.getElementById('import-kpi-speed-max');
+  const elSpdMean = document.getElementById('import-kpi-speed-mean');
+  const elBzMin = document.getElementById('import-kpi-bz-min');
+  const elBzMax = document.getElementById('import-kpi-bz-max');
+  const elPdynMax = document.getElementById('import-kpi-pdyn-max');
+  const elStandoff = document.getElementById('import-kpi-standoff-min');
+  const elGeoAlert = document.getElementById('import-kpi-geo-alert');
+  const elShocks = document.getElementById('import-kpi-shocks-count');
+  const elChartMission = document.getElementById('import-chart-mission-label');
+
+  if (elRecords) elRecords.innerText = data.total_records.toLocaleString();
+  if (elTimeSpan) elTimeSpan.innerText = summary.start_time && summary.end_time ? `${summary.start_time.slice(0, 10)} → ${summary.end_time.slice(0, 10)}` : 'Single epoch';
+  if (elSpdMax) elSpdMax.innerText = summary.speed_max;
+  if (elSpdMean) elSpdMean.innerText = summary.speed_mean;
+  if (elBzMin) elBzMin.innerText = summary.bz_min;
+  if (elBzMax) elBzMax.innerText = summary.bz_max;
+  if (elPdynMax) elPdynMax.innerText = summary.pdyn_max;
+  if (elStandoff) {
+    elStandoff.innerText = summary.standoff_min;
+    if (summary.standoff_min < 6.6) {
+      elStandoff.className = "text-lg font-bold text-rose-500 font-mono mt-0.5";
+      if (elGeoAlert) {
+        elGeoAlert.innerText = "CRITICAL: Inward GEO (< 6.6 R_E)";
+        elGeoAlert.className = "text-[10px] text-rose-400 font-mono font-bold";
+      }
+    } else {
+      elStandoff.className = "text-lg font-bold text-emerald-400 font-mono mt-0.5";
+      if (elGeoAlert) {
+        elGeoAlert.innerText = "Nominal cavity (> 6.6 R_E)";
+        elGeoAlert.className = "text-[10px] text-slate-500 font-mono";
+      }
+    }
+  }
+  if (elShocks) elShocks.innerText = shocks.length;
+  if (elChartMission) elChartMission.innerText = (data.mission_name || 'CUSTOM').toUpperCase();
+
+  // Render Timeseries Chart
+  renderCustomTimeseriesChart(records);
+
+  // Render Shocks Table
+  const tbody = document.getElementById('import-shocks-tbody');
+  if (tbody) {
+    if (shocks.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="py-3 text-center text-slate-500 font-mono">No supersonic interplanetary shocks identified (criteria: Δv ≥ 45 km/s, r ≥ 1.35).</td></tr>`;
+    } else {
+      tbody.innerHTML = shocks.map(s => `
+        <tr class="hover:bg-slate-800/40 transition">
+          <td class="py-2 px-2 text-slate-300 font-bold">${s.time || '--'}</td>
+          <td class="py-2 px-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.classification && s.classification.includes('CME') ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
+              ${s.classification || 'Fast Forward Shock'}
+            </span>
+          </td>
+          <td class="py-2 px-2 text-slate-300">${s.upstream_speed} → ${s.downstream_speed} km/s</td>
+          <td class="py-2 px-2 text-cyan-400 font-bold">+${s.delta_speed_kms} km/s</td>
+          <td class="py-2 px-2 text-amber-300">${s.density_ratio}x</td>
+          <td class="py-2 px-2 text-purple-300 font-bold">M_A ~ ${s.mach_proxy || '1.8'}</td>
+        </tr>
+      `).join('');
+    }
+  }
+}
+
+function renderCustomTimeseriesChart(records) {
+  const canvas = document.getElementById('custom-ingest-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const labels = records.map(r => {
+    const t = r.time_tag || '';
+    return t.length > 11 ? t.slice(11, 16) : t;
+  });
+  const speeds = records.map(r => r.speed);
+  const bzs = records.map(r => r.bz_gsm);
+  const pdyns = records.map(r => r.dynamic_pressure);
+
+  if (customIngestChart) {
+    customIngestChart.destroy();
+  }
+
+  customIngestChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Speed (km/s)',
+          data: speeds,
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56, 189, 248, 0.08)',
+          borderWidth: 2,
+          pointRadius: records.length > 50 ? 0 : 3,
+          pointHoverRadius: 5,
+          tension: 0.2,
+          yAxisID: 'y'
+        },
+        {
+          label: 'IMF Bz (nT)',
+          data: bzs,
+          borderColor: '#fb7185',
+          backgroundColor: 'transparent',
+          borderWidth: 1.8,
+          pointRadius: records.length > 50 ? 0 : 2,
+          pointHoverRadius: 4,
+          tension: 0.2,
+          yAxisID: 'y1'
+        },
+        {
+          label: 'Pdyn (nPa)',
+          data: pdyns,
+          borderColor: '#fbbf24',
+          backgroundColor: 'transparent',
+          borderWidth: 1.8,
+          borderDash: [3, 3],
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.2,
+          yAxisID: 'y2'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#e2e8f0',
+          bodyColor: '#cbd5e1',
+          borderColor: 'rgba(56, 189, 248, 0.3)',
+          borderWidth: 1,
+          padding: 8,
+          titleFont: { family: '"JetBrains Mono", monospace', size: 10 },
+          bodyFont: { family: '"JetBrains Mono", monospace', size: 10 }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(51, 65, 85, 0.25)' },
+          ticks: { color: '#64748b', font: { family: '"JetBrains Mono", monospace', size: 9 }, maxTicksLimit: 12 }
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: { display: true, text: 'Speed (km/s)', color: '#38bdf8', font: { size: 9 } },
+          grid: { color: 'rgba(51, 65, 85, 0.25)' },
+          ticks: { color: '#38bdf8', font: { family: '"JetBrains Mono", monospace', size: 9 } }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: { display: true, text: 'Bz (nT)', color: '#fb7185', font: { size: 9 } },
+          grid: { drawOnChartArea: false },
+          ticks: { color: '#fb7185', font: { family: '"JetBrains Mono", monospace', size: 9 } }
+        },
+        y2: {
+          type: 'linear',
+          display: false,
+          position: 'right',
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+function exportCustomData(format) {
+  window.open(`/api/custom/export/${format}`, '_blank');
+}
+
+function injectCustomToComparator() {
+  if (!currentCustomDataset) {
+    alert("Please ingest a telemetry dataset first.");
+    return;
+  }
+  const customName = currentCustomDataset.mission_name || "Custom Spacecraft";
+
+  // Ensure CUSTOM option exists in comp-sat-a and comp-sat-b
+  ['comp-sat-a', 'comp-sat-b'].forEach(id => {
+    const select = document.getElementById(id);
+    if (select) {
+      let opt = select.querySelector('option[value="CUSTOM"]');
+      if (!opt) {
+        opt = document.createElement('option');
+        opt.value = 'CUSTOM';
+        select.appendChild(opt);
+      }
+      opt.innerText = `Custom: ${customName}`;
+    }
+  });
+
+  const satBSelect = document.getElementById('comp-sat-b');
+  if (satBSelect) satBSelect.value = 'CUSTOM';
+
+  switchTab('comparator');
+  runComparison();
 }
 
 async function loadMissions() {

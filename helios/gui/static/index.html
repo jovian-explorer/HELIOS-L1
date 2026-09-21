@@ -1179,53 +1179,229 @@
     <!-- ========================================================================= -->
     <!-- TAB 7: CUSTOM INGESTION & OMNI STUDIO (NEW!) -->
     <!-- ========================================================================= -->
+    <!-- TAB 7: CUSTOM INGESTION & OMNI STUDIO -->
+    <!-- ========================================================================= -->
     <section id="tab-import" class="tab-content hidden space-y-6">
-      <div class="bg-space-800/80 p-6 rounded-xl border border-slate-800 shadow-xl space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
+      <!-- Ingestion Studio Control Panel -->
+      <div class="glass-panel p-6 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div>
-            <h3 class="font-bold text-base text-slate-200">Custom Telemetry & NASA OMNI Ingestion Studio</h3>
-            <p class="text-xs text-slate-400">Upload or paste CSV / OMNI ASCII telemetry from any satellite or simulation model for instant scientific analysis.</p>
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">NASA OMNI / CDAWEB &amp; CUSTOM CSV</span>
+              <h3 class="font-tech font-bold text-lg text-slate-100">Custom Telemetry &amp; Spacecraft Ingestion Studio</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Ingest custom space weather time series from in-situ spacecraft, simulation outputs, or NASA OMNI archives. Real-time physical normalization, Akasofu Poynting flux calculation, magnetopause standoff, and Rankine-Hugoniot shock jump detection.</p>
           </div>
-          <button onclick="loadSampleCSV()" class="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition">
-            Load Sample OMNI Format
-          </button>
+          <div class="flex items-center space-x-2">
+            <input type="file" id="import-file-input" onchange="handleFileUpload(event)" class="hidden">
+            <button onclick="document.getElementById('import-file-input').click()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition flex items-center space-x-1.5 shadow-sm">
+              <i class="fa-solid fa-folder-open text-sky-400"></i>
+              <span>Upload Local File</span>
+            </button>
+            <button onclick="clearCustomImportEditor()" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs border border-slate-700/60 transition">
+              Clear
+            </button>
+          </div>
         </div>
 
+        <!-- Historical Benchmark Presets Strip -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span class="text-[11px] uppercase tracking-wider font-semibold font-mono text-slate-400 flex items-center space-x-1.5">
+              <i class="fa-solid fa-bookmark text-amber-400"></i>
+              <span>One-Click Historical Superstorm &amp; Quiet Baseline Presets:</span>
+            </span>
+            <span class="text-[11px] text-slate-500 font-mono">Select preset to populate and process instantly</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5" id="import-presets-grid">
+            <button onclick="loadCustomPreset('may2024_g5')" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-rose-500/30 hover:border-rose-500/60 text-left transition group">
+              <div class="flex items-center justify-between text-[10px] font-mono mb-1">
+                <span class="text-rose-400 font-bold">G5 SUPERSTORM</span>
+                <span class="text-slate-500">2024</span>
+              </div>
+              <div class="font-bold text-xs text-slate-200 group-hover:text-rose-300 transition">May 2024 Event</div>
+              <div class="text-[10px] text-slate-400 line-clamp-1 mt-0.5">DSCOVR shock, Bz -48 nT</div>
+            </button>
+
+            <button onclick="loadCustomPreset('bastille_2000')" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-amber-500/30 hover:border-amber-500/60 text-left transition group">
+              <div class="flex items-center justify-between text-[10px] font-mono mb-1">
+                <span class="text-amber-400 font-bold">G5 CME SHOCK</span>
+                <span class="text-slate-500">2000</span>
+              </div>
+              <div class="font-bold text-xs text-slate-200 group-hover:text-amber-300 transition">Bastille Day 2000</div>
+              <div class="text-[10px] text-slate-400 line-clamp-1 mt-0.5">ACE speed > 1050 km/s</div>
+            </button>
+
+            <button onclick="loadCustomPreset('carrington_1859')" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-purple-500/30 hover:border-purple-500/60 text-left transition group">
+              <div class="flex items-center justify-between text-[10px] font-mono mb-1">
+                <span class="text-purple-400 font-bold">ARCHETYPAL</span>
+                <span class="text-slate-500">1859</span>
+              </div>
+              <div class="font-bold text-xs text-slate-200 group-hover:text-purple-300 transition">Carrington Event</div>
+              <div class="text-[10px] text-slate-400 line-clamp-1 mt-0.5">v ~ 2300 km/s, 17.6h transit</div>
+            </button>
+
+            <button onclick="loadCustomPreset('halloween_2003')" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-sky-500/30 hover:border-sky-500/60 text-left transition group">
+              <div class="flex items-center justify-between text-[10px] font-mono mb-1">
+                <span class="text-sky-400 font-bold">G5 FAST CME</span>
+                <span class="text-slate-500">2003</span>
+              </div>
+              <div class="font-bold text-xs text-slate-200 group-hover:text-sky-300 transition">Halloween 2003</div>
+              <div class="text-[10px] text-slate-400 line-clamp-1 mt-0.5">v > 1700 km/s, AR 10486</div>
+            </button>
+
+            <button onclick="loadCustomPreset('quiet_wind')" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-emerald-500/30 hover:border-emerald-500/60 text-left transition group">
+              <div class="flex items-center justify-between text-[10px] font-mono mb-1">
+                <span class="text-emerald-400 font-bold">G0 BASELINE</span>
+                <span class="text-slate-500">NOMINAL</span>
+              </div>
+              <div class="font-bold text-xs text-slate-200 group-hover:text-emerald-300 transition">Quiet Solar Wind</div>
+              <div class="text-[10px] text-slate-400 line-clamp-1 mt-0.5">Slow wind ~355 km/s</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Telemetry Editor Form -->
         <div class="space-y-3">
-          <div class="flex items-center space-x-4">
-            <div class="flex-1">
-              <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Spacecraft / Dataset Name</label>
-              <input type="text" id="import-mission-name" value="User Research Spacecraft" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex-1 min-w-[240px]">
+              <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Spacecraft / Dataset Identifier</label>
+              <input type="text" id="import-mission-name" value="May 10-11, 2024 G5 Superstorm" class="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-sky-400">
             </div>
-            <div class="self-end">
-              <input type="file" id="import-file-input" onchange="handleFileUpload(event)" class="hidden">
-              <button onclick="document.getElementById('import-file-input').click()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition flex items-center space-x-2">
-                <i class="fa-solid fa-folder-open text-sky-400"></i>
-                <span>Choose Local File</span>
+            <div class="w-full sm:w-auto self-end flex items-center space-x-2">
+              <button id="btn-submit-import" onclick="submitCustomImport()" class="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-md shadow-sky-600/30">
+                <i class="fa-solid fa-microchip text-xs"></i>
+                <span id="btn-submit-import-text">Ingest &amp; Process Telemetry</span>
               </button>
             </div>
           </div>
 
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Telemetry Content (CSV / Delimited ASCII)</label>
-            <textarea id="import-content" rows="7" placeholder="time,speed,density,bz_gsm,bt&#10;2026-09-20 12:00:00,420.5,5.2,-3.4,6.8&#10;2026-09-20 12:05:00,580.2,14.8,-18.2,22.1" class="w-full bg-space-900 font-mono text-xs text-slate-200 border border-slate-700 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-sky-400"></textarea>
-          </div>
-
-          <div class="flex justify-end">
-            <button onclick="submitCustomImport()" class="px-5 py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-sky-600/30">
-              <i class="fa-solid fa-microchip"></i>
-              <span>Ingest & Process Telemetry</span>
-            </button>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">Telemetry Data Buffer (CSV, TSV, or Delimited Text)</label>
+              <span class="text-[10px] text-slate-500 font-mono">Supported columns: time, speed, density, bx_gsm, by_gsm, bz_gsm, bt</span>
+            </div>
+            <textarea id="import-content" rows="7" placeholder="time,speed,density,bx_gsm,by_gsm,bz_gsm,bt&#10;2024-05-10 12:00:00,412.3,4.8,2.1,3.4,-1.2,4.4&#10;2024-05-10 17:00:00,740.5,28.4,-12.4,18.5,-32.8,39.6" class="w-full bg-slate-950 font-mono text-xs text-slate-200 border border-slate-700/80 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-sky-400"></textarea>
           </div>
         </div>
 
-        <!-- Ingestion Status / Result Box -->
-        <div id="import-result-box" class="hidden p-4 rounded-lg bg-space-900 border border-slate-700 text-xs space-y-2">
-          <div class="text-emerald-400 font-bold flex items-center space-x-2">
-            <i class="fa-solid fa-circle-check"></i>
-            <span id="import-result-title">Telemetry Ingested Successfully!</span>
+        <!-- Ingestion Diagnostics & Results Dashboard -->
+        <div id="import-result-dashboard" class="hidden space-y-4 pt-3 border-t border-slate-800">
+          <!-- 6-card HUD KPI Strip -->
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Total Epochs</div>
+              <div class="text-lg font-bold text-slate-100 font-mono mt-0.5" id="import-kpi-records">0</div>
+              <div class="text-[10px] text-slate-500 font-mono truncate" id="import-kpi-time-span">--</div>
+            </div>
+
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Max Bulk Velocity</div>
+              <div class="text-lg font-bold text-cyan-400 font-mono mt-0.5"><span id="import-kpi-speed-max">--</span> <span class="text-xs font-normal text-slate-400">km/s</span></div>
+              <div class="text-[10px] text-slate-500 font-mono">Mean: <span id="import-kpi-speed-mean">--</span> km/s</div>
+            </div>
+
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Peak Southward Bz</div>
+              <div class="text-lg font-bold text-rose-400 font-mono mt-0.5"><span id="import-kpi-bz-min">--</span> <span class="text-xs font-normal text-slate-400">nT</span></div>
+              <div class="text-[10px] text-slate-500 font-mono">Max: <span id="import-kpi-bz-max">--</span> nT</div>
+            </div>
+
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Peak Dyn Pressure</div>
+              <div class="text-lg font-bold text-amber-400 font-mono mt-0.5"><span id="import-kpi-pdyn-max">--</span> <span class="text-xs font-normal text-slate-400">nPa</span></div>
+              <div class="text-[10px] text-slate-500 font-mono">Momentum flux</div>
+            </div>
+
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Min Magnetopause</div>
+              <div class="text-lg font-bold text-emerald-400 font-mono mt-0.5"><span id="import-kpi-standoff-min">--</span> <span class="text-xs font-normal text-slate-400">R_E</span></div>
+              <div class="text-[10px] text-slate-500 font-mono" id="import-kpi-geo-alert">Nominal cavity</div>
+            </div>
+
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Shocks Detected</div>
+              <div class="text-lg font-bold text-purple-400 font-mono mt-0.5" id="import-kpi-shocks-count">0</div>
+              <div class="text-[10px] text-slate-500 font-mono">Rankine-Hugoniot</div>
+            </div>
           </div>
-          <div id="import-result-details" class="text-slate-300 font-mono text-[11px]"></div>
+
+          <!-- Timeseries Multi-Param Chart Container -->
+          <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-chart-line text-sky-400 text-xs"></i>
+                <span class="font-bold text-xs text-slate-200">Ingested Multi-Parameter Time Series</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono" id="import-chart-mission-label">CUSTOM</span>
+              </div>
+              <div class="flex items-center space-x-3 text-[11px] font-mono">
+                <span class="text-cyan-400 flex items-center space-x-1"><span class="w-2.5 h-0.5 bg-cyan-400 inline-block"></span><span>Speed (km/s)</span></span>
+                <span class="text-rose-400 flex items-center space-x-1"><span class="w-2.5 h-0.5 bg-rose-400 inline-block"></span><span>Bz (nT)</span></span>
+                <span class="text-amber-400 flex items-center space-x-1"><span class="w-2.5 h-0.5 bg-amber-400 inline-block"></span><span>Pdyn (nPa)</span></span>
+              </div>
+            </div>
+            <div class="h-64 relative">
+              <canvas id="custom-ingest-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Detected Shocks Table & Action Buttons -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="lg:col-span-2 bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div class="font-bold text-xs text-slate-200 flex items-center space-x-2">
+                  <i class="fa-solid fa-bolt text-amber-400"></i>
+                  <span>Rankine-Hugoniot Shock Front Analysis</span>
+                </div>
+                <span class="text-[10px] text-slate-400 font-mono">Viñas &amp; Scudder (1986) criteria</span>
+              </div>
+              <div class="overflow-x-auto max-h-48 overflow-y-auto">
+                <table class="w-full text-left text-xs font-mono">
+                  <thead>
+                    <tr class="text-[10px] text-slate-400 border-b border-slate-800">
+                      <th class="py-1.5 px-2">Epoch</th>
+                      <th class="py-1.5 px-2">Shock Class</th>
+                      <th class="py-1.5 px-2">v1 → v2</th>
+                      <th class="py-1.5 px-2">Δv</th>
+                      <th class="py-1.5 px-2">r (n2/n1)</th>
+                      <th class="py-1.5 px-2">Est. Mach M_A</th>
+                    </tr>
+                  </thead>
+                  <tbody id="import-shocks-tbody" class="divide-y divide-slate-800/60 text-slate-300 text-[11px]">
+                    <tr><td colspan="6" class="py-3 text-center text-slate-500">No interplanetary shocks identified in dataset.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Export & Cross-Compare Actions -->
+            <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3 flex flex-col justify-between">
+              <div>
+                <div class="font-bold text-xs text-slate-200 border-b border-slate-800 pb-2 flex items-center space-x-2">
+                  <i class="fa-solid fa-share-nodes text-sky-400"></i>
+                  <span>Analysis &amp; Export Actions</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2">Export normalized scientific telemetry or inject as a virtual spacecraft into the multi-satellite comparator.</p>
+              </div>
+
+              <div class="space-y-2">
+                <button onclick="injectCustomToComparator()" class="w-full px-3 py-2 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold text-xs transition flex items-center justify-center space-x-2 shadow-sm">
+                  <i class="fa-solid fa-code-compare text-xs"></i>
+                  <span>Compare with L1 Fleet</span>
+                </button>
+                <div class="grid grid-cols-2 gap-2">
+                  <button onclick="exportCustomData('csv')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 transition flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-file-csv text-emerald-400"></i>
+                    <span>Export CSV</span>
+                  </button>
+                  <button onclick="exportCustomData('json')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 transition flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-file-code text-sky-400"></i>
+                    <span>Export JSON</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

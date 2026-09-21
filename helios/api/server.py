@@ -9,6 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse
 import os
+import io
+import csv
+import json
 from datetime import datetime, timezone
 
 from helios.config import (
@@ -45,6 +48,7 @@ app.add_middleware(
 )
 
 downloader = DataDownloader()
+latest_custom_dataset: Optional[Dict[str, Any]] = None
 
 class CMEKinematicsRequest(BaseModel):
     r1_rsun: float = 2.5
@@ -68,7 +72,32 @@ async def get_status():
 
 @app.get("/api/missions")
 async def get_missions():
-    return list(MISSIONS.values())
+    missions = list(MISSIONS.values())
+    if latest_custom_dataset and latest_custom_dataset.get("records"):
+        name = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
+        missions.append({
+            "name": name,
+            "full_name": f"{name} (User Telemetry Ingestion)",
+            "agency": "User Custom Ingestion",
+            "location": "User Defined Coordinates / OMNI",
+            "orbit_distance_km": 1500000,
+            "launch_year": datetime.now(timezone.utc).year,
+            "status": f"Active ({latest_custom_dataset.get('total_records', 0)} records ingested)",
+            "coordinate_system": "GSM / User Delimited",
+            "cadence": "User Cadence",
+            "data_portal_name": "Local HELIOS Ingestion Studio",
+            "data_portal_url": "#tab-import",
+            "data_license": "User Defined / Open Science",
+            "license_badge": "User Telemetry",
+            "doi": "N/A",
+            "primary_citation": f"Local telemetry dataset ingested via HELIOS-L1 Custom Studio ({name}).",
+            "instruments": [
+                {"id": "USER_INST", "name": "Custom Spacecraft Sensor Suite", "measures": "In-situ plasma & magnetic field"}
+            ],
+            "primary_params": ["bz_gsm", "bt", "speed", "density"],
+            "color": "#a855f7"
+        })
+    return missions
 
 @app.get("/api/references")
 async def get_scientific_references():
@@ -175,14 +204,28 @@ async def compare_missions(
 ):
     key_a = mission_a.upper()
     key_b = mission_b.upper()
-    if key_a not in MISSIONS or key_b not in MISSIONS:
-        raise HTTPException(status_code=400, detail="Invalid mission ID for comparison.")
 
-    data_a = await downloader.get_satellite_telemetry(key_a, span_days=span_days)
-    data_b = await downloader.get_satellite_telemetry(key_b, span_days=span_days)
+    if key_a == "CUSTOM":
+        if not latest_custom_dataset or not latest_custom_dataset.get("records"):
+            raise HTTPException(status_code=400, detail="No custom dataset imported for comparison.")
+        data_a = latest_custom_dataset["records"]
+        name_a = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
+    else:
+        if key_a not in MISSIONS:
+            raise HTTPException(status_code=400, detail=f"Invalid mission ID '{key_a}' for comparison.")
+        data_a = await downloader.get_satellite_telemetry(key_a, span_days=span_days)
+        name_a = MISSIONS[key_a]["name"]
 
-    name_a = MISSIONS[key_a]["name"]
-    name_b = MISSIONS[key_b]["name"]
+    if key_b == "CUSTOM":
+        if not latest_custom_dataset or not latest_custom_dataset.get("records"):
+            raise HTTPException(status_code=400, detail="No custom dataset imported for comparison.")
+        data_b = latest_custom_dataset["records"]
+        name_b = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
+    else:
+        if key_b not in MISSIONS:
+            raise HTTPException(status_code=400, detail=f"Invalid mission ID '{key_b}' for comparison.")
+        data_b = await downloader.get_satellite_telemetry(key_b, span_days=span_days)
+        name_b = MISSIONS[key_b]["name"]
 
     comparison = SatelliteComparator.compare_satellites(
         telemetry_a=data_a,
@@ -276,10 +319,66 @@ async def get_parker_spiral(speed_kms: float = 450.0):
 
 @app.post("/api/custom/import")
 async def import_custom_data(req: CustomImportRequest):
+    global latest_custom_dataset
     res = TelemetryImporter.parse_csv_or_text(req.content, req.mission_name)
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
+    latest_custom_dataset = res
     return res
+
+@app.get("/api/custom/presets")
+async def get_custom_presets():
+    """Returns catalog of historical superstorms and test datasets."""
+    return {
+        "status": "success",
+        "presets": TelemetryImporter.get_presets_list()
+    }
+
+@app.get("/api/custom/presets/{preset_id}")
+async def get_custom_preset(preset_id: str):
+    """Returns details and CSV payload for a specific preset."""
+    preset = TelemetryImporter.get_preset(preset_id)
+    if not preset:
+        raise HTTPException(status_code=404, detail=f"Preset '{preset_id}' not found.")
+    return {
+        "status": "success",
+        "preset": preset
+    }
+
+@app.get("/api/custom/latest")
+async def get_latest_custom():
+    """Returns currently loaded custom ingested telemetry, or 404 if none."""
+    if not latest_custom_dataset:
+        raise HTTPException(status_code=404, detail="No custom telemetry dataset has been ingested yet.")
+    return latest_custom_dataset
+
+@app.get("/api/custom/export/{export_format}")
+async def export_custom_telemetry(export_format: str):
+    """Exports currently ingested custom dataset as CSV or JSON."""
+    if not latest_custom_dataset or "records" not in latest_custom_dataset:
+        raise HTTPException(status_code=404, detail="No custom telemetry available to export.")
+    records = latest_custom_dataset["records"]
+    mission_slug = latest_custom_dataset.get("mission_name", "custom").lower().replace(" ", "_")
+
+    if export_format.lower() == "csv":
+        output = io.StringIO()
+        if records:
+            writer = csv.DictWriter(output, fieldnames=list(records[0].keys()))
+            writer.writeheader()
+            writer.writerows(records)
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=helios_{mission_slug}_telemetry.csv"}
+        )
+    elif export_format.lower() == "json":
+        return Response(
+            content=json.dumps(latest_custom_dataset, indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=helios_{mission_slug}_telemetry.json"}
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Invalid export format. Choose 'csv' or 'json'.")
 
 @app.get("/api/solar_cycle")
 async def get_solar_cycle(year: Optional[float] = None):
