@@ -1,6 +1,7 @@
 """
 Expanded Test Suite for HELIOS-L1 Scientific and Telemetry Engines.
 """
+import math
 import pytest
 import numpy as np
 from fastapi.testclient import TestClient
@@ -534,6 +535,95 @@ def test_geospace_coupling_and_wave_dynamics():
     assert "akasofu_epsilon_gw" in data
     assert "convective_efield_mvm" in data
     assert data["convective_efield_mvm"] > 0
+
+def test_vrsnak_dbm_cme_kinematics():
+    # Test Vršnak et al. (2013) Drag-Based Model for fast CME
+    fast_cme = CoronagraphAnalyzer.calculate_cme_kinematics(
+        r1_rsun=2.0,
+        r2_rsun=5.5,
+        dt_minutes=25.0,
+        ambient_wind_kms=420.0,
+        gamma_drag=1.0e-7
+    )
+    assert fast_cme["model"] == "Vršnak et al. (2013) Drag-Based Model (DBM)"
+    assert fast_cme["initial_speed_kms"] > 1200.0  # Fast liftoff
+    assert fast_cme["v_arrival_earth_kms"] < fast_cme["initial_speed_kms"]  # Decelerated by aerodynamic drag
+    assert fast_cme["v_arrival_earth_kms"] > 420.0  # Asymptotes to ambient wind
+    assert 30.0 < fast_cme["transit_to_earth_hours"] < 90.0  # Realistic DBM transit time
+    assert 20.0 < fast_cme["l1_to_earth_lead_time_minutes"] < 70.0  # Realistic warning window
+    assert fast_cme["shock_compression_ratio"] >= 1.0
+
+    # Test slow CME entrained and accelerated by fast solar wind stream
+    slow_cme = CoronagraphAnalyzer.calculate_cme_kinematics(
+        r1_rsun=2.0,
+        r2_rsun=2.8,
+        dt_minutes=40.0,
+        ambient_wind_kms=600.0,
+        gamma_drag=1.0e-7
+    )
+    assert slow_cme["initial_speed_kms"] < 350.0
+    assert slow_cme["v_arrival_earth_kms"] > slow_cme["initial_speed_kms"]  # Accelerated by fast stream
+
+def test_settings_and_system_concurrency_api():
+    # 1. GET /api/settings
+    res = client.get("/api/settings")
+    assert res.status_code == 200
+    data = res.json()
+    assert "total_cpu_cores" in data
+    assert "active_processors" in data
+    assert "theme" in data
+    assert "font_size" in data
+    assert "timezone" in data
+    assert data["total_cpu_cores"] >= 1
+
+    # 2. POST /api/settings
+    update_res = client.post("/api/settings", json={
+        "processors": 6,
+        "theme": "deep-space",
+        "font_size": "compact",
+        "timezone": "Asia/Kolkata"
+    })
+    assert update_res.status_code == 200
+    updated = update_res.json()
+    assert updated["active_processors"] == 6
+    assert updated["theme"] == "deep-space"
+    assert updated["font_size"] == "compact"
+    assert updated["timezone"] == "Asia/Kolkata"
+
+    # Reset back to nominal
+    client.post("/api/settings", json={
+        "processors": 4,
+        "theme": "mission-slate",
+        "font_size": "normal",
+        "timezone": "UTC"
+    })
+
+def test_parker_solar_probe_ephemeris_physics():
+    # NASA Parker Solar Probe (PSP) Physical Constants:
+    # a = 0.3879 AU, e = 0.8819, Perihelion = 9.86 R_sun (~0.0458 AU, 6.85M km), Aphelion = 0.730 AU
+    au_km = 149597870.7
+    r_sun_km = 696340.0
+    mu_sun = 1.3271244e11  # km^3/s^2 (G * M_sun)
+    a_au = 0.3879
+    a_km = a_au * au_km
+
+    # 1. Vis-Viva speed at perihelion (r = 9.86 R_sun = 0.0458 AU = 6,851,582 km)
+    r_peri_km = 0.0458 * au_km
+    v_peri_kms = math.sqrt(mu_sun * (2.0 / r_peri_km - 1.0 / a_km))
+    # Must be ~190.8 km/s (or ~687,000 km/h)
+    assert 185.0 < v_peri_kms < 195.0, f"Expected perihelion velocity ~191 km/s, got {v_peri_kms}"
+
+    # 2. Vis-Viva speed at aphelion (r = 0.730 AU = 109,206,445 km)
+    r_aph_km = 0.730 * au_km
+    v_aph_kms = math.sqrt(mu_sun * (2.0 / r_aph_km - 1.0 / a_km))
+    # Must be ~12.0 km/s (or ~43,000 km/h)
+    assert 10.0 < v_aph_kms < 14.0, f"Expected aphelion velocity ~12 km/s, got {v_aph_kms}"
+
+    # 3. Keplerian period check: T^2 = a^3  ==>  T = a^1.5 years = 88.2 days
+    t_years = a_au ** 1.5
+    t_days = t_years * 365.25
+    assert 86.0 < t_days < 90.0, f"Expected orbital period ~88.2 days, got {t_days}"
+
 
 
 

@@ -44,6 +44,38 @@ except Exception:
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 
+# System Performance & Hardware Concurrency Settings
+TOTAL_CPU_CORES = os.cpu_count() or 4
+ACTIVE_PROCESSOR_CORES = max(1, min(TOTAL_CPU_CORES, 4))
+ACTIVE_THEME = "mission-slate"
+ACTIVE_FONT_SIZE = "normal"
+ACTIVE_TIMEZONE = "UTC"
+
+def get_system_settings() -> Dict[str, Any]:
+    """Returns current system execution and user preference configuration."""
+    return {
+        "total_cpu_cores": TOTAL_CPU_CORES,
+        "active_processors": ACTIVE_PROCESSOR_CORES,
+        "theme": ACTIVE_THEME,
+        "font_size": ACTIVE_FONT_SIZE,
+        "timezone": ACTIVE_TIMEZONE,
+        "python_version": sys.version.split()[0],
+        "platform": sys.platform
+    }
+
+def update_system_settings(processors: int = None, theme: str = None, font_size: str = None, timezone: str = None) -> Dict[str, Any]:
+    """Updates runtime system settings."""
+    global ACTIVE_PROCESSOR_CORES, ACTIVE_THEME, ACTIVE_FONT_SIZE, ACTIVE_TIMEZONE
+    if processors is not None and 1 <= processors <= max(1, TOTAL_CPU_CORES * 2):
+        ACTIVE_PROCESSOR_CORES = int(processors)
+    if theme is not None:
+        ACTIVE_THEME = str(theme)
+    if font_size is not None:
+        ACTIVE_FONT_SIZE = str(font_size)
+    if timezone is not None:
+        ACTIVE_TIMEZONE = str(timezone)
+    return get_system_settings()
+
 # Comprehensive Space Weather Missions Metadata
 MISSIONS: Dict[str, Dict[str, Any]] = {
     "DSCOVR": {

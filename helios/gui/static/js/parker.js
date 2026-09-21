@@ -97,6 +97,85 @@ class ParkerSpiralRenderer {
     if (fpEl) fpEl.innerText = `~${footpointDeg.toFixed(1)}° W`;
   }
 
+  solveKepler(meanAnomaly, ecc) {
+    let E = meanAnomaly;
+    for (let i = 0; i < 6; i++) {
+      const f = E - ecc * Math.sin(E) - meanAnomaly;
+      const fPrime = 1.0 - ecc * Math.cos(E);
+      E -= f / fPrime;
+    }
+    return E;
+  }
+
+  getPSPState() {
+    // NASA Parker Solar Probe (PSP) Physical Ephemeris
+    // Perihelion: 9.86 R_sun (~0.0458 AU, 6.85M km)
+    // Aphelion: 0.730 AU (109.2M km, Venus resonant)
+    // Semi-major axis a = 0.3879 AU, eccentricity e = 0.8819
+    const aAu = 0.3879;
+    const ecc = 0.8819;
+    const muSun = 1.3271244e11; // km^3/s^2 (G * M_sun)
+    const aKm = aAu * this.auKm;
+
+    // Period T = 88.2 days. Simulated smooth orbital progression
+    const meanAnomaly = ((this.time * 0.006) % (Math.PI * 2));
+    const E = this.solveKepler(meanAnomaly, ecc);
+    const rAu = aAu * (1.0 - ecc * Math.cos(E));
+    const rKm = rAu * this.auKm;
+    const rSun = rKm / this.rSunKm;
+
+    // True anomaly and argument of perihelion
+    const trueAnomaly = Math.atan2(Math.sqrt(1.0 - ecc * ecc) * Math.sin(E), Math.cos(E) - ecc);
+    const theta = trueAnomaly + 1.95; // orientation in ecliptic plane
+
+    // Rigorous Vis-Viva orbital speed: v = sqrt(mu * (2/r - 1/a)) [km/s]
+    const vKms = Math.sqrt(Math.max(10.0, muSun * (2.0 / rKm - 1.0 / aKm)));
+
+    return {
+      name: 'Parker Solar Probe (PSP)',
+      aAu,
+      ecc,
+      rAu,
+      rKm,
+      rSun,
+      theta,
+      vKms,
+      vKmh: vKms * 3600.0,
+      phase: E < Math.PI ? 'Outward leg (to Aphelion 0.73 AU)' : 'Inward plunge (to Perihelion 9.86 R☉)'
+    };
+  }
+
+  getSolOState() {
+    // ESA/NASA Solar Orbiter (SolO) Ephemeris
+    // Perihelion: ~0.28 AU, Aphelion: ~0.91 AU, a = 0.595 AU, e = 0.529
+    const aAu = 0.595;
+    const ecc = 0.529;
+    const muSun = 1.3271244e11;
+    const aKm = aAu * this.auKm;
+
+    const meanAnomaly = ((this.time * 0.0035 + 1.8) % (Math.PI * 2));
+    const E = this.solveKepler(meanAnomaly, ecc);
+    const rAu = aAu * (1.0 - ecc * Math.cos(E));
+    const rKm = rAu * this.auKm;
+    const rSun = rKm / this.rSunKm;
+
+    const trueAnomaly = Math.atan2(Math.sqrt(1.0 - ecc * ecc) * Math.sin(E), Math.cos(E) - ecc);
+    const theta = trueAnomaly + 3.85;
+    const vKms = Math.sqrt(Math.max(10.0, muSun * (2.0 / rKm - 1.0 / aKm)));
+
+    return {
+      name: 'Solar Orbiter (SolO)',
+      aAu,
+      ecc,
+      rAu,
+      rKm,
+      rSun,
+      theta,
+      vKms,
+      vKmh: vKms * 3600.0
+    };
+  }
+
   initEventListeners() {
     window.addEventListener('resize', () => this.resize());
 
@@ -152,6 +231,54 @@ class ParkerSpiralRenderer {
     if (!this.tooltip || !this.mouseWorld) return;
     const mw = this.mouseWorld;
 
+    // Check if mouse is hovering near Parker Solar Probe
+    if (this.pspScreenPos && Math.hypot(mw.x - this.pspScreenPos.x, mw.y - this.pspScreenPos.y) < 22) {
+      const p = this.pspScreenPos.state;
+      this.tooltip.classList.remove('hidden');
+      this.tooltip.innerHTML = `
+        <div class="border-b border-rose-500/40 pb-1 mb-1.5 flex items-center justify-between">
+          <strong class="text-rose-300 font-bold text-xs flex items-center space-x-1.5">
+            <i class="fa-solid fa-satellite text-[10px]"></i>
+            <span>NASA Parker Solar Probe (PSP)</span>
+          </strong>
+          <span class="text-[10px] text-amber-300 font-mono font-bold">${p.rAu.toFixed(3)} AU</span>
+        </div>
+        <div class="text-[11px] font-mono space-y-1 text-slate-200">
+          <div>Solar Distance: <span class="text-slate-100 font-bold">${p.rSun.toFixed(1)} R☉</span> (${(p.rKm / 1e6).toFixed(2)}M km)</div>
+          <div>Orbital Velocity: <span class="text-rose-400 font-bold">${p.vKms.toFixed(1)} km/s</span> (${Math.round(p.vKmh).toLocaleString()} km/h)</div>
+          <div>Perihelion Record: <span class="text-amber-400 font-bold">9.86 R☉ (~0.046 AU)</span> @ 191 km/s</div>
+          <div>Aphelion: <span class="text-slate-400">0.730 AU (Venus Resonance)</span></div>
+          <div>Orbital Period: <span class="text-slate-400">88.2 Days (Keplerian e = 0.882)</span></div>
+          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${p.phase}</div>
+        </div>
+      `;
+      this.positionTooltip(clientX, clientY);
+      return;
+    }
+
+    // Check if mouse is hovering near Solar Orbiter
+    if (this.soloScreenPos && Math.hypot(mw.x - this.soloScreenPos.x, mw.y - this.soloScreenPos.y) < 20) {
+      const s = this.soloScreenPos.state;
+      this.tooltip.classList.remove('hidden');
+      this.tooltip.innerHTML = `
+        <div class="border-b border-cyan-500/40 pb-1 mb-1.5 flex items-center justify-between">
+          <strong class="text-cyan-300 font-bold text-xs flex items-center space-x-1.5">
+            <i class="fa-solid fa-satellite text-[10px]"></i>
+            <span>ESA / NASA Solar Orbiter (SolO)</span>
+          </strong>
+          <span class="text-[10px] text-cyan-300 font-mono font-bold">${s.rAu.toFixed(3)} AU</span>
+        </div>
+        <div class="text-[11px] font-mono space-y-1 text-slate-200">
+          <div>Solar Distance: <span class="text-slate-100 font-bold">${s.rSun.toFixed(1)} R☉</span> (${(s.rKm / 1e6).toFixed(2)}M km)</div>
+          <div>Orbital Velocity: <span class="text-cyan-400 font-bold">${s.vKms.toFixed(1)} km/s</span> (${Math.round(s.vKmh).toLocaleString()} km/h)</div>
+          <div>Perihelion: <span class="text-amber-400">0.28 AU</span> | Aphelion: <span class="text-slate-400">0.91 AU</span></div>
+          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">Inclined Ecliptic High-Latitude Solar Probe</div>
+        </div>
+      `;
+      this.positionTooltip(clientX, clientY);
+      return;
+    }
+
     if (mw.r_au > 1.8 || mw.r_au < 0.04) {
       this.tooltip.classList.add('hidden');
       return;
@@ -177,11 +304,16 @@ class ParkerSpiralRenderer {
       </div>
     `;
 
+    this.positionTooltip(clientX, clientY);
+  }
+
+  positionTooltip(clientX, clientY) {
+    if (!this.tooltip) return;
     const parentRect = this.canvas.parentElement.getBoundingClientRect();
     const left = clientX - parentRect.left + 15;
     const top = clientY - parentRect.top + 15;
-    this.tooltip.style.left = `${Math.min(left, this.width - 250)}px`;
-    this.tooltip.style.top = `${Math.min(top, this.height - 130)}px`;
+    this.tooltip.style.left = `${Math.min(left, this.width - 270)}px`;
+    this.tooltip.style.top = `${Math.min(top, this.height - 150)}px`;
   }
 
   draw() {
@@ -530,19 +662,77 @@ class ParkerSpiralRenderer {
     ctx.font = '9px "JetBrains Mono", monospace';
     ctx.fillText('STEREO-A (0.96 AU)', stereoX + 8, stereoY);
 
-    // 4. Parker Solar Probe (Deep perihelion ~0.08 AU)
-    const pspAngle = (this.time * 0.01) % (Math.PI * 2);
-    const pspR = 0.12 + 0.06 * Math.sin(this.time * 0.02);
-    const pspX = cx + pspR * scale * Math.cos(pspAngle);
-    const pspY = cy - pspR * scale * Math.sin(pspAngle);
+    // 4. Parker Solar Probe (NASA Keplerian Ephemeris & Vis-Viva Speed)
+    const psp = this.getPSPState();
+    const pspX = cx + psp.rAu * scale * Math.cos(psp.theta);
+    const pspY = cy - psp.rAu * scale * Math.sin(psp.theta);
+    this.pspScreenPos = { x: pspX, y: pspY, state: psp };
 
-    ctx.fillStyle = '#ff2a6d';
+    // Draw PSP Elliptical Orbit Track (subtle rose dashed line)
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
     ctx.beginPath();
-    ctx.arc(pspX, pspY, 2.5, 0, Math.PI * 2);
+    for (let s = 0; s <= 64; s++) {
+      const EA = (s / 64) * Math.PI * 2;
+      const rA = psp.aAu * (1.0 - psp.ecc * Math.cos(EA));
+      const ta = Math.atan2(Math.sqrt(1.0 - psp.ecc * psp.ecc) * Math.sin(EA), Math.cos(EA) - psp.ecc);
+      const px = cx + rA * scale * Math.cos(ta + 1.95);
+      const py = cy - rA * scale * Math.sin(ta + 1.95);
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // PSP Spacecraft Dot
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.arc(pspX, pspY, 3.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#fda4af';
-    ctx.font = '8px "JetBrains Mono", monospace';
-    ctx.fillText('PSP', pspX + 6, pspY - 3);
+    ctx.strokeStyle = '#fda4af';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fecdd3';
+    ctx.font = 'bold 9px "JetBrains Mono", monospace';
+    ctx.fillText(`PSP (${psp.vKms.toFixed(0)} km/s)`, pspX + 6, pspY - 4);
+
+    // 5. Solar Orbiter (ESA/NASA High-Latitude Heliocentric Probe)
+    const solo = this.getSolOState();
+    const soloX = cx + solo.rAu * scale * Math.cos(solo.theta);
+    const soloY = cy - solo.rAu * scale * Math.sin(solo.theta);
+    this.soloScreenPos = { x: soloX, y: soloY, state: solo };
+
+    // Draw SolO Elliptical Orbit Track (subtle cyan dashed line)
+    ctx.strokeStyle = 'rgba(6, 182, 212, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    for (let s = 0; s <= 64; s++) {
+      const EA = (s / 64) * Math.PI * 2;
+      const rA = solo.aAu * (1.0 - solo.ecc * Math.cos(EA));
+      const ta = Math.atan2(Math.sqrt(1.0 - solo.ecc * solo.ecc) * Math.sin(EA), Math.cos(EA) - solo.ecc);
+      const px = cx + rA * scale * Math.cos(ta + 3.85);
+      const py = cy - rA * scale * Math.sin(ta + 3.85);
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // SolO Spacecraft Dot
+    ctx.fillStyle = '#06b6d4';
+    ctx.beginPath();
+    ctx.arc(soloX, soloY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#67e8f9';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#a5f3fc';
+    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.fillText(`SolO (${solo.vKms.toFixed(0)} km/s)`, soloX + 6, soloY + 11);
 
     ctx.restore();
   }

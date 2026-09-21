@@ -52,7 +52,11 @@ const darkChartOptions = {
 
 let currentDomain = 'fleet';
 let currentTab = 'dashboard';
-let clockMode = 'UTC';
+let selectedTimezone = localStorage.getItem('helios_timezone') || 'UTC';
+let currentTheme = localStorage.getItem('helios_theme') || 'mission-slate';
+let currentFontSize = localStorage.getItem('helios_fontsize') || 'normal';
+let currentProcessors = parseInt(localStorage.getItem('helios_processors') || '4', 10);
+let totalCpuCores = 8;
 
 const DOMAINS = {
   fleet: {
@@ -119,6 +123,7 @@ const TAB_TO_DOMAIN = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  initSettingsAndPreferences();
   startClock();
   renderSubnav('fleet');
   initCharts();
@@ -130,6 +135,40 @@ document.addEventListener('DOMContentLoaded', () => {
   initVisualizers();
   missionIncidentLogger = new MissionIncidentLogger();
 });
+
+async function initSettingsAndPreferences() {
+  // Apply initial theme and font scaling attributes
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  document.documentElement.setAttribute('data-fontsize', currentFontSize);
+
+  // Sync settings UI components
+  setTheme(currentTheme);
+  setFontSize(currentFontSize);
+  onSettingsCoresChange(currentProcessors);
+
+  const tzSelect = document.getElementById('settings-timezone-select');
+  if (tzSelect) tzSelect.value = selectedTimezone;
+
+  // Fetch server hardware specs and status
+  try {
+    const res = await fetch('/api/status');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.system) {
+        totalCpuCores = data.system.total_cpu_cores || 8;
+        const maxCoresEl = document.getElementById('detected-max-cores-label');
+        if (maxCoresEl) maxCoresEl.innerText = `Detected: ${totalCpuCores} Logic Cores`;
+        const slider = document.getElementById('settings-cores-slider');
+        if (slider) {
+          slider.max = totalCpuCores;
+          slider.value = currentProcessors;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not fetch server settings status:', e);
+  }
+}
 
 function initVisualizers() {
   if (window.AuroralMapRenderer && document.getElementById('aurora-map-canvas')) {
@@ -152,34 +191,221 @@ function startClock() {
 }
 
 function toggleClockMode() {
-  clockMode = (clockMode === 'UTC') ? 'LOCAL' : 'UTC';
-  updateClock();
+  openTimezoneModal();
 }
 
 function updateClock() {
   const el = document.getElementById('utc-clock');
   const badge = document.getElementById('clock-tz-badge');
-  if (!el) return;
+  const preview = document.getElementById('tz-modal-clock-preview');
+  const previewBadge = document.getElementById('tz-modal-current-badge');
+  const settingsTzPreview = document.getElementById('settings-tz-preview');
+  if (!el && !preview) return;
+
   const now = new Date();
-  if (clockMode === 'UTC') {
-    el.innerText = now.toUTCString().slice(17, 25) + ' UTC';
-    if (badge) {
-      badge.innerText = 'UTC';
-      badge.className = 'text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300 uppercase font-mono';
-    }
-  } else {
+  let timeStr = '';
+  let badgeStr = 'UTC';
+
+  if (selectedTimezone === 'UTC') {
+    timeStr = now.toUTCString().slice(17, 25) + ' UTC';
+    badgeStr = 'UTC';
+  } else if (selectedTimezone === 'LOCAL') {
+    timeStr = now.toLocaleTimeString();
     const offsetMin = -now.getTimezoneOffset();
     const sign = offsetMin >= 0 ? '+' : '-';
     const absMin = Math.abs(offsetMin);
     const hrs = String(Math.floor(absMin / 60)).padStart(2, '0');
     const mins = String(absMin % 60).padStart(2, '0');
-    const tzStr = `UTC${sign}${hrs}:${mins}`;
-    el.innerText = now.toLocaleTimeString();
-    if (badge) {
-      badge.innerText = tzStr;
-      badge.className = 'text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 uppercase font-mono';
+    badgeStr = `UTC${sign}${hrs}:${mins}`;
+  } else {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: selectedTimezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZoneName: 'short'
+      });
+      const parts = formatter.formatToParts(now);
+      const h = parts.find(p => p.type === 'hour')?.value || '00';
+      const m = parts.find(p => p.type === 'minute')?.value || '00';
+      const s = parts.find(p => p.type === 'second')?.value || '00';
+      const tzName = parts.find(p => p.type === 'timeZoneName')?.value || selectedTimezone.split('/').pop().replace('_', ' ');
+      timeStr = `${h}:${m}:${s} ${tzName}`;
+      badgeStr = tzName;
+    } catch (err) {
+      timeStr = now.toUTCString().slice(17, 25) + ' UTC';
+      badgeStr = 'UTC';
     }
   }
+
+  if (el) el.innerText = timeStr;
+  if (badge) {
+    badge.innerText = badgeStr;
+    badge.className = selectedTimezone === 'UTC'
+      ? 'text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300 uppercase font-mono'
+      : 'text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 uppercase font-mono';
+  }
+  if (preview) preview.innerText = timeStr;
+  if (previewBadge) previewBadge.innerText = badgeStr;
+  if (settingsTzPreview) settingsTzPreview.innerText = timeStr;
+}
+
+// Modal open/close methods for Settings, About, and Timezones
+function openSettingsModal() {
+  window.playBlip?.();
+  const modal = document.getElementById('modal-settings');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById('modal-settings');
+  if (modal) modal.classList.add('hidden');
+}
+
+function openAboutModal() {
+  window.playBlip?.();
+  const modal = document.getElementById('modal-about');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeAboutModal() {
+  const modal = document.getElementById('modal-about');
+  if (modal) modal.classList.add('hidden');
+}
+
+function openTimezoneModal() {
+  window.playBlip?.();
+  const modal = document.getElementById('modal-timezone');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeTimezoneModal() {
+  const modal = document.getElementById('modal-timezone');
+  if (modal) modal.classList.add('hidden');
+}
+
+function setTheme(themeName) {
+  currentTheme = themeName;
+  document.documentElement.setAttribute('data-theme', themeName);
+  localStorage.setItem('helios_theme', themeName);
+
+  document.querySelectorAll('.theme-option-btn').forEach(btn => {
+    btn.classList.remove('border-sky-500/50', 'bg-slate-800/80');
+    btn.classList.add('border-slate-800');
+  });
+  const activeBtn = document.getElementById(`theme-btn-${themeName}`);
+  if (activeBtn) {
+    activeBtn.classList.remove('border-slate-800');
+    activeBtn.classList.add('border-sky-500/50', 'bg-slate-800/80');
+  }
+
+  const label = document.getElementById('current-theme-label');
+  if (label) {
+    const names = {
+      'mission-slate': 'Mission Slate (Default)',
+      'deep-space': 'Deep Space Obsidian',
+      'solar-amber': 'Solar Amber',
+      'high-contrast': 'High-Contrast Terminal'
+    };
+    label.innerText = names[themeName] || themeName;
+  }
+}
+
+function setFontSize(sizeName) {
+  currentFontSize = sizeName;
+  document.documentElement.setAttribute('data-fontsize', sizeName);
+  localStorage.setItem('helios_fontsize', sizeName);
+
+  document.querySelectorAll('.fontsize-option-btn').forEach(btn => {
+    btn.classList.remove('border-sky-500/50', 'bg-slate-800');
+    btn.classList.add('border-slate-700/80', 'bg-slate-800/60');
+  });
+  const activeBtn = document.getElementById(`fontsize-btn-${sizeName}`);
+  if (activeBtn) {
+    activeBtn.classList.remove('border-slate-700/80', 'bg-slate-800/60');
+    activeBtn.classList.add('border-sky-500/50', 'bg-slate-800');
+  }
+
+  const label = document.getElementById('current-fontsize-label');
+  if (label) {
+    const names = {
+      compact: 'Compact (88%)',
+      normal: 'Standard (100%)',
+      large: 'Large (112%)'
+    };
+    label.innerText = names[sizeName] || sizeName;
+  }
+}
+
+function onSettingsCoresChange(val) {
+  currentProcessors = parseInt(val, 10);
+  const readout = document.getElementById('settings-cores-readout');
+  const display = document.getElementById('settings-cores-display');
+  if (readout) readout.innerText = `${currentProcessors} Cores Active`;
+  if (display) display.innerText = currentProcessors;
+}
+
+function selectTzPreset(tz) {
+  setTimezone(tz);
+}
+
+function setTimezone(tz) {
+  selectedTimezone = tz;
+  localStorage.setItem('helios_timezone', tz);
+  const sel = document.getElementById('settings-timezone-select');
+  if (sel) sel.value = tz;
+  updateClock();
+}
+
+function applyCustomTimezone() {
+  const input = document.getElementById('tz-custom-input');
+  const err = document.getElementById('tz-custom-error');
+  if (!input) return;
+  const tz = input.value.trim();
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    if (err) err.classList.add('hidden');
+    setTimezone(tz);
+    input.value = '';
+    closeTimezoneModal();
+  } catch (e) {
+    if (err) err.classList.remove('hidden');
+  }
+}
+
+async function saveAndApplySettings() {
+  localStorage.setItem('helios_theme', currentTheme);
+  localStorage.setItem('helios_fontsize', currentFontSize);
+  localStorage.setItem('helios_processors', currentProcessors);
+  localStorage.setItem('helios_timezone', selectedTimezone);
+
+  try {
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        processors: currentProcessors,
+        theme: currentTheme,
+        font_size: currentFontSize,
+        timezone: selectedTimezone
+      })
+    });
+  } catch (err) {
+    console.warn('Backend settings persist error:', err);
+  }
+
+  closeSettingsModal();
+}
+
+function resetSettingsDefaults() {
+  setTheme('mission-slate');
+  setFontSize('normal');
+  onSettingsCoresChange(4);
+  const slider = document.getElementById('settings-cores-slider');
+  if (slider) slider.value = 4;
+  setTimezone('UTC');
 }
 
 function renderSubnav(domainKey) {
@@ -3423,6 +3649,9 @@ function closeAllModals() {
   closeReferencesModal();
   closeShortcutsModal();
   closeIncidentLogModal();
+  closeSettingsModal();
+  closeAboutModal();
+  closeTimezoneModal();
   const paramModal = document.getElementById('modal-parameter');
   if (paramModal) paramModal.classList.add('hidden');
 }
@@ -3763,6 +3992,10 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 'l' || e.key === 'L') {
     openIncidentLogModal();
   } else if (e.key === 't' || e.key === 'T') {
-    toggleClockMode();
+    openTimezoneModal();
+  } else if (e.key === 's' || e.key === 'S') {
+    openSettingsModal();
+  } else if (e.key === 'o' || e.key === 'O') {
+    openAboutModal();
   }
 });

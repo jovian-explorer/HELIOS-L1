@@ -19,6 +19,79 @@
   --accent-emerald: #10b981;
   --accent-rose: #ef4444;
   --accent-purple: #8b5cf6;
+
+  /* Muted Scientific Aliases (replaces legacy neon variables) */
+  --neon-cyan: #38bdf8;
+  --neon-solar: #f59e0b;
+  --neon-plasma: #10b981;
+}
+
+/* Theme Variations */
+[data-theme="mission-slate"] {
+  --color-bg-deep: #080c16;
+  --color-bg-surface: #0e1626;
+  --color-bg-card: rgba(15, 23, 42, 0.85);
+  --color-bg-card-hover: rgba(22, 33, 60, 0.9);
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-focus: rgba(56, 189, 248, 0.4);
+  --accent-sky: #38bdf8;
+  --accent-blue: #2563eb;
+  --accent-solar: #f59e0b;
+  --accent-emerald: #10b981;
+  --accent-rose: #ef4444;
+}
+
+[data-theme="deep-space"] {
+  --color-bg-deep: #020408;
+  --color-bg-surface: #070b14;
+  --color-bg-card: rgba(10, 15, 26, 0.92);
+  --color-bg-card-hover: rgba(16, 24, 40, 0.95);
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-focus: rgba(56, 189, 248, 0.5);
+  --accent-sky: #0ea5e9;
+  --accent-blue: #1d4ed8;
+  --accent-solar: #eab308;
+  --accent-emerald: #059669;
+  --accent-rose: #dc2626;
+}
+
+[data-theme="solar-amber"] {
+  --color-bg-deep: #0c0a06;
+  --color-bg-surface: #17130a;
+  --color-bg-card: rgba(26, 21, 14, 0.88);
+  --color-bg-card-hover: rgba(38, 30, 18, 0.92);
+  --color-border-subtle: rgba(245, 158, 11, 0.12);
+  --color-border-focus: rgba(245, 158, 11, 0.5);
+  --accent-sky: #38bdf8;
+  --accent-blue: #3b82f6;
+  --accent-solar: #d97706;
+  --accent-emerald: #10b981;
+  --accent-rose: #f43f5e;
+}
+
+[data-theme="high-contrast"] {
+  --color-bg-deep: #000000;
+  --color-bg-surface: #0a0a0a;
+  --color-bg-card: #121212;
+  --color-bg-card-hover: #1e1e1e;
+  --color-border-subtle: #333333;
+  --color-border-focus: #10b981;
+  --accent-sky: #34d399;
+  --accent-blue: #10b981;
+  --accent-solar: #fbbf24;
+  --accent-emerald: #10b981;
+  --accent-rose: #f87171;
+}
+
+/* Font Scaling Classes */
+html[data-fontsize="compact"] {
+  font-size: 13px;
+}
+html[data-fontsize="normal"] {
+  font-size: 14px;
+}
+html[data-fontsize="large"] {
+  font-size: 16px;
 }
 
 /* Custom Scrollbars */

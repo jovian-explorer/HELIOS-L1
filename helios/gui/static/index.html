@@ -77,7 +77,8 @@
     </div>
     <div class="flex items-center space-x-3 text-slate-400">
       <i class="fa-solid fa-satellite-dish text-sky-400 animate-pulse"></i>
-      <button id="clock-toggle-btn" onclick="toggleClockMode()" title="Click or press 'T' to toggle UTC / Local Station Time" class="font-hud font-bold text-sky-300 hover:text-white transition flex items-center space-x-1.5 bg-slate-800/80 hover:bg-slate-700 px-2 py-0.5 rounded border border-slate-700/70 cursor-pointer">
+      <button id="clock-toggle-btn" onclick="openTimezoneModal()" title="Select Custom Timezone or press 'T'" class="font-hud font-bold text-sky-300 hover:text-white transition flex items-center space-x-1.5 bg-slate-800/80 hover:bg-slate-700 px-2.5 py-0.5 rounded border border-slate-700/70 cursor-pointer">
+        <i class="fa-regular fa-clock text-sky-400 text-[10px]"></i>
         <span id="utc-clock">00:00:00 UTC</span>
         <span id="clock-tz-badge" class="text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300 uppercase font-mono">UTC</span>
       </button>
@@ -97,7 +98,7 @@
             <span>HELIOS-L1</span>
           </h1>
           <span class="text-[10px] uppercase font-hud font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 tracking-wider">
-            v1.0 SciSuite
+            v1.2.0 SciSuite
           </span>
         </div>
         <p class="text-xs text-slate-400">
@@ -108,7 +109,7 @@
 
     <div class="flex items-center space-x-2.5">
       <div id="feed-status-badge" class="flex items-center space-x-2 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700 text-xs font-medium" title="Telemetry Feed Diagnostic &amp; Latency">
-        <span id="feed-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 pulse-beacon"></span>
+        <span id="feed-status-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
         <span id="feed-status-text" class="text-slate-300 font-mono text-[11px]">Connecting...</span>
       </div>
       <div id="noaa-g-badge" class="flex items-center space-x-2 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700 text-emerald-400 text-xs font-medium">
@@ -123,22 +124,30 @@
         <i class="fa-solid fa-arrows-rotate text-[11px]" id="refresh-icon"></i>
         <span>Live Fetch</span>
       </button>
-      <button onclick="openBulletinModal()" class="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm" title="Advisory Bulletin (B)">
+      <button onclick="openBulletinModal()" class="px-2.5 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm" title="Advisory Bulletin (B)">
         <i class="fa-solid fa-file-shield text-[11px]"></i>
-        <span>Advisory Bulletin</span>
+        <span>Bulletin</span>
       </button>
-      <button onclick="openReferencesModal()" class="px-3 py-1.5 rounded bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-emerald-500/40" title="Scientific DOIs &amp; Portals (P)">
+      <button onclick="openReferencesModal()" class="px-2.5 py-1.5 rounded bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-emerald-500/40" title="Scientific DOIs &amp; Portals (P)">
         <i class="fa-solid fa-book-bookmark text-[11px] text-emerald-300"></i>
-        <span>References &amp; Data</span>
+        <span>References</span>
       </button>
-      <button onclick="openUserGuideModal()" class="px-3 py-1.5 rounded bg-indigo-700/80 hover:bg-indigo-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-indigo-500/40" title="Operator Handbook &amp; Scientific Manual (U)">
+      <button onclick="openUserGuideModal()" class="px-2.5 py-1.5 rounded bg-indigo-700/80 hover:bg-indigo-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-indigo-500/40" title="Operator Handbook &amp; Scientific Manual (U)">
         <i class="fa-solid fa-graduation-cap text-[11px] text-indigo-300"></i>
-        <span>User Guide</span>
+        <span>Guide</span>
       </button>
-      <button onclick="openIncidentLogModal()" class="px-3 py-1.5 rounded bg-amber-700/80 hover:bg-amber-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-amber-500/40 relative" title="Mission Incident Log &amp; Threshold Monitor (L)">
+      <button onclick="openIncidentLogModal()" class="px-2.5 py-1.5 rounded bg-amber-700/80 hover:bg-amber-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-amber-500/40 relative" title="Mission Incident Log (L)">
         <i class="fa-solid fa-triangle-exclamation text-[11px] text-amber-300"></i>
-        <span>Incident Log</span>
+        <span>Incidents</span>
         <span id="incident-badge-count" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-[10px] font-bold ml-1">0</span>
+      </button>
+      <button onclick="openSettingsModal()" class="px-2.5 py-1.5 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center space-x-1.5 border border-slate-700/80" title="Station Settings: Theme, Font Size &amp; CPU Cores (S)">
+        <i class="fa-solid fa-gear text-slate-300 text-[11px]"></i>
+        <span>Settings</span>
+      </button>
+      <button onclick="openAboutModal()" class="px-2.5 py-1.5 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center space-x-1.5 border border-slate-700/80" title="About HELIOS-L1 &amp; Creator Profile (O)">
+        <i class="fa-solid fa-circle-info text-sky-400 text-[11px]"></i>
+        <span>About</span>
       </button>
     </div>
   </header>
@@ -859,7 +868,7 @@
 
         <!-- Magnetospheric Physics & Chao Boundary Metrics Strip -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-          <div class="metric-card" style="border-left: 3px solid var(--neon-cyan);">
+          <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
               <span>Collisionless Bow Shock (R₀,bs)</span>
               <i class="fa-solid fa-shield-halved text-sky-400"></i>
@@ -871,7 +880,7 @@
             <div class="text-[10px] text-slate-400 mt-1">Chao (2002) Mach-coupled standoff scaling with polytropic index γ = 5/3</div>
           </div>
 
-          <div class="metric-card" style="border-left: 3px solid var(--neon-solar);">
+          <div class="metric-card" style="border-left: 3px solid var(--accent-solar);">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
               <span>Magnetopause Standoff (r₀,mp)</span>
               <i class="fa-solid fa-magnet text-amber-400"></i>
@@ -915,7 +924,7 @@
     <!-- ========================================================================= -->
     <section id="tab-aurora" class="tab-content hidden space-y-6">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="metric-card" style="border-left: 3px solid var(--neon-plasma);">
+        <div class="metric-card" style="border-left: 3px solid var(--accent-emerald);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span>Equatorward Midnight Boundary</span>
             <i class="fa-solid fa-moon text-emerald-400"></i>
@@ -923,7 +932,7 @@
           <div id="aurora-midnight-lat" class="text-3xl font-hud font-black text-emerald-300">---°</div>
           <div class="text-[11px] text-slate-400 mt-1">Geomagnetic Equatorward Reach (Magnetic Local Midnight)</div>
         </div>
-        <div class="metric-card" style="border-left: 3px solid var(--neon-solar);">
+        <div class="metric-card" style="border-left: 3px solid var(--accent-solar);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span>Hemispheric Power Index (HPI)</span>
             <i class="fa-solid fa-bolt text-amber-400"></i>
@@ -931,7 +940,7 @@
           <div id="aurora-power-gw" class="text-3xl font-hud font-black text-amber-300">--- GW</div>
           <div class="text-[11px] text-slate-400 mt-1">Total Auroral Particle Precipitation Energy</div>
         </div>
-        <div class="metric-card" style="border-left: 3px solid var(--neon-cyan);">
+        <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span>Flank (Dawn/Dusk) Latitude</span>
             <i class="fa-solid fa-sun-plant-wilt text-sky-400"></i>
@@ -1716,7 +1725,7 @@
 
       <!-- Live Coupling & Storm Probability Gauges -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
-        <div class="metric-card" style="border-left: 3px solid var(--neon-cyan);">
+        <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span>Newell Coupling dΦ/dt</span>
             <i class="fa-solid fa-bolt text-cyan-400"></i>
@@ -2274,7 +2283,15 @@
               <kbd class="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-mono font-bold text-[11px] border border-slate-700">L</kbd>
             </div>
             <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
-              <span class="text-slate-300">Toggle UTC / Local Time</span>
+              <span class="text-slate-300">Station Settings &amp; Cores</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-900 text-sky-300 font-mono font-bold text-[11px] border border-slate-700">S</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
+              <span class="text-slate-300">About &amp; Creator Profile</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-mono font-bold text-[11px] border border-slate-700">O</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
+              <span class="text-slate-300">Timezone Selector</span>
               <kbd class="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-mono font-bold text-[11px] border border-slate-700">T</kbd>
             </div>
             <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
@@ -2349,6 +2366,379 @@
           Close Monitor
         </button>
       </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: STATION SETTINGS, HARDWARE PERFORMANCE & THEME CONFIGURATION -->
+  <!-- ========================================================================= -->
+  <div id="modal-settings" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+            <i class="fa-solid fa-sliders text-base"></i>
+          </div>
+          <div>
+            <h3 class="font-tech font-bold text-slate-100 text-sm">Station Settings &amp; Execution Environment</h3>
+            <p class="text-[11px] text-slate-400">Display themes, font scaling, multiprocessing concurrency &amp; time synchronization</p>
+          </div>
+        </div>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs font-sans">
+        <!-- 1. THEME SELECTION -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+              <i class="fa-solid fa-palette text-amber-400"></i>
+              <span>Interface Visual Theme</span>
+            </label>
+            <span class="text-[11px] text-slate-400 font-mono" id="current-theme-label">Mission Slate (Default)</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <button onclick="setTheme('mission-slate')" id="theme-btn-mission-slate" class="theme-option-btn p-3 rounded-xl border text-left transition flex flex-col justify-between bg-slate-800/80 border-sky-500/50 hover:border-sky-400">
+              <div class="flex items-center justify-between w-full mb-2">
+                <span class="font-semibold text-slate-100">Mission Slate</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+              </div>
+              <p class="text-[10px] text-slate-400">Dark slate mission-control with sky blue telemetry</p>
+            </button>
+            <button onclick="setTheme('deep-space')" id="theme-btn-deep-space" class="theme-option-btn p-3 rounded-xl border text-left transition flex flex-col justify-between bg-slate-950 border-slate-800 hover:border-slate-700">
+              <div class="flex items-center justify-between w-full mb-2">
+                <span class="font-semibold text-slate-100">Deep Space</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+              </div>
+              <p class="text-[10px] text-slate-400">Pitch black OLED contrast with muted cyan highlights</p>
+            </button>
+            <button onclick="setTheme('solar-amber')" id="theme-btn-solar-amber" class="theme-option-btn p-3 rounded-xl border text-left transition flex flex-col justify-between bg-[#120f0a] border-amber-900/40 hover:border-amber-700">
+              <div class="flex items-center justify-between w-full mb-2">
+                <span class="font-semibold text-slate-100">Solar Amber</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              </div>
+              <p class="text-[10px] text-slate-400">Warm graphite with golden solar chromosphere accents</p>
+            </button>
+            <button onclick="setTheme('high-contrast')" id="theme-btn-high-contrast" class="theme-option-btn p-3 rounded-xl border text-left transition flex flex-col justify-between bg-black border-emerald-900/40 hover:border-emerald-700">
+              <div class="flex items-center justify-between w-full mb-2">
+                <span class="font-semibold text-slate-100">Terminal</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              </div>
+              <p class="text-[10px] text-slate-400">High-contrast monochrome green scientific CRT</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. FONT SIZE SCALING -->
+        <div class="space-y-3 pt-3 border-t border-slate-800">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+              <i class="fa-solid fa-text-height text-sky-400"></i>
+              <span>Display Scale &amp; Typography Size</span>
+            </label>
+            <span class="text-[11px] text-slate-400 font-mono" id="current-fontsize-label">Standard (100%)</span>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <button onclick="setFontSize('compact')" id="fontsize-btn-compact" class="fontsize-option-btn p-2.5 rounded-xl border border-slate-700/80 bg-slate-800/60 hover:bg-slate-700 text-center transition">
+              <div class="font-bold text-slate-200 text-xs">Compact (88%)</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">High data density for small displays</div>
+            </button>
+            <button onclick="setFontSize('normal')" id="fontsize-btn-normal" class="fontsize-option-btn p-2.5 rounded-xl border border-sky-500/50 bg-slate-800 text-center transition">
+              <div class="font-bold text-sky-300 text-xs">Standard (100%)</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Balanced scientific layout (Default)</div>
+            </button>
+            <button onclick="setFontSize('large')" id="fontsize-btn-large" class="fontsize-option-btn p-2.5 rounded-xl border border-slate-700/80 bg-slate-800/60 hover:bg-slate-700 text-center transition">
+              <div class="font-bold text-slate-200 text-xs">Large (112%)</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Presentation &amp; wall monitor readout</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. HARDWARE CONCURRENCY & MULTIPROCESSING -->
+        <div class="space-y-3 pt-3 border-t border-slate-800">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+              <i class="fa-solid fa-microchip text-emerald-400"></i>
+              <span>Scientific Processing Concurrency (Worker Threads / CPU Cores)</span>
+            </label>
+            <span class="text-[11px] text-emerald-400 font-mono font-bold" id="settings-cores-readout">4 Cores Active</span>
+          </div>
+          <p class="text-[11px] text-slate-400">
+            Defines the number of parallel worker threads allocated to intensive tasks: FFT turbulence power spectra,
+            Rankine-Hugoniot shock jumps, machine-learning solar storm forecasting, and magnetosphere boundary solutions.
+          </p>
+          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="w-full sm:w-2/3 space-y-2">
+              <div class="flex items-center justify-between text-[11px] text-slate-300 font-mono">
+                <span>1 Core (Minimum)</span>
+                <span id="detected-max-cores-label">Detected: 8 Logic Cores</span>
+              </div>
+              <input type="range" id="settings-cores-slider" min="1" max="16" step="1" value="4" oninput="onSettingsCoresChange(this.value)" class="w-full accent-emerald-400 cursor-pointer">
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-xl font-bold font-hud text-emerald-400" id="settings-cores-display">4</div>
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Dedicated Workers</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. STATION TIMEZONE SYNCHRONIZATION -->
+        <div class="space-y-3 pt-3 border-t border-slate-800">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+              <i class="fa-solid fa-globe text-sky-400"></i>
+              <span>Mission Timezone Configuration</span>
+            </label>
+            <button onclick="openTimezoneModal()" class="text-sky-400 hover:text-sky-300 text-[11px] underline">Open Timezone Selector</button>
+          </div>
+          <div class="flex items-center space-x-3">
+            <select id="settings-timezone-select" onchange="setTimezone(this.value)" class="flex-1 rounded-lg px-3 py-1.5 text-xs font-mono">
+              <option value="UTC">UTC - Coordinated Universal Time (Z)</option>
+              <option value="LOCAL">Station Local Time (Host OS Auto)</option>
+              <option value="America/New_York">US Eastern (EST / EDT)</option>
+              <option value="America/Chicago">US Central (CST / CDT)</option>
+              <option value="America/Denver">US Mountain (MST / MDT)</option>
+              <option value="America/Los_Angeles">US Pacific (PST / PDT)</option>
+              <option value="Europe/London">London (GMT / BST)</option>
+              <option value="Europe/Berlin">Central European Time (CET / CEST)</option>
+              <option value="Asia/Kolkata">India Standard Time (IST +05:30)</option>
+              <option value="Asia/Tokyo">Japan Standard Time (JST +09:00)</option>
+              <option value="Australia/Sydney">Australian Eastern (AEST / AEDT)</option>
+            </select>
+            <div id="settings-tz-preview" class="font-mono text-xs text-sky-400 px-3 py-1.5 rounded bg-slate-950 border border-slate-800">00:00:00 UTC</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+        <button onclick="resetSettingsDefaults()" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+          Reset to Defaults
+        </button>
+        <div class="flex items-center space-x-2">
+          <button onclick="saveAndApplySettings()" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition">
+            Apply &amp; Save Settings
+          </button>
+          <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: ABOUT HELIOS-L1 & CREATOR PROFILE -->
+  <!-- ========================================================================= -->
+  <div id="modal-about" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <i class="fa-solid fa-sun text-base"></i>
+          </div>
+          <div>
+            <h3 class="font-tech font-bold text-slate-100 text-sm">About HELIOS-L1 &amp; Scientific Directorate</h3>
+            <p class="text-[11px] text-slate-400">Software architecture, mission directorate, creator profile &amp; mathematical foundations</p>
+          </div>
+        </div>
+        <button onclick="closeAboutModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs font-sans">
+        <!-- CREATOR & MISSION PROFILE -->
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-600/30 via-sky-600/30 to-purple-600/30 border border-amber-500/40 flex items-center justify-center text-amber-400 text-2xl shrink-0">
+            <i class="fa-solid fa-user-astronaut"></i>
+          </div>
+          <div class="space-y-1 flex-1">
+            <div class="flex items-center space-x-2">
+              <h4 class="font-bold text-slate-100 text-sm">Lead Scientist &amp; System Architect</h4>
+              <span class="px-2 py-0.2 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold">Principal Investigator</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+              Designed, formulated, and engineered as a sovereign, offline-capable space weather mission console.
+              Spearheading computational heliophysics, real-time interplanetary magnetic field (IMF) diagnostics at the Sun-Earth
+              Lagrangian equilibrium point L1, and predictive planetary magnetohydrodynamic (MHD) hazard modeling.
+            </p>
+            <div class="flex items-center space-x-3 text-[10px] font-mono text-slate-400 pt-1">
+              <span>Domain: Computational Heliophysics &amp; Space Situational Awareness</span>
+              <span>•</span>
+              <span>Platform: HELIOS-L1 Operational Console</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SOFTWARE ARCHITECTURE -->
+        <div class="space-y-2">
+          <h4 class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+            <i class="fa-solid fa-network-wired text-sky-400"></i>
+            <span>Architecture &amp; Autonomous Offline Design</span>
+          </h4>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            HELIOS-L1 is built as a zero-dependency, local-first scientific suite. In contrast to web-dependent dashboards,
+            it maintains a local embedded Python 3.13 FastAPI backend paired with high-cadence HTML5 Canvas 2D / WebGL visualizers.
+            During severe space weather disruptions (such as catastrophic geomagnetic storms inducing power grid or submarine cable failures),
+            HELIOS-L1 operates 100% autonomously without external cloud telemetry, third-party CDNs, or remote API tracking.
+          </p>
+        </div>
+
+        <!-- MATHEMATICAL & PEER-REVIEWED FOUNDATIONS -->
+        <div class="space-y-2.5">
+          <h4 class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+            <i class="fa-solid fa-square-root-variable text-emerald-400"></i>
+            <span>Governing Scientific Formulations &amp; Peer-Reviewed Formalisms</span>
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <strong class="text-sky-300 block">Vršnak et al. (2013) Drag-Based Model (DBM)</strong>
+              <span class="text-slate-400">Solves aerodynamic heliospheric drag deceleration a = -&Gamma;(v - w)|v - w| across 0.05 to 1.1 AU.</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <strong class="text-amber-300 block">Parker (1958) &amp; Vis-Viva PSP Ephemeris</strong>
+              <span class="text-slate-400">Archimedean IMF spiral pitch angle &amp; exact Vis-Viva orbital speeds (191 km/s at 9.86 R_sun perihelion).</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <strong class="text-emerald-300 block">Chao (2002) &amp; Shue (1998) Geospace Boundaries</strong>
+              <span class="text-slate-400">Dynamic magnetopause (r_0, &alpha;) &amp; bow shock standoff under variable dynamic pressure P_dyn and Bz.</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <strong class="text-rose-300 block">Boteler (2012) &amp; Pirjola (2002) GIC Induction</strong>
+              <span class="text-slate-400">1-D layered Earth geoelectric conductivity and geomagnetically induced currents in transmission lines.</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <strong class="text-purple-300 block">Sauer &amp; Wilkinson (2008) D-RAP Model</strong>
+              <span class="text-slate-400">Polar cap and dayside ionospheric HF radio absorption A(f) = A_10 &bull; (10/f)^1.5.</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <strong class="text-cyan-300 block">Rankine-Hugoniot &amp; Kolmogorov Turbulence</strong>
+              <span class="text-slate-400">MHD shock jump invariants and -5/3 inertial range turbulence power spectral density (PSD) diagnostics.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ENVIRONMENT & METADATA -->
+        <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between text-[11px] font-mono text-slate-400">
+          <div>
+            <span>Version: <strong class="text-slate-200">HELIOS-L1 v1.2.0 SciSuite</strong></span>
+            <span class="mx-2">•</span>
+            <span>Target OS: <strong class="text-slate-200">Windows x86_64</strong></span>
+          </div>
+          <div class="text-emerald-400 flex items-center space-x-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>Verified Scientific Suite</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+        <span class="text-[11px] text-slate-500 font-mono">Open Science Provenance &bull; Peer-Reviewed Standard</span>
+        <button onclick="closeAboutModal()" class="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+          Close Profile
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: TIMEZONE SELECTOR -->
+  <!-- ========================================================================= -->
+  <div id="modal-timezone" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col font-sans">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+            <i class="fa-solid fa-clock text-sm"></i>
+          </div>
+          <div>
+            <h3 class="font-tech font-bold text-slate-100 text-sm">Universal Timezone Selector</h3>
+            <p class="text-[11px] text-slate-400">Select standard observatory frame or any custom IANA timezone</p>
+          </div>
+        </div>
+        <button onclick="closeTimezoneModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs">
+        <!-- Live Clock Preview Card -->
+        <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Current Active Clock</div>
+            <div id="tz-modal-clock-preview" class="text-lg font-bold font-hud text-sky-400">00:00:00 UTC</div>
+          </div>
+          <div class="text-right">
+            <span id="tz-modal-current-badge" class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[10px] font-bold border border-sky-500/30 uppercase">UTC</span>
+          </div>
+        </div>
+
+        <!-- Quick Select Common Timezones -->
+        <div class="space-y-1.5">
+          <label class="font-bold text-slate-300 text-xs">Observatory &amp; Regional Standard Frames</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button onclick="selectTzPreset('UTC')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">UTC (Coordinated)</span>
+              <span class="text-[10px] font-mono text-sky-400">±00:00</span>
+            </button>
+            <button onclick="selectTzPreset('LOCAL')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">Station Local</span>
+              <span class="text-[10px] font-mono text-amber-400">Host OS</span>
+            </button>
+            <button onclick="selectTzPreset('America/New_York')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">US Eastern (EST/EDT)</span>
+              <span class="text-[10px] font-mono text-slate-400">-05:00</span>
+            </button>
+            <button onclick="selectTzPreset('America/Chicago')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">US Central (CST/CDT)</span>
+              <span class="text-[10px] font-mono text-slate-400">-06:00</span>
+            </button>
+            <button onclick="selectTzPreset('America/Los_Angeles')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">US Pacific (PST/PDT)</span>
+              <span class="text-[10px] font-mono text-slate-400">-08:00</span>
+            </button>
+            <button onclick="selectTzPreset('Europe/London')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">London (GMT/BST)</span>
+              <span class="text-[10px] font-mono text-slate-400">±00/+01</span>
+            </button>
+            <button onclick="selectTzPreset('Europe/Berlin')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">CET (Berlin / Paris)</span>
+              <span class="text-[10px] font-mono text-slate-400">+01:00</span>
+            </button>
+            <button onclick="selectTzPreset('Asia/Kolkata')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">India (IST)</span>
+              <span class="text-[10px] font-mono text-emerald-400">+05:30</span>
+            </button>
+            <button onclick="selectTzPreset('Asia/Tokyo')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">Tokyo (JST)</span>
+              <span class="text-[10px] font-mono text-slate-400">+09:00</span>
+            </button>
+            <button onclick="selectTzPreset('Australia/Sydney')" class="tz-preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-left border border-slate-700/60 transition flex items-center justify-between">
+              <span class="text-slate-200">Sydney (AEST)</span>
+              <span class="text-[10px] font-mono text-slate-400">+10:00</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom IANA Timezone Entry -->
+        <div class="space-y-1.5 pt-2 border-t border-slate-800">
+          <label class="font-bold text-slate-300 text-xs">Custom IANA Timezone Identifier</label>
+          <div class="flex items-center space-x-2">
+            <input type="text" id="tz-custom-input" placeholder="e.g. America/Toronto, Asia/Dubai, Pacific/Auckland" class="flex-1 rounded-lg px-3 py-1.5 text-xs font-mono">
+            <button onclick="applyCustomTimezone()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition">
+              Apply
+            </button>
+          </div>
+          <div id="tz-custom-error" class="hidden text-[10px] text-rose-400 font-mono">Invalid IANA timezone identifier. Please use formats like 'Continent/City'.</div>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-950 border-t border-slate-800 flex items-center justify-end space-x-2">
+        <button onclick="closeTimezoneModal()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+          Done
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2378,6 +2768,14 @@
       <span class="text-slate-600">•</span>
       <button onclick="openUserGuideModal()" class="hover:text-indigo-300 font-semibold underline underline-offset-2 transition text-indigo-400">
         Operator User Guide
+      </button>
+      <span class="text-slate-600">•</span>
+      <button onclick="openSettingsModal()" class="hover:text-sky-300 font-semibold underline underline-offset-2 transition text-sky-400">
+        Settings
+      </button>
+      <span class="text-slate-600">•</span>
+      <button onclick="openAboutModal()" class="hover:text-amber-300 font-semibold underline underline-offset-2 transition text-amber-400">
+        About &amp; Creator
       </button>
     </div>
     <div class="flex items-center space-x-3 text-[11px]">

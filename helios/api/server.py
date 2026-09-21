@@ -17,7 +17,8 @@ from datetime import datetime, timezone
 
 from helios.config import (
     MISSIONS, STATIC_DIR, DATA_PROVIDERS,
-    SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS
+    SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
+    get_system_settings, update_system_settings
 )
 from helios.core.downloader import DataDownloader
 from helios.core.comparator import SatelliteComparator
@@ -61,15 +62,36 @@ class CustomImportRequest(BaseModel):
     content: str
     mission_name: Optional[str] = "User Spacecraft / OMNI"
 
+class SettingsUpdateRequest(BaseModel):
+    processors: Optional[int] = None
+    theme: Optional[str] = None
+    font_size: Optional[str] = None
+    timezone: Optional[str] = None
+
 @app.get("/api/status")
 async def get_status():
+    settings = get_system_settings()
     return {
         "status": "online",
         "app_name": "HELIOS-L1",
         "full_name": "Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite",
         "version": "1.2.0",
-        "missions_count": len(MISSIONS)
+        "missions_count": len(MISSIONS),
+        "system": settings
     }
+
+@app.get("/api/settings")
+async def get_settings():
+    return get_system_settings()
+
+@app.post("/api/settings")
+async def save_settings(req: SettingsUpdateRequest):
+    return update_system_settings(
+        processors=req.processors,
+        theme=req.theme,
+        font_size=req.font_size,
+        timezone=req.timezone
+    )
 
 @app.get("/api/missions")
 async def get_missions():

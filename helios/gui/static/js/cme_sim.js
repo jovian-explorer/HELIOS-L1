@@ -69,43 +69,69 @@ class CMESimulator {
   }
 
   recomputeTrajectory() {
-    // Numerical integration of drag: dv/dt = -gamma * (v - vAmbient) * |v - vAmbient|
-    // Analytic solution: v(t) = vAmbient + (v0 - vAmbient) * exp(-gamma * vAmbient * t) approximation
-    let curR = this.rSunKm;
-    let curV = this.v0;
-    const dt = 60; // 1 minute steps in seconds
-    let totalSec = 0;
-
-    this.transitL1Hrs = 0;
-    this.transitEarthHrs = 0;
-
-    while (curR < this.earthKm * 1.05 && totalSec < 120 * 3600) {
-      const a = -this.gamma * (curV - this.vAmbient) * Math.abs(curV - this.vAmbient);
-      curV += a * dt;
-      curR += curV * dt;
-      totalSec += dt;
-
-      if (!this.transitL1Hrs && curR >= this.l1Km) {
-        this.transitL1Hrs = totalSec / 3600;
-      }
-      if (!this.transitEarthHrs && curR >= this.earthKm) {
-        this.transitEarthHrs = totalSec / 3600;
-        break;
-      }
-    }
-
+    this.transitL1Hrs = this.solveTransitHours(this.l1Km);
+    this.transitEarthHrs = this.solveTransitHours(this.earthKm);
     this.maxHrs = Math.max(48, Math.ceil(this.transitEarthHrs * 1.25));
+  }
+
+  solveTransitHours(targetDistKm) {
+    const w = this.vAmbient;
+    const gamma = this.gamma;
+    const u0 = this.v0 - w;
+    const r0 = this.rSunKm;
+    if (targetDistKm <= r0) return 0;
+
+    // Initial guess based on arithmetic mean velocity
+    let tSec = (targetDistKm - r0) / Math.max(250, (this.v0 + w) / 2);
+    for (let iter = 0; iter < 25; iter++) {
+      let r, v;
+      if (Math.abs(u0) < 1e-4) {
+        r = r0 + w * tSec;
+        v = w;
+      } else if (u0 > 0) {
+        const denom = 1.0 + gamma * u0 * tSec;
+        r = r0 + w * tSec + (1.0 / gamma) * Math.log(denom);
+        v = w + u0 / denom;
+      } else {
+        const absU0 = Math.abs(u0);
+        const denom = 1.0 + gamma * absU0 * tSec;
+        r = r0 + w * tSec - (1.0 / gamma) * Math.log(denom);
+        v = w - absU0 / denom;
+      }
+      const diff = r - targetDistKm;
+      if (Math.abs(diff) < 50) break;
+      tSec = Math.max(0, tSec - diff / Math.max(100, v));
+    }
+    return tSec / 3600;
   }
 
   getShockAtTime(tHrs) {
     const tSec = tHrs * 3600;
-    // Approximated integration
-    const vDiff = this.v0 - this.vAmbient;
-    const decay = Math.exp(-this.gamma * this.vAmbient * tSec);
-    const v = this.vAmbient + vDiff * decay;
+    const w = this.vAmbient;
+    const gamma = this.gamma;
+    const u0 = this.v0 - w;
+    const r0 = this.rSunKm;
 
-    // Integral of v(t): r(t) = r0 + vAmbient * t + (vDiff / (gamma * vAmbient)) * (1 - decay)
-    const distFromSunKm = this.rSunKm + this.vAmbient * tSec + (vDiff / Math.max(1e-10, this.gamma * this.vAmbient)) * (1 - decay);
+    let v, distFromSunKm, dragA;
+    if (Math.abs(u0) < 1e-4) {
+      v = w;
+      distFromSunKm = r0 + w * tSec;
+      dragA = 0;
+    } else if (u0 > 0) {
+      // Decelerating fast CME (Vršnak et al. 2013 DBM closed-form)
+      const denom = 1.0 + gamma * u0 * tSec;
+      v = w + u0 / denom;
+      distFromSunKm = r0 + w * tSec + (1.0 / gamma) * Math.log(denom);
+      dragA = -gamma * Math.pow(v - w, 2);
+    } else {
+      // Accelerating slow CME
+      const absU0 = Math.abs(u0);
+      const denom = 1.0 + gamma * absU0 * tSec;
+      v = w - absU0 / denom;
+      distFromSunKm = r0 + w * tSec - (1.0 / gamma) * Math.log(denom);
+      dragA = gamma * Math.pow(w - v, 2);
+    }
+
     const distRsun = distFromSunKm / this.rSunKm;
     const distAu = distFromSunKm / this.earthKm;
 
@@ -114,6 +140,7 @@ class CMESimulator {
       rSun: distRsun,
       rAu: distAu,
       vKms: v,
+      dragAccelMs2: dragA * 1000.0,
       isL1Hit: distFromSunKm >= this.l1Km,
       isEarthHit: distFromSunKm >= this.earthKm
     };
@@ -347,12 +374,12 @@ class CMESimulator {
     ctx.save();
 
     // Top Right Kinematic Telemetry HUD
-    const hudW = 270;
-    const hudH = 92;
+    const hudW = 290;
+    const hudH = 106;
     const hudX = this.width - hudW - 14;
     const hudY = 14;
 
-    ctx.fillStyle = 'rgba(7, 14, 34, 0.9)';
+    ctx.fillStyle = 'rgba(7, 14, 34, 0.92)';
     ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -362,18 +389,20 @@ class CMESimulator {
 
     ctx.fillStyle = '#38bdf8';
     ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('CME AERODYNAMIC PROPAGATION HUD', hudX + 12, hudY + 20);
+    ctx.fillText('VRŠNAK (2013) DBM HELIOSPHERIC PROPAGATION', hudX + 10, hudY + 18);
 
     ctx.fillStyle = '#f8fafc';
     ctx.font = '10px "JetBrains Mono", monospace';
-    ctx.fillText(`ELAPSED TIME: ${this.timeHrs.toFixed(1)} hrs / ${this.maxHrs.toFixed(0)} hrs`, hudX + 12, hudY + 36);
-    ctx.fillText(`HELIOCENTRIC DIST: ${shock.rAu.toFixed(3)} AU (${shock.rSun.toFixed(1)} R☉)`, hudX + 12, hudY + 52);
-    ctx.fillText(`SHOCK VELOCITY: ${shock.vKms.toFixed(0)} km/s (Decelerating)`, hudX + 12, hudY + 68);
-
-    // Aerodynamic Deceleration
-    const dragA = -this.gamma * (shock.vKms - this.vAmbient) * Math.abs(shock.vKms - this.vAmbient);
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillText(`DRAG ACCEL: ${(dragA * 1000).toFixed(2)} m/s²`, hudX + 12, hudY + 84);
+    ctx.fillText(`ELAPSED TIME: ${this.timeHrs.toFixed(1)} hrs / ${this.maxHrs.toFixed(0)} hrs`, hudX + 10, hudY + 34);
+    ctx.fillText(`HELIOCENTRIC DIST: ${shock.rAu.toFixed(3)} AU (${shock.rSun.toFixed(1)} R☉)`, hudX + 10, hudY + 50);
+    ctx.fillText(`SHOCK VELOCITY: ${shock.vKms.toFixed(0)} km/s | a = ${shock.dragAccelMs2.toFixed(2)} m/s²`, hudX + 10, hudY + 66);
+    
+    ctx.fillStyle = '#34d399';
+    const leadMin = Math.max(0, (this.transitEarthHrs - this.transitL1Hrs) * 60).toFixed(0);
+    ctx.fillText(`TRANSIT: L1 ${this.transitL1Hrs.toFixed(1)}h | Earth ${this.transitEarthHrs.toFixed(1)}h (Lead ${leadMin}m)`, hudX + 10, hudY + 82);
+    
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`AMBIENT WIND: ${this.vAmbient} km/s | Γ: ${this.gamma.toExponential(1)} km⁻¹`, hudX + 10, hudY + 98);
 
     // Alerts for L1 & Earth Interception
     if (shock.isEarthHit) {
