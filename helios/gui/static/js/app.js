@@ -1248,12 +1248,18 @@ async function loadEvents() {
     if (!container) return;
 
     container.innerHTML = events.map(ev => `
-      <div onclick="selectEvent('${ev.id}')" class="cursor-pointer bg-space-800/80 hover:bg-space-700/80 p-4 rounded-xl border border-slate-800 hover:border-sky-400 transition shadow-md">
-        <div class="flex items-center space-x-2 text-rose-400 text-sm mb-1 font-bold">
-          <i class="fa-solid ${ev.icon}"></i>
-          <span>${ev.severity}</span>
+      <div id="card-event-${ev.id}" onclick="selectEvent('${ev.id}')" class="event-benchmark-card cursor-pointer bg-space-900/90 hover:bg-space-800 p-3 rounded-xl border border-slate-800 hover:border-sky-400/80 transition shadow-md flex flex-col justify-between">
+        <div>
+          <div class="flex items-center space-x-1.5 text-xs font-bold font-mono mb-1" style="color: ${ev.badge_color || '#f43f5e'}">
+            <i class="fa-solid ${ev.icon}"></i>
+            <span class="text-[10px]">${ev.severity}</span>
+          </div>
+          <div class="text-[11px] font-bold text-slate-200 leading-snug">${ev.title}</div>
         </div>
-        <div class="text-xs font-bold text-slate-200">${ev.title}</div>
+        <div class="mt-2 text-[10px] text-slate-500 font-mono flex items-center justify-between border-t border-slate-800/60 pt-1">
+          <span>Benchmark</span>
+          <i class="fa-solid fa-chevron-right text-[9px] text-slate-500"></i>
+        </div>
       </div>
     `).join('');
 
@@ -1267,6 +1273,17 @@ async function loadEvents() {
 
 async function selectEvent(eventId) {
   try {
+    // Highlight active card
+    document.querySelectorAll('.event-benchmark-card').forEach(el => {
+      el.classList.remove('border-sky-400', 'bg-space-800', 'ring-1', 'ring-sky-400/50');
+      el.classList.add('border-slate-800', 'bg-space-900/90');
+    });
+    const activeCard = document.getElementById(`card-event-${eventId}`);
+    if (activeCard) {
+      activeCard.classList.remove('border-slate-800', 'bg-space-900/90');
+      activeCard.classList.add('border-sky-400', 'bg-space-800', 'ring-1', 'ring-sky-400/50');
+    }
+
     const res = await fetch(`/api/event/${eventId}`);
     const ev = await res.json();
     const meta = ev.metadata;
@@ -1277,6 +1294,13 @@ async function selectEvent(eventId) {
     document.getElementById('event-min-bz').innerText = `${meta.min_bz} nT`;
     document.getElementById('event-peak-v').innerText = `${meta.peak_speed} km/s`;
     document.getElementById('event-peak-pdyn').innerText = `${meta.peak_dyn_pressure} nPa`;
+
+    const sevBadge = document.getElementById('event-severity-badge');
+    if (sevBadge) {
+      const isExtreme = meta.peak_kp >= 9.0;
+      sevBadge.innerText = isExtreme ? `Extreme G5 (Kp=${meta.peak_kp})` : (meta.peak_kp >= 8.0 ? `Severe G4 (Kp=${meta.peak_kp})` : `Nominal (Kp=${meta.peak_kp})`);
+      sevBadge.className = `px-3 py-1 rounded-full text-xs font-bold ${isExtreme ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`;
+    }
 
     const ctx = document.getElementById('chart-event-telemetry')?.getContext('2d');
     if (!ctx) return;
@@ -1324,25 +1348,111 @@ async function selectEvent(eventId) {
 
 async function loadSpectralAnalysis() {
   try {
-    const res = await fetch('/api/spectrum?mission_id=DSCOVR&parameter=bz_gsm');
+    const satSelect = document.getElementById('turbulence-sat-select');
+    const paramSelect = document.getElementById('turbulence-param-select');
+    const spanSelect = document.getElementById('turbulence-span-select');
+
+    const sat = satSelect ? satSelect.value : 'DSCOVR';
+    const param = paramSelect ? paramSelect.value : 'bz_gsm';
+    const span = spanSelect ? spanSelect.value : '1';
+
+    const res = await fetch(`/api/spectrum?mission_id=${sat}&parameter=${param}&span_days=${span}`);
     const psd = await res.json();
     const ctx = document.getElementById('chart-spectrum')?.getContext('2d');
     if (!ctx || !psd.frequencies_hz) return;
+
+    // Update Diagnostics HUD cards
+    const alphaEl = document.getElementById('psd-stat-alpha');
+    const regimeEl = document.getElementById('psd-stat-regime');
+    const r2El = document.getElementById('psd-stat-r2');
+    const rmsEl = document.getElementById('psd-stat-rms');
+    const rmsUnitEl = document.getElementById('psd-stat-rms-unit');
+    const taylorKmEl = document.getElementById('psd-stat-taylor-km');
+    const taylorReEl = document.getElementById('psd-stat-taylor-re');
+
+    if (alphaEl) alphaEl.innerText = psd.spectral_slope_alpha !== undefined ? psd.spectral_slope_alpha.toFixed(2) : '---';
+    if (regimeEl) {
+      regimeEl.innerText = psd.cascade_regime || 'Inertial Cascade';
+      const a = psd.spectral_slope_alpha || 1.67;
+      regimeEl.className = `text-[11px] font-semibold mt-1 truncate ${a >= 1.55 && a <= 1.80 ? 'text-cyan-400' : (a >= 1.4 && a < 1.55 ? 'text-emerald-400' : 'text-amber-400')}`;
+    }
+    if (r2El) r2El.innerText = psd.r_squared !== undefined ? psd.r_squared.toFixed(2) : '---';
+    if (rmsEl) rmsEl.innerText = psd.fluctuation_rms !== undefined ? psd.fluctuation_rms.toFixed(2) : '---';
+    if (rmsUnitEl) {
+      rmsUnitEl.innerText = param === 'speed' ? 'km/s' : (param === 'density' ? 'cm⁻³' : 'nT');
+    }
+    if (taylorKmEl) taylorKmEl.innerText = psd.taylor_scale_km_1mhz ? psd.taylor_scale_km_1mhz.toLocaleString() : '---';
+    if (taylorReEl) taylorReEl.innerText = psd.taylor_scale_re_1mhz !== undefined ? psd.taylor_scale_re_1mhz : '--';
+
     if (chartSpectrum) chartSpectrum.destroy();
+
+    const unit = param === 'speed' ? '(km/s)²/Hz' : (param === 'density' ? '(cm⁻³)²/Hz' : 'nT²/Hz');
+
+    const datasets = [
+      {
+        label: `Observed PSD [${sat} • ${param}] (${unit})`,
+        data: psd.power_density,
+        borderColor: '#a855f7',
+        backgroundColor: 'rgba(168, 85, 247, 0.12)',
+        fill: true,
+        borderWidth: 2.0,
+        pointRadius: 0,
+        tension: 0.1
+      }
+    ];
+
+    if (psd.kolmogorov_psd && psd.kolmogorov_psd.length === psd.frequencies_hz.length) {
+      datasets.push({
+        label: 'Kolmogorov Inertial Cascade (f⁻⁵/³)',
+        data: psd.kolmogorov_psd,
+        borderColor: '#38bdf8',
+        borderWidth: 1.6,
+        borderDash: [5, 5],
+        fill: false,
+        pointRadius: 0
+      });
+    }
+
+    if (psd.iroshnikov_psd && psd.iroshnikov_psd.length === psd.frequencies_hz.length) {
+      datasets.push({
+        label: 'Iroshnikov-Kraichnan MHD (f⁻³/²)',
+        data: psd.iroshnikov_psd,
+        borderColor: '#10b981',
+        borderWidth: 1.6,
+        borderDash: [3, 4],
+        fill: false,
+        pointRadius: 0
+      });
+    }
 
     chartSpectrum = new Chart(ctx, {
       type: 'line',
       data: {
         labels: psd.frequencies_hz.map(f => (f * 1000).toFixed(2) + ' mHz'),
-        datasets: [
-          { label: 'IMF Fluctuations Power Density (nT²/Hz)', data: psd.power_density, borderColor: '#a855f7', backgroundColor: 'rgba(168, 85, 247, 0.1)', fill: true, borderWidth: 1.5, pointRadius: 0 }
-        ]
+        datasets: datasets
       },
       options: {
         ...darkChartOptions,
         scales: {
-          x: { ...darkChartOptions.scales.x, title: { display: true, text: 'Frequency (mHz)', color: '#64748b' } },
-          y: { ...darkChartOptions.scales.y, type: 'logarithmic', title: { display: true, text: 'Power Spectral Density', color: '#64748b' } }
+          x: {
+            ...darkChartOptions.scales.x,
+            title: { display: true, text: 'Frequency (mHz) — [Taylor frozen scale λ = v_sw / f]', color: '#94a3b8' }
+          },
+          y: {
+            ...darkChartOptions.scales.y,
+            type: 'logarithmic',
+            title: { display: true, text: `Power Spectral Density (${unit})`, color: '#94a3b8' }
+          }
+        },
+        plugins: {
+          ...darkChartOptions.plugins,
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: ${context.raw.toExponential(3)}`;
+              }
+            }
+          }
         }
       }
     });

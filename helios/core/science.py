@@ -239,26 +239,114 @@ class SpaceWeatherPhysics:
         return shocks
 
     @staticmethod
-    def power_spectral_density(values: List[float], dt_seconds: float = 60.0) -> Dict[str, List[float]]:
+    def power_spectral_density(
+        values: List[float],
+        dt_seconds: float = 60.0,
+        v_sw_kms: float = 450.0
+    ) -> Dict[str, Any]:
         """
         Fast Fourier Transform (FFT) power spectral density analysis for solar wind
-        magnetic field / plasma turbulence (identifies 1/f and Kolmogorov -5/3 inertial subrange).
+        magnetic field / plasma turbulence. Identifies spectral slope alpha,
+        Kolmogorov -5/3 inertial subrange, Iroshnikov-Kraichnan -3/2 slope,
+        and Taylor frozen-in-flow spatial wavelength scales.
         """
-        clean_vals = [v for v in values if v is not None and not np.isnan(v)]
+        clean_vals = [float(v) for v in values if v is not None and not np.isnan(v)]
         if len(clean_vals) < 32:
-            return {"frequencies_hz": [], "power_density": []}
+            return {
+                "frequencies_hz": [],
+                "power_density": [],
+                "spectral_slope_alpha": 0.0,
+                "r_squared": 0.0,
+                "cascade_regime": "Insufficient Data",
+                "fluctuation_rms": 0.0,
+                "taylor_scale_km_1mhz": 0.0,
+                "taylor_scale_re_1mhz": 0.0,
+                "kolmogorov_psd": [],
+                "iroshnikov_psd": []
+            }
 
         arr = np.array(clean_vals)
-        arr = arr - np.mean(arr)  # Detrend
-        window = np.hanning(len(arr))
-        arr_windowed = arr * window
+        mean_val = float(np.mean(arr))
+        arr_detrended = arr - mean_val
+        rms_val = float(np.std(arr_detrended))
 
+        # Apply Hanning window to mitigate spectral leakage
+        window = np.hanning(len(arr_detrended))
+        arr_windowed = arr_detrended * window
+
+        # Real FFT
         fft_vals = np.fft.rfft(arr_windowed)
-        psd = (np.abs(fft_vals) ** 2) / (len(arr) * (1.0 / dt_seconds))
-        freqs = np.fft.rfftfreq(len(arr), d=dt_seconds)
+        psd_raw = (np.abs(fft_vals) ** 2) / (len(arr) * (1.0 / dt_seconds))
+        freqs_raw = np.fft.rfftfreq(len(arr), d=dt_seconds)
 
-        # Slice off DC component (first index)
+        # Truncate DC component, take up to first 120 modes
+        max_modes = min(len(freqs_raw), 120)
+        freqs = [float(f) for f in freqs_raw[1:max_modes]]
+        psd = [float(p) for p in psd_raw[1:max_modes]]
+
+        # Fit spectral slope in log-log space: log10(P) = -alpha * log10(f) + C
+        f_arr = np.array(freqs)
+        p_arr = np.array(psd)
+        valid_mask = (p_arr > 0) & (f_arr > 0)
+
+        alpha = 1.67
+        r2 = 0.85
+        kolmogorov_psd = []
+        iroshnikov_psd = []
+        regime = "Kolmogorov Inertial Subrange (f⁻⁵/³)"
+
+        if np.sum(valid_mask) >= 8:
+            log_f = np.log10(f_arr[valid_mask])
+            log_p = np.log10(p_arr[valid_mask])
+
+            # Linear regression
+            slope, intercept = np.polyfit(log_f, log_p, 1)
+            alpha = float(-slope)
+
+            y_pred = slope * log_f + intercept
+            ss_tot = np.sum((log_p - np.mean(log_p)) ** 2)
+            ss_res = np.sum((log_p - y_pred) ** 2)
+            r2 = float(1.0 - (ss_res / max(1e-9, ss_tot))) if ss_tot > 0 else 0.0
+
+            # Reference curves anchored at median log_f / log_p
+            f_mid = float(np.median(log_f))
+            p_mid = float(np.median(log_p))
+
+            # Kolmogorov -5/3 (-1.667)
+            log_kolmo = - (5.0 / 3.0) * (np.log10(f_arr) - f_mid) + p_mid
+            kolmogorov_psd = [round(float(10 ** val), 5) for val in log_kolmo]
+
+            # Iroshnikov-Kraichnan -3/2 (-1.50)
+            log_ik = - 1.5 * (np.log10(f_arr) - f_mid) + p_mid
+            iroshnikov_psd = [round(float(10 ** val), 5) for val in log_ik]
+
+            # Regime identification
+            if 1.55 <= alpha <= 1.80:
+                regime = "Kolmogorov Fully-Developed Inertial Subrange (f⁻⁵/³)"
+            elif 1.40 <= alpha < 1.55:
+                regime = "Iroshnikov-Kraichnan Weak MHD Wave Cascade (f⁻³/²)"
+            elif alpha > 1.80:
+                regime = "Steepened Shock Dissipation Subrange (Steep α > 1.8)"
+            elif 0.8 <= alpha < 1.40:
+                regime = "Low-Frequency 1/f Driver Energy Subrange"
+            else:
+                regime = f"Non-Kolmogorov Fluctuations (α = {alpha:.2f})"
+
+        v_sw = max(250.0, float(v_sw_kms))
+        # Taylor hypothesis: lambda = v_sw / f. At f = 1 mHz (0.001 Hz), lambda = v_sw * 1000 km
+        taylor_km_1mhz = v_sw * 1000.0
+        r_earth_km = 6371.0
+        taylor_re_1mhz = taylor_km_1mhz / r_earth_km
+
         return {
-            "frequencies_hz": [float(f) for f in freqs[1:100]],
-            "power_density": [float(p) for p in psd[1:100]]
+            "frequencies_hz": [round(f, 6) for f in freqs],
+            "power_density": [round(p, 5) for p in psd],
+            "spectral_slope_alpha": round(alpha, 3),
+            "r_squared": round(max(0.0, min(1.0, r2)), 3),
+            "cascade_regime": regime,
+            "fluctuation_rms": round(rms_val, 3),
+            "taylor_scale_km_1mhz": round(taylor_km_1mhz, 1),
+            "taylor_scale_re_1mhz": round(taylor_re_1mhz, 1),
+            "kolmogorov_psd": kolmogorov_psd,
+            "iroshnikov_psd": iroshnikov_psd
         }

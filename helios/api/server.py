@@ -215,10 +215,13 @@ async def get_ml_forecast(mission_id: str = Query("DSCOVR")):
 @app.get("/api/events")
 async def get_events():
     return [
-        {"id": "may_2024_g5", "title": "May 10-12, 2024 Extreme G5 Solar Superstorm", "severity": "Extreme (G5, Kp=9)", "icon": "fa-bolt"},
-        {"id": "st_patricks_2015", "title": "St. Patrick's Day 2015 Storm", "severity": "Severe (G4, Kp=8)", "icon": "fa-cloud-bolt"},
-        {"id": "halloween_2003", "title": "Halloween 2003 Solar Storms (X17+ Flare)", "severity": "Extreme (G5, Kp=9)", "icon": "fa-radiation"},
-        {"id": "quiet_baseline", "title": "Quiet Sun Solar Wind Baseline", "severity": "Quiet (G0, Kp=1)", "icon": "fa-sun"}
+        {"id": "may_2024_g5", "title": "May 2024 Extreme G5 Superstorm (AR 3664)", "severity": "Extreme G5 (Kp=9)", "icon": "fa-bolt", "badge_color": "#dc2626"},
+        {"id": "halloween_2003", "title": "Halloween 2003 Storms (X17+ Flare)", "severity": "Extreme G5 (Kp=9)", "icon": "fa-radiation", "badge_color": "#dc2626"},
+        {"id": "bastille_2000", "title": "Bastille Day 2000 Superstorm (X5.7)", "severity": "Extreme G5 / S5 (Kp=9)", "icon": "fa-fire-flame-curved", "badge_color": "#ea580c"},
+        {"id": "quebec_1989", "title": "Hydro-Québec Blackout (March 1989)", "severity": "Extreme G5 (Dst -589)", "icon": "fa-plug-circle-xmark", "badge_color": "#e11d48"},
+        {"id": "carrington_1859", "title": "Carrington Event (September 1859)", "severity": "Superstorm (Dst <-850)", "icon": "fa-meteor", "badge_color": "#9333ea"},
+        {"id": "st_patricks_2015", "title": "St. Patrick's Day Storm (March 2015)", "severity": "Severe G4 (Kp=8)", "icon": "fa-cloud-bolt", "badge_color": "#f59e0b"},
+        {"id": "quiet_baseline", "title": "Quiet Sun Solar Wind Baseline", "severity": "Quiet G0 (Kp=1)", "icon": "fa-sun", "badge_color": "#10b981"}
     ]
 
 @app.get("/api/event/{event_id}")
@@ -369,13 +372,19 @@ async def get_markdown_report(mission_id: str = "DSCOVR", download: bool = False
     return Response(content=md, media_type="text/markdown; charset=utf-8", headers=headers)
 
 @app.get("/api/spectrum")
-async def get_spectrum(mission_id: str = "DSCOVR", parameter: str = "bz_gsm"):
+async def get_spectrum(mission_id: str = "DSCOVR", parameter: str = "bz_gsm", span_days: int = Query(1, ge=1, le=7)):
     mission_key = mission_id.upper()
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
-    data = await downloader.get_satellite_telemetry(mission_key, span_days=1)
-    values = [d.get(parameter) for d in data if d.get(parameter) is not None]
-    return SpaceWeatherPhysics.power_spectral_density(values)
+    data = await downloader.get_satellite_telemetry(mission_key, span_days=span_days)
+    values = [float(d.get(parameter)) for d in data if d.get(parameter) is not None and isinstance(d.get(parameter), (int, float))]
+    speeds = [float(d.get("speed")) for d in data if d.get("speed") is not None and isinstance(d.get("speed"), (int, float))]
+    v_mean = float(np.mean(speeds)) if speeds else 450.0
+    res = SpaceWeatherPhysics.power_spectral_density(values, dt_seconds=60.0, v_sw_kms=v_mean)
+    res["mission_id"] = mission_key
+    res["parameter"] = parameter
+    res["span_days"] = span_days
+    return res
 
 @app.get("/api/export/csv")
 async def export_csv(mission_id: str = "DSCOVR", span_days: int = 1):

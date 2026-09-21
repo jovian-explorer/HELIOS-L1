@@ -319,6 +319,30 @@ class DataDownloader:
                 "peak_speed": 1100.0,
                 "peak_dyn_pressure": 55.0
             },
+            "bastille_2000": {
+                "title": "Bastille Day Superstorm (July 14, 2000)",
+                "summary": "Major solar eruptive event during Solar Cycle 23 maximum. An X5.7 flare accompanied a full-halo CME traveling at ~1,675 km/s. Triggered an S5 extreme solar radiation storm which blinded SOHO star trackers and degraded geostationary solar panels. Dst plunged to -301 nT.",
+                "peak_kp": 9.0,
+                "min_bz": -58.0,
+                "peak_speed": 1675.0,
+                "peak_dyn_pressure": 62.0
+            },
+            "quebec_1989": {
+                "title": "Hydro-Québec Blackout Superstorm (March 13, 1989)",
+                "summary": "Archetypal power grid collapse event. A powerful CME triggered geomagnetically induced currents (GIC) that saturated substation transformers, tripping protective relays within 92 seconds and leaving 6 million people without electricity for 9 hours.",
+                "peak_kp": 9.0,
+                "min_bz": -50.0,
+                "peak_speed": 950.0,
+                "peak_dyn_pressure": 42.0
+            },
+            "carrington_1859": {
+                "title": "Carrington Superstorm Event (September 1859)",
+                "summary": "The archetypal space weather superstorm. White-light solar flare witnessed on Sep 1; ultra-fast CME traversed 1 AU in just 17.6 hours with initial speed exceeding ~2,300 km/s. Induced geoelectric currents sparked telegraph lines across Europe and North America; auroras observed in Hawaii, Cuba, and Colombia.",
+                "peak_kp": 9.0,
+                "min_bz": -90.0,
+                "peak_speed": 2300.0,
+                "peak_dyn_pressure": 96.0
+            },
             "quiet_baseline": {
                 "title": "Quiet Sun Solar Wind Baseline",
                 "summary": "Nominal slow solar wind stream. Constant speed around 340 km/s, density ~4 cm^-3, IMF Bz fluctuating near 0 nT. Magnetopause stable at 10.5 Earth radii.",
@@ -333,7 +357,7 @@ class DataDownloader:
         
         # Generate event time-series profile
         hours = 48
-        condition = "cme_shock" if "2024" in event_id or "2003" in event_id else ("storm" if "2015" in event_id else "quiet")
+        condition = "cme_shock" if any(yr in event_id for yr in ["2024", "2003", "2000", "1859", "1989"]) else ("storm" if "2015" in event_id else "quiet")
         telemetry = self.generate_synthetic_telemetry("DSCOVR", hours=hours, condition=condition)
         
         # Inject storm profile signature

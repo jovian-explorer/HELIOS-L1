@@ -61,9 +61,14 @@ def test_interplanetary_shock_detection():
 def test_power_spectral_density():
     t = np.linspace(0, 100, 128)
     signal = np.sin(2 * np.pi * 0.05 * t) + np.random.normal(0, 0.1, 128)
-    psd = SpaceWeatherPhysics.power_spectral_density(signal.tolist())
+    psd = SpaceWeatherPhysics.power_spectral_density(signal.tolist(), v_sw_kms=450.0)
     assert len(psd["frequencies_hz"]) > 0
     assert len(psd["power_density"]) > 0
+    assert "spectral_slope_alpha" in psd
+    assert "cascade_regime" in psd
+    assert "taylor_scale_km_1mhz" in psd
+    assert psd["taylor_scale_km_1mhz"] == 450000.0
+    assert len(psd["kolmogorov_psd"]) == len(psd["frequencies_hz"])
 
 def test_synthetic_telemetry_generation():
     dl = DataDownloader()
