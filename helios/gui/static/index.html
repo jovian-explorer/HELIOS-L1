@@ -226,6 +226,27 @@
               <option value="7">Last 7 Days (Synoptic)</option>
             </select>
           </div>
+
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Physical Regime Filter</label>
+            <div class="flex items-center space-x-1" id="telemetry-filter-group">
+              <button onclick="setTelemetryFilter('all')" id="btn-filter-all" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white border border-sky-400/30 transition shadow-sm" title="Show all observation points">
+                All Data
+              </button>
+              <button onclick="setTelemetryFilter('bz_south')" id="btn-filter-bz_south" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800/80 text-slate-300 hover:text-rose-300 border border-slate-700/60 transition flex items-center space-x-1" title="Filter to Southward Reconnection intervals (Bz &lt; 0)">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                <span>Bz &lt; 0 (Reconnecting)</span>
+              </button>
+              <button onclick="setTelemetryFilter('fast_wind')" id="btn-filter-fast_wind" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800/80 text-slate-300 hover:text-amber-300 border border-slate-700/60 transition flex items-center space-x-1" title="Filter to Fast Solar Wind streams (V &gt; 500 km/s)">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                <span>Fast Wind (&gt; 500 km/s)</span>
+              </button>
+              <button onclick="setTelemetryFilter('dense_plasma')" id="btn-filter-dense_plasma" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800/80 text-slate-300 hover:text-emerald-300 border border-slate-700/60 transition flex items-center space-x-1" title="Filter to High-Density Sheaths (N &gt; 10 cm⁻³)">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>Sheath (N &gt; 10 cm⁻³)</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div id="satellite-mission-badge" class="flex items-center space-x-3 text-xs bg-space-900/80 px-4 py-2 rounded-xl border border-sky-500/20 shadow-inner">

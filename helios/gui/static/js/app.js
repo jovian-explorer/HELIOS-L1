@@ -438,6 +438,9 @@ function initCharts() {
   }
 }
 
+let currentTelemetryData = null;
+let currentTelemetryFilter = 'all';
+
 async function loadTelemetry() {
   const satSelect = document.getElementById('telemetry-satellite-select');
   const spanSelect = document.getElementById('telemetry-span-select');
@@ -449,12 +452,33 @@ async function loadTelemetry() {
     const res = await fetch(`/api/telemetry/${sat}?span_days=${span}`);
     if (!res.ok) throw new Error('Failed to fetch telemetry');
     const data = await res.json();
+    currentTelemetryData = data;
     const latency = Math.round(performance.now() - t0);
     updateFeedStatus(data, latency);
     updateTelemetryUI(data);
   } catch (err) {
     console.error('Error fetching telemetry:', err);
     updateFeedStatus({ error: true });
+  }
+}
+
+function setTelemetryFilter(filterKey) {
+  window.playBlip?.();
+  currentTelemetryFilter = filterKey;
+
+  const btnKeys = ['all', 'bz_south', 'fast_wind', 'dense_plasma'];
+  btnKeys.forEach(k => {
+    const btn = document.getElementById(`btn-filter-${k}`);
+    if (!btn) return;
+    if (k === filterKey) {
+      btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white border border-sky-400/40 transition shadow-sm';
+    } else {
+      btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/60 transition';
+    }
+  });
+
+  if (currentTelemetryData) {
+    updateTelemetryUI(currentTelemetryData);
   }
 }
 
@@ -488,7 +512,20 @@ function updateTelemetryUI(data) {
   const mission = data.mission;
   const latest = data.latest || {};
   const cls = data.classification || {};
-  const records = data.records || [];
+  const allRecords = data.records || [];
+
+  // Filter records if a physical regime filter is active
+  let records = allRecords;
+  if (currentTelemetryFilter === 'bz_south') {
+    const filtered = allRecords.filter(r => typeof r.bz_gsm === 'number' && r.bz_gsm < 0);
+    if (filtered.length > 0) records = filtered;
+  } else if (currentTelemetryFilter === 'fast_wind') {
+    const filtered = allRecords.filter(r => typeof r.speed === 'number' && r.speed >= 480);
+    if (filtered.length > 0) records = filtered;
+  } else if (currentTelemetryFilter === 'dense_plasma') {
+    const filtered = allRecords.filter(r => typeof r.density === 'number' && r.density >= 8);
+    if (filtered.length > 0) records = filtered;
+  }
 
   document.getElementById('sat-name-full').innerText = mission.full_name;
   document.getElementById('sat-agency-orbit').innerText = `${mission.agency} • ${mission.location}`;
