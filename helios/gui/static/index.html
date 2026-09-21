@@ -131,6 +131,10 @@
         <i class="fa-solid fa-book-bookmark text-[11px] text-emerald-300"></i>
         <span>References &amp; Data</span>
       </button>
+      <button onclick="openUserGuideModal()" class="px-3 py-1.5 rounded bg-indigo-700/80 hover:bg-indigo-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-indigo-500/40" title="Operator Handbook &amp; Scientific Manual (U)">
+        <i class="fa-solid fa-graduation-cap text-[11px] text-indigo-300"></i>
+        <span>User Guide</span>
+      </button>
     </div>
   </header>
 
@@ -719,6 +723,24 @@
               </button>
             </div>
 
+            <!-- Boundary Physics Model Switcher -->
+            <div class="flex items-center space-x-1.5 bg-space-950/80 px-2.5 py-1 rounded-xl border border-sky-500/30">
+              <span class="text-[10px] font-bold text-slate-400 uppercase font-mono"><i class="fa-solid fa-shield-halved text-sky-400 mr-1"></i>Model:</span>
+              <select id="orbit-model-select" onchange="setOrbitBoundaryModel(this.value)" class="bg-space-900 text-sky-300 font-tech font-bold text-xs border border-sky-500/30 rounded-lg px-2 py-0.5 focus:outline-none focus:border-sky-400 cursor-pointer">
+                <option value="chao" selected>Chao et al. (2002) [BS + MP]</option>
+                <option value="shue">Shue et al. (1997) [Tanh MP]</option>
+              </select>
+            </div>
+
+            <!-- Fast Shock Conditions Injector -->
+            <div class="hidden lg:flex items-center space-x-1 bg-space-950/80 p-1 rounded-xl border border-slate-700/60 text-[11px]">
+              <span class="text-[10px] font-bold text-slate-400 uppercase font-mono px-1">Sim:</span>
+              <button onclick="setOrbitSolarWindPreset('quiet')" title="Quiet Interplanetary Background (P=1.8 nPa, Bz=0 nT)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Quiet</button>
+              <button onclick="setOrbitSolarWindPreset('storm')" title="Moderate Storm Compression (P=8.0 nPa, Bz=-6 nT)" class="px-2 py-0.5 rounded bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-800/40 transition">Storm</button>
+              <button onclick="setOrbitSolarWindPreset('severe')" title="Severe Shock: Magnetopause crosses inside GEO! (P=30.0 nPa, Bz=-25 nT)" class="px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 transition font-bold">G5 Shock</button>
+              <button id="btn-orbit-sync" onclick="syncOrbitLiveTelemetry()" title="Re-sync with Live L1 Spacecraft Telemetry" class="px-2 py-0.5 rounded bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800/40 transition"><i class="fa-solid fa-arrows-rotate text-[9px] mr-1"></i>Live</button>
+            </div>
+
             <!-- Zoom & View Tools -->
             <div class="flex items-center space-x-1 bg-space-950/80 p-1 rounded-xl border border-slate-700/60">
               <button onclick="zoomOrbit(1.2)" title="Zoom In" class="px-2.5 py-1 rounded hover:bg-slate-700 text-slate-200 transition">
@@ -792,16 +814,20 @@
           <div id="orbit-tooltip" class="hud-tooltip hidden"></div>
 
           <!-- Top-Right Mission HUD Telemetry Box -->
-          <div class="absolute top-4 right-4 bg-space-950/90 backdrop-blur border border-sky-500/30 p-3 rounded-xl text-xs space-y-1.5 pointer-events-none shadow-xl">
-            <div class="flex items-center justify-between border-b border-slate-700/60 pb-1">
+          <div class="absolute top-4 right-4 bg-space-950/90 backdrop-blur border border-sky-500/30 p-3.5 rounded-xl text-xs space-y-1.5 pointer-events-none shadow-xl min-w-[215px]">
+            <div class="flex items-center justify-between border-b border-slate-700/60 pb-1.5">
               <span class="text-[10px] font-tech font-bold uppercase tracking-wider text-sky-400">Orbital Telemetry HUD</span>
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
             </div>
             <div class="font-hud text-[11px] text-slate-300 space-y-0.5">
-              <div>L1 DISTANCE: <span class="text-amber-400 font-bold">1,496,000 km</span></div>
-              <div>SOLAR DIST: <span class="text-yellow-300 font-bold">0.99 AU (Sunward)</span></div>
-              <div>SIM FLUX: <span id="hud-flux-speed" class="text-cyan-400 font-bold">450 km/s</span></div>
-              <div>BOW SHOCK: <span id="hud-bow-standoff" class="text-emerald-400 font-bold">10.5 R_E</span></div>
+              <div class="flex justify-between"><span>MODEL:</span> <span id="hud-model-name" class="text-sky-300 font-bold">Chao 2002</span></div>
+              <div class="flex justify-between"><span>L1 DISTANCE:</span> <span class="text-amber-400 font-bold">1,496,000 km</span></div>
+              <div class="flex justify-between"><span>SOLAR DIST:</span> <span class="text-yellow-300 font-bold">0.99 AU (Sunward)</span></div>
+              <div class="flex justify-between"><span>SIM FLUX:</span> <span id="hud-flux-speed" class="text-cyan-400 font-bold">450 km/s</span></div>
+              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>BOW SHOCK (R_bs):</span> <span id="hud-bow-standoff" class="text-sky-400 font-bold">13.8 R_E</span></div>
+              <div class="flex justify-between"><span>MAGNETOPAUSE:</span> <span id="hud-mp-standoff" class="text-amber-400 font-bold">10.2 R_E</span></div>
+              <div class="flex justify-between"><span>SHEATH (ΔR):</span> <span id="hud-sheath-thick" class="text-cyan-300 font-bold">3.6 R_E</span></div>
+              <div class="flex justify-between"><span>GEO MARGIN:</span> <span id="hud-geo-margin" class="text-emerald-400 font-bold">+3.6 R_E</span></div>
             </div>
           </div>
           
@@ -816,6 +842,57 @@
               <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-sm shadow-purple-400"></span><span class="font-semibold text-slate-300">SOHO (Solar Halo)</span></div>
               <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-pink-400 shadow-sm shadow-pink-400"></span><span class="font-semibold text-slate-300">GOES-16 (GEO Ring)</span></div>
             </div>
+          </div>
+        </div>
+
+        <!-- Magnetospheric Physics & Chao Boundary Metrics Strip -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+          <div class="metric-card" style="border-left: 3px solid var(--neon-cyan);">
+            <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
+              <span>Collisionless Bow Shock (R₀,bs)</span>
+              <i class="fa-solid fa-shield-halved text-sky-400"></i>
+            </div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="card-bow-standoff" class="text-2xl font-hud font-bold text-sky-300">13.8 RE</span>
+              <span id="card-bow-km" class="text-[11px] font-mono text-slate-400">~87,900 km</span>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-1">Chao (2002) Mach-coupled standoff scaling with polytropic index γ = 5/3</div>
+          </div>
+
+          <div class="metric-card" style="border-left: 3px solid var(--neon-solar);">
+            <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
+              <span>Magnetopause Standoff (r₀,mp)</span>
+              <i class="fa-solid fa-magnet text-amber-400"></i>
+            </div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="card-mp-standoff" class="text-2xl font-hud font-bold text-amber-300">10.2 RE</span>
+              <span id="card-mp-km" class="text-[11px] font-mono text-slate-400">~65,000 km</span>
+            </div>
+            <div id="card-mp-geo-status" class="text-[10px] text-emerald-400 mt-1">GEO Standoff Clear (+3.6 RE outside geostationary orbit)</div>
+          </div>
+
+          <div class="metric-card" style="border-left: 3px solid #a855f7;">
+            <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
+              <span>Magnetosheath Thickness (ΔR)</span>
+              <i class="fa-solid fa-arrows-left-right-to-line text-purple-400"></i>
+            </div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="card-sheath-thick" class="text-2xl font-hud font-bold text-purple-300">3.6 RE</span>
+              <span id="card-sheath-km" class="text-[11px] font-mono text-slate-400">~22,900 km</span>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-1">Turbulent plasma sheath barrier separating bow shock from magnetopause</div>
+          </div>
+
+          <div class="metric-card" style="border-left: 3px solid #10b981;">
+            <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
+              <span>Flaring Parameters (α)</span>
+              <i class="fa-solid fa-square-root-variable text-emerald-400"></i>
+            </div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="card-flaring-alpha" class="text-2xl font-hud font-bold text-emerald-300">0.58 / 0.61</span>
+              <span class="text-[11px] font-mono text-slate-400">α_mp / α_bs</span>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-1">COSPAR Colloquia Series Vol. 12 (doi:10.1016/S0964-2749(02)80214-7)</div>
           </div>
         </div>
       </div>
@@ -2080,6 +2157,10 @@
             <i class="fa-solid fa-book text-[11px]"></i>
             <span>Parameter Handbook</span>
           </button>
+          <button id="tab-btn-ref-userguide" onclick="switchReferencesTab('userguide')" class="px-3 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-compass text-[11px]"></i>
+            <span>Operator User Guide</span>
+          </button>
         </div>
 
         <div class="relative">
@@ -2169,6 +2250,10 @@
               <kbd class="px-2 py-0.5 rounded bg-slate-900 text-emerald-300 font-mono font-bold text-[11px] border border-slate-700">P</kbd>
             </div>
             <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
+              <span class="text-slate-300">Operator User Guide</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-900 text-indigo-300 font-mono font-bold text-[11px] border border-slate-700">U</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
               <span class="text-slate-300">Toggle UTC / Local Time</span>
               <kbd class="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-mono font-bold text-[11px] border border-slate-700">T</kbd>
             </div>
@@ -2210,6 +2295,10 @@
       <span class="text-slate-600">•</span>
       <button onclick="openReferencesModal('handbook')" class="hover:text-sky-300 underline underline-offset-2 transition text-slate-300">
         Parameter Handbook
+      </button>
+      <span class="text-slate-600">•</span>
+      <button onclick="openUserGuideModal()" class="hover:text-indigo-300 font-semibold underline underline-offset-2 transition text-indigo-400">
+        Operator User Guide
       </button>
     </div>
     <div class="flex items-center space-x-3 text-[11px]">

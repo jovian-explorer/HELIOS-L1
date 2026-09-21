@@ -292,6 +292,24 @@ async def get_aurora(kp: float = 3.0, bz_gsm: float = -3.0):
         "dst_evolution": dst_sim
     }
 
+@app.get("/api/magnetosphere/boundaries")
+async def get_magnetospheric_boundaries(
+    dynamic_pressure: float = Query(2.0, ge=0.01, le=120.0, description="Solar wind dynamic pressure P_dyn (nPa)"),
+    bz_gsm: float = Query(0.0, ge=-80.0, le=80.0, description="Interplanetary Magnetic Field Bz component (nT)"),
+    mach_number: float = Query(8.0, ge=1.2, le=30.0, description="Solar wind Alfvén / magnetosonic Mach number"),
+    model: str = Query("chao", description="Magnetospheric boundary model: 'chao' (Chao et al., 2002) or 'shue' (Shue et al., 1997, 1998)")
+):
+    """
+    Computes 2D/3D magnetopause and bow shock standoff distances, flaring parameters,
+    and GSE spatial coordinate profiles using Chao et al. (2002) or Shue et al. (1997).
+    """
+    return SpaceWeatherPhysics.calculate_magnetospheric_boundaries(
+        dynamic_pressure_npa=dynamic_pressure,
+        bz_gsm_nt=bz_gsm,
+        mach_number=mach_number,
+        model=model
+    )
+
 @app.get("/api/coronagraph/feeds")
 async def get_coronagraph_feeds():
     return CoronagraphAnalyzer.get_coronagraph_feeds()

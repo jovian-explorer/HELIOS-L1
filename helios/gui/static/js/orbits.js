@@ -31,6 +31,10 @@ class OrbitRenderer {
     this.numParticles = 90;
     this.solarWindSpeed = 450; // km/s
     this.dynamicPressure = 1.8; // nPa
+    this.bz = 0.0; // nT (GSM)
+    this.machNumber = 8.0; // upstream Mach number
+    this.boundaryModel = 'chao'; // 'chao' (Chao et al. 2002) or 'shue' (Shue et al. 1997)
+    this.lastComputedBoundaries = null;
 
     this.timeStep = 0;
     this.orbitsData = null;
@@ -121,9 +125,100 @@ class OrbitRenderer {
     this.viewMode = mode;
   }
 
-  setSolarWindConditions(speed, pdyn) {
-    if (speed) this.solarWindSpeed = speed;
-    if (pdyn) this.dynamicPressure = pdyn;
+  setBoundaryModel(model) {
+    this.boundaryModel = model === 'shue' ? 'shue' : 'chao';
+  }
+
+  setSolarWindConditions(speed, pdyn, bz, mach) {
+    if (speed !== undefined && speed !== null && !isNaN(speed)) this.solarWindSpeed = Number(speed);
+    if (pdyn !== undefined && pdyn !== null && !isNaN(pdyn)) this.dynamicPressure = Math.max(0.05, Number(pdyn));
+    if (bz !== undefined && bz !== null && !isNaN(bz)) this.bz = Number(bz);
+    if (mach !== undefined && mach !== null && !isNaN(mach)) this.machNumber = Math.max(1.15, Number(mach));
+  }
+
+  calculateBoundaries() {
+    const pdyn = Math.max(0.05, this.dynamicPressure || 2.0);
+    const bz = this.bz || 0.0;
+    const m = Math.max(1.15, this.machNumber || 8.0);
+    const mod = this.boundaryModel || 'chao';
+
+    let r0_mp, alpha_mp, r0_bs, alpha_bs, modelName;
+
+    if (mod === 'shue') {
+      // Shue et al. (1997, 1998)
+      r0_mp = (10.22 + 1.29 * Math.tanh(0.184 * (bz + 8.14))) * Math.pow(pdyn, -1.0 / 6.6);
+      alpha_mp = (0.58 - 0.007 * bz) * (1.0 + 0.024 * Math.log(pdyn + 1.0));
+      alpha_mp = Math.max(0.40, Math.min(0.90, alpha_mp));
+      r0_bs = r0_mp * (1.0 + 1.1 * ((2.0 / 3.0 * (m * m) + 2.0) / (8.0 / 3.0 * (m * m - 1.0))));
+      alpha_bs = 0.60;
+      modelName = 'Shue et al. (1997, 1998)';
+    } else {
+      // Chao et al. (2002) Empirical Bilinear Model
+      const pFactor = Math.pow(pdyn, -1.0 / 6.6);
+      if (bz >= 0.0) {
+        r0_mp = (11.12 + 0.057 * bz) * pFactor;
+      } else {
+        r0_mp = (11.12 + 0.541 * bz) * pFactor;
+      }
+      r0_mp = Math.max(3.5, Math.min(16.0, r0_mp));
+      alpha_mp = (0.58 - 0.007 * bz) * (1.0 + 0.024 * pdyn);
+      alpha_mp = Math.max(0.35, Math.min(0.95, alpha_mp));
+
+      const gamma = 5.0 / 3.0;
+      const machFactor = 1.0 + 0.8 * (((gamma - 1.0) * (m * m) + 2.0) / ((gamma + 1.0) * (m * m - 1.0)));
+      r0_bs = (14.5 + 0.08 * bz) * pFactor * (machFactor / 1.25);
+      r0_bs = Math.max(5.0, Math.min(25.0, r0_bs));
+      alpha_bs = 0.61 * (1.0 + 0.015 * pdyn);
+      alpha_bs = Math.max(0.40, Math.min(0.90, alpha_bs));
+      modelName = 'Chao et al. (2002)';
+    }
+
+    // Scale conversion: Earth radii to canvas world pixels
+    // GEO is at 6.6 R_E = 25px -> scaleRe = 25.0 / 6.6 ~ 3.788 px / R_E
+    const scaleRe = 25.0 / 6.6;
+
+    // Generate discrete polar boundary profiles: theta in [-2.35 rad, +2.35 rad] (~ -135 deg to +135 deg)
+    const numPoints = 65;
+    const minTh = -2.356;
+    const maxTh = 2.356;
+    const step = (maxTh - minTh) / (numPoints - 1);
+
+    const mpPts = [];
+    const bsPts = [];
+
+    for (let i = 0; i < numPoints; i++) {
+      const th = minTh + i * step;
+      const denMp = 1.0 + Math.cos(th);
+      const rMp = r0_mp * Math.pow(2.0 / Math.max(0.001, denMp), alpha_mp);
+      // In canvas world coordinates, Sun is towards -X.
+      // Subsolar theta = 0 -> X = -r * scaleRe, Y = 0
+      const xMp = -rMp * Math.cos(th) * scaleRe;
+      const yMp = rMp * Math.sin(th) * scaleRe;
+      mpPts.push({ x: xMp, y: yMp, r: rMp, th });
+
+      const denBs = 1.0 + Math.cos(th);
+      const rBs = r0_bs * Math.pow(2.0 / Math.max(0.001, denBs), alpha_bs);
+      const xBs = -rBs * Math.cos(th) * scaleRe;
+      const yBs = rBs * Math.sin(th) * scaleRe;
+      bsPts.push({ x: xBs, y: yBs, r: rBs, th });
+    }
+
+    const sheathRe = r0_bs - r0_mp;
+
+    const data = {
+      modelName,
+      r0_mp,
+      alpha_mp,
+      r0_bs,
+      alpha_bs,
+      sheathRe,
+      insideGeo: r0_mp < 6.6,
+      mpPts,
+      bsPts,
+      scaleRe
+    };
+    this.lastComputedBoundaries = data;
+    return data;
   }
 
   initEvents() {
@@ -215,6 +310,23 @@ class OrbitRenderer {
       found = { type: 'sun' };
     }
 
+    // Check Magnetopause & Bow Shock Stand-offs
+    if (!found && this.lastComputedBoundaries) {
+      const b = this.lastComputedBoundaries;
+      const mpStandoffX = -b.r0_mp * b.scaleRe;
+      const bsStandoffX = -b.r0_bs * b.scaleRe;
+      const distToMp = Math.hypot(worldX - mpStandoffX, worldY);
+      const distToBs = Math.hypot(worldX - bsStandoffX, worldY);
+
+      if (distToMp < 15) {
+        found = { type: 'magnetopause', data: b };
+      } else if (distToBs < 15) {
+        found = { type: 'bow_shock', data: b };
+      } else if (worldX <= mpStandoffX && worldX >= bsStandoffX && Math.abs(worldY) < 32) {
+        found = { type: 'magnetosheath', data: b };
+      }
+    }
+
     this.hoveredItem = found;
 
     if (found && this.tooltip) {
@@ -237,10 +349,13 @@ class OrbitRenderer {
           </div>
         `;
       } else if (found.type === 'earth') {
+        const b = this.lastComputedBoundaries;
+        const mpText = b ? `${b.r0_mp.toFixed(1)} R_E (${b.modelName})` : '10.5 R_E';
         this.tooltip.innerHTML = `
           <div class="font-bold text-blue-400 border-b border-blue-500/30 pb-1 mb-1">Earth (Terra)</div>
           <div class="text-slate-300 text-[11px]">Radius: ~6,371 km • 1.0 AU from Sun</div>
-          <div class="text-emerald-400 text-[10px] mt-1">Dipole Magnetosphere Standoff: ~${(10.5 * (2.0 / Math.max(0.8, this.dynamicPressure))**(1/6)).toFixed(1)} R_E</div>
+          <div class="text-emerald-400 text-[10px] mt-1">Dayside Standoff: ~${mpText}</div>
+          <div class="text-slate-400 text-[10px]">GEO Orbit: 6.6 R_E (~42,164 km)</div>
         `;
       } else if (found.type === 'l1') {
         this.tooltip.innerHTML = `
@@ -254,6 +369,47 @@ class OrbitRenderer {
           <div class="font-bold text-amber-300 border-b border-amber-500/30 pb-1 mb-1">The Sun (Sol)</div>
           <div class="text-slate-300 text-[11px]">Primary Driver of Heliospheric Space Weather</div>
           <div class="text-amber-400 text-[10px] mt-1">V_sw Speed: ~${this.solarWindSpeed} km/s</div>
+        `;
+      } else if (found.type === 'magnetopause') {
+        const b = found.data;
+        this.tooltip.innerHTML = `
+          <div class="font-bold text-amber-400 border-b border-amber-500/30 pb-1 mb-1 flex items-center justify-between">
+            <span>Magnetopause Current Sheet</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono">${b.modelName}</span>
+          </div>
+          <div class="text-slate-300 text-[11px]">Dynamic dayside pressure balance: P_dyn vs B²/2μ₀</div>
+          <div class="text-amber-300 text-[11px] font-mono mt-1.5 space-y-0.5">
+            <div>Subsolar Standoff (r₀,mp): <strong>${b.r0_mp.toFixed(2)} R_E</strong> (~${Math.round(b.r0_mp * 6371).toLocaleString()} km)</div>
+            <div>Flaring Parameter (α_mp): <strong>${b.alpha_mp.toFixed(3)}</strong></div>
+            <div>Dynamic Pressure: <strong>${this.dynamicPressure.toFixed(2)} nPa</strong> • Bz: <strong>${this.bz.toFixed(1)} nT</strong></div>
+            <div>GEO Clearance (r₀ - 6.6 R_E): <strong class="${b.insideGeo ? 'text-rose-400 font-bold' : 'text-emerald-400'}">${(b.r0_mp - 6.6).toFixed(2)} R_E</strong></div>
+          </div>
+          ${b.insideGeo ? '<div class="text-rose-400 text-[10px] font-bold mt-1.5 bg-rose-950/60 p-1 rounded border border-rose-700/60"><i class="fa-solid fa-triangle-exclamation mr-1"></i>SUB-GEO COMPRESSION: Geostationary satellites inside sheath!</div>' : ''}
+        `;
+      } else if (found.type === 'bow_shock') {
+        const b = found.data;
+        this.tooltip.innerHTML = `
+          <div class="font-bold text-sky-400 border-b border-sky-500/30 pb-1 mb-1 flex items-center justify-between">
+            <span>Collisionless Bow Shock Front</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-mono">${b.modelName}</span>
+          </div>
+          <div class="text-slate-300 text-[11px]">Rankine-Hugoniot supersonic plasma deceleration</div>
+          <div class="text-sky-300 text-[11px] font-mono mt-1.5 space-y-0.5">
+            <div>Subsolar Standoff (R₀,bs): <strong>${b.r0_bs.toFixed(2)} R_E</strong> (~${Math.round(b.r0_bs * 6371).toLocaleString()} km)</div>
+            <div>Flaring Parameter (α_bs): <strong>${b.alpha_bs.toFixed(3)}</strong></div>
+            <div>Upstream Mach Number (M_A): <strong>${this.machNumber.toFixed(1)}</strong></div>
+            <div>Polytropic Index: <strong>γ = 5/3</strong></div>
+          </div>
+        `;
+      } else if (found.type === 'magnetosheath') {
+        const b = found.data;
+        this.tooltip.innerHTML = `
+          <div class="font-bold text-cyan-300 border-b border-cyan-500/30 pb-1 mb-1">Magnetosheath Transition Region</div>
+          <div class="text-slate-300 text-[11px]">Decelerated, shocked, turbulent interplanetary plasma</div>
+          <div class="text-cyan-300 text-[11px] font-mono mt-1.5 space-y-0.5">
+            <div>Sheath Thickness (ΔR): <strong>${b.sheathRe.toFixed(2)} R_E</strong> (~${Math.round(b.sheathRe * 6371).toLocaleString()} km)</div>
+            <div>Separation: Bow Shock (${b.r0_bs.toFixed(1)} R_E) - Magnetopause (${b.r0_mp.toFixed(1)} R_E)</div>
+          </div>
         `;
       }
     } else if (this.tooltip) {
@@ -509,42 +665,95 @@ class OrbitRenderer {
     ctx.setLineDash([]);
     ctx.restore();
 
-    // 6. Earth & Magnetospheric Cavity (Bow Shock & Magnetopause)
+    // 6. Earth & Magnetospheric Cavity (Chao et al. 2002 / Shue et al. 1997)
     ctx.save();
     const earthP = this.project(0, 0, 0);
 
-    // Dynamic magnetopause standoff calculation based on dynamic pressure
-    // Standoff ~ 10.5 * (2.0 / Pdyn)^(1/6.6)
-    const rmpRe = 10.5 * Math.pow(2.0 / Math.max(0.6, this.dynamicPressure), 1.0 / 6.6);
-    const bowShockX = -Math.min(55, Math.max(22, rmpRe * 3.4));
+    // Compute analytical boundaries
+    const boundaries = this.calculateBoundaries();
+    const scaleRe = boundaries.scaleRe;
 
-    // Crisp Bow Shock Front
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+    // A. Fill Magnetosheath Cavity (between Bow Shock and Magnetopause)
+    if (boundaries.bsPts.length > 0 && boundaries.mpPts.length > 0) {
+      ctx.save();
+      ctx.beginPath();
+      boundaries.bsPts.forEach((p, i) => {
+        const proj = this.project(p.x, p.y, 0);
+        if (i === 0) ctx.moveTo(proj.x, proj.y);
+        else ctx.lineTo(proj.x, proj.y);
+      });
+      for (let i = boundaries.mpPts.length - 1; i >= 0; i--) {
+        const proj = this.project(boundaries.mpPts[i].x, boundaries.mpPts[i].y, 0);
+        ctx.lineTo(proj.x, proj.y);
+      }
+      ctx.closePath();
+
+      const bsSubsolar = this.project(-boundaries.r0_bs * scaleRe, 0, 0);
+      const mpSubsolar = this.project(-boundaries.r0_mp * scaleRe, 0, 0);
+      const sheathGrad = ctx.createLinearGradient(bsSubsolar.x, 0, mpSubsolar.x, 0);
+      sheathGrad.addColorStop(0, 'rgba(56, 189, 248, 0.16)');
+      sheathGrad.addColorStop(0.5, 'rgba(14, 165, 233, 0.08)');
+      sheathGrad.addColorStop(1, 'rgba(234, 179, 8, 0.04)');
+      ctx.fillStyle = sheathGrad;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // B. Collisionless Planetary Bow Shock Front
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    for (let y = -100; y <= 100; y += 4) {
-      const x = bowShockX + (y * y) / 190;
-      const proj = this.project(x, y, 0);
-      if (y === -100) ctx.moveTo(proj.x, proj.y);
+    boundaries.bsPts.forEach((p, i) => {
+      const proj = this.project(p.x, p.y, 0);
+      if (i === 0) ctx.moveTo(proj.x, proj.y);
       else ctx.lineTo(proj.x, proj.y);
-    }
+    });
     ctx.stroke();
 
-    // Subtle Magnetopause Boundary
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 4]);
+    // Subtle Bow Shock outer glow
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+    ctx.lineWidth = 4.0;
+    ctx.stroke();
+
+    // Bow Shock Subsolar Standoff Dot
+    const bsSubsolarProj = this.project(-boundaries.r0_bs * scaleRe, 0, 0);
+    ctx.fillStyle = '#38bdf8';
     ctx.beginPath();
-    for (let y = -70; y <= 70; y += 4) {
-      const x = (bowShockX * 0.72) + (y * y) / 150;
-      const proj = this.project(x, y, 0);
-      if (y === -70) ctx.moveTo(proj.x, proj.y);
+    ctx.arc(bsSubsolarProj.x, bsSubsolarProj.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // C. Terrestrial Magnetopause Boundary Current Sheet
+    const mpColor = boundaries.insideGeo ? 'rgba(239, 68, 68, 0.9)' : 'rgba(234, 179, 8, 0.8)';
+    ctx.strokeStyle = mpColor;
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    boundaries.mpPts.forEach((p, i) => {
+      const proj = this.project(p.x, p.y, 0);
+      if (i === 0) ctx.moveTo(proj.x, proj.y);
       else ctx.lineTo(proj.x, proj.y);
-    }
+    });
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Van Allen Radiation Belts (Muted scientific contours)
+    // Magnetopause Subsolar Standoff Dot
+    const mpSubsolarProj = this.project(-boundaries.r0_mp * scaleRe, 0, 0);
+    ctx.fillStyle = boundaries.insideGeo ? '#ef4444' : '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(mpSubsolarProj.x, mpSubsolarProj.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Subsolar Distance Label Callouts
+    ctx.font = '600 8.5px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#38bdf8';
+    ctx.textAlign = 'right';
+    ctx.fillText(`BS: ${boundaries.r0_bs.toFixed(1)} RE`, bsSubsolarProj.x - 4, bsSubsolarProj.y - 6);
+
+    ctx.fillStyle = boundaries.insideGeo ? '#f87171' : '#fbbf24';
+    ctx.textAlign = 'left';
+    ctx.fillText(`MP: ${boundaries.r0_mp.toFixed(1)} RE`, mpSubsolarProj.x + 4, mpSubsolarProj.y - 6);
+
+    // D. Van Allen Radiation Belts (Muted scientific contours)
     ctx.fillStyle = 'rgba(147, 51, 234, 0.12)';
     ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)';
     ctx.lineWidth = 1;
@@ -556,14 +765,41 @@ class OrbitRenderer {
       ctx.stroke();
     }
 
-    // Geostationary Orbit (GEO ~ 42k km = 25px radius)
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+    // E. Geostationary Orbit (GEO ~ 42k km = 6.6 R_E = 25px radius)
+    ctx.strokeStyle = boundaries.insideGeo ? 'rgba(239, 68, 68, 0.55)' : 'rgba(148, 163, 184, 0.35)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 4]);
     ctx.beginPath();
     ctx.ellipse(earthP.x, earthP.y, 25, this.viewMode === '3d' ? 16 : 25, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // Sub-GEO Warning Callout if compressed
+    if (boundaries.insideGeo) {
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('SUB-GEO COMPRESSION', earthP.x, earthP.y - 32);
+    }
+
+    // Update DOM Telemetry HUD elements if present
+    const hudBow = document.getElementById('hud-bow-standoff');
+    if (hudBow) hudBow.innerText = `${boundaries.r0_bs.toFixed(1)} R_E`;
+    const hudMp = document.getElementById('hud-mp-standoff');
+    if (hudMp) {
+      hudMp.innerText = `${boundaries.r0_mp.toFixed(1)} R_E`;
+      hudMp.className = boundaries.insideGeo ? 'text-rose-400 font-bold animate-pulse' : 'text-amber-400 font-bold';
+    }
+    const hudSheath = document.getElementById('hud-sheath-thick');
+    if (hudSheath) hudSheath.innerText = `${boundaries.sheathRe.toFixed(1)} R_E`;
+    const hudMargin = document.getElementById('hud-geo-margin');
+    if (hudMargin) {
+      const margin = boundaries.r0_mp - 6.6;
+      hudMargin.innerText = `${margin >= 0 ? '+' : ''}${margin.toFixed(1)} R_E`;
+      hudMargin.className = margin < 0 ? 'text-rose-400 font-bold animate-pulse' : 'text-emerald-400 font-bold';
+    }
+    const hudModel = document.getElementById('hud-model-name');
+    if (hudModel) hudModel.innerText = this.boundaryModel === 'shue' ? 'Shue 1997' : 'Chao 2002';
 
     // Earth Sphere with Day/Night Lighting (Sun on left illuminates -X)
     const earthGlow = ctx.createRadialGradient(earthP.x, earthP.y, 8, earthP.x, earthP.y, 18);

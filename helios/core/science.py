@@ -36,6 +36,182 @@ class SpaceWeatherPhysics:
         return round(float(r0), 2)
 
     @staticmethod
+    def chao_magnetopause(dynamic_pressure_npa: float, bz_gsm_nt: float, theta_rad: float = 0.0) -> Dict[str, Any]:
+        """
+        Chao et al. (2002) empirical model for the size and shape of Earth's magnetopause:
+        r(theta) = r_0 * (2 / (1 + cos(theta)))^alpha
+
+        Subsolar standoff r_0:
+          r_0 = (11.12 + 0.057 * Bz) * (P_dyn)^(-1/6.6)   [for Bz >= 0]
+          r_0 = (11.12 + 0.541 * Bz) * (P_dyn)^(-1/6.6)   [for Bz < 0]
+
+        Flaring parameter alpha:
+          alpha = (0.58 - 0.007 * Bz) * (1 + 0.024 * P_dyn)
+        """
+        pdyn = max(0.05, float(dynamic_pressure_npa if dynamic_pressure_npa is not None else 2.0))
+        bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
+
+        pressure_factor = pdyn ** (-1.0 / 6.6)
+        if bz >= 0.0:
+            r0 = (11.12 + 0.057 * bz) * pressure_factor
+        else:
+            r0 = (11.12 + 0.541 * bz) * pressure_factor
+
+        r0 = max(3.5, min(16.0, r0))
+
+        alpha = (0.58 - 0.007 * bz) * (1.0 + 0.024 * pdyn)
+        alpha = max(0.35, min(0.95, alpha))
+
+        th = max(-2.6, min(2.6, theta_rad))
+        denominator = 1.0 + math.cos(th)
+        r_theta = r0 * ((2.0 / max(0.01, denominator)) ** alpha)
+
+        r0_val = round(float(r0), 2)
+        return {
+            "standoff_r0_re": r0_val,
+            "standoff_km": round(float(r0_val * 6371.0), 1),
+            "flaring_alpha": round(float(alpha), 3),
+            "radial_distance_re": round(float(r_theta), 2),
+            "inside_geo": bool(r0_val < 6.6),
+            "model": "Chao et al. (2002)"
+        }
+
+    @staticmethod
+    def chao_bow_shock(
+        dynamic_pressure_npa: float,
+        bz_gsm_nt: float,
+        mach_number: float = 8.0,
+        theta_rad: float = 0.0
+    ) -> Dict[str, Any]:
+        """
+        Chao et al. (2002) empirical model for the size and shape of Earth's Bow Shock:
+        R_bs(theta) = R_0,bs * (2 / (1 + cos(theta)))^alpha_bs
+
+        Subsolar Bow Shock standoff R_0,bs:
+          R_0,bs = (14.5 + 0.08 * Bz) * (P_dyn)^(-1/6.6) * [1 + 0.8 * ((gamma - 1)*M^2 + 2) / ((gamma + 1)*(M^2 - 1))]
+          where polytropic index gamma = 5/3 ~ 1.667.
+
+        Bow shock flaring parameter:
+          alpha_bs = 0.61 * (1 + 0.015 * P_dyn)
+        """
+        pdyn = max(0.05, float(dynamic_pressure_npa if dynamic_pressure_npa is not None else 2.0))
+        bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
+        m = max(1.15, float(mach_number if mach_number is not None else 8.0))
+
+        gamma = 5.0 / 3.0
+        mach_factor = 1.0 + 0.8 * (((gamma - 1.0) * (m ** 2) + 2.0) / ((gamma + 1.0) * ((m ** 2) - 1.0)))
+
+        pressure_factor = pdyn ** (-1.0 / 6.6)
+        r0_bs = (14.5 + 0.08 * bz) * pressure_factor * (mach_factor / 1.25)
+
+        r0_bs = max(5.0, min(25.0, r0_bs))
+
+        alpha_bs = 0.61 * (1.0 + 0.015 * pdyn)
+        alpha_bs = max(0.40, min(0.90, alpha_bs))
+
+        th = max(-2.6, min(2.6, theta_rad))
+        denominator = 1.0 + math.cos(th)
+        r_theta_bs = r0_bs * ((2.0 / max(0.01, denominator)) ** alpha_bs)
+
+        r0_bs_val = round(float(r0_bs), 2)
+        return {
+            "standoff_r0_re": r0_bs_val,
+            "standoff_km": round(float(r0_bs_val * 6371.0), 1),
+            "flaring_alpha": round(float(alpha_bs), 3),
+            "radial_distance_re": round(float(r_theta_bs), 2),
+            "mach_number": round(float(m), 2),
+            "model": "Chao et al. (2002)"
+        }
+
+    @staticmethod
+    def calculate_magnetospheric_boundaries(
+        dynamic_pressure_npa: float,
+        bz_gsm_nt: float,
+        mach_number: float = 8.0,
+        model: str = "chao",
+        num_points: int = 60
+    ) -> Dict[str, Any]:
+        """
+        Generate complete 2D GSE profiles (X, Y in Earth Radii) for both
+        the terrestrial Magnetopause and Bow Shock.
+        Supports both 'chao' (Chao et al., 2002) and 'shue' (Shue et al., 1997, 1998).
+        """
+        pdyn = max(0.05, float(dynamic_pressure_npa if dynamic_pressure_npa is not None else 2.0))
+        bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
+        m = max(1.15, float(mach_number if mach_number is not None else 8.0))
+        mod = model.lower().strip()
+
+        if mod == "shue":
+            r0_mp = SpaceWeatherPhysics.magnetopause_standoff(pdyn, bz)
+            alpha_mp = (0.58 - 0.007 * bz) * (1.0 + 0.024 * math.log(pdyn + 1.0))
+            alpha_mp = max(0.4, min(0.9, alpha_mp))
+            r0_bs = round(r0_mp * (1.0 + 1.1 * ((2.0/3.0 * m**2 + 2.0) / (8.0/3.0 * (m**2 - 1.0)))), 2)
+            alpha_bs = 0.60
+            model_name = "Shue et al. (1997, 1998)"
+        else:
+            mp_res = SpaceWeatherPhysics.chao_magnetopause(pdyn, bz)
+            bs_res = SpaceWeatherPhysics.chao_bow_shock(pdyn, bz, mach_number=m)
+            r0_mp = mp_res["standoff_r0_re"]
+            alpha_mp = mp_res["flaring_alpha"]
+            r0_bs = bs_res["standoff_r0_re"]
+            alpha_bs = bs_res["flaring_alpha"]
+            model_name = "Chao et al. (2002)"
+
+        thetas = np.linspace(-2.356, 2.356, num_points)
+
+        mp_profile = []
+        bs_profile = []
+
+        for th in thetas:
+            den_mp = 1.0 + math.cos(th)
+            r_mp = r0_mp * ((2.0 / max(0.001, den_mp)) ** alpha_mp)
+            x_mp = r_mp * math.cos(th)
+            y_mp = r_mp * math.sin(th)
+            mp_profile.append({
+                "theta_deg": round(float(math.degrees(th)), 1),
+                "x_re": round(float(x_mp), 2),
+                "y_re": round(float(y_mp), 2),
+                "r_re": round(float(r_mp), 2)
+            })
+
+            den_bs = 1.0 + math.cos(th)
+            r_bs = r0_bs * ((2.0 / max(0.001, den_bs)) ** alpha_bs)
+            x_bs = r_bs * math.cos(th)
+            y_bs = r_bs * math.sin(th)
+            bs_profile.append({
+                "theta_deg": round(float(math.degrees(th)), 1),
+                "x_re": round(float(x_bs), 2),
+                "y_re": round(float(y_bs), 2),
+                "r_re": round(float(r_bs), 2)
+            })
+
+        sheath_thickness_re = round(r0_bs - r0_mp, 2)
+
+        return {
+            "status": "success",
+            "model": model_name,
+            "dynamic_pressure_npa": pdyn,
+            "bz_gsm_nt": bz,
+            "mach_number": m,
+            "magnetopause": {
+                "standoff_re": r0_mp,
+                "standoff_km": round(r0_mp * 6371.0, 1),
+                "flaring_alpha": alpha_mp,
+                "inside_geo": bool(r0_mp < 6.6),
+                "geo_margin_re": round(r0_mp - 6.6, 2),
+                "profile": mp_profile
+            },
+            "bow_shock": {
+                "standoff_re": r0_bs,
+                "standoff_km": round(r0_bs * 6371.0, 1),
+                "flaring_alpha": alpha_bs,
+                "profile": bs_profile
+            },
+            "magnetosheath_thickness_re": sheath_thickness_re,
+            "magnetosheath_thickness_km": round(sheath_thickness_re * 6371.0, 1)
+        }
+
+    @staticmethod
     def clock_angle(by_gsm_nt: float, bz_gsm_nt: float) -> float:
         """
         Calculate IMF clock angle theta in radians: theta = arctan2(|By|, Bz).

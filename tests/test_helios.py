@@ -416,5 +416,60 @@ def test_gic_geoelectric_hazard():
     assert res.status_code == 200
     assert "geoelectric_field_v_km" in res.json()
 
+def test_magnetospheric_boundaries_chao_and_shue():
+    from helios.core.science import SpaceWeatherPhysics
+
+    # 1. Nominal quiet solar wind conditions: P = 2.0 nPa, Bz = 0 nT
+    nom_mp = SpaceWeatherPhysics.chao_magnetopause(2.0, 0.0)
+    assert 9.5 <= nom_mp["standoff_r0_re"] <= 12.0
+    assert nom_mp["inside_geo"] is False
+    assert nom_mp["standoff_km"] == round(nom_mp["standoff_r0_re"] * 6371.0, 1)
+    assert 0.45 <= nom_mp["flaring_alpha"] <= 0.70
+
+    nom_bs = SpaceWeatherPhysics.chao_bow_shock(2.0, 0.0, mach_number=8.0)
+    assert nom_bs["standoff_r0_re"] > nom_mp["standoff_r0_re"]
+    assert 12.0 <= nom_bs["standoff_r0_re"] <= 16.0
+    assert 0.50 <= nom_bs["flaring_alpha"] <= 0.75
+
+    # 2. Extreme coronal mass ejection shock compression: P = 32.0 nPa, Bz = -25.0 nT
+    shock_mp = SpaceWeatherPhysics.chao_magnetopause(32.0, -25.0)
+    assert shock_mp["standoff_r0_re"] < 6.6
+    assert shock_mp["inside_geo"] is True
+
+    # 3. Mach number scaling: lower Mach expands Bow Shock standoff
+    bs_low_mach = SpaceWeatherPhysics.chao_bow_shock(2.0, 0.0, mach_number=2.0)
+    bs_high_mach = SpaceWeatherPhysics.chao_bow_shock(2.0, 0.0, mach_number=12.0)
+    assert bs_low_mach["standoff_r0_re"] > bs_high_mach["standoff_r0_re"]
+
+    # 4. Discrete 2D GSE boundary coordinates generation
+    chao_bounds = SpaceWeatherPhysics.calculate_magnetospheric_boundaries(2.5, -4.0, mach_number=7.5, model="chao")
+    assert chao_bounds["status"] == "success"
+    assert "Chao" in chao_bounds["model"]
+    assert len(chao_bounds["magnetopause"]["profile"]) == 60
+    assert len(chao_bounds["bow_shock"]["profile"]) == 60
+    assert chao_bounds["magnetosheath_thickness_re"] > 0
+    assert chao_bounds["magnetosheath_thickness_km"] == round(chao_bounds["magnetosheath_thickness_re"] * 6371.0, 1)
+
+    # 5. Shue et al. (1997) model comparison
+    shue_bounds = SpaceWeatherPhysics.calculate_magnetospheric_boundaries(2.5, -4.0, mach_number=7.5, model="shue")
+    assert shue_bounds["status"] == "success"
+    assert "Shue" in shue_bounds["model"]
+    assert len(shue_bounds["magnetopause"]["profile"]) == 60
+
+    # 6. REST API Endpoint: GET /api/magnetosphere/boundaries
+    res_api_chao = client.get("/api/magnetosphere/boundaries?dynamic_pressure=2.0&bz_gsm=0.0&mach_number=8.0&model=chao")
+    assert res_api_chao.status_code == 200
+    data = res_api_chao.json()
+    assert data["status"] == "success"
+    assert "magnetopause" in data
+    assert "bow_shock" in data
+    assert "magnetosheath_thickness_re" in data
+
+    # Extreme shock API call verifying inside_geo flag
+    res_api_shock = client.get("/api/magnetosphere/boundaries?dynamic_pressure=35.0&bz_gsm=-30.0&mach_number=4.0&model=chao")
+    assert res_api_shock.status_code == 200
+    assert res_api_shock.json()["magnetopause"]["inside_geo"] is True
+
+
 
 

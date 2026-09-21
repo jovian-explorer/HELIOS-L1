@@ -692,11 +692,13 @@ function updateTelemetryUI(data) {
 
   // Feed Live Physical Telemetry to Orbit Simulator & HUD
   if (orbitViewer) {
-    orbitViewer.setSolarWindConditions(latest.speed, latest.dynamic_pressure);
+    const mach = latest.mach_number || 8.0;
+    orbitViewer.setSolarWindConditions(latest.speed, latest.dynamic_pressure, latest.bz_gsm, mach);
     const hudFlux = document.getElementById('hud-flux-speed');
     if (hudFlux && latest.speed) hudFlux.innerText = `${latest.speed} km/s`;
-    const hudBow = document.getElementById('hud-bow-standoff');
-    if (hudBow && latest.magnetopause_re) hudBow.innerText = `${latest.magnetopause_re} R_E`;
+    if (orbitViewer.lastComputedBoundaries) {
+      updateBoundaryCards(orbitViewer.lastComputedBoundaries);
+    }
   }
 
   const times = records.map(r => r.time_tag.slice(5, 16));
@@ -1731,8 +1733,11 @@ async function initOrbits() {
 }
 
 function animateOrbits() {
-  if (orbitViewer) {
+  if (orbitViewer && orbitViewer.canvas && orbitViewer.canvas.offsetParent !== null) {
     orbitViewer.draw();
+    if (orbitViewer.lastComputedBoundaries) {
+      updateBoundaryCards(orbitViewer.lastComputedBoundaries);
+    }
   }
   requestAnimationFrame(animateOrbits);
 }
@@ -1755,6 +1760,85 @@ function toggleAllOrbitSatellites(visible) {
     const chk = document.getElementById(`orbit-chk-${k}`);
     if (chk) chk.checked = visible;
   });
+}
+
+function setOrbitBoundaryModel(model) {
+  if (orbitViewer) {
+    orbitViewer.setBoundaryModel(model);
+    orbitViewer.draw();
+    if (orbitViewer.lastComputedBoundaries) {
+      updateBoundaryCards(orbitViewer.lastComputedBoundaries);
+    }
+  }
+}
+
+function setOrbitSolarWindPreset(presetKey) {
+  if (!orbitViewer) return;
+  if (presetKey === 'quiet') {
+    orbitViewer.setSolarWindConditions(380, 1.8, 2.5, 8.5);
+  } else if (presetKey === 'storm') {
+    orbitViewer.setSolarWindConditions(580, 8.0, -6.5, 6.0);
+  } else if (presetKey === 'severe') {
+    orbitViewer.setSolarWindConditions(920, 32.0, -28.0, 4.2);
+  }
+  orbitViewer.draw();
+  if (orbitViewer.lastComputedBoundaries) {
+    updateBoundaryCards(orbitViewer.lastComputedBoundaries);
+  }
+  const btnSync = document.getElementById('btn-orbit-sync');
+  if (btnSync) {
+    btnSync.classList.add('animate-pulse', 'bg-amber-950/80', 'text-amber-300');
+    btnSync.classList.remove('bg-sky-950/60', 'text-sky-300');
+  }
+}
+
+function syncOrbitLiveTelemetry() {
+  if (!orbitViewer || !currentTelemetryData || !currentTelemetryData.latest) return;
+  const latest = currentTelemetryData.latest;
+  const mach = latest.mach_number || 8.0;
+  orbitViewer.setSolarWindConditions(latest.speed, latest.dynamic_pressure, latest.bz_gsm, mach);
+  orbitViewer.draw();
+  if (orbitViewer.lastComputedBoundaries) {
+    updateBoundaryCards(orbitViewer.lastComputedBoundaries);
+  }
+  const btnSync = document.getElementById('btn-orbit-sync');
+  if (btnSync) {
+    btnSync.classList.remove('animate-pulse', 'bg-amber-950/80', 'text-amber-300');
+    btnSync.classList.add('bg-sky-950/60', 'text-sky-300');
+  }
+}
+
+function updateBoundaryCards(b) {
+  if (!b) return;
+  const cardBow = document.getElementById('card-bow-standoff');
+  const cardBowKm = document.getElementById('card-bow-km');
+  if (cardBow) cardBow.innerText = `${b.r0_bs.toFixed(1)} RE`;
+  if (cardBowKm) cardBowKm.innerText = `~${Math.round(b.r0_bs * 6371).toLocaleString()} km`;
+
+  const cardMp = document.getElementById('card-mp-standoff');
+  const cardMpKm = document.getElementById('card-mp-km');
+  const cardMpStatus = document.getElementById('card-mp-geo-status');
+  if (cardMp) {
+    cardMp.innerText = `${b.r0_mp.toFixed(1)} RE`;
+    cardMp.className = b.insideGeo ? 'text-2xl font-hud font-bold text-rose-400 animate-pulse' : 'text-2xl font-hud font-bold text-amber-300';
+  }
+  if (cardMpKm) cardMpKm.innerText = `~${Math.round(b.r0_mp * 6371).toLocaleString()} km`;
+  if (cardMpStatus) {
+    const margin = b.r0_mp - 6.6;
+    if (b.insideGeo) {
+      cardMpStatus.innerHTML = `<span class="text-rose-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>SUB-GEO COMPRESSION (${margin.toFixed(1)} RE inside GEO)</span>`;
+    } else {
+      cardMpStatus.innerHTML = `<span class="text-emerald-400 font-medium">GEO Standoff Clear (+${margin.toFixed(1)} RE outside geostationary orbit)</span>`;
+    }
+  }
+
+  const cardSheath = document.getElementById('card-sheath-thick');
+  const cardSheathKm = document.getElementById('card-sheath-km');
+  if (cardSheath) cardSheath.innerText = `${b.sheathRe.toFixed(1)} RE`;
+  if (cardSheathKm) cardSheathKm.innerText = `~${Math.round(b.sheathRe * 6371).toLocaleString()} km`;
+
+  const cardAlpha = document.getElementById('card-flaring-alpha');
+  if (cardAlpha) cardAlpha.innerText = `${b.alpha_mp.toFixed(2)} / ${b.alpha_bs.toFixed(2)}`;
 }
 
 function refreshCurrentView() {
@@ -1955,8 +2039,12 @@ function switchReferencesTab(tabKey) {
   renderReferencesContent();
 }
 
+function openUserGuideModal() {
+  openReferencesModal('userguide');
+}
+
 function updateRefTabButtons() {
-  const tabs = ['equations', 'providers', 'licenses', 'handbook'];
+  const tabs = ['equations', 'providers', 'licenses', 'handbook', 'userguide'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-btn-ref-${t}`);
     if (btn) {
@@ -1994,6 +2082,8 @@ function renderReferencesContent() {
     renderLicensesTab(body);
   } else if (currentRefTab === 'handbook') {
     renderHandbookTab(body);
+  } else if (currentRefTab === 'userguide') {
+    renderUserGuideTab(body);
   }
 }
 
@@ -2341,6 +2431,275 @@ function renderHandbookTab(container) {
   `;
 }
 
+function renderUserGuideTab(container) {
+  const q = (refSearchQuery || '').toLowerCase().trim();
+
+  const sections = [
+    {
+      id: 'guide-arch',
+      title: '1. Mission Control Architecture & Two-Tier Navigation',
+      icon: 'fa-layer-group',
+      color: 'text-sky-400',
+      summary: 'Hierarchical four-domain layout, real-time command bar, and keyboard shortcuts for rapid scientific operations.',
+      content: `
+        <div class="space-y-3">
+          <p class="text-xs text-slate-300 leading-relaxed">
+            HELIOS-L1 operates on a two-tier mission architecture designed for mission-control efficiency and low cognitive overhead. The primary header gives global awareness through active status badges (NOAA G-scale, IMF Bz magnetic reconnection state, Subsolar Standoff distance, and Akasofu coupling flux ε).
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
+              <div class="text-[11px] font-bold text-sky-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-compass"></i>
+                <span>Tier 1: Scientific Mission Domains</span>
+              </div>
+              <ul class="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
+                <li><strong class="text-slate-200">1: L1 Fleet &amp; Telemetry</strong> (DSCOVR, ACE, Aditya-L1 real-time IMF &amp; plasma)</li>
+                <li><strong class="text-slate-200">2: Solar &amp; Heliosphere</strong> (SDO AIA EUV, Parker Spiral, CME 3D Simulation)</li>
+                <li><strong class="text-slate-200">3: Geospace &amp; Hazards</strong> (Auroral Oval, Boteler GIC, D-RAP Absorption)</li>
+                <li><strong class="text-slate-200">4: Data Studio &amp; Science</strong> (NASA OMNI Ingestion, Machine Learning Forecaster)</li>
+              </ul>
+            </div>
+
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
+              <div class="text-[11px] font-bold text-emerald-300 flex items-center space-x-1.5">
+                <i class="fa-regular fa-keyboard"></i>
+                <span>Primary Keyboard Hotkeys</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1 text-[11px] text-slate-300 font-mono">
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-sky-300">1-4</kbd> Switch Domain</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">R</kbd> Live Data Fetch</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-cyan-300">A</kbd> Sonification Mute</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-indigo-300">B</kbd> Advisory Bulletin</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-emerald-300">P</kbd> DOI References</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-indigo-300">U</kbd> Operator Guide</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-amber-300">T</kbd> Toggle UTC/Local</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-rose-300">ESC</kbd> Close Active Modal</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      id: 'guide-boundaries',
+      title: '2. Sun-Earth L1 Orbital Geometry & Chao Magnetopause Modeling',
+      icon: 'fa-shield-halved',
+      color: 'text-amber-400',
+      summary: 'Analytical Chao et al. (2002) and Shue et al. (1997) magnetopause and bow shock physics, GSE coordinates, and sub-GEO compression warnings.',
+      content: `
+        <div class="space-y-3">
+          <p class="text-xs text-slate-300 leading-relaxed">
+            The Orbital Geometry Simulator projects the Sun-Earth L1 and L2 Lagrangian saddle points in both 2D Ecliptic GSE (Geocentric Solar Ecliptic) and 3D oblique axonometric projections. Active spacecraft ephemerides (DSCOVR Lissajous, ACE Halo, ISRO Aditya-L1 Halo, WIND, SOHO, and GOES-16 GEO ring) are rendered with continuous physics-based streamflow particles.
+          </p>
+
+          <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-2">
+            <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
+              <i class="fa-solid fa-calculator"></i>
+              <span>Governing Equations: Chao et al. (2002) Empirical Bilinear Model</span>
+            </div>
+            <div class="font-mono text-xs text-amber-300 space-y-1 pl-2 border-l-2 border-amber-500/50">
+              <div>r₀,mp = (11.12 + 0.057 · Bz) · P_dyn^(-1/6.6)&nbsp;&nbsp;[for Bz ≥ 0 nT]</div>
+              <div>r₀,mp = (11.12 + 0.541 · Bz) · P_dyn^(-1/6.6)&nbsp;&nbsp;[for Bz &lt; 0 nT (Enhanced Erosion)]</div>
+              <div>α_mp = (0.58 - 0.007 · Bz) · (1 + 0.024 · P_dyn)</div>
+              <div>R₀,bs = (14.5 + 0.08 · Bz) · P_dyn^(-1/6.6) · [1 + 0.8 · ((γ-1)M² + 2) / ((γ+1)(M² - 1))] · (1 / 1.25)</div>
+              <div>α_bs = 0.61 · (1 + 0.015 · P_dyn)&nbsp;&nbsp;[Polytropic index γ = 5/3]</div>
+            </div>
+          </div>
+
+          <div class="p-3 rounded-lg bg-rose-950/40 border border-rose-800/60 text-xs space-y-1">
+            <div class="font-bold text-rose-300 flex items-center space-x-1.5">
+              <i class="fa-solid fa-triangle-exclamation text-rose-400"></i>
+              <span>Critical Operational Alert: Sub-GEO Compression (r₀,mp &lt; 6.6 R_E)</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed text-[11px]">
+              Under severe coronal mass ejection impacts (dynamic pressure P_dyn &gt; 25 nPa coupled with southward Bz &lt; -20 nT), the dayside magnetopause can be compressed inside Geostationary Orbit (GEO radius = 6.6 R_E ≈ 42,164 km). Geostationary telecommunication and weather satellites (e.g. GOES-16) are abruptly exposed to unshielded magnetosheath plasma and direct solar wind, inducing severe electrostatic spacecraft surface charging, attitude control torque disturbances, and single-event upsets (SEUs).
+            </p>
+          </div>
+        </div>
+      `
+    },
+    {
+      id: 'guide-telemetry',
+      title: '3. Interplanetary Magnetic Field & Solar Wind Plasma Telemetry',
+      icon: 'fa-satellite-dish',
+      color: 'text-cyan-400',
+      summary: 'Interpretation of IMF Bt, Bz, solar wind velocity, proton density, dynamic pressure, and real-time acoustic sonification.',
+      content: `
+        <div class="space-y-3">
+          <p class="text-xs text-slate-300 leading-relaxed">
+            The primary dashboard ingests 1-minute real-time interplanetary telemetry transmitted from L1 spacecraft (~1.5 million km upstream). Key observational parameters include:
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
+              <span class="font-bold text-sky-300">Total Field (Bt) &amp; Bz Component</span>
+              <p class="text-slate-400 text-[11px]">
+                Bz is the critical gatekeeper. When Bz turns strongly negative (Southward), interplanetary magnetic field lines reconnect with Earth's northward dipole field on the dayside, initiating the Dungey convection cycle and driving major geomagnetic storms.
+              </p>
+            </div>
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
+              <span class="font-bold text-amber-300">Bulk Velocity (V_sw) &amp; Density (Np)</span>
+              <p class="text-slate-400 text-[11px]">
+                Slow solar wind (~300-400 km/s) originates from streamer belts, while fast streams (&gt; 600-800 km/s) emanate from open coronal holes. High proton density spikes (&gt; 20 cm⁻³) signify coronal mass ejection sheath plasma or co-rotating interaction regions (CIRs).
+              </p>
+            </div>
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
+              <span class="font-bold text-emerald-300">Dynamic Ram Pressure (P_dyn)</span>
+              <p class="text-slate-400 text-[11px]">
+                P_dyn = 1.6726 × 10⁻⁶ · Np · V_sw² (nPa). Governs the physical compression of Earth's dayside magnetopause cavity. Nominal background is 1.5 - 2.5 nPa; CME shock fronts frequently exceed 20 - 60 nPa.
+              </p>
+            </div>
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
+              <span class="font-bold text-purple-300">Real-Time Acoustic Sonification</span>
+              <p class="text-slate-400 text-[11px]">
+                The console features an integrated Web Audio sonification engine (toggle with key 'A'). Pitch maps to total magnetic field strength (Bt), pan position maps to By, and harmonic beeps trigger when dynamic pressure crosses storm thresholds.
+              </p>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      id: 'guide-omni',
+      title: '4. NASA OMNI Ingestion Studio & Rankine-Hugoniot Shock Analysis',
+      icon: 'fa-file-import',
+      color: 'text-purple-400',
+      summary: 'Historical space weather benchmarks, custom CSV telemetry ingestion, automated shock jump conditions, and satellite cross-calibration.',
+      content: `
+        <div class="space-y-3">
+          <p class="text-xs text-slate-300 leading-relaxed">
+            The OMNI Data Studio enables operators and heliophysicists to load historical space weather benchmarks or upload custom research datasets for instant full-suite processing.
+          </p>
+          <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-2">
+            <div class="text-[11px] font-bold text-purple-300 uppercase tracking-wider">Historical Benchmark Presets:</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-rose-400">May 2024 G5 Superstorm:</strong> Strongest geomagnetic storm in 20+ years, Dst -412 nT.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-amber-400">Bastille Day 2000:</strong> X5.7 solar flare with extreme CME shock wave, V &gt; 1,000 km/s.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-red-400">Carrington 1859 Event:</strong> The historic benchmark solar superstorm with telegraph fires.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-orange-400">Halloween 2003 Storms:</strong> Series of intense X-class flares and satellite failures.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-emerald-400">Quiet Interplanetary Wind:</strong> Baseline quiet heliosphere background conditions.</div>
+            </div>
+          </div>
+          <div class="p-3 rounded-lg bg-space-950 border border-slate-800 text-xs space-y-1">
+            <span class="font-bold text-sky-300">Automated Rankine-Hugoniot MHD Shock Detection</span>
+            <p class="text-slate-300 text-[11px] leading-relaxed">
+              Upon ingestion, the suite scans time series for discontinuous jumps satisfying conservation of mass, momentum, and magnetic flux:
+              Compression ratio r_c = N₂ / N₁, Shock propagation speed V_sh = (N₂V₂ - N₁V₁) / (N₂ - N₁), and Fast Magnetosonic Mach number M_ms.
+            </p>
+          </div>
+        </div>
+      `
+    },
+    {
+      id: 'guide-corona',
+      title: '5. Solar EUV Corona, CME Kinematics & Parker Spiral Dynamics',
+      icon: 'fa-sun',
+      color: 'text-yellow-400',
+      summary: 'SDO AIA multi-wavelength diagnostics, interactive CME expansion ruler, and Parker spiral magnetic field connectivity.',
+      content: `
+        <div class="space-y-3">
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Coronal observation combines multi-wavelength Extreme Ultraviolet (EUV) solar imagery with heliospheric magnetic modeling:
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
+              <span class="font-bold text-amber-300">SDO AIA EUV Spectral Passbands</span>
+              <ul class="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
+                <li><strong class="text-amber-200">193 Å (Fe XII, 1.2 MK):</strong> Coronal holes, high-speed wind source regions.</li>
+                <li><strong class="text-red-300">304 Å (He II, 50,000 K):</strong> Chromosphere, prominences, eruptive filaments.</li>
+                <li><strong class="text-yellow-200">171 Å (Fe IX, 0.6 MK):</strong> Quiet corona, quiescent coronal magnetic loops.</li>
+                <li><strong class="text-teal-200">131 Å (Fe XX/XXIII, 10 MK):</strong> Extremely hot flaring plasma, flare arcades.</li>
+                <li><strong class="text-sky-300">LASCO C2:</strong> White-light occulted coronagraph (2.0 to 6.0 R_Sun).</li>
+              </ul>
+            </div>
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
+              <span class="font-bold text-sky-300">Parker Spiral &amp; SEP Magnetic Connectivity</span>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                Solar rotation (Ω = 2.865 × 10⁻⁶ rad/s) twists interplanetary magnetic field lines into an Archimedean spiral:
+                tan Ψ = (Ω · r) / V_sw.
+                Near 1 AU at nominal solar wind speed (~450 km/s), the spiral angle is ~45°. This determines whether Solar Energetic Particles (SEPs) from an active region will be magnetically guided directly toward Earth and L1 spacecraft.
+              </p>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      id: 'guide-hazards',
+      title: '6. Geospace Hazards, GIC Modeling & HF Ionospheric Absorption',
+      icon: 'fa-bolt',
+      color: 'text-rose-400',
+      summary: 'Starkov-Feldstein auroral oval boundary, Boteler GIC geoelectric fields on power grids, and NOAA D-RAP radio absorption.',
+      content: `
+        <div class="space-y-3">
+          <p class="text-xs text-slate-300 leading-relaxed">
+            The Geospace Hazards domain assesses operational space weather risks to terrestrial electrical power grids, trans-polar aviation routes, and satellite constellations:
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
+              <span class="font-bold text-emerald-300">Auroral Oval Visibility</span>
+              <p class="text-slate-400 text-[11px]">
+                Computes dynamic poleward and equatorward boundaries via Starkov (1994) / Feldstein empirical models. Projects luminescence curtains and ground observatory visibility on an interactive world map with day/night terminator.
+              </p>
+            </div>
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
+              <span class="font-bold text-amber-300">Geomagnetically Induced Currents</span>
+              <p class="text-slate-400 text-[11px]">
+                Boteler (2012) 1D plane-wave induction model: E = Z · H. Computes surface geoelectric field (V/km) and neutral transformer saturation currents based on underlying geology (Precambrian resistive shield vs sedimentary basin).
+              </p>
+            </div>
+            <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
+              <span class="font-bold text-rose-300">D-RAP HF Radio Blackout</span>
+              <p class="text-slate-400 text-[11px]">
+                Sauer &amp; Wilkinson D-Region Absorption Predictions model. Computes Highest Affected Frequency (HAF) and multi-MHz decibel attenuation caused by solar X-ray flares and Solar Proton Events (SPEs) on commercial polar aviation routes.
+              </p>
+            </div>
+          </div>
+        </div>
+      `
+    }
+  ];
+
+  const filtered = sections.filter(s => {
+    if (!q) return true;
+    return (
+      s.title.toLowerCase().includes(q) ||
+      s.summary.toLowerCase().includes(q) ||
+      s.content.toLowerCase().includes(q)
+    );
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="text-center py-12 text-slate-400">No user guide chapters matched "${refSearchQuery}".</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 border-b border-slate-800 pb-3">
+      <div>
+        <h3 class="font-tech font-bold text-slate-100 text-sm flex items-center space-x-2">
+          <i class="fa-solid fa-graduation-cap text-indigo-400"></i>
+          <span>HELIOS-L1 Science Suite Operator Manual &amp; Scientific Guide</span>
+        </h3>
+        <p class="text-[11px] text-slate-400 mt-0.5">Comprehensive operating manual, physical formulations, operational hazard scales, and mission control workflows.</p>
+      </div>
+      <span class="px-2.5 py-1 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 font-mono text-[11px]">6 Core Chapters • Rev 1.0</span>
+    </div>
+
+    <div class="space-y-4">
+      ${filtered.map(sec => `
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition shadow-lg space-y-3">
+          <div class="flex items-center space-x-2.5 border-b border-slate-800 pb-2">
+            <i class="fa-solid ${sec.icon} ${sec.color} text-sm"></i>
+            <h4 class="font-bold text-slate-100 text-sm tracking-wide">${sec.title}</h4>
+          </div>
+          <p class="text-xs text-slate-400 italic">${sec.summary}</p>
+          <div class="pt-1">${sec.content}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 // =============================================================================
 // TERRESTRIAL HAZARDS, D-RAP IONOSPHERE & SOLAR CYCLE 25 ENGINE
 // =============================================================================
@@ -2642,6 +3001,8 @@ window.addEventListener('keydown', (e) => {
     openBulletinModal();
   } else if (e.key === 'p' || e.key === 'P') {
     openReferencesModal();
+  } else if (e.key === 'u' || e.key === 'U') {
+    openUserGuideModal();
   } else if (e.key === 't' || e.key === 'T') {
     toggleClockMode();
   }

@@ -39,10 +39,10 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    $$P_{dyn} = 1.6726 \times 10^{-6} \cdot n_p \cdot v_{sw}^2 \quad [\text{nPa}]$$
    Quantifies solar wind momentum flux compressing Earth's magnetosphere.
 
-2. **Magnetopause Standoff Distance ($R_{mp}$):**
-   Evaluated using the empirical **Shue et al. (1998)** model:
-   $$r_0 = \left(10.22 + 1.29 \tanh\left(0.184 (B_z + 8.14)\right)\right) P_{dyn}^{-1/6.6} \quad [R_E]$$
-   Alerts if $R_{mp} < 6.6 R_E$, indicating that geostationary satellites (GOES, telecommunications) are exposed directly to raw solar wind.
+2. **Magnetopause & Bow Shock Boundaries (Chao et al., 2002 / Shue et al., 1998):**
+   * **Chao et al. (2002) Bilinear Model:** Computes dayside magnetopause standoff $r_0$ with distinct slope breaks across $B_z \ge 0$ ($+0.057 B_z$) and $B_z < 0$ ($+0.541 B_z$) erosion regimes, coupled with upstream Alfvén Mach-dependent Bow Shock standoff $R_0,bs$ and flaring parameters ($\alpha_{mp}, \alpha_{bs}$).
+   * **Magnetosheath Thickness ($\Delta R$):** Subsolar separation between Bow Shock and Magnetopause ($\Delta R = R_0,bs - r_0,mp$).
+   * **Sub-GEO Compression Alert:** Alerts if $r_0 < 6.6 R_E$, signifying that geostationary spacecraft (GOES, telecommunications) are exposed directly to unshielded magnetosheath plasma.
 
 3. **Akasofu Epsilon Energy Coupling ($\epsilon$):**
    $$\epsilon = \frac{v_{sw} B_t^2}{\mu_0} \sin^4\left(\frac{\theta}{2}\right) l_0^2 \quad [\text{GW}]$$
@@ -60,17 +60,23 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    * Evaluates Archimedean magnetic spiral geometry ($r - r_0 = -\frac{V_{sw}}{\Omega_\odot} (\phi - \phi_0)$) and pitch angles ($\psi$).
    * Identifies the "well-connected" solar disk footpoint longitude for solar energetic particle (SEP) events.
 
-7. **Interplanetary Shock Detection (Rankine-Hugoniot Proxy):**
-   Automated detection of fast forward CME shocks with velocity jumps ($\Delta V \ge 45\text{ km/s}$), density compression ($N_2/N_1 \ge 1.5$), magnetic jumps ($B_2/B_1 \ge 1.35$), and Mach number proxy.
+7. **NASA OMNI Ingestion Studio & Rankine-Hugoniot Shock Solver:**
+   * Ingests custom CSV and NASA OMNI high-resolution telemetry.
+   * Features 5 one-click historical benchmarks: May 2024 G5 Superstorm, Bastille Day 2000, Carrington Event 1859, Halloween 2003, and Quiet Interplanetary Background.
+   * Scans for Rankine-Hugoniot MHD jump conditions: compression ratio $r_c = N_2/N_1$, shock velocity $V_{sh}$, and fast magnetosonic Mach number $M_{ms}$.
 
-8. **Cross-Correlation & Solar Wind Propagation Lag ($\tau$):**
-   Measures solar wind travel time between L1 halo positions and down to Earth's bow shock ($X \sim 1.5 \times 10^6\text{ km}$ at $V_{sw}$ yields $\sim 30\text{--}60$ minutes early warning).
+8. **Geomagnetically Induced Currents (GIC) & D-RAP Ionospheric Absorption:**
+   * **Boteler (2012) 1D Induction Model:** Computes surface geoelectric field ($E = Z \cdot H$) and neutral transformer currents on resistive geological shields.
+   * **NOAA D-RAP Model:** Computes Highest Affected Frequency (HAF) and multi-MHz radio absorption on trans-polar airline corridors caused by solar X-ray flares and SPEs.
 
-9. **Sensor Cross-Calibration:**
-   Computes Pearson correlation coefficient ($r$), coefficient of determination ($R^2$), RMSE, MAE, sensor bias, and linear regression calibration parameters between any two satellites.
+9. **Sensor Cross-Calibration & Turbulence Power Spectral Density:**
+   * Cross-correlation time lag ($\tau \sim 30\text{--}60$ min early warning between L1 and Earth).
+   * Pearson correlation ($r$), $R^2$, RMSE, MAE, and linear calibration between any two spacecraft.
+   * Fast Fourier Transform (FFT) analysis of IMF magnetic fluctuations to identify Alfvénic turbulence and Kolmogorov $f^{-5/3}$ inertial subrange slopes.
 
-10. **Fourier Power Spectral Density (PSD):**
-   Fast Fourier Transform (FFT) analysis of IMF magnetic fluctuations to identify Alfvénic turbulence and Kolmogorov $f^{-5/3}$ inertial subrange slopes.
+10. **Operator User Guide & Scientific Literature Handbook (Hotkeys 'U' & 'P'):**
+    * Full 6-chapter interactive operator manual embedded with real-time keyword search.
+    * Complete directory of peer-reviewed formulas with direct DOI cross-references, data provider provenance (NOAA, NASA, ISRO, ESA, GFZ, WDC), and open science licenses.
 
 ---
 

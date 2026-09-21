@@ -481,8 +481,10 @@ class SolarDiskViewer {
   }
 
   animate() {
-    this.time += 1;
-    this.draw();
+    if (this.canvas && this.canvas.offsetParent !== null) {
+      this.time += 1;
+      this.draw();
+    }
     requestAnimationFrame(this.animate);
   }
 }

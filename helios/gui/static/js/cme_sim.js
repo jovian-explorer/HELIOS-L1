@@ -410,19 +410,21 @@ class CMESimulator {
   }
 
   animate() {
-    if (this.isPlaying) {
-      // Advance by playback speed (1 real sec = 2 hrs of simulation)
-      this.timeHrs += (1 / 60) * 2.5 * this.playbackSpeed;
-      if (this.timeHrs > this.maxHrs) {
-        this.timeHrs = this.maxHrs;
-        this.isPlaying = false;
+    if (this.canvas && this.canvas.offsetParent !== null) {
+      if (this.isPlaying) {
+        // Advance by playback speed (1 real sec = 2 hrs of simulation)
+        this.timeHrs += (1 / 60) * 2.5 * this.playbackSpeed;
+        if (this.timeHrs > this.maxHrs) {
+          this.timeHrs = this.maxHrs;
+          this.isPlaying = false;
+        }
+        // Sync slider if present
+        const slider = document.getElementById('cme-timeline-slider');
+        if (slider) slider.value = this.timeHrs;
       }
-      // Sync slider if present
-      const slider = document.getElementById('cme-timeline-slider');
-      if (slider) slider.value = this.timeHrs;
-    }
 
-    this.draw();
+      this.draw();
+    }
     requestAnimationFrame(this.animate);
   }
 }

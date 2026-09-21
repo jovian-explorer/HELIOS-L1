@@ -626,6 +626,21 @@ SCIENTIFIC_REFERENCES = [
         "formula": "a_cme = 2.19 - 0.0054 * v_cme [m/s^2],  T_transit = (-v_0 + sqrt(v_0^2 + 2 * a * d)) / a",
         "parameters": ["v_cme (initial coronagraph plane-of-sky CME velocity in km/s)", "a_cme (interplanetary acceleration / deceleration)", "d (1 AU distance)"],
         "physical_meaning": "Empirical heliospheric aerodynamic interaction formula establishing that fast CMEs (>405 km/s) decelerate while slow CMEs accelerate toward background solar wind."
+    },
+    {
+        "id": "chao_boundaries_2002",
+        "title": "Models for the size and shape of the Earth's magnetopause and bow shock",
+        "authors": "Chao, J. K., Wu, D. J., Lin, C. H., Yang, Y. H., Wang, X. Y., Kessel, M., Chen, S. H., & Lepping, R. P.",
+        "journal": "Space Weather Study Using Multipoint Techniques, COSPAR Colloquia Series",
+        "year": 2002,
+        "volume": "12",
+        "pages": "127-135",
+        "doi": "10.1016/S0964-2749(02)80214-7",
+        "doi_url": "https://doi.org/10.1016/S0964-2749(02)80214-7",
+        "category": "Magnetospheric Cavity & Bow Shock Geometry",
+        "formula": "r(theta) = r_0 * [2 / (1 + cos(theta))]^alpha,  r_0,mp = (11.12 + 0.541*Bz)*Pdyn^(-1/6.6),  r_0,bs = (14.5 + 0.08*Bz)*Pdyn^(-1/6.6)*f(M_A)",
+        "parameters": ["r_0,mp (subsolar magnetopause distance in R_E)", "r_0,bs (subsolar bow shock standoff distance in R_E)", "M_A (Alfvén Mach number)", "alpha (tail flaring exponent)"],
+        "physical_meaning": "Coupled empirical models parameterizing both the dayside magnetopause and upstream bow shock standoffs and flaring geometry based on solar wind dynamic pressure, IMF Bz, and upstream Mach number."
     }
 ]
 
@@ -777,5 +792,27 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "instrument": "Derived from Plasma Flow Speed & Vector IMF",
         "description": "Dawn-to-dusk interplanetary electric field driving dayside magnetic reconnection, polar cap potential saturation, and equatorial ring current intensification.",
         "doi": "10.1126/science.189.4204.717"
+    },
+    "bow_shock_standoff": {
+        "name": "Subsolar Bow Shock Standoff Distance",
+        "symbol": "R_bs",
+        "unit": "R_E (Earth Radii ~ 6,371 km)",
+        "nominal_range": "13.0 - 15.5 R_E (~83,000 - 99,000 km)",
+        "disturbed_range": "< 10.0 R_E (Intense CME Compression), < 7.5 R_E (Severe Superstorm Shock)",
+        "formula": "R_bs = r_0,bs * [2 / (1 + cos(theta))]^alpha_bs",
+        "instrument": "Multi-satellite bow shock crossings (Cluster, THEMIS, MMS, Geotail)",
+        "description": "Subsolar distance to Earth's detached collisionless bow shock where supersonic solar wind is decelerated and heated into the subsonic magnetosheath.",
+        "doi": "10.1016/S0964-2749(02)80214-7"
+    },
+    "magnetosheath_thickness": {
+        "name": "Subsolar Magnetosheath Thickness",
+        "symbol": "Delta R",
+        "unit": "R_E (Earth Radii)",
+        "nominal_range": "3.0 - 4.5 R_E (~19,000 - 29,000 km)",
+        "disturbed_range": "< 2.0 R_E (Thin compressed sheath under high Mach numbers)",
+        "formula": "Delta R = R_bs,0 - r_mp,0",
+        "instrument": "Dual-boundary satellite transit differential",
+        "description": "Spatial separation along the Sun-Earth line between the collisionless bow shock and the dayside magnetopause.",
+        "doi": "10.1016/S0964-2749(02)80214-7"
     }
 }
