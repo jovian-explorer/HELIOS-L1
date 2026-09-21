@@ -508,6 +508,16 @@ function updateFeedStatus(data, latency = 0) {
   }
 }
 
+function sonifyCurrentTelemetry() {
+  const latest = (currentTelemetryData && currentTelemetryData.latest) || {};
+  const speed = typeof latest.speed === 'number' ? latest.speed : 450;
+  const bz = typeof latest.bz_gsm === 'number' ? latest.bz_gsm : -2.5;
+  const density = typeof latest.density === 'number' ? latest.density : 6.0;
+  if (window.soundEngine) {
+    window.soundEngine.sonifySolarWind(speed, bz, density);
+  }
+}
+
 function updateTelemetryUI(data) {
   const mission = data.mission;
   const latest = data.latest || {};

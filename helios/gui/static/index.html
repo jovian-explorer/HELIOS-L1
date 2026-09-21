@@ -253,11 +253,17 @@
           </div>
         </div>
 
-        <div id="satellite-mission-badge" class="flex items-center space-x-3 text-xs bg-space-900/80 px-4 py-2 rounded-xl border border-sky-500/20 shadow-inner">
-          <i class="fa-solid fa-satellite-dish text-sky-400 text-xl"></i>
-          <div>
-            <div id="sat-name-full" class="font-bold text-slate-200">Deep Space Climate Observatory</div>
-            <div id="sat-agency-orbit" class="text-slate-400 text-[11px]">NOAA / NASA • Sun-Earth L1 • ~1,500,000 km from Earth</div>
+        <div class="flex items-center space-x-3">
+          <button onclick="sonifyCurrentTelemetry()" class="px-3 py-2 rounded-xl bg-space-900/80 hover:bg-space-800 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center space-x-2 transition shadow-inner" title="Acoustic Plasma Sonification: Procedurally synthesize current solar wind velocity, density & reconnection state">
+            <i class="fa-solid fa-volume-high text-cyan-400"></i>
+            <span>Sonify Plasma</span>
+          </button>
+          <div id="satellite-mission-badge" class="flex items-center space-x-3 text-xs bg-space-900/80 px-4 py-2 rounded-xl border border-sky-500/20 shadow-inner">
+            <i class="fa-solid fa-satellite-dish text-sky-400 text-xl"></i>
+            <div>
+              <div id="sat-name-full" class="font-bold text-slate-200">Deep Space Climate Observatory</div>
+              <div id="sat-agency-orbit" class="text-slate-400 text-[11px]">NOAA / NASA • Sun-Earth L1 • ~1,500,000 km from Earth</div>
+            </div>
           </div>
         </div>
       </div>
@@ -920,7 +926,7 @@
             <span class="text-[10px] text-slate-400">2.0 - 6.0 R☉</span>
           </div>
           <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
-            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c2/latest.jpg" onerror="this.src='/static/img/lasco_fallback.png'" alt="SOHO LASCO C2" class="w-full h-full object-cover">
+            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c2/latest.jpg" onerror="this.onerror=null; this.src='/static/img/lasco_c2_fallback.png';" alt="SOHO LASCO C2" class="w-full h-full object-cover">
           </div>
           <p class="text-[11px] text-slate-400 mt-2">Inner coronagraph tracking CME inception.</p>
         </div>
@@ -931,7 +937,7 @@
             <span class="text-[10px] text-slate-400">3.7 - 32.0 R☉</span>
           </div>
           <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
-            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c3/latest.jpg" onerror="this.src='/static/img/lasco_fallback.png'" alt="SOHO LASCO C3" class="w-full h-full object-cover">
+            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c3/latest.jpg" onerror="this.onerror=null; this.src='/static/img/lasco_c3_fallback.png';" alt="SOHO LASCO C3" class="w-full h-full object-cover">
           </div>
           <p class="text-[11px] text-slate-400 mt-2">Wide-angle coronagraph tracking halo CMEs towards Earth.</p>
         </div>
@@ -942,10 +948,12 @@
             <span class="text-[10px] text-slate-400">1.25 Million K Corona</span>
           </div>
           <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
-            <img src="https://services.swpc.noaa.gov/images/animations/suvi-primary-195/latest.png" alt="SDO SUVI 195" class="w-full h-full object-cover">
+            <img src="https://services.swpc.noaa.gov/images/animations/suvi-primary-195/latest.png" onerror="this.onerror=null; this.src='/static/img/suvi_195_fallback.png';" alt="SDO SUVI 195" class="w-full h-full object-cover">
           </div>
           <p class="text-[11px] text-slate-400 mt-2">Coronal holes & flaring active regions.</p>
         </div>
+      </div>
+
       <!-- Interactive Multi-Wavelength Solar Disk & Active Region Scanner -->
       <div class="glass-panel p-5 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
