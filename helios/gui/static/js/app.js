@@ -50,8 +50,77 @@ const darkChartOptions = {
   }
 };
 
+let currentDomain = 'fleet';
+let currentTab = 'dashboard';
+let clockMode = 'UTC';
+
+const DOMAINS = {
+  fleet: {
+    id: 'fleet',
+    name: 'L1 Fleet & Telemetry',
+    badge: '4 SENSORS',
+    context: 'DOMAIN: L1 FLEET & TELEMETRY // REAL-TIME IN-SITU OBSERVATORY',
+    views: [
+      { id: 'dashboard', label: 'L1 Telemetry', icon: 'fa-gauge-high', color: 'text-sky-400' },
+      { id: 'comparator', label: 'Multi-Satellite Comparator', icon: 'fa-code-compare', color: 'text-cyan-400' },
+      { id: 'orbits', label: 'Position of Probes & Orbits', icon: 'fa-circle-nodes', color: 'text-sky-400' },
+      { id: 'missions', label: 'Fleet Catalog', icon: 'fa-satellite', color: 'text-blue-400' }
+    ]
+  },
+  heliosphere: {
+    id: 'heliosphere',
+    name: 'Solar & Heliosphere',
+    badge: '3 MODELS',
+    context: 'DOMAIN: SOLAR & HELIOSPHERE // CORONA, PARKER SPIRAL & TURBULENCE',
+    views: [
+      { id: 'coronagraph', label: 'Coronagraph & CME', icon: 'fa-sun', color: 'text-amber-400' },
+      { id: 'parker', label: 'Parker Spiral & CIR', icon: 'fa-wind', color: 'text-cyan-400' },
+      { id: 'turbulence', label: 'FFT Turbulence & PSD', icon: 'fa-wave-square', color: 'text-purple-400' }
+    ]
+  },
+  geospace: {
+    id: 'geospace',
+    name: 'Geospace & Hazards',
+    badge: '4 MODULES',
+    context: 'DOMAIN: GEOSPACE & HAZARDS // OVATION, ML FORECAST, D-RAP & GIC',
+    views: [
+      { id: 'aurora', label: 'Auroral Oval & Map', icon: 'fa-earth-americas', color: 'text-emerald-400' },
+      { id: 'forecast', label: 'AI / ML Storm Forecast', icon: 'fa-chart-line', color: 'text-blue-400' },
+      { id: 'hazards', label: 'Terrestrial Hazards & Solar Cycle', icon: 'fa-tower-broadcast', color: 'text-amber-400' },
+      { id: 'events', label: 'Storms Archive', icon: 'fa-clock-rotate-left', color: 'text-rose-400' }
+    ]
+  },
+  data: {
+    id: 'data',
+    name: 'Data Studio & Science',
+    badge: 'OPEN SCI',
+    context: 'DOMAIN: DATA STUDIO & SCIENCE // CUSTOM OMNI & PEER-REVIEWED DOIS',
+    views: [
+      { id: 'import', label: 'Custom Ingestion & OMNI', icon: 'fa-database', color: 'text-indigo-400' },
+      { id: 'references', label: 'References & Portals', icon: 'fa-book-atlas', color: 'text-emerald-400', isModal: true }
+    ]
+  }
+};
+
+const TAB_TO_DOMAIN = {
+  dashboard: 'fleet',
+  comparator: 'fleet',
+  orbits: 'fleet',
+  missions: 'fleet',
+  coronagraph: 'heliosphere',
+  parker: 'heliosphere',
+  turbulence: 'heliosphere',
+  aurora: 'geospace',
+  forecast: 'geospace',
+  hazards: 'geospace',
+  events: 'geospace',
+  import: 'data',
+  references: 'data'
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   startClock();
+  renderSubnav('fleet');
   initCharts();
   loadTelemetry();
   loadMissions();
@@ -77,61 +146,111 @@ function initVisualizers() {
 }
 
 function startClock() {
-  function update() {
-    const el = document.getElementById('utc-clock');
-    if (el) {
-      const now = new Date();
-      el.innerText = now.toUTCString().slice(17, 25) + ' UTC';
+  updateClock();
+  setInterval(updateClock, 1000);
+}
+
+function toggleClockMode() {
+  clockMode = (clockMode === 'UTC') ? 'LOCAL' : 'UTC';
+  updateClock();
+}
+
+function updateClock() {
+  const el = document.getElementById('utc-clock');
+  const badge = document.getElementById('clock-tz-badge');
+  if (!el) return;
+  const now = new Date();
+  if (clockMode === 'UTC') {
+    el.innerText = now.toUTCString().slice(17, 25) + ' UTC';
+    if (badge) {
+      badge.innerText = 'UTC';
+      badge.className = 'text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300 uppercase font-mono';
+    }
+  } else {
+    const offsetMin = -now.getTimezoneOffset();
+    const sign = offsetMin >= 0 ? '+' : '-';
+    const absMin = Math.abs(offsetMin);
+    const hrs = String(Math.floor(absMin / 60)).padStart(2, '0');
+    const mins = String(absMin % 60).padStart(2, '0');
+    const tzStr = `UTC${sign}${hrs}:${mins}`;
+    el.innerText = now.toLocaleTimeString();
+    if (badge) {
+      badge.innerText = tzStr;
+      badge.className = 'text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 uppercase font-mono';
     }
   }
-  update();
-  setInterval(update, 1000);
 }
 
-function toggleOrbitViewMode(mode) {
-  if (orbitViewer) {
-    orbitViewer.setViewMode(mode);
-    const btn2d = document.getElementById('btn-orbit-2d');
-    const btn3d = document.getElementById('btn-orbit-3d');
-    if (mode === '2d') {
-      btn2d?.classList.add('bg-sky-600', 'text-white');
-      btn2d?.classList.remove('text-slate-400');
-      btn3d?.classList.remove('bg-sky-600', 'text-white');
-      btn3d?.classList.add('text-slate-400');
-    } else {
-      btn3d?.classList.add('bg-sky-600', 'text-white');
-      btn3d?.classList.remove('text-slate-400');
-      btn2d?.classList.remove('bg-sky-600', 'text-white');
-      btn2d?.classList.add('text-slate-400');
-    }
+function renderSubnav(domainKey) {
+  const container = document.getElementById('subnav-container');
+  if (!container) return;
+  const domain = DOMAINS[domainKey];
+  if (!domain) return;
+
+  const html = domain.views.map(v => {
+    const isActive = v.id === currentTab;
+    const activeClass = isActive ? 'active' : '';
+    const clickHandler = v.isModal ? `openReferencesModal()` : `switchTab('${v.id}')`;
+    return `
+      <button onclick="${clickHandler}" id="subnav-btn-${v.id}" class="subnav-btn ${activeClass}" title="${v.label}">
+        <i class="fa-solid ${v.icon} ${v.color}"></i>
+        <span>${v.label}</span>
+      </button>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+
+  const ctxLabel = document.getElementById('domain-context-label');
+  if (ctxLabel) {
+    ctxLabel.innerText = domain.context;
   }
 }
 
-function zoomOrbit(factor) {
-  if (orbitViewer) {
-    orbitViewer.scale = Math.min(Math.max(0.3, orbitViewer.scale * factor), 4.5);
+function switchDomain(domainKey) {
+  if (!DOMAINS[domainKey]) return;
+  currentDomain = domainKey;
+
+  // Update domain buttons in Tier 1
+  document.querySelectorAll('#domain-tabs .domain-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  const domainBtn = document.getElementById(`domain-btn-${domainKey}`);
+  if (domainBtn) domainBtn.classList.add('active');
+
+  // If current tab is not in this domain, switch to first tab of new domain
+  const domainViews = DOMAINS[domainKey].views;
+  const viewExistsInDomain = domainViews.some(v => v.id === currentTab);
+  if (!viewExistsInDomain) {
+    const nextTab = domainViews.find(v => !v.isModal)?.id || domainViews[0].id;
+    currentTab = nextTab;
   }
+
+  renderSubnav(domainKey);
+  switchTab(currentTab, false);
 }
 
-function switchTab(tabId) {
+function switchTab(tabId, checkDomain = true) {
   window.playBlip?.();
 
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.remove('active');
-    btn.classList.remove('border-sky-400', 'text-sky-400');
-    btn.classList.add('border-transparent', 'text-slate-400');
-  });
+  if (checkDomain) {
+    const targetDomain = TAB_TO_DOMAIN[tabId] || 'fleet';
+    if (targetDomain !== currentDomain) {
+      currentDomain = targetDomain;
+      document.querySelectorAll('#domain-tabs .domain-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      const domainBtn = document.getElementById(`domain-btn-${targetDomain}`);
+      if (domainBtn) domainBtn.classList.add('active');
+    }
+  }
 
+  currentTab = tabId;
+  renderSubnav(currentDomain);
+
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
   const targetTab = document.getElementById(`tab-${tabId}`);
   if (targetTab) targetTab.classList.remove('hidden');
-
-  const clickedBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick')?.includes(tabId));
-  if (clickedBtn) {
-    clickedBtn.classList.add('active');
-    clickedBtn.classList.add('border-sky-400', 'text-sky-400');
-    clickedBtn.classList.remove('border-transparent', 'text-slate-400');
-  }
 
   if (tabId === 'orbits' && orbitViewer) {
     setTimeout(() => {
@@ -161,6 +280,31 @@ function switchTab(tabId) {
     loadHazardsAndCycle();
   } else if (tabId === 'turbulence') {
     loadSpectralAnalysis();
+  }
+}
+
+function toggleOrbitViewMode(mode) {
+  if (orbitViewer) {
+    orbitViewer.setViewMode(mode);
+    const btn2d = document.getElementById('btn-orbit-2d');
+    const btn3d = document.getElementById('btn-orbit-3d');
+    if (mode === '2d') {
+      btn2d?.classList.add('bg-sky-600', 'text-white');
+      btn2d?.classList.remove('text-slate-400');
+      btn3d?.classList.remove('bg-sky-600', 'text-white');
+      btn3d?.classList.add('text-slate-400');
+    } else {
+      btn3d?.classList.add('bg-sky-600', 'text-white');
+      btn3d?.classList.remove('text-slate-400');
+      btn2d?.classList.remove('bg-sky-600', 'text-white');
+      btn2d?.classList.add('text-slate-400');
+    }
+  }
+}
+
+function zoomOrbit(factor) {
+  if (orbitViewer) {
+    orbitViewer.scale = Math.min(Math.max(0.3, orbitViewer.scale * factor), 4.5);
   }
 }
 
@@ -300,13 +444,43 @@ async function loadTelemetry() {
   const sat = satSelect ? satSelect.value : 'DSCOVR';
   const span = spanSelect ? spanSelect.value : '1';
 
+  const t0 = performance.now();
   try {
     const res = await fetch(`/api/telemetry/${sat}?span_days=${span}`);
     if (!res.ok) throw new Error('Failed to fetch telemetry');
     const data = await res.json();
+    const latency = Math.round(performance.now() - t0);
+    updateFeedStatus(data, latency);
     updateTelemetryUI(data);
   } catch (err) {
     console.error('Error fetching telemetry:', err);
+    updateFeedStatus({ error: true });
+  }
+}
+
+function updateFeedStatus(data, latency = 0) {
+  const badgeText = document.getElementById('feed-status-text');
+  const badgeDot = document.getElementById('feed-status-dot');
+  if (!badgeText || !badgeDot) return;
+
+  if (data.error) {
+    badgeText.innerText = 'Feed Offline';
+    badgeText.className = 'text-rose-400 font-mono text-[11px]';
+    badgeDot.className = 'w-2 h-2 rounded-full bg-rose-500';
+    return;
+  }
+
+  const recCount = (data.records || []).length;
+  const isLive = (data.source || '').toLowerCase().includes('noaa') || (data.source || '').toLowerCase().includes('live');
+
+  if (isLive) {
+    badgeText.innerText = `NOAA SWPC (${recCount} pts • ${latency}ms)`;
+    badgeText.className = 'text-emerald-300 font-mono text-[11px]';
+    badgeDot.className = 'w-2 h-2 rounded-full bg-emerald-400 pulse-beacon';
+  } else {
+    badgeText.innerText = `Physics Model (${recCount} pts • ${latency}ms)`;
+    badgeText.className = 'text-amber-300 font-mono text-[11px]';
+    badgeDot.className = 'w-2 h-2 rounded-full bg-amber-400';
   }
 }
 
@@ -363,6 +537,43 @@ function updateTelemetryUI(data) {
   document.getElementById('metric-pdyn').innerText = latest.dynamic_pressure !== undefined ? latest.dynamic_pressure : '---';
   document.getElementById('metric-delay').innerText = latest.l1_travel_time_min !== undefined ? latest.l1_travel_time_min : '---';
 
+  // Calculate Min, Avg, Max for numeric telemetry fields across records
+  function calcStats(arr, key) {
+    const vals = arr.map(r => r[key]).filter(v => typeof v === 'number' && !isNaN(v));
+    if (vals.length === 0) return { min: '--', avg: '--', max: '--' };
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return {
+      min: min.toFixed(1),
+      avg: avg.toFixed(1),
+      max: max.toFixed(1)
+    };
+  }
+
+  const spdStats = calcStats(records, 'speed');
+  const bzStats = calcStats(records, 'bz_gsm');
+  const btStats = calcStats(records, 'bt');
+  const denStats = calcStats(records, 'density');
+  const pdynStats = calcStats(records, 'dynamic_pressure');
+  const delStats = calcStats(records, 'l1_travel_time_min');
+
+  const setStatText = (prefix, s) => {
+    const minEl = document.getElementById(`stat-${prefix}-min`);
+    const avgEl = document.getElementById(`stat-${prefix}-avg`);
+    const maxEl = document.getElementById(`stat-${prefix}-max`);
+    if (minEl) minEl.innerText = s.min;
+    if (avgEl) avgEl.innerText = s.avg;
+    if (maxEl) maxEl.innerText = s.max;
+  };
+
+  setStatText('speed', spdStats);
+  setStatText('bz', bzStats);
+  setStatText('bt', btStats);
+  setStatText('density', denStats);
+  setStatText('pdyn', pdynStats);
+  setStatText('delay', delStats);
+
   // Dynamic KPI Mini-Progress Bars
   const barSpeed = document.getElementById('bar-speed');
   if (barSpeed && latest.speed) barSpeed.style.width = `${Math.min(100, Math.max(10, (latest.speed / 800) * 100))}%`;
@@ -384,6 +595,45 @@ function updateTelemetryUI(data) {
 
   const barDelay = document.getElementById('bar-delay');
   if (barDelay && latest.l1_travel_time_min) barDelay.style.width = `${Math.min(100, Math.max(15, (latest.l1_travel_time_min / 60) * 100))}%`;
+
+  // Update IMF Clock Angle & Reconnection Compass Needle
+  const by = latest.by_gsm !== undefined ? latest.by_gsm : 0;
+  const bz = latest.bz_gsm !== undefined ? latest.bz_gsm : 0;
+  let clockTheta = Math.round(Math.atan2(by, bz) * (180 / Math.PI));
+  if (clockTheta < 0) clockTheta += 360;
+
+  const needle = document.getElementById('clock-angle-needle');
+  const clockText = document.getElementById('metric-clock-angle');
+  const recBadge = document.getElementById('metric-reconnect-badge');
+
+  if (needle) {
+    needle.setAttribute('transform', `rotate(${clockTheta} 16 16)`);
+  }
+  if (clockText) {
+    let dir = 'N';
+    if (clockTheta > 337.5 || clockTheta <= 22.5) dir = 'N';
+    else if (clockTheta > 22.5 && clockTheta <= 67.5) dir = 'NE';
+    else if (clockTheta > 67.5 && clockTheta <= 112.5) dir = 'E';
+    else if (clockTheta > 112.5 && clockTheta <= 157.5) dir = 'SE';
+    else if (clockTheta > 157.5 && clockTheta <= 202.5) dir = 'S';
+    else if (clockTheta > 202.5 && clockTheta <= 247.5) dir = 'SW';
+    else if (clockTheta > 247.5 && clockTheta <= 292.5) dir = 'W';
+    else if (clockTheta > 292.5 && clockTheta <= 337.5) dir = 'NW';
+
+    clockText.innerText = `${clockTheta}° (${dir})`;
+  }
+  if (recBadge) {
+    if (bz < -5) {
+      recBadge.innerText = 'RECONNECTING';
+      recBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/25 text-rose-400 border border-rose-500/40 animate-pulse';
+    } else if (bz < 0) {
+      recBadge.innerText = 'WEAK REC';
+      recBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    } else {
+      recBadge.innerText = 'CLOSED';
+      recBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    }
+  }
 
   // Feed Live Physical Telemetry to Orbit Simulator & HUD
   if (orbitViewer) {
@@ -1796,5 +2046,69 @@ function renderDrapSpectrumChart(spectrum) {
   });
 }
 
+/* ========================================================================= */
+/* KEYBOARD SHORTCUTS & MODAL MANAGEMENT                                    */
+/* ========================================================================= */
 
+function openShortcutsModal() {
+  const m = document.getElementById('modal-shortcuts');
+  if (m) m.classList.remove('hidden');
+}
 
+function closeShortcutsModal() {
+  const m = document.getElementById('modal-shortcuts');
+  if (m) m.classList.add('hidden');
+}
+
+function toggleShortcutsModal() {
+  const m = document.getElementById('modal-shortcuts');
+  if (m) {
+    if (m.classList.contains('hidden')) {
+      m.classList.remove('hidden');
+    } else {
+      m.classList.add('hidden');
+    }
+  }
+}
+
+function closeAllModals() {
+  closeBulletinModal();
+  closeReferencesModal();
+  closeShortcutsModal();
+  const paramModal = document.getElementById('modal-parameter');
+  if (paramModal) paramModal.classList.add('hidden');
+}
+
+// Global hotkeys listener
+window.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    if (e.key === 'Escape') closeAllModals();
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    closeAllModals();
+  } else if (e.key === '?' || (e.key === '/' && e.shiftKey) || e.key === 'F1') {
+    e.preventDefault();
+    toggleShortcutsModal();
+  } else if (e.key === '1') {
+    switchDomain('fleet');
+  } else if (e.key === '2') {
+    switchDomain('heliosphere');
+  } else if (e.key === '3') {
+    switchDomain('geospace');
+  } else if (e.key === '4') {
+    switchDomain('data');
+  } else if (e.key === 'r' || e.key === 'R') {
+    refreshCurrentView();
+  } else if (e.key === 'a' || e.key === 'A') {
+    toggleAudio();
+  } else if (e.key === 'b' || e.key === 'B') {
+    openBulletinModal();
+  } else if (e.key === 'p' || e.key === 'P') {
+    openReferencesModal();
+  } else if (e.key === 't' || e.key === 'T') {
+    toggleClockMode();
+  }
+});

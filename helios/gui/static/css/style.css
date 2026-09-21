@@ -73,11 +73,89 @@ header {
   border-bottom: 1px solid var(--color-border-subtle) !important;
 }
 
-/* Navigation Tabs */
+/* Navigation Tabs & Domain Switcher */
 nav {
-  background: rgba(9, 14, 26, 0.9) !important;
-  backdrop-filter: blur(10px);
+  background: rgba(9, 14, 26, 0.95) !important;
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border-subtle) !important;
+}
+
+.domain-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  position: relative;
+  background: transparent;
+  cursor: pointer;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.domain-btn:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.domain-btn.active {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #ffffff;
+}
+
+.domain-btn.active[data-domain="fleet"] {
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+
+.domain-btn.active[data-domain="heliosphere"] {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.domain-btn.active[data-domain="geospace"] {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.domain-btn.active[data-domain="data"] {
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #c084fc;
+}
+
+.subnav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  border-radius: 5px;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.subnav-btn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.subnav-btn.active {
+  color: #ffffff;
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(56, 189, 248, 0.35);
+  font-weight: 600;
 }
 
 .tab-btn {
