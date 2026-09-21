@@ -260,6 +260,133 @@ class SpaceWeatherPhysics:
         return float(coupling)
 
     @staticmethod
+    def alfven_speed(b_total_nt: float, density_cm3: float) -> float:
+        """
+        Calculate solar wind Alfvén speed V_A:
+        V_A = B / sqrt(mu_0 * rho) ≈ 21.812 * (B_T [nT] / sqrt(n_p [cm^-3])) km/s
+        """
+        b = max(0.01, float(b_total_nt if b_total_nt is not None else 5.0))
+        n = max(0.01, float(density_cm3 if density_cm3 is not None else 5.0))
+        va = 21.812 * (b / math.sqrt(n))
+        return round(float(va), 1)
+
+    @staticmethod
+    def sound_speed(temp_k: float) -> float:
+        """
+        Calculate ion acoustic sound speed C_s:
+        C_s = sqrt(gamma * k_B * (T_p + T_e) / m_p) ≈ 0.1174 * sqrt(T [K]) km/s
+        for polytropic index gamma = 5/3.
+        """
+        t = max(1000.0, float(temp_k if temp_k is not None else 100000.0))
+        cs = 0.1174 * math.sqrt(t)
+        return round(float(cs), 1)
+
+    @staticmethod
+    def magnetosonic_speed(b_total_nt: float, density_cm3: float, temp_k: float) -> float:
+        """
+        Calculate fast magnetosonic wave propagation speed V_ms = sqrt(V_A^2 + C_s^2)
+        """
+        va = SpaceWeatherPhysics.alfven_speed(b_total_nt, density_cm3)
+        cs = SpaceWeatherPhysics.sound_speed(temp_k)
+        vms = math.sqrt(va**2 + cs**2)
+        return round(float(vms), 1)
+
+    @staticmethod
+    def mach_numbers(
+        speed_kms: float,
+        b_total_nt: float,
+        density_cm3: float,
+        temp_k: float = 100000.0
+    ) -> Dict[str, float]:
+        """
+        Calculate upstream solar wind Alfvén Mach number (M_A) and Fast Magnetosonic Mach number (M_ms):
+        M_A = V_sw / V_A
+        M_ms = V_sw / V_ms
+        """
+        vsw = max(50.0, float(speed_kms if speed_kms is not None else 400.0))
+        va = SpaceWeatherPhysics.alfven_speed(b_total_nt, density_cm3)
+        cs = SpaceWeatherPhysics.sound_speed(temp_k)
+        vms = max(1.0, math.sqrt(va**2 + cs**2))
+
+        ma = vsw / max(1.0, va)
+        mms = vsw / vms
+        return {
+            "alfven_speed_kms": va,
+            "sound_speed_kms": cs,
+            "magnetosonic_speed_kms": round(vms, 1),
+            "alfven_mach": round(float(ma), 2),
+            "magnetosonic_mach": round(float(mms), 2)
+        }
+
+    @staticmethod
+    def polar_cap_potential(speed_kms: float, by_gsm_nt: float, bz_gsm_nt: float) -> Dict[str, Any]:
+        """
+        Empirical Cross Polar Cap Potential drop (Phi_PC in kV) via Boyle et al. (1997):
+        Phi_PC = 10^-4 * v^2 + 11.7 * B_T * sin^3(theta / 2)  [kV]
+        """
+        v = max(100.0, float(speed_kms if speed_kms is not None else 400.0))
+        by = float(by_gsm_nt if by_gsm_nt is not None else 0.0)
+        bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
+        bt = math.sqrt(by**2 + bz**2)
+        theta = math.atan2(abs(by), bz) if bt > 0 else 0.0
+
+        phi = (1e-4 * (v ** 2)) + (11.7 * bt * (math.sin(theta / 2.0) ** 3))
+        phi = max(15.0, min(280.0, phi))
+
+        if phi >= 140.0:
+            level = "CRITICAL (Severe Cross-Polar Convection)"
+        elif phi >= 90.0:
+            level = "ELEVATED (Moderate Magnetospheric Convection)"
+        else:
+            level = "NOMINAL (Quiet Ionospheric Circulation)"
+
+        return {
+            "polar_cap_potential_kv": round(float(phi), 1),
+            "convection_state": level,
+            "formula": "Boyle et al. (1997) Phi_PC = 10^-4*v^2 + 11.7*Bt*sin^3(theta/2)"
+        }
+
+    @staticmethod
+    def auroral_electrojet_ae(speed_kms: float, by_gsm_nt: float, bz_gsm_nt: float) -> Dict[str, Any]:
+        """
+        Empirical Auroral Electrojet (AE in nT) proxy based on Newell universal coupling:
+        AE ≈ 0.048 * (dPhi/dt)^0.85 + 25  [nT]
+        """
+        dphi = SpaceWeatherPhysics.newell_coupling(speed_kms, by_gsm_nt, bz_gsm_nt)
+        if dphi > 0:
+            ae = 0.048 * (dphi ** 0.85) + 25.0
+        else:
+            ae = 25.0
+        ae = max(20.0, min(2500.0, ae))
+
+        if ae >= 1000.0:
+            status = "EXTREME (Major Magnetospheric Substorm Activity)"
+        elif ae >= 500.0:
+            status = "SUBSTORM (Active Auroral Electrojet Currents)"
+        elif ae >= 250.0:
+            status = "UNSETTLED (Minor Electrojet Enhancements)"
+        else:
+            status = "QUIET (Nominal High-Latitude Currents)"
+
+        return {
+            "ae_index_nt": round(float(ae), 1),
+            "newell_coupling_dphi": round(float(dphi), 1),
+            "substorm_status": status
+        }
+
+    @staticmethod
+    def convective_electric_field(speed_kms: float, bz_gsm_nt: float) -> float:
+        """
+        Calculate solar wind dawn-to-dusk convective electric field E_y (mV/m):
+        E_y = -V_sw * B_z * 1e-3 [mV/m]
+        When Bz is negative (southward), E_y is positive (dawn-to-dusk), driving magnetospheric convection.
+        """
+        v = float(speed_kms if speed_kms is not None else 400.0)
+        bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
+        ey = -v * bz * 1e-3
+        return round(float(ey), 2)
+
+    @staticmethod
     def propagation_delay_minutes(distance_km: float, speed_kms: float) -> float:
         """
         Calculate propagation travel time from satellite location (e.g. L1 at ~1.5 million km)

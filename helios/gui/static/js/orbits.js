@@ -41,8 +41,9 @@ class OrbitRenderer {
     this.lagrangeData = null;
     this.hoveredItem = null;
 
-    // GSE Coordinate Grid and Spacecraft Filter Sets
+    // GSE Coordinate Grid, Spacecraft Filter Sets, and Dipole Field
     this.showGseGrid = true;
+    this.showDipoleField = true;
     this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16']);
 
     this.initStars();
@@ -54,6 +55,10 @@ class OrbitRenderer {
 
   setGseGrid(show) {
     this.showGseGrid = !!show;
+  }
+
+  setDipoleField(show) {
+    this.showDipoleField = !!show;
   }
 
   setSatelliteVisibility(key, visible) {
@@ -765,6 +770,9 @@ class OrbitRenderer {
       ctx.stroke();
     }
 
+    // Dipole Field Lines, Reconnection X-Point & Nightside Current Sheet
+    this.drawDipoleAndMagnetotail(ctx, earthP, boundaries, scaleRe);
+
     // E. Geostationary Orbit (GEO ~ 42k km = 6.6 R_E = 25px radius)
     ctx.strokeStyle = boundaries.insideGeo ? 'rgba(239, 68, 68, 0.55)' : 'rgba(148, 163, 184, 0.35)';
     ctx.lineWidth = 1;
@@ -932,6 +940,152 @@ class OrbitRenderer {
 
         ctx.restore();
       }
+    }
+
+    ctx.restore();
+  }
+
+  drawDipoleAndMagnetotail(ctx, earthP, boundaries, scaleRe) {
+    if (!this.showDipoleField) return;
+
+    ctx.save();
+    const r0_mp = boundaries.r0_mp;
+    const isReconnecting = this.bz < 0.0;
+    const bzMag = Math.abs(this.bz || 0.0);
+
+    // 1. Geomagnetic Dipole L-Shells (Closed loops: L = 2.2, 3.8, 5.2)
+    // Formula: r(lat) = L * cos^2(lat)
+    const lShells = [2.2, 3.8, 5.2];
+    
+    lShells.forEach((L, idx) => {
+      const alpha = 0.32 - idx * 0.06;
+      ctx.strokeStyle = `rgba(96, 165, 250, ${alpha})`;
+      ctx.lineWidth = 1.0;
+      ctx.setLineDash([3, 3]);
+
+      // North & South lobes / hemispheres
+      for (const hemi of [-1, 1]) {
+        const maxLat = Math.acos(Math.sqrt(1.0 / Math.max(1.01, L)));
+        const steps = 32;
+
+        // Sunward branch (compressed inside r0_mp)
+        ctx.beginPath();
+        for (let i = 0; i <= steps; i++) {
+          const lat = (i / steps) * maxLat * hemi;
+          const r = L * Math.pow(Math.cos(lat), 2);
+          const comp = Math.min(1.0, (r0_mp * 0.85) / Math.max(0.1, L));
+          const xWorld = -r * Math.cos(lat) * scaleRe * comp;
+          const yWorld = r * Math.sin(lat) * scaleRe;
+          const proj = this.project(xWorld, yWorld, 0);
+          if (i === 0) ctx.moveTo(proj.x, proj.y);
+          else ctx.lineTo(proj.x, proj.y);
+        }
+        ctx.stroke();
+
+        // Tailward branch (mild tailward stretch)
+        ctx.beginPath();
+        for (let i = 0; i <= steps; i++) {
+          const lat = (i / steps) * maxLat * hemi;
+          const r = L * Math.pow(Math.cos(lat), 2);
+          const stretch = 1.0 + 0.18 * (L / 6.6);
+          const xWorld = r * Math.cos(lat) * scaleRe * stretch;
+          const yWorld = r * Math.sin(lat) * scaleRe;
+          const proj = this.project(xWorld, yWorld, 0);
+          if (i === 0) ctx.moveTo(proj.x, proj.y);
+          else ctx.lineTo(proj.x, proj.y);
+        }
+        ctx.stroke();
+      }
+    });
+    ctx.setLineDash([]);
+
+    // 2. Open Magnetotail Lobe Field Lines (Stretching into nightside +X)
+    const tailLengths = [18.0, 26.0, 34.0];
+    tailLengths.forEach((tailRe, idx) => {
+      const alpha = 0.24 - idx * 0.06;
+      ctx.strokeStyle = `rgba(147, 197, 253, ${alpha})`;
+      ctx.lineWidth = 1.1;
+
+      for (const hemi of [-1, 1]) {
+        ctx.beginPath();
+        // Start from high-latitude polar cusp (r = 1.2 R_E)
+        const startX = 1.2 * scaleRe * 0.45;
+        const startY = hemi * 1.2 * scaleRe * 0.88;
+        const startP = this.project(startX, startY, 0);
+        ctx.moveTo(startP.x, startP.y);
+
+        // Control point curving out and tailward
+        const cpX = 5.5 * scaleRe;
+        const cpY = hemi * (5.0 + idx * 3.0) * scaleRe;
+        const cpP = this.project(cpX, cpY, 0);
+
+        // End point far down magnetotail
+        const endX = tailRe * scaleRe;
+        const endY = hemi * (6.5 + idx * 3.5) * scaleRe;
+        const endP = this.project(endX, endY, 0);
+
+        ctx.quadraticCurveTo(cpP.x, cpP.y, endP.x, endP.y);
+        ctx.stroke();
+      }
+    });
+
+    // 3. Nightside Magnetotail Neutral Current Sheet (X > 0, Z ~ 0)
+    const tailStart = this.project(3.5 * scaleRe, 0, 0);
+    const tailEnd = this.project(34.0 * scaleRe, 0, 0);
+    const sheetGrad = ctx.createLinearGradient(tailStart.x, tailStart.y, tailEnd.x, tailEnd.y);
+    sheetGrad.addColorStop(0, 'rgba(245, 158, 11, 0.5)');
+    sheetGrad.addColorStop(0.35, 'rgba(234, 88, 12, 0.3)');
+    sheetGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+
+    ctx.strokeStyle = sheetGrad;
+    ctx.lineWidth = 2.0;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(tailStart.x, tailStart.y);
+    ctx.lineTo(tailEnd.x, tailEnd.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label: "MAGNETOTAIL CURRENT SHEET"
+    const labelP = this.project(15.0 * scaleRe, 0, 0);
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.75)';
+    ctx.font = '600 8px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('NEUTRAL CURRENT SHEET', labelP.x, labelP.y + 11);
+
+    // 4. Subsolar Magnetic Reconnection X-Point & Energy Influx (when Bz < 0)
+    if (isReconnecting) {
+      const mpSubsolarX = -r0_mp * scaleRe;
+      const xPt = this.project(mpSubsolarX, 0, 0);
+      const pulse = 0.5 + 0.5 * Math.sin(this.timeStep * 0.12);
+      const intensity = Math.min(1.0, bzMag / 15.0);
+
+      // Reconnection X-point glow
+      const xGlow = ctx.createRadialGradient(xPt.x, xPt.y, 1, xPt.x, xPt.y, 14 + pulse * 6);
+      xGlow.addColorStop(0, `rgba(239, 68, 68, ${0.7 + pulse * 0.3})`);
+      xGlow.addColorStop(0.5, `rgba(249, 115, 22, ${0.35 * intensity})`);
+      xGlow.addColorStop(1, 'rgba(239, 68, 68, 0)');
+      ctx.fillStyle = xGlow;
+      ctx.beginPath();
+      ctx.arc(xPt.x, xPt.y, 20, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sharp Reconnection X-line separatrices
+      ctx.strokeStyle = `rgba(254, 202, 202, ${0.85 + pulse * 0.15})`;
+      ctx.lineWidth = 1.4;
+      const xArm = 7.0 + pulse * 2.5;
+      ctx.beginPath();
+      ctx.moveTo(xPt.x - xArm, xPt.y - xArm);
+      ctx.lineTo(xPt.x + xArm, xPt.y + xArm);
+      ctx.moveTo(xPt.x - xArm, xPt.y + xArm);
+      ctx.lineTo(xPt.x + xArm, xPt.y - xArm);
+      ctx.stroke();
+
+      // Dynamic Reconnection Annotation
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 8.5px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`⚡ RECONNECTION X-POINT (Bz: ${this.bz.toFixed(1)} nT)`, xPt.x, xPt.y - 14);
     }
 
     ctx.restore();

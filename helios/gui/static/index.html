@@ -135,6 +135,11 @@
         <i class="fa-solid fa-graduation-cap text-[11px] text-indigo-300"></i>
         <span>User Guide</span>
       </button>
+      <button onclick="openIncidentLogModal()" class="px-3 py-1.5 rounded bg-amber-700/80 hover:bg-amber-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-amber-500/40 relative" title="Mission Incident Log &amp; Threshold Monitor (L)">
+        <i class="fa-solid fa-triangle-exclamation text-[11px] text-amber-300"></i>
+        <span>Incident Log</span>
+        <span id="incident-badge-count" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-[10px] font-bold ml-1">0</span>
+      </button>
     </div>
   </header>
 
@@ -761,6 +766,13 @@
             <label class="flex items-center space-x-2 cursor-pointer bg-space-950/80 px-3 py-1.5 rounded-xl border border-slate-700/60" title="Toggle GSE Metric Coordinate Grid & Reference Axes">
               <input type="checkbox" id="orbit-grid-toggle" checked onchange="toggleOrbitGrid(this.checked)" class="rounded text-sky-500">
               <span class="text-slate-300 font-medium">GSE Grid</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer bg-space-950/80 px-3 py-1.5 rounded-xl border border-slate-700/60" title="Toggle Terrestrial Geomagnetic Dipole Field Lines & Reconnection Dynamics">
+              <input type="checkbox" id="orbit-dipole-toggle" checked onchange="toggleOrbitDipole(this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300 font-medium flex items-center space-x-1">
+                <i class="fa-solid fa-magnet text-sky-400 text-xs"></i>
+                <span>Dipole Field</span>
+              </span>
             </label>
           </div>
         </div>
@@ -2161,6 +2173,10 @@
             <i class="fa-solid fa-compass text-[11px]"></i>
             <span>Operator User Guide</span>
           </button>
+          <button id="tab-btn-ref-sandbox" onclick="switchReferencesTab('sandbox')" class="px-3 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-calculator text-[11px]"></i>
+            <span>Interactive Solver</span>
+          </button>
         </div>
 
         <div class="relative">
@@ -2254,6 +2270,10 @@
               <kbd class="px-2 py-0.5 rounded bg-slate-900 text-indigo-300 font-mono font-bold text-[11px] border border-slate-700">U</kbd>
             </div>
             <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
+              <span class="text-slate-300">Incident Alert Log</span>
+              <kbd class="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-mono font-bold text-[11px] border border-slate-700">L</kbd>
+            </div>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
               <span class="text-slate-300">Toggle UTC / Local Time</span>
               <kbd class="px-2 py-0.5 rounded bg-slate-900 text-amber-300 font-mono font-bold text-[11px] border border-slate-700">T</kbd>
             </div>
@@ -2268,6 +2288,65 @@
       <div class="p-3 bg-space-950 border-t border-slate-800 flex justify-end">
         <button onclick="closeShortcutsModal()" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition">
           Got it
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: MISSION ALERT & INCIDENT LOG MONITOR -->
+  <!-- ========================================================================= -->
+  <div id="modal-incidents" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-space-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-space-950/90 flex-wrap gap-2">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <i class="fa-solid fa-triangle-exclamation text-base"></i>
+          </div>
+          <div>
+            <h3 class="font-tech font-bold text-slate-100 text-sm">Mission Control Incident &amp; Alert Event Logger</h3>
+            <p class="text-[11px] text-slate-400">Operational threshold crossing events, sub-GEO compressions, and magnetic shock triggers</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="acknowledgeAllIncidents()" class="px-2.5 py-1 rounded-lg bg-space-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-check-double text-emerald-400 text-[10px]"></i>
+            <span>Acknowledge All</span>
+          </button>
+          <button onclick="clearIncidentLog()" class="px-2.5 py-1 rounded-lg bg-space-800 hover:bg-rose-950/50 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-800/40 text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-regular fa-trash-can text-[10px]"></i>
+            <span>Clear Log</span>
+          </button>
+          <button onclick="exportIncidentLogJSON()" class="px-2.5 py-1 rounded-lg bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 border border-indigo-500/40 text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-file-arrow-down text-[10px]"></i>
+            <span>Export JSON</span>
+          </button>
+          <button onclick="closeIncidentLogModal()" class="text-slate-400 hover:text-white p-1">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Severity Filter Strip -->
+      <div class="p-3 bg-space-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center space-x-1.5" id="incident-filter-btns">
+          <button onclick="filterIncidentLog('ALL')" id="incident-flt-ALL" class="px-2.5 py-1 rounded-lg font-semibold bg-sky-600 text-white text-[11px] transition">All Events</button>
+          <button onclick="filterIncidentLog('CRITICAL')" id="incident-flt-CRITICAL" class="px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-slate-200 text-[11px] transition">Critical (<span id="cnt-flt-crit">0</span>)</button>
+          <button onclick="filterIncidentLog('WARNING')" id="incident-flt-WARNING" class="px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-slate-200 text-[11px] transition">Warnings (<span id="cnt-flt-warn">0</span>)</button>
+          <button onclick="filterIncidentLog('ADVISORY')" id="incident-flt-ADVISORY" class="px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-slate-200 text-[11px] transition">Advisories (<span id="cnt-flt-adv">0</span>)</button>
+        </div>
+        <span class="text-[11px] text-slate-500 font-mono" id="incident-summary-status">0 active events</span>
+      </div>
+
+      <!-- Event Feed Container -->
+      <div class="flex-1 overflow-y-auto p-5 space-y-3 font-mono text-xs" id="incident-log-body">
+        <div class="text-center py-12 text-slate-500 italic">No operational threshold crossing events recorded in the current session.</div>
+      </div>
+
+      <div class="p-3 bg-space-950 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+        <span>Persistent ring buffer: stores up to 100 historical incidents in station memory.</span>
+        <button onclick="closeIncidentLogModal()" class="px-3.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition">
+          Close Monitor
         </button>
       </div>
     </div>

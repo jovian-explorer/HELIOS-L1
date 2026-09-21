@@ -312,6 +312,7 @@ def test_scientific_references_and_data_provenance():
     assert any("Newell" in r["authors"] for r in refs)
     assert any("Akasofu" in r["authors"] for r in refs)
     assert any("Parker" in r["authors"] for r in refs)
+    assert any("Boyle" in r["authors"] for r in refs)
     for r in refs:
         assert "doi" in r
         assert "doi_url" in r
@@ -345,6 +346,8 @@ def test_scientific_references_and_data_provenance():
     assert "pdyn" in params
     assert "epsilon" in params
     assert "standoff" in params
+    assert "polar_cap_potential" in params
+    assert "ae_index" in params
 
     # 4. Individual parameter detail and aliases
     speed_res = client.get("/api/parameters/speed")
@@ -469,6 +472,68 @@ def test_magnetospheric_boundaries_chao_and_shue():
     res_api_shock = client.get("/api/magnetosphere/boundaries?dynamic_pressure=35.0&bz_gsm=-30.0&mach_number=4.0&model=chao")
     assert res_api_shock.status_code == 200
     assert res_api_shock.json()["magnetopause"]["inside_geo"] is True
+
+def test_geospace_coupling_and_wave_dynamics():
+    """
+    Test wave speeds (Alfvén, Sound, Fast Magnetosonic), Mach numbers,
+    Boyle et al. (1997) Polar Cap Potential, Newell Universal Coupling / AE proxy,
+    convective electric field, and REST API GET /api/geospace/coupling.
+    """
+    # 1. Alfvén Speed: V_A = 21.812 * (B_t / sqrt(n))
+    va = SpaceWeatherPhysics.alfven_speed(b_total_nt=10.0, density_cm3=4.0)
+    assert 108.0 <= va <= 110.0
+
+    # 2. Sound Speed: C_s = 0.1174 * sqrt(T)
+    cs = SpaceWeatherPhysics.sound_speed(temp_k=100000.0)
+    assert 36.0 <= cs <= 38.5
+
+    # 3. Fast Magnetosonic Speed: V_ms = sqrt(V_A^2 + C_s^2)
+    vms = SpaceWeatherPhysics.magnetosonic_speed(b_total_nt=10.0, density_cm3=4.0, temp_k=100000.0)
+    assert vms > va
+    assert vms > cs
+
+    # 4. Mach numbers
+    mach = SpaceWeatherPhysics.mach_numbers(speed_kms=450.0, b_total_nt=5.0, density_cm3=5.0, temp_k=100000.0)
+    assert mach["alfven_mach"] > 1.0
+    assert mach["magnetosonic_mach"] > 1.0
+
+    # 5. Boyle et al. (1997) Polar Cap Potential
+    phi_quiet = SpaceWeatherPhysics.polar_cap_potential(speed_kms=350.0, by_gsm_nt=1.0, bz_gsm_nt=5.0)
+    assert phi_quiet["polar_cap_potential_kv"] < 50.0
+    assert "NOMINAL" in phi_quiet["convection_state"]
+
+    phi_storm = SpaceWeatherPhysics.polar_cap_potential(speed_kms=850.0, by_gsm_nt=10.0, bz_gsm_nt=-25.0)
+    assert phi_storm["polar_cap_potential_kv"] >= 140.0
+    assert "CRITICAL" in phi_storm["convection_state"]
+
+    # 6. Auroral Electrojet proxy via Newell
+    ae_quiet = SpaceWeatherPhysics.auroral_electrojet_ae(speed_kms=350.0, by_gsm_nt=1.0, bz_gsm_nt=5.0)
+    assert ae_quiet["ae_index_nt"] < 150.0
+    assert "QUIET" in ae_quiet["substorm_status"]
+
+    ae_storm = SpaceWeatherPhysics.auroral_electrojet_ae(speed_kms=900.0, by_gsm_nt=15.0, bz_gsm_nt=-25.0)
+    assert ae_storm["ae_index_nt"] >= 500.0
+    assert "SUBSTORM" in ae_storm["substorm_status"] or "EXTREME" in ae_storm["substorm_status"]
+
+    # 7. Convective electric field
+    ey_north = SpaceWeatherPhysics.convective_electric_field(speed_kms=400.0, bz_gsm_nt=5.0)
+    assert ey_north < 0  # Northward Bz suppresses convection
+    ey_south = SpaceWeatherPhysics.convective_electric_field(speed_kms=500.0, bz_gsm_nt=-10.0)
+    assert ey_south == 5.0  # -500 * -10 * 1e-3 = 5.0 mV/m
+
+    # 8. REST API Endpoint: GET /api/geospace/coupling
+    res = client.get("/api/geospace/coupling?speed_kms=550&density_cm3=8&b_total_nt=12&by_gsm_nt=-4&bz_gsm_nt=-8&temp_k=150000")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "dynamic_pressure_npa" in data
+    assert "wave_speeds" in data
+    assert "mach_numbers" in data
+    assert "polar_cap_potential" in data
+    assert "auroral_electrojet" in data
+    assert "akasofu_epsilon_gw" in data
+    assert "convective_efield_mvm" in data
+    assert data["convective_efield_mvm"] > 0
 
 
 

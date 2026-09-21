@@ -641,6 +641,38 @@ SCIENTIFIC_REFERENCES = [
         "formula": "r(theta) = r_0 * [2 / (1 + cos(theta))]^alpha,  r_0,mp = (11.12 + 0.541*Bz)*Pdyn^(-1/6.6),  r_0,bs = (14.5 + 0.08*Bz)*Pdyn^(-1/6.6)*f(M_A)",
         "parameters": ["r_0,mp (subsolar magnetopause distance in R_E)", "r_0,bs (subsolar bow shock standoff distance in R_E)", "M_A (Alfvén Mach number)", "alpha (tail flaring exponent)"],
         "physical_meaning": "Coupled empirical models parameterizing both the dayside magnetopause and upstream bow shock standoffs and flaring geometry based on solar wind dynamic pressure, IMF Bz, and upstream Mach number."
+    },
+    {
+        "id": "boyle_polar_cap_1997",
+        "title": "Empirical polar cap potentials",
+        "authors": "Boyle, C. B., Reiff, P. H., & Hairston, M. R.",
+        "journal": "Journal of Geophysical Research: Space Physics",
+        "year": 1997,
+        "volume": "102",
+        "issue": "A1",
+        "pages": "111-125",
+        "doi": "10.1029/96JA03058",
+        "doi_url": "https://doi.org/10.1029/96JA03058",
+        "category": "Cross Polar Cap Potential & Convection",
+        "formula": "Phi_PC = 1e-4 * v^2 + 11.7 * B_T * sin^3(theta / 2) [kV]",
+        "parameters": ["v (solar wind bulk speed in km/s)", "B_T (IMF transverse field magnitude in nT)", "theta (IMF clock angle)"],
+        "physical_meaning": "Quantifies the electric potential drop across the northern/southern polar caps driving high-latitude ionospheric plasma convection and Joule heating."
+    },
+    {
+        "id": "newell_coupling_2007",
+        "title": "A nearly universal solar wind-magnetosphere coupling function inferred from 10 magnetospheric state variables",
+        "authors": "Newell, P. T., Sotirelis, T., Liou, K., Meng, C.-I., & Rich, F. J.",
+        "journal": "Journal of Geophysical Research: Space Physics",
+        "year": 2007,
+        "volume": "112",
+        "issue": "A1",
+        "pages": "A01206",
+        "doi": "10.1029/2006JA012015",
+        "doi_url": "https://doi.org/10.1029/2006JA012015",
+        "category": "Universal Solar Wind-Magnetosphere Coupling",
+        "formula": "dPhi/dt = v^(4/3) * B_T^(2/3) * sin^(8/3)(theta / 2),  AE ~ 0.048 * (dPhi/dt)^0.85 + 25 [nT]",
+        "parameters": ["dPhi/dt (rate of magnetic flux reconnection at dayside magnetopause)", "AE (Auroral Electrojet substorm index)"],
+        "physical_meaning": "Universal scaling law correlating solar wind drivers with 10 global magnetospheric response indices including Dst, Kp, AE, and polar cap boundary dynamics."
     }
 ]
 
@@ -814,5 +846,49 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "instrument": "Dual-boundary satellite transit differential",
         "description": "Spatial separation along the Sun-Earth line between the collisionless bow shock and the dayside magnetopause.",
         "doi": "10.1016/S0964-2749(02)80214-7"
+    },
+    "polar_cap_potential": {
+        "name": "Cross Polar Cap Potential Drop",
+        "symbol": "Phi_PC",
+        "unit": "kV",
+        "nominal_range": "25 - 60 kV (Quiet to Unsettled Convection)",
+        "disturbed_range": "> 90 kV (Active Convection), > 140 kV (Severe Geomagnetic Storm)",
+        "formula": "Phi_PC = 1e-4 * v^2 + 11.7 * B_T * sin^3(theta / 2) [kV]",
+        "instrument": "SuperDARN HF Radars & DMSP SSIES Ion Drift Meters",
+        "description": "Total transpolar electric potential difference established by solar wind-magnetosphere dynamo driving high-latitude F-region ionospheric plasma convection.",
+        "doi": "10.1029/96JA03058"
+    },
+    "ae_index": {
+        "name": "Auroral Electrojet Index (AE)",
+        "symbol": "AE",
+        "unit": "nT",
+        "nominal_range": "< 150 nT (Quiet Auroral Oval)",
+        "disturbed_range": "> 500 nT (Substorm Injection), > 1000 nT (Major Magnetospheric Substorm)",
+        "formula": "AE ~ 0.048 * (dPhi/dt)^0.85 + 25 [nT]",
+        "instrument": "Kyoto WDC Auroral Magnetometer Chain (12 High-Latitude Stations)",
+        "description": "Global quantitative measure of auroral zone magnetic activity produced by enhanced eastward and westward ionospheric electrojet currents flowing at ~100 km altitude.",
+        "doi": "10.1029/2006JA012015"
+    },
+    "sound_speed": {
+        "name": "Ion Acoustic Sound Speed",
+        "symbol": "C_s",
+        "unit": "km/s",
+        "nominal_range": "35 - 55 km/s (Typical Solar Wind T ~ 1e5 K)",
+        "disturbed_range": "> 80 km/s (Hot Interplanetary CME Ejecta)",
+        "formula": "C_s = sqrt(gamma * k_B * T / m_p) ~ 0.1174 * sqrt(T [K]) [km/s]",
+        "instrument": "Thermal Proton Spectrometers (SWEPAM, PlasMag, CELIAS)",
+        "description": "Phase speed of longitudinal electrostatic ion acoustic compressional waves propagating through thermal solar wind plasma.",
+        "doi": "10.1086/146579"
+    },
+    "magnetosonic_speed": {
+        "name": "Fast Magnetosonic Wave Speed",
+        "symbol": "V_ms",
+        "unit": "km/s",
+        "nominal_range": "50 - 90 km/s",
+        "disturbed_range": "> 150 km/s (Strong Field Compression / CME Sheath)",
+        "formula": "V_ms = sqrt(V_A^2 + C_s^2) [km/s]",
+        "instrument": "Derived from combined vector B and plasma ion moments",
+        "description": "Propagation speed of fast compressional MHD waves perpendicular to the ambient magnetic field, setting the fundamental Mach threshold for planetary bow shock formation.",
+        "doi": "10.1029/JA091iA01p00039"
     }
 }

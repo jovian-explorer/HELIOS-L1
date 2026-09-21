@@ -12,6 +12,7 @@ import os
 import io
 import csv
 import json
+import math
 from datetime import datetime, timezone
 
 from helios.config import (
@@ -309,6 +310,68 @@ async def get_magnetospheric_boundaries(
         mach_number=mach_number,
         model=model
     )
+
+@app.get("/api/geospace/coupling")
+async def get_geospace_coupling(
+    speed_kms: float = Query(450.0, ge=100.0, le=3000.0, description="Solar wind speed (km/s)"),
+    density_cm3: float = Query(5.0, ge=0.01, le=250.0, description="Proton density (cm^-3)"),
+    b_total_nt: float = Query(6.0, ge=0.01, le=150.0, description="Interplanetary Magnetic Field magnitude B_T (nT)"),
+    by_gsm_nt: float = Query(0.0, ge=-100.0, le=100.0, description="IMF By (GSM) component (nT)"),
+    bz_gsm_nt: float = Query(-3.0, ge=-100.0, le=100.0, description="IMF Bz (GSM) component (nT)"),
+    temp_k: float = Query(100000.0, ge=1000.0, le=5000000.0, description="Proton thermal temperature (K)")
+):
+    """
+    Computes real-time Geospace coupling parameters including:
+    - Solar wind wave speeds (Alfvén, Sound, Fast Magnetosonic)
+    - Mach numbers (Alfvénic M_A, Magnetosonic M_ms)
+    - Cross-polar cap potential Phi_PC drop (Boyle et al. 1997)
+    - Auroral Electrojet index AE proxy (Newell et al. 2007)
+    - Perreault-Akasofu energy coupling rate Epsilon (GW)
+    - Newell universal coupling function dPhi/dt (Wb/s)
+    - Convective electric field E_y (mV/m)
+    - Dynamic pressure P_dyn (nPa)
+    """
+    mach = SpaceWeatherPhysics.mach_numbers(
+        speed_kms=speed_kms,
+        b_total_nt=b_total_nt,
+        density_cm3=density_cm3,
+        temp_k=temp_k
+    )
+    pdyn = SpaceWeatherPhysics.dynamic_pressure(density_cm3=density_cm3, speed_kms=speed_kms)
+    phi_pc = SpaceWeatherPhysics.polar_cap_potential(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
+    ae = SpaceWeatherPhysics.auroral_electrojet_ae(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
+    akasofu = SpaceWeatherPhysics.akasofu_epsilon(speed_kms=speed_kms, b_total_nt=b_total_nt, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
+    newell = SpaceWeatherPhysics.newell_coupling(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
+    ey = SpaceWeatherPhysics.convective_electric_field(speed_kms=speed_kms, bz_gsm_nt=bz_gsm_nt)
+    clock = SpaceWeatherPhysics.clock_angle(by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
+
+    return {
+        "status": "success",
+        "inputs": {
+            "speed_kms": speed_kms,
+            "density_cm3": density_cm3,
+            "b_total_nt": b_total_nt,
+            "by_gsm_nt": by_gsm_nt,
+            "bz_gsm_nt": bz_gsm_nt,
+            "temp_k": temp_k
+        },
+        "dynamic_pressure_npa": round(pdyn, 2),
+        "clock_angle_deg": round(float(math.degrees(clock)), 1),
+        "convective_efield_mvm": ey,
+        "wave_speeds": {
+            "alfven_speed_kms": mach["alfven_speed_kms"],
+            "sound_speed_kms": mach["sound_speed_kms"],
+            "magnetosonic_speed_kms": mach["magnetosonic_speed_kms"]
+        },
+        "mach_numbers": {
+            "alfven_mach": mach["alfven_mach"],
+            "magnetosonic_mach": mach["magnetosonic_mach"]
+        },
+        "polar_cap_potential": phi_pc,
+        "auroral_electrojet": ae,
+        "akasofu_epsilon_gw": round(akasofu, 2),
+        "newell_coupling_dphi": round(newell, 1)
+    }
 
 @app.get("/api/coronagraph/feeds")
 async def get_coronagraph_feeds():

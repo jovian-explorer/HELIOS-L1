@@ -128,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initOrbits();
   animateOrbits();
   initVisualizers();
+  missionIncidentLogger = new MissionIncidentLogger();
 });
 
 function initVisualizers() {
@@ -699,6 +700,11 @@ function updateTelemetryUI(data) {
     if (orbitViewer.lastComputedBoundaries) {
       updateBoundaryCards(orbitViewer.lastComputedBoundaries);
     }
+  }
+
+  // Evaluate operational alerts and threshold excursions
+  if (missionIncidentLogger && latest) {
+    missionIncidentLogger.checkTelemetry(latest, mission);
   }
 
   const times = records.map(r => r.time_tag.slice(5, 16));
@@ -1750,6 +1756,10 @@ function toggleOrbitGrid(show) {
   if (orbitViewer) orbitViewer.setGseGrid(show);
 }
 
+function toggleOrbitDipole(show) {
+  if (orbitViewer) orbitViewer.setDipoleField(show);
+}
+
 function toggleOrbitSat(key, visible) {
   if (orbitViewer) orbitViewer.setSatelliteVisibility(key, visible);
 }
@@ -2044,7 +2054,7 @@ function openUserGuideModal() {
 }
 
 function updateRefTabButtons() {
-  const tabs = ['equations', 'providers', 'licenses', 'handbook', 'userguide'];
+  const tabs = ['equations', 'providers', 'licenses', 'handbook', 'userguide', 'sandbox'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-btn-ref-${t}`);
     if (btn) {
@@ -2084,6 +2094,8 @@ function renderReferencesContent() {
     renderHandbookTab(body);
   } else if (currentRefTab === 'userguide') {
     renderUserGuideTab(body);
+  } else if (currentRefTab === 'sandbox') {
+    renderSandboxTab(body);
   }
 }
 
@@ -2701,6 +2713,448 @@ function renderUserGuideTab(container) {
 }
 
 // =============================================================================
+// INTERACTIVE PHYSICS EQUATION SOLVER & SANDBOX
+// =============================================================================
+let sandboxParams = {
+  vsw: 450,
+  density: 5.0,
+  bt: 6.0,
+  bz: -4.0,
+  by: 2.0,
+  temp: 100000
+};
+
+function computeSandboxPhysics(p) {
+  const vsw = Math.max(50, Number(p.vsw) || 450);
+  const n = Math.max(0.01, Number(p.density) || 5.0);
+  const bt = Math.max(0.01, Number(p.bt) || 6.0);
+  const bz = p.bz !== undefined ? Number(p.bz) : -4.0;
+  const by = p.by !== undefined ? Number(p.by) : 2.0;
+  const temp = Math.max(1000, Number(p.temp) || 100000);
+
+  // 1. Dynamic pressure (nPa)
+  const pdyn = 1.6726e-6 * n * Math.pow(vsw, 2);
+  const pFactor = Math.pow(Math.max(0.05, pdyn), -1.0 / 6.6);
+
+  // 2. Wave speeds (km/s)
+  const va = 21.812 * (bt / Math.sqrt(n));
+  const cs = 0.1174 * Math.sqrt(temp);
+  const vms = Math.sqrt(va * va + cs * cs);
+
+  // 3. Mach numbers
+  const ma = vsw / Math.max(1.0, va);
+  const mms = vsw / Math.max(1.0, vms);
+
+  // 4. Chao et al. (2002) Magnetopause & Bow Shock
+  let chao_r0_mp;
+  if (bz >= 0) {
+    chao_r0_mp = (11.12 + 0.057 * bz) * pFactor;
+  } else {
+    chao_r0_mp = (11.12 + 0.541 * bz) * pFactor;
+  }
+  chao_r0_mp = Math.max(3.5, Math.min(16.0, chao_r0_mp));
+  const chao_alpha_mp = Math.max(0.35, Math.min(0.95, (0.58 - 0.007 * bz) * (1.0 + 0.024 * pdyn)));
+
+  const gamma = 5.0 / 3.0;
+  const machFactor = 1.0 + 0.8 * (((gamma - 1.0) * (ma * ma) + 2.0) / ((gamma + 1.0) * (ma * ma - 1.0)));
+  let chao_r0_bs = (14.5 + 0.08 * bz) * pFactor * (machFactor / 1.25);
+  chao_r0_bs = Math.max(5.0, Math.min(25.0, chao_r0_bs));
+  const chao_alpha_bs = Math.max(0.40, Math.min(0.90, 0.61 * (1.0 + 0.015 * pdyn)));
+
+  // 5. Shue et al. (1997) Magnetopause
+  const shue_r0_mp = Math.max(3.5, Math.min(16.0, (10.22 + 1.29 * Math.tanh(0.184 * (bz + 8.14))) * pFactor));
+  const shue_alpha_mp = Math.max(0.40, Math.min(0.90, (0.58 - 0.007 * bz) * (1.0 + 0.024 * Math.log(pdyn + 1.0))));
+
+  // Sheath thickness
+  const sheath_re = Math.max(0.5, chao_r0_bs - chao_r0_mp);
+
+  // 6. Clock angle & couplings
+  const bt_trans = Math.sqrt(by * by + bz * bz);
+  const theta = bt_trans > 0 ? Math.atan2(Math.abs(by), bz) : 0.0;
+  const clock_deg = (theta * 180.0 / Math.PI);
+
+  // Akasofu Poynting Flux (GW)
+  const v_ms = vsw * 1000.0;
+  const b_tesla = bt * 1e-9;
+  const mu_0 = 1.25663706e-6;
+  const l0 = 7.0 * 6371000.0;
+  const sin4 = Math.pow(Math.sin(theta / 2.0), 4);
+  const akasofu_gw = ((v_ms * b_tesla * b_tesla / mu_0) * sin4 * l0 * l0) / 1e9;
+
+  // Newell universal coupling (Wb/s)
+  const dphi = Math.pow(vsw, 4.0 / 3.0) * Math.pow(Math.max(0.01, bt_trans), 2.0 / 3.0) * Math.pow(Math.sin(theta / 2.0), 8.0 / 3.0);
+
+  // Boyle (1997) Polar Cap Potential Drop (kV)
+  let phi_pc = (1e-4 * Math.pow(vsw, 2)) + (11.7 * bt_trans * Math.pow(Math.sin(theta / 2.0), 3));
+  phi_pc = Math.max(15.0, Math.min(280.0, phi_pc));
+
+  // Newell AE Index proxy (nT)
+  const ae = Math.max(20.0, Math.min(2500.0, 0.048 * Math.pow(dphi, 0.85) + 25.0));
+
+  // Convective electric field Ey (mV/m)
+  const ey = -vsw * bz * 1e-3;
+
+  return {
+    vsw, n, bt, bz, by, temp,
+    pdyn,
+    va, cs, vms,
+    ma, mms,
+    chao_r0_mp, chao_alpha_mp,
+    chao_r0_bs, chao_alpha_bs,
+    shue_r0_mp, shue_alpha_mp,
+    sheath_re,
+    clock_deg,
+    akasofu_gw,
+    dphi,
+    phi_pc,
+    ae,
+    ey,
+    inside_geo_chao: chao_r0_mp < 6.6,
+    inside_geo_shue: shue_r0_mp < 6.6
+  };
+}
+
+function renderSandboxTab(container) {
+  const p = sandboxParams;
+  const res = computeSandboxPhysics(p);
+
+  container.innerHTML = `
+    <div class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="font-tech font-bold text-slate-100 text-sm flex items-center space-x-2">
+            <i class="fa-solid fa-calculator text-sky-400"></i>
+            <span>Interactive Space Weather Physics Calculator &amp; Equation Solver</span>
+          </h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">Real-time simulation of solar wind-magnetosphere coupling, wave speeds, Mach numbers, and boundary standoffs.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="loadSandboxFromLive()" class="px-2.5 py-1 rounded-lg bg-sky-950/70 hover:bg-sky-900 text-sky-300 border border-sky-800/50 text-[11px] font-semibold transition flex items-center space-x-1">
+            <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+            <span>Sync Live L1</span>
+          </button>
+          <button onclick="injectSandboxToOrbit()" class="px-2.5 py-1 rounded-lg bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-800/50 text-[11px] font-semibold transition flex items-center space-x-1">
+            <i class="fa-solid fa-satellite text-[10px]"></i>
+            <span>Send to Orbit Sim</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scenarios Presets -->
+      <div class="flex flex-wrap items-center gap-2 text-xs bg-space-950/80 p-2.5 rounded-xl border border-slate-800">
+        <span class="text-[10px] uppercase font-bold text-slate-400 font-mono">Scenario Benchmarks:</span>
+        <button onclick="setSandboxPreset('quiet')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">Quiet Background</button>
+        <button onclick="setSandboxPreset('cir')" class="px-2 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-800/40 text-[11px] transition">Corotating Interaction Region (CIR)</button>
+        <button onclick="setSandboxPreset('cme_g5')" class="px-2 py-0.5 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-[11px] transition font-bold">Extreme CME Shock (G5)</button>
+        <button onclick="setSandboxPreset('high_mach')" class="px-2 py-0.5 rounded bg-sky-950/70 hover:bg-sky-900 text-sky-300 border border-sky-800/40 text-[11px] transition">High-Mach Flow</button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Controls Column (5 cols) -->
+        <div class="lg:col-span-5 bg-space-950/90 p-4 rounded-xl border border-slate-800 space-y-4">
+          <div class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5 border-b border-slate-800 pb-2">
+            <i class="fa-solid fa-sliders text-sky-400"></i>
+            <span>Upstream Solar Wind Parameters</span>
+          </div>
+
+          <!-- Speed -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+              <label class="text-slate-300 font-medium">Bulk Speed (V_sw):</label>
+              <span id="sbx-val-vsw" class="font-mono text-amber-400 font-bold">${p.vsw} km/s</span>
+            </div>
+            <input type="range" min="200" max="1500" step="10" value="${p.vsw}" oninput="onSandboxParamChange('vsw', this.value)" class="w-full accent-amber-500 cursor-pointer">
+          </div>
+
+          <!-- Density -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+              <label class="text-slate-300 font-medium">Proton Density (N_p):</label>
+              <span id="sbx-val-density" class="font-mono text-emerald-400 font-bold">${p.density} cm⁻³</span>
+            </div>
+            <input type="range" min="0.5" max="80" step="0.5" value="${p.density}" oninput="onSandboxParamChange('density', this.value)" class="w-full accent-emerald-500 cursor-pointer">
+          </div>
+
+          <!-- Total B -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+              <label class="text-slate-300 font-medium">Total IMF Magnitude (|B|):</label>
+              <span id="sbx-val-bt" class="font-mono text-slate-200 font-bold">${p.bt} nT</span>
+            </div>
+            <input type="range" min="1.0" max="60" step="0.5" value="${p.bt}" oninput="onSandboxParamChange('bt', this.value)" class="w-full accent-slate-300 cursor-pointer">
+          </div>
+
+          <!-- Bz -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+              <label class="text-slate-300 font-medium">IMF Bz (GSM):</label>
+              <span id="sbx-val-bz" class="font-mono font-bold ${p.bz < 0 ? 'text-rose-400' : 'text-emerald-400'}">${p.bz > 0 ? '+' : ''}${p.bz} nT</span>
+            </div>
+            <input type="range" min="-45" max="45" step="0.5" value="${p.bz}" oninput="onSandboxParamChange('bz', this.value)" class="w-full accent-rose-500 cursor-pointer">
+          </div>
+
+          <!-- By -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+              <label class="text-slate-300 font-medium">IMF By (GSM):</label>
+              <span id="sbx-val-by" class="font-mono text-sky-400 font-bold">${p.by > 0 ? '+' : ''}${p.by} nT</span>
+            </div>
+            <input type="range" min="-35" max="35" step="0.5" value="${p.by}" oninput="onSandboxParamChange('by', this.value)" class="w-full accent-sky-500 cursor-pointer">
+          </div>
+
+          <!-- Temp -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+              <label class="text-slate-300 font-medium">Proton Temperature (T_p):</label>
+              <span id="sbx-val-temp" class="font-mono text-purple-400 font-bold">${(p.temp / 1000).toFixed(0)}k K</span>
+            </div>
+            <input type="range" min="20000" max="1000000" step="10000" value="${p.temp}" oninput="onSandboxParamChange('temp', this.value)" class="w-full accent-purple-500 cursor-pointer">
+          </div>
+        </div>
+
+        <!-- Real-Time Metrics Display Grid (7 cols) -->
+        <div class="lg:col-span-7 space-y-3">
+          <!-- Top Standoff Dual Banner -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="bg-space-950 p-3.5 rounded-xl border border-sky-500/30 space-y-1">
+              <div class="text-[10px] uppercase font-bold text-sky-400 flex items-center justify-between">
+                <span>Chao et al. (2002) Magnetopause</span>
+                <span id="sbx-chao-mp-geo" class="text-[9px] px-1.5 py-0.2 rounded font-mono ${res.inside_geo_chao ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${res.inside_geo_chao ? 'SUB-GEO' : 'CLEAR'}</span>
+              </div>
+              <div class="flex items-baseline space-x-2">
+                <span id="sbx-chao-mp-re" class="text-xl font-bold font-hud ${res.inside_geo_chao ? 'text-rose-400' : 'text-sky-300'}">${res.chao_r0_mp.toFixed(2)} R_E</span>
+                <span id="sbx-chao-mp-km" class="text-xs text-slate-400 font-mono">~${Math.round(res.chao_r0_mp * 6371).toLocaleString()} km</span>
+              </div>
+              <div class="text-[11px] text-slate-400 font-mono">Flaring: α = <span id="sbx-chao-alpha">${res.chao_alpha_mp.toFixed(3)}</span></div>
+            </div>
+
+            <div class="bg-space-950 p-3.5 rounded-xl border border-sky-500/30 space-y-1">
+              <div class="text-[10px] uppercase font-bold text-cyan-400 flex items-center justify-between">
+                <span>Chao (2002) Bow Shock</span>
+                <span class="text-[9px] text-slate-400 font-mono">M_A: <strong id="sbx-mach-badge" class="text-cyan-300">${res.ma.toFixed(1)}</strong></span>
+              </div>
+              <div class="flex items-baseline space-x-2">
+                <span id="sbx-chao-bs-re" class="text-xl font-bold font-hud text-cyan-300">${res.chao_r0_bs.toFixed(2)} R_E</span>
+                <span id="sbx-chao-bs-km" class="text-xs text-slate-400 font-mono">~${Math.round(res.chao_r0_bs * 6371).toLocaleString()} km</span>
+              </div>
+              <div class="text-[11px] text-slate-400 font-mono">Sheath: ΔR = <span id="sbx-sheath-re" class="text-emerald-400 font-bold">${res.sheath_re.toFixed(1)} R_E</span></div>
+            </div>
+          </div>
+
+          <!-- Secondary Metrics Cards (4 items) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <!-- Dynamic Pressure -->
+            <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Solar Wind Dynamic Pressure (P_dyn)</div>
+              <div class="flex items-baseline space-x-2">
+                <span id="sbx-pdyn" class="text-lg font-bold font-hud text-amber-300">${res.pdyn.toFixed(2)} nPa</span>
+              </div>
+              <p class="text-[10px] text-slate-500 font-mono">1.6726e-6 * N_p * V_sw²</p>
+            </div>
+
+            <!-- Shue comparison -->
+            <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Shue (1997) Model Standoff</div>
+              <div class="flex items-baseline space-x-2">
+                <span id="sbx-shue-re" class="text-lg font-bold font-hud text-slate-200">${res.shue_r0_mp.toFixed(2)} R_E</span>
+                <span id="sbx-shue-delta" class="text-[11px] text-slate-400 font-mono">Δ: ${(res.chao_r0_mp - res.shue_r0_mp).toFixed(2)} R_E</span>
+              </div>
+              <p class="text-[10px] text-slate-500 font-mono">Tanh boundary model comparison</p>
+            </div>
+
+            <!-- Wave Speeds -->
+            <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">MHD Wave Speeds &amp; Mach</div>
+              <div class="space-y-0.5 text-[11px] font-mono text-slate-300">
+                <div>Alfvén V_A: <strong id="sbx-va" class="text-sky-300">${res.va.toFixed(1)} km/s</strong> (M_A: <span id="sbx-ma">${res.ma.toFixed(2)}</span>)</div>
+                <div>Magnetosonic V_ms: <strong id="sbx-vms" class="text-purple-300">${res.vms.toFixed(1)} km/s</strong> (M_ms: <span id="sbx-mms">${res.mms.toFixed(2)}</span>)</div>
+              </div>
+            </div>
+
+            <!-- Energy Coupling -->
+            <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Akasofu Poynting Flux (ε)</div>
+              <div class="flex items-baseline space-x-2">
+                <span id="sbx-eps" class="text-lg font-bold font-hud ${res.akasofu_gw >= 100 ? 'text-amber-400' : 'text-slate-300'}">${res.akasofu_gw.toFixed(1)} GW</span>
+                <span id="sbx-dphi" class="text-[10px] text-slate-400 font-mono">Newell: ${Math.round(res.dphi).toLocaleString()}</span>
+              </div>
+              <p class="text-[10px] text-slate-500 font-mono">Clock Angle: <span id="sbx-clock">${res.clock_deg.toFixed(1)}°</span></p>
+            </div>
+
+            <!-- Polar Cap Potential -->
+            <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Polar Cap Potential (Φ_PC)</div>
+              <div class="flex items-baseline space-x-2">
+                <span id="sbx-phi" class="text-lg font-bold font-hud ${res.phi_pc >= 90 ? 'text-rose-400' : 'text-indigo-300'}">${res.phi_pc.toFixed(1)} kV</span>
+              </div>
+              <p class="text-[10px] text-slate-500 font-mono">Boyle et al. (1997) transpolar drop</p>
+            </div>
+
+            <!-- AE & Convective Electric Field -->
+            <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
+              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Auroral Electrojet &amp; E_y Field</div>
+              <div class="space-y-0.5 text-[11px] font-mono text-slate-300">
+                <div>AE Proxy: <strong id="sbx-ae" class="${res.ae >= 500 ? 'text-amber-400 font-bold' : 'text-slate-200'}">${res.ae.toFixed(0)} nT</strong></div>
+                <div>E_y Convective: <strong id="sbx-ey" class="${res.ey > 0 ? 'text-rose-400' : 'text-emerald-400'}">${res.ey > 0 ? '+' : ''}${res.ey.toFixed(2)} mV/m</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function onSandboxParamChange(param, val) {
+  sandboxParams[param] = parseFloat(val);
+  const p = sandboxParams;
+  const res = computeSandboxPhysics(p);
+
+  // Update slider label
+  const lbl = document.getElementById(`sbx-val-${param}`);
+  if (lbl) {
+    if (param === 'vsw') lbl.innerText = `${p.vsw} km/s`;
+    else if (param === 'density') lbl.innerText = `${p.density} cm⁻³`;
+    else if (param === 'bt') lbl.innerText = `${p.bt} nT`;
+    else if (param === 'bz') {
+      lbl.innerText = `${p.bz > 0 ? '+' : ''}${p.bz} nT`;
+      lbl.className = `font-mono font-bold ${p.bz < 0 ? 'text-rose-400' : 'text-emerald-400'}`;
+    }
+    else if (param === 'by') lbl.innerText = `${p.by > 0 ? '+' : ''}${p.by} nT`;
+    else if (param === 'temp') lbl.innerText = `${(p.temp / 1000).toFixed(0)}k K`;
+  }
+
+  // Update output elements
+  const elChaoMpRe = document.getElementById('sbx-chao-mp-re');
+  if (elChaoMpRe) {
+    elChaoMpRe.innerText = `${res.chao_r0_mp.toFixed(2)} R_E`;
+    elChaoMpRe.className = `text-xl font-bold font-hud ${res.inside_geo_chao ? 'text-rose-400 animate-pulse' : 'text-sky-300'}`;
+  }
+  const elChaoMpKm = document.getElementById('sbx-chao-mp-km');
+  if (elChaoMpKm) elChaoMpKm.innerText = `~${Math.round(res.chao_r0_mp * 6371).toLocaleString()} km`;
+
+  const elChaoGeo = document.getElementById('sbx-chao-mp-geo');
+  if (elChaoGeo) {
+    elChaoGeo.innerText = res.inside_geo_chao ? 'SUB-GEO' : 'CLEAR';
+    elChaoGeo.className = `text-[9px] px-1.5 py-0.2 rounded font-mono ${res.inside_geo_chao ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}`;
+  }
+
+  const elChaoAlpha = document.getElementById('sbx-chao-alpha');
+  if (elChaoAlpha) elChaoAlpha.innerText = res.chao_alpha_mp.toFixed(3);
+
+  const elChaoBsRe = document.getElementById('sbx-chao-bs-re');
+  if (elChaoBsRe) elChaoBsRe.innerText = `${res.chao_r0_bs.toFixed(2)} R_E`;
+
+  const elChaoBsKm = document.getElementById('sbx-chao-bs-km');
+  if (elChaoBsKm) elChaoBsKm.innerText = `~${Math.round(res.chao_r0_bs * 6371).toLocaleString()} km`;
+
+  const elSheath = document.getElementById('sbx-sheath-re');
+  if (elSheath) elSheath.innerText = `${res.sheath_re.toFixed(1)} R_E`;
+
+  const elMach = document.getElementById('sbx-mach-badge');
+  if (elMach) elMach.innerText = res.ma.toFixed(1);
+
+  const elPdyn = document.getElementById('sbx-pdyn');
+  if (elPdyn) elPdyn.innerText = `${res.pdyn.toFixed(2)} nPa`;
+
+  const elShueRe = document.getElementById('sbx-shue-re');
+  if (elShueRe) elShueRe.innerText = `${res.shue_r0_mp.toFixed(2)} R_E`;
+
+  const elShueDelta = document.getElementById('sbx-shue-delta');
+  if (elShueDelta) elShueDelta.innerText = `Δ: ${(res.chao_r0_mp - res.shue_r0_mp).toFixed(2)} R_E`;
+
+  const elVa = document.getElementById('sbx-va');
+  if (elVa) elVa.innerText = `${res.va.toFixed(1)} km/s`;
+
+  const elMa = document.getElementById('sbx-ma');
+  if (elMa) elMa.innerText = res.ma.toFixed(2);
+
+  const elVms = document.getElementById('sbx-vms');
+  if (elVms) elVms.innerText = `${res.vms.toFixed(1)} km/s`;
+
+  const elMms = document.getElementById('sbx-mms');
+  if (elMms) elMms.innerText = res.mms.toFixed(2);
+
+  const elEps = document.getElementById('sbx-eps');
+  if (elEps) {
+    elEps.innerText = `${res.akasofu_gw.toFixed(1)} GW`;
+    elEps.className = `text-lg font-bold font-hud ${res.akasofu_gw >= 100 ? 'text-amber-400' : 'text-slate-300'}`;
+  }
+
+  const elDphi = document.getElementById('sbx-dphi');
+  if (elDphi) elDphi.innerText = `Newell: ${Math.round(res.dphi).toLocaleString()}`;
+
+  const elClock = document.getElementById('sbx-clock');
+  if (elClock) elClock.innerText = `${res.clock_deg.toFixed(1)}°`;
+
+  const elPhi = document.getElementById('sbx-phi');
+  if (elPhi) {
+    elPhi.innerText = `${res.phi_pc.toFixed(1)} kV`;
+    elPhi.className = `text-lg font-bold font-hud ${res.phi_pc >= 90 ? 'text-rose-400' : 'text-indigo-300'}`;
+  }
+
+  const elAe = document.getElementById('sbx-ae');
+  if (elAe) {
+    elAe.innerText = `${res.ae.toFixed(0)} nT`;
+    elAe.className = res.ae >= 500 ? 'text-amber-400 font-bold' : 'text-slate-200';
+  }
+
+  const elEy = document.getElementById('sbx-ey');
+  if (elEy) {
+    elEy.innerText = `${res.ey > 0 ? '+' : ''}${res.ey.toFixed(2)} mV/m`;
+    elEy.className = res.ey > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400';
+  }
+}
+
+function setSandboxPreset(presetKey) {
+  if (presetKey === 'quiet') {
+    sandboxParams = { vsw: 380, density: 4.5, bt: 5.0, bz: 2.5, by: 1.0, temp: 80000 };
+  } else if (presetKey === 'cir') {
+    sandboxParams = { vsw: 580, density: 15.0, bt: 12.0, bz: -6.5, by: -4.0, temp: 180000 };
+  } else if (presetKey === 'cme_g5') {
+    sandboxParams = { vsw: 980, density: 45.0, bt: 42.0, bz: -28.0, by: 16.0, temp: 450000 };
+  } else if (presetKey === 'high_mach') {
+    sandboxParams = { vsw: 750, density: 2.0, bt: 3.0, bz: -2.0, by: 1.0, temp: 40000 };
+  }
+  const body = document.getElementById('modal-references-body');
+  if (body) renderSandboxTab(body);
+  window.playBlip?.();
+}
+
+function loadSandboxFromLive() {
+  if (!currentTelemetryData || !currentTelemetryData.latest) {
+    alert("No active live telemetry available to sync.");
+    return;
+  }
+  const lat = currentTelemetryData.latest;
+  sandboxParams = {
+    vsw: lat.speed || 450,
+    density: lat.density || 5.0,
+    bt: lat.bt || 6.0,
+    bz: lat.bz_gsm !== undefined ? lat.bz_gsm : -3.0,
+    by: lat.by_gsm !== undefined ? lat.by_gsm : 2.0,
+    temp: lat.temperature || 100000
+  };
+  const body = document.getElementById('modal-references-body');
+  if (body) renderSandboxTab(body);
+  window.playBlip?.();
+}
+
+function injectSandboxToOrbit() {
+  if (orbitViewer) {
+    const res = computeSandboxPhysics(sandboxParams);
+    orbitViewer.setSolarWindConditions(res.vsw, res.pdyn, res.bz, res.ma);
+    orbitViewer.draw();
+    if (orbitViewer.lastComputedBoundaries) {
+      updateBoundaryCards(orbitViewer.lastComputedBoundaries);
+    }
+  }
+  closeReferencesModal();
+  switchTab('orbits');
+  window.playBlip?.();
+}
+
+// =============================================================================
 // TERRESTRIAL HAZARDS, D-RAP IONOSPHERE & SOLAR CYCLE 25 ENGINE
 // =============================================================================
 let chartSolarCycle = null;
@@ -2968,8 +3422,311 @@ function closeAllModals() {
   closeBulletinModal();
   closeReferencesModal();
   closeShortcutsModal();
+  closeIncidentLogModal();
   const paramModal = document.getElementById('modal-parameter');
   if (paramModal) paramModal.classList.add('hidden');
+}
+
+/* ========================================================================= */
+/* MISSION INCIDENT & ALERT LOGGING ENGINE                                  */
+/* ========================================================================= */
+
+let missionIncidentLogger = null;
+
+class MissionIncidentLogger {
+  constructor() {
+    this.storageKey = 'helios_mission_incidents_v1';
+    this.incidents = this.loadFromStorage();
+    this.lastTriggerTimes = {};
+    this.activeFilter = 'ALL';
+    this.updateBadge();
+  }
+
+  loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  saveToStorage() {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.incidents.slice(0, 100)));
+    } catch (e) {
+      console.warn('Incident log storage error:', e);
+    }
+  }
+
+  addIncident(level, category, title, detail, paramName, paramValue, threshold) {
+    const key = `${category}_${level}`;
+    const now = Date.now();
+    // Throttle repeated triggers of same condition to once every 12 minutes
+    if (this.lastTriggerTimes[key] && (now - this.lastTriggerTimes[key]) < 720000) {
+      return;
+    }
+    this.lastTriggerTimes[key] = now;
+
+    const incident = {
+      id: `inc_${now}_${Math.random().toString(36).substr(2, 5)}`,
+      timestamp: new Date().toISOString(),
+      level, // 'CRITICAL', 'WARNING', 'ADVISORY'
+      category,
+      title,
+      detail,
+      paramName,
+      paramValue,
+      threshold,
+      acknowledged: false
+    };
+
+    this.incidents.unshift(incident);
+    if (this.incidents.length > 100) this.incidents.pop();
+    this.saveToStorage();
+    this.updateBadge();
+    this.renderLogBody();
+
+    if (level === 'CRITICAL') {
+      window.playSubGeoWarning?.();
+    } else if (level === 'WARNING') {
+      window.playShockAlert?.();
+    }
+  }
+
+  checkTelemetry(latest, mission) {
+    if (!latest) return;
+    const vsw = latest.speed || 0;
+    const bz = latest.bz_gsm !== undefined ? latest.bz_gsm : 0;
+    const pdyn = latest.dynamic_pressure || 0;
+    const rmp = latest.magnetopause_re || 10.0;
+
+    // 1. Critical: Sub-GEO Magnetopause Crossing
+    if (rmp < 6.6) {
+      this.addIncident(
+        'CRITICAL',
+        'SUB_GEO_CROSSING',
+        'Subsolar Magnetopause Compressed Inside GEO Orbit',
+        `Standoff compressed to ${rmp.toFixed(1)} R_E (< 6.6 R_E GEO). Geostationary spacecraft directly exposed to unshielded solar wind / magnetosheath plasma.`,
+        'R_mp',
+        `${rmp.toFixed(1)} R_E`,
+        '< 6.6 R_E'
+      );
+    }
+
+    // 2. Critical: Severe Southward IMF Reconnection
+    if (bz <= -15.0) {
+      this.addIncident(
+        'CRITICAL',
+        'SEVERE_IMF_SOUTH',
+        'Extreme Southward IMF Reconnection Driver',
+        `Interplanetary magnetic field Bz southward at ${bz.toFixed(1)} nT. Major dayside reconnection driving ring current intensification (G4/G5 risk).`,
+        'Bz (GSM)',
+        `${bz.toFixed(1)} nT`,
+        '<= -15.0 nT'
+      );
+    } else if (bz <= -8.0) {
+      this.addIncident(
+        'WARNING',
+        'MODERATE_IMF_SOUTH',
+        'Elevated Southward IMF Injection',
+        `IMF Bz southward at ${bz.toFixed(1)} nT. Active dayside reconnection driving polar cap convection and magnetospheric substorms.`,
+        'Bz (GSM)',
+        `${bz.toFixed(1)} nT`,
+        '<= -8.0 nT'
+      );
+    }
+
+    // 3. Warning: Severe Dynamic Pressure Compression
+    if (pdyn >= 12.0) {
+      this.addIncident(
+        'WARNING',
+        'HIGH_DYNAMIC_PRESSURE',
+        'Severe Solar Wind Momentum Flux Surge',
+        `Solar wind dynamic pressure spiked to ${pdyn.toFixed(1)} nPa. Intense compression of Earth's dayside magnetopause cavity.`,
+        'P_dyn',
+        `${pdyn.toFixed(1)} nPa`,
+        '>= 12.0 nPa'
+      );
+    }
+
+    // 4. Warning: High-Speed Solar Wind Stream
+    if (vsw >= 650.0) {
+      this.addIncident(
+        'WARNING',
+        'HIGH_SPEED_STREAM',
+        'High-Speed Solar Wind Stream (HSS / CME Front)',
+        `Solar wind bulk speed reached ${vsw.toFixed(0)} km/s. Enhanced relativistic electron precipitation in outer Van Allen radiation belt.`,
+        'V_sw',
+        `${vsw.toFixed(0)} km/s`,
+        '>= 650 km/s'
+      );
+    }
+  }
+
+  acknowledgeAll() {
+    this.incidents.forEach(inc => inc.acknowledged = true);
+    this.saveToStorage();
+    this.updateBadge();
+    this.renderLogBody();
+  }
+
+  acknowledge(id) {
+    const inc = this.incidents.find(i => i.id === id);
+    if (inc) {
+      inc.acknowledged = true;
+      this.saveToStorage();
+      this.updateBadge();
+      this.renderLogBody();
+    }
+  }
+
+  clear() {
+    this.incidents = [];
+    this.saveToStorage();
+    this.updateBadge();
+    this.renderLogBody();
+  }
+
+  updateBadge() {
+    const unack = this.incidents.filter(i => !i.acknowledged).length;
+    const badge = document.getElementById('incident-badge-count');
+    if (badge) {
+      if (unack > 0) {
+        badge.innerText = unack > 99 ? '99+' : unack;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    const cCrit = this.incidents.filter(i => i.level === 'CRITICAL').length;
+    const cWarn = this.incidents.filter(i => i.level === 'WARNING').length;
+    const cAdv = this.incidents.filter(i => i.level === 'ADVISORY').length;
+
+    const elCrit = document.getElementById('cnt-flt-crit');
+    const elWarn = document.getElementById('cnt-flt-warn');
+    const elAdv = document.getElementById('cnt-flt-adv');
+    if (elCrit) elCrit.innerText = cCrit;
+    if (elWarn) elWarn.innerText = cWarn;
+    if (elAdv) elAdv.innerText = cAdv;
+
+    const stat = document.getElementById('incident-summary-status');
+    if (stat) {
+      stat.innerText = `${this.incidents.length} events logged (${unack} unacknowledged)`;
+    }
+  }
+
+  renderLogBody() {
+    const body = document.getElementById('incident-log-body');
+    if (!body) return;
+
+    let filtered = this.incidents;
+    if (this.activeFilter !== 'ALL') {
+      filtered = this.incidents.filter(i => i.level === this.activeFilter);
+    }
+
+    if (filtered.length === 0) {
+      body.innerHTML = `<div class="text-center py-12 text-slate-500 italic">No ${this.activeFilter === 'ALL' ? '' : this.activeFilter.toLowerCase() + ' '}operational incidents recorded.</div>`;
+      return;
+    }
+
+    body.innerHTML = filtered.map(inc => {
+      const isCrit = inc.level === 'CRITICAL';
+      const isWarn = inc.level === 'WARNING';
+      const borderClr = isCrit ? 'border-rose-500/50' : (isWarn ? 'border-amber-500/40' : 'border-sky-500/30');
+      const badgeBg = isCrit ? 'bg-rose-950/80 text-rose-300 border-rose-800/60' : (isWarn ? 'bg-amber-950/80 text-amber-300 border-amber-800/60' : 'bg-sky-950/80 text-sky-300 border-sky-800/60');
+      const icon = isCrit ? 'fa-triangle-exclamation text-rose-400' : (isWarn ? 'fa-circle-exclamation text-amber-400' : 'fa-info-circle text-sky-400');
+      const timeStr = new Date(inc.timestamp).toLocaleString();
+
+      return `
+        <div class="bg-space-950/80 p-3.5 rounded-xl border ${borderClr} shadow-md space-y-2 ${inc.acknowledged ? 'opacity-70' : ''}">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid ${icon} text-sm"></i>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${badgeBg}">${inc.level}</span>
+              <span class="text-xs font-bold text-slate-200">${inc.title}</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="text-[11px] text-slate-400 font-mono">${timeStr}</span>
+              ${!inc.acknowledged ? `
+                <button onclick="acknowledgeIncident('${inc.id}')" class="px-2 py-0.5 rounded bg-space-800 hover:bg-emerald-900/60 text-emerald-400 border border-slate-700 hover:border-emerald-700/50 text-[10px] font-semibold transition">
+                  <i class="fa-solid fa-check text-[9px] mr-1"></i>Acknowledge
+                </button>
+              ` : '<span class="text-[10px] text-slate-500 font-mono"><i class="fa-solid fa-check-double mr-1 text-emerald-500"></i>Acked</span>'}
+            </div>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed font-sans">${inc.detail}</p>
+          <div class="flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-400 pt-1">
+            <div>
+              <span class="text-slate-500 font-semibold">Trigger Parameter:</span>
+              <strong class="text-slate-200 ml-1">${inc.paramName} = ${inc.paramValue}</strong>
+              <span class="text-slate-500 ml-2">(Threshold: ${inc.threshold})</span>
+            </div>
+            <span class="text-slate-600 text-[10px]">ID: ${inc.id}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+function openIncidentLogModal() {
+  const m = document.getElementById('modal-incidents');
+  if (m) {
+    m.classList.remove('hidden');
+    if (missionIncidentLogger) {
+      missionIncidentLogger.updateBadge();
+      missionIncidentLogger.renderLogBody();
+    }
+  }
+}
+
+function closeIncidentLogModal() {
+  const m = document.getElementById('modal-incidents');
+  if (m) m.classList.add('hidden');
+}
+
+function filterIncidentLog(lvl) {
+  if (missionIncidentLogger) {
+    missionIncidentLogger.activeFilter = lvl;
+    ['ALL', 'CRITICAL', 'WARNING', 'ADVISORY'].forEach(l => {
+      const btn = document.getElementById(`incident-flt-${l}`);
+      if (btn) {
+        if (l === lvl) {
+          btn.className = 'px-2.5 py-1 rounded-lg font-semibold bg-sky-600 text-white text-[11px] transition';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg font-semibold text-slate-400 hover:text-slate-200 text-[11px] transition';
+        }
+      }
+    });
+    missionIncidentLogger.renderLogBody();
+  }
+}
+
+function acknowledgeAllIncidents() {
+  if (missionIncidentLogger) missionIncidentLogger.acknowledgeAll();
+}
+
+function acknowledgeIncident(id) {
+  if (missionIncidentLogger) missionIncidentLogger.acknowledge(id);
+}
+
+function clearIncidentLog() {
+  if (confirm('Clear all recorded incident logs?')) {
+    if (missionIncidentLogger) missionIncidentLogger.clear();
+  }
+}
+
+function exportIncidentLogJSON() {
+  if (!missionIncidentLogger) return;
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(missionIncidentLogger.incidents, null, 2));
+  const a = document.createElement('a');
+  a.setAttribute("href", dataStr);
+  a.setAttribute("download", `helios_incident_log_${new Date().toISOString().slice(0, 10)}.json`);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 // Global hotkeys listener
@@ -3003,6 +3760,8 @@ window.addEventListener('keydown', (e) => {
     openReferencesModal();
   } else if (e.key === 'u' || e.key === 'U') {
     openUserGuideModal();
+  } else if (e.key === 'l' || e.key === 'L') {
+    openIncidentLogModal();
   } else if (e.key === 't' || e.key === 'T') {
     toggleClockMode();
   }
