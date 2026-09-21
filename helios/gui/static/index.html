@@ -171,9 +171,13 @@
           <i id="icon-audio" class="fa-solid fa-volume-high text-cyan-400"></i>
           <span id="text-audio">Audio: ON</span>
         </button>
-        <button onclick="openBulletinModal()" class="px-2.5 py-1 rounded bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 text-xs border border-indigo-500/40 transition flex items-center space-x-1.5" title="Open Space Weather Bulletin (B)">
+        <button onclick="openBulletinModal()" class="px-2.5 py-1 rounded bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 text-xs border border-indigo-500/40 transition flex items-center space-x-1.5" title="Open Space Weather Bulletin & Executive Summary (B)">
           <i class="fa-solid fa-file-shield text-indigo-400"></i>
           <span>Bulletin</span>
+        </button>
+        <button onclick="downloadExecutiveSummaryMD()" class="px-2 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center space-x-1" title="Instant Export Executive Summary (Markdown)">
+          <i class="fa-solid fa-file-lines text-sky-400"></i>
+          <span>Summary</span>
         </button>
         <button onclick="exportData('csv')" class="px-2 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center space-x-1" title="Export Current Telemetry to CSV">
           <i class="fa-solid fa-file-csv text-emerald-400"></i>
@@ -607,6 +611,38 @@
         </div>
       </div>
 
+      <!-- Inter-Satellite Spatial Baseline & Propagation Analysis Strip -->
+      <div id="comp-baseline-strip" class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4 border-l-4 border-sky-400">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-lg shadow-inner">
+            <i class="fa-solid fa-arrows-split-up-and-left"></i>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">Inter-Spacecraft Baseline &amp; Propagation Geometry</div>
+            <div class="text-xs text-slate-200 mt-0.5">
+              3D Separation: <strong id="baseline-dist-km" class="text-sky-400 font-hud font-bold">--- km</strong>
+              (<span id="baseline-dist-re" class="text-slate-300 font-hud">-- R_E</span>) &bull;
+              Vector GSE: [<span id="baseline-vec-gse" class="text-slate-300 font-hud">ΔX: --, ΔY: --, ΔZ: --</span>] km
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 text-xs font-mono">
+          <div class="bg-space-950/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
+            <span class="text-slate-400 block text-[10px]">THEORETICAL TRANSIT DELAY (ΔX/Vsw)</span>
+            <span id="baseline-theory-delay" class="text-amber-400 font-bold font-hud text-sm">-- min</span>
+          </div>
+          <div class="bg-space-950/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
+            <span class="text-slate-400 block text-[10px]">OBSERVED EMPIRICAL LAG (τ)</span>
+            <span id="baseline-empirical-lag" class="text-cyan-400 font-bold font-hud text-sm">-- min</span>
+          </div>
+          <div class="bg-space-950/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
+            <span class="text-slate-400 block text-[10px]">FIDELITY &amp; COHERENCE</span>
+            <span id="baseline-fidelity-score" class="text-emerald-400 font-bold font-hud text-sm">--% HIGH</span>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
           <div class="flex items-center justify-between mb-2">
@@ -694,6 +730,54 @@
               <input type="checkbox" id="orbit-anim-toggle" checked class="rounded text-sky-500">
               <span class="text-slate-300 font-medium">Solar Wind Stream</span>
             </label>
+            <label class="flex items-center space-x-2 cursor-pointer bg-space-950/80 px-3 py-1.5 rounded-xl border border-slate-700/60" title="Toggle GSE Metric Coordinate Grid & Reference Axes">
+              <input type="checkbox" id="orbit-grid-toggle" checked onchange="toggleOrbitGrid(this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300 font-medium">GSE Grid</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Spacecraft Trajectory Visibility Filter Strip -->
+        <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-space-950/80 border border-slate-800/80 text-xs shadow-inner">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[10px] uppercase font-bold text-slate-400 font-mono flex items-center space-x-1 mr-1">
+              <i class="fa-solid fa-satellite text-sky-400"></i>
+              <span>Active Trajectories:</span>
+            </span>
+            <button id="orbit-btn-all" onclick="toggleAllOrbitSatellites(true)" class="px-2 py-0.5 rounded bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition shadow-sm">All</button>
+            <button onclick="toggleAllOrbitSatellites(false)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 text-[11px] font-semibold transition">None</button>
+            
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-sky-500/40 cursor-pointer text-[11px] text-sky-300">
+              <input type="checkbox" id="orbit-chk-DSCOVR" checked onchange="toggleOrbitSat('DSCOVR', this.checked)" class="rounded text-sky-400">
+              <span class="font-semibold">DSCOVR</span>
+            </label>
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-emerald-500/40 cursor-pointer text-[11px] text-emerald-300">
+              <input type="checkbox" id="orbit-chk-ACE" checked onchange="toggleOrbitSat('ACE', this.checked)" class="rounded text-emerald-400">
+              <span class="font-semibold">ACE</span>
+            </label>
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-amber-500/40 cursor-pointer text-[11px] text-amber-300">
+              <input type="checkbox" id="orbit-chk-ADITYA_L1" checked onchange="toggleOrbitSat('ADITYA_L1', this.checked)" class="rounded text-amber-400">
+              <span class="font-semibold">Aditya-L1</span>
+            </label>
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-cyan-500/40 cursor-pointer text-[11px] text-cyan-300">
+              <input type="checkbox" id="orbit-chk-WIND" checked onchange="toggleOrbitSat('WIND', this.checked)" class="rounded text-cyan-400">
+              <span class="font-semibold">WIND</span>
+            </label>
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-purple-500/40 cursor-pointer text-[11px] text-purple-300">
+              <input type="checkbox" id="orbit-chk-SOHO" checked onchange="toggleOrbitSat('SOHO', this.checked)" class="rounded text-purple-400">
+              <span class="font-semibold">SOHO</span>
+            </label>
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-pink-500/40 cursor-pointer text-[11px] text-pink-300">
+              <input type="checkbox" id="orbit-chk-GOES_16" checked onchange="toggleOrbitSat('GOES_16', this.checked)" class="rounded text-pink-400">
+              <span class="font-semibold">GOES-16</span>
+            </label>
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-rose-500/40 cursor-pointer text-[11px] text-rose-300">
+              <input type="checkbox" id="orbit-chk-STEREO_A" checked onchange="toggleOrbitSat('STEREO_A', this.checked)" class="rounded text-rose-400">
+              <span class="font-semibold">STEREO-A</span>
+            </label>
+          </div>
+          <div class="text-[11px] text-slate-500 font-mono hidden xl:block">
+            Scale: 1px ≈ 5,753 km • Heliocentric GSE Frame
           </div>
         </div>
 
@@ -925,8 +1009,26 @@
       <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-xl space-y-4">
         <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
           <div>
-            <h3 class="font-bold text-sm text-slate-200">CME Plane-of-Sky Kinematic Solver & Aerodynamic Shock Simulator</h3>
-            <p class="text-xs text-slate-400">Computes CME expansion velocity, Gopalswamy aerodynamic drag deceleration, and transit time to L1 & Earth.</p>
+            <h3 class="font-bold text-sm text-slate-200">CME Plane-of-Sky Kinematic Solver &amp; Aerodynamic Shock Simulator</h3>
+            <p class="text-xs text-slate-400">Computes CME expansion velocity, Gopalswamy aerodynamic drag deceleration, and transit time to L1 &amp; Earth.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-[10px] uppercase font-bold text-slate-400 font-mono mr-1">CME Benchmark Presets:</span>
+            <button onclick="setCMEPreset(2.5, 9.8, 30, 'May 2024 Extreme Superstorm (AR 3664)')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition shadow-sm">
+              May 2024 (~1800 km/s)
+            </button>
+            <button onclick="setCMEPreset(2.2, 8.5, 32, 'Halloween 2003 Storms (AR 10486)')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition shadow-sm">
+              Halloween 2003 (~2150 km/s)
+            </button>
+            <button onclick="setCMEPreset(2.0, 7.5, 30, 'Bastille Day 2000 CME')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition shadow-sm">
+              Bastille Day (~1675 km/s)
+            </button>
+            <button onclick="setCMEPreset(2.0, 11.5, 34, 'Carrington 1859 Event')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-purple-300 border border-purple-500/40 text-[11px] font-semibold transition shadow-sm">
+              Carrington 1859 (~2300 km/s)
+            </button>
+            <button onclick="setCMEPreset(2.0, 4.2, 45, 'Nominal Coronal Transient')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px] font-semibold transition shadow-sm">
+              Nominal (~650 km/s)
+            </button>
           </div>
         </div>
 
@@ -1585,32 +1687,51 @@
 
   </main>
 
-  <!-- SPACE WEATHER BULLETIN MODAL -->
+  <!-- SPACE WEATHER BULLETIN & EXECUTIVE SUMMARY MODAL -->
   <div id="bulletin-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-    <div class="bg-space-900 border border-sky-500/40 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="p-4 border-b border-slate-700/80 flex items-center justify-between bg-space-950">
+    <div class="bg-space-900 border border-sky-500/40 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-slate-700/80 flex items-center justify-between bg-space-950 flex-wrap gap-2">
         <div class="flex items-center space-x-2.5">
           <i class="fa-solid fa-file-shield text-sky-400 text-lg"></i>
           <div>
-            <h3 class="font-tech font-bold text-slate-100 text-sm">Official Space Weather Operations Bulletin</h3>
-            <p class="text-[11px] text-slate-400">Standard Heliophysics Hazard Advisory for Power Grids, Aviation & Spacecraft</p>
+            <h3 class="font-tech font-bold text-slate-100 text-sm">Space Weather Operations Bulletin &amp; Executive Summary</h3>
+            <p class="text-[11px] text-slate-400">Standard Heliophysics Hazard Advisory for Spacecraft Ops, Power Grids &amp; High-Frequency Aviation</p>
           </div>
         </div>
-        <button onclick="closeBulletinModal()" class="text-slate-400 hover:text-white px-2 py-1 rounded">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+        <div class="flex items-center space-x-3">
+          <!-- Format Switcher -->
+          <div class="flex items-center bg-space-900 p-0.5 rounded-lg border border-slate-700 text-xs">
+            <button id="btn-bulletin-fmt-html" onclick="setBulletinViewFormat('html')" class="px-3 py-1 rounded-md bg-sky-600 text-white font-semibold transition">
+              HTML Report
+            </button>
+            <button id="btn-bulletin-fmt-md" onclick="setBulletinViewFormat('md')" class="px-3 py-1 rounded-md text-slate-400 hover:text-white font-semibold transition">
+              Executive Brief (.md)
+            </button>
+          </div>
+          <button onclick="closeBulletinModal()" class="text-slate-400 hover:text-white px-2 py-1 rounded">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
       </div>
 
       <div class="flex-1 overflow-y-auto p-6 space-y-4 text-xs font-mono" id="bulletin-content">
         <div class="text-center text-slate-400 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Generating bulletin...</div>
       </div>
 
-      <div class="p-4 border-t border-slate-700/80 bg-space-950 flex items-center justify-between">
-        <span class="text-[11px] text-slate-500">HELIOS-L1 Automated Hazard Diagnostic Engine</span>
-        <div class="flex items-center space-x-2">
+      <div class="p-4 border-t border-slate-700/80 bg-space-950 flex items-center justify-between flex-wrap gap-3">
+        <span class="text-[11px] text-slate-500 font-mono">HELIOS-L1 Automated Hazard Diagnostic &amp; Briefing Engine</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="copyExecutiveSummaryMarkdown()" class="px-3 py-1.5 rounded-lg bg-space-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-regular fa-clipboard text-slate-400"></i>
+            <span id="btn-copy-md-label">Copy Markdown</span>
+          </button>
+          <button onclick="downloadExecutiveSummaryMD()" class="px-3 py-1.5 rounded-lg bg-indigo-900/70 hover:bg-indigo-800 text-indigo-200 border border-indigo-500/40 text-xs font-semibold flex items-center space-x-1.5 transition">
+            <i class="fa-solid fa-file-arrow-down text-indigo-400"></i>
+            <span>Export Brief (.md)</span>
+          </button>
           <button onclick="downloadBulletinHTML()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 transition">
             <i class="fa-solid fa-download"></i>
-            <span>Download HTML Report</span>
+            <span>Download HTML</span>
           </button>
           <button onclick="window.print()" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition">
             <i class="fa-solid fa-print"></i>

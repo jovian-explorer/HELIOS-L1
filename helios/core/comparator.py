@@ -7,6 +7,7 @@ import math
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Any, Optional, Tuple
+from helios.core.orbital_mechanics import OrbitalMechanics
 
 class SatelliteComparator:
     """Compares and calibrates observations across multiple satellites."""
@@ -133,6 +134,55 @@ class SatelliteComparator:
         }
 
     @classmethod
+    def compute_spatial_baseline(
+        cls,
+        mission_a_name: str,
+        mission_b_name: str,
+        v_sw_mean: float = 450.0
+    ) -> Dict[str, Any]:
+        """
+        Compute inter-spacecraft separation vector (GSE coordinates)
+        and theoretical solar wind propagation delay between two missions.
+        """
+        orbits = OrbitalMechanics.get_satellite_orbits()
+
+        def find_pos(name: str):
+            clean = name.upper().replace("-", "_").replace(" ", "_")
+            for k, orb in orbits.items():
+                if k in clean or clean in k or orb["name"].upper() in clean:
+                    return orb["current_pos"]
+            return {"x": -1496.0, "y": 0.0, "z": 0.0}
+
+        pos_a = find_pos(mission_a_name)
+        pos_b = find_pos(mission_b_name)
+
+        # Positions are in 1000s of km relative to Earth
+        dx_km = (pos_a["x"] - pos_b["x"]) * 1000.0
+        dy_km = (pos_a["y"] - pos_b["y"]) * 1000.0
+        dz_km = (pos_a["z"] - pos_b["z"]) * 1000.0
+
+        r_e_km = 6371.0
+        dist_km = math.sqrt(dx_km**2 + dy_km**2 + dz_km**2)
+        dist_re = dist_km / r_e_km
+
+        # Theoretical Sunward propagation delay delta_t = delta_x / v_sw
+        # In GSE frame, -X is Sunward. If Spacecraft A is more Sunward than B (pos_a.x < pos_b.x),
+        # then dx = (x_a - x_b) < 0, meaning plasma arrives at A before B.
+        v_sw = max(250.0, float(v_sw_mean))
+        theoretical_delay_sec = (-dx_km) / v_sw
+        theoretical_delay_min = theoretical_delay_sec / 60.0
+
+        return {
+            "dx_km": round(dx_km, 1),
+            "dy_km": round(dy_km, 1),
+            "dz_km": round(dz_km, 1),
+            "distance_km": round(dist_km, 1),
+            "distance_re": round(dist_re, 2),
+            "theoretical_delay_min": round(theoretical_delay_min, 1),
+            "v_sw_assumed_kms": round(v_sw, 1)
+        }
+
+    @classmethod
     def compare_satellites(
         cls,
         telemetry_a: List[Dict[str, Any]],
@@ -158,6 +208,24 @@ class SatelliteComparator:
         metrics = cls.compute_metrics(arr_a, arr_b)
         lag_analysis = cls.cross_correlation_lag(arr_a, arr_b)
 
+        # Estimate average solar wind speed in window for baseline delay
+        speeds = [r["speed"] for r in telemetry_a if "speed" in r and isinstance(r["speed"], (int, float))]
+        v_mean = float(np.mean(speeds)) if speeds else 450.0
+        spatial_baseline = cls.compute_spatial_baseline(mission_a_name, mission_b_name, v_sw_mean=v_mean)
+
+        # Cross-calibration fidelity & coherence index (0 - 100%)
+        r = metrics.get("correlation_r", 0.0)
+        rmse = metrics.get("rmse", 0.0)
+        mean_mag = float(np.mean(np.abs(arr_a))) if len(arr_a) > 0 else 1.0
+        rel_err = min(1.0, rmse / max(1.0, mean_mag))
+        fidelity = max(5.0, min(100.0, (max(0.0, r)**2 * 60.0 + (1.0 - rel_err) * 40.0)))
+        metrics["fidelity_index_pct"] = round(fidelity, 1)
+
+        # Discrepancy between theoretical transit delay and observed empirical lag
+        optimal_lag = lag_analysis.get("optimal_lag_minutes", 0.0)
+        theory_lag = spatial_baseline["theoretical_delay_min"]
+        spatial_baseline["lag_discrepancy_min"] = round(optimal_lag - theory_lag, 1)
+
         # Scatter samples for plotting
         sample_step = max(1, len(aligned_df) // 100)
         scatter_points = [
@@ -180,6 +248,7 @@ class SatelliteComparator:
             "data_points": len(aligned_df),
             "metrics": metrics,
             "lag_analysis": lag_analysis,
+            "spatial_baseline": spatial_baseline,
             "scatter_points": scatter_points,
             "residuals": residuals,
             "times": [str(t) for t in aligned_df.index[::sample_step]]

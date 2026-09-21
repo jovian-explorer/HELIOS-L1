@@ -37,11 +37,39 @@ class OrbitRenderer {
     this.lagrangeData = null;
     this.hoveredItem = null;
 
+    // GSE Coordinate Grid and Spacecraft Filter Sets
+    this.showGseGrid = true;
+    this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16']);
+
     this.initStars();
     this.initParticles();
     this.initEvents();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+  }
+
+  setGseGrid(show) {
+    this.showGseGrid = !!show;
+  }
+
+  setSatelliteVisibility(key, visible) {
+    if (visible) {
+      this.visibleSatellites.add(key);
+    } else {
+      this.visibleSatellites.delete(key);
+    }
+  }
+
+  isSatelliteVisible(key) {
+    return this.visibleSatellites.has(key);
+  }
+
+  toggleAllSatellites(visible) {
+    if (visible) {
+      this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16']);
+    } else {
+      this.visibleSatellites.clear();
+    }
   }
 
   initStars() {
@@ -150,6 +178,7 @@ class OrbitRenderer {
 
     // Check spacecraft current positions
     for (const [key, sat] of Object.entries(this.orbitsData)) {
+      if (this.visibleSatellites && !this.visibleSatellites.has(key)) continue;
       const pos = sat.current_pos;
       if (!pos) continue;
 
@@ -287,6 +316,88 @@ class OrbitRenderer {
     }
     ctx.setLineDash([]);
     ctx.restore();
+
+    // 3.5 GSE Metric Coordinate Grid & Principal Axes
+    if (this.showGseGrid) {
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+      ctx.setLineDash([2, 5]);
+
+      // Orthogonal grid lines along X (every 500k km ~ 87px)
+      for (let gx = -600; gx <= 300; gx += 87) {
+        const pTop = this.project(gx, -180, 0);
+        const pBot = this.project(gx, 180, 0);
+        ctx.beginPath();
+        ctx.moveTo(pTop.x, pTop.y);
+        ctx.lineTo(pBot.x, pBot.y);
+        ctx.stroke();
+
+        // Distance label along ecliptic
+        const pLabel = this.project(gx, 192, 0);
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        const distKmK = Math.round((gx / 260) * 1496);
+        ctx.fillText(`${distKmK > 0 ? '+' : ''}${distKmK}k km`, pLabel.x, pLabel.y);
+      }
+
+      // Orthogonal grid lines along Y (every 250k km ~ 62px)
+      for (let gy = -180; gy <= 180; gy += 60) {
+        if (gy === 0) continue;
+        const pLeft = this.project(-600, gy, 0);
+        const pRight = this.project(300, gy, 0);
+        ctx.beginPath();
+        ctx.moveTo(pLeft.x, pLeft.y);
+        ctx.lineTo(pRight.x, pRight.y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // Principal GSE Axis Vectors from Earth (0,0,0)
+      const earthP = this.project(0, 0, 0);
+
+      // +X_GSE (Sunward, -X in canvas geometry)
+      const xGseEnd = this.project(-120, 0, 0);
+      ctx.strokeStyle = 'rgba(234, 179, 8, 0.65)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(earthP.x, earthP.y);
+      ctx.lineTo(xGseEnd.x, xGseEnd.y);
+      ctx.stroke();
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText('+X_GSE (Sunward)', xGseEnd.x - 6, xGseEnd.y - 4);
+
+      // +Y_GSE (Duskward)
+      const yGseEnd = this.project(0, 75, 0);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(earthP.x, earthP.y);
+      ctx.lineTo(yGseEnd.x, yGseEnd.y);
+      ctx.stroke();
+      ctx.fillStyle = '#38bdf8';
+      ctx.textAlign = 'left';
+      ctx.fillText('+Y_GSE (Dusk)', yGseEnd.x + 8, yGseEnd.y + 3);
+
+      if (this.viewMode === '3d') {
+        // +Z_GSE (Ecliptic Northward)
+        const zGseEnd = this.project(0, 0, 65);
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.7)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(earthP.x, earthP.y);
+        ctx.lineTo(zGseEnd.x, zGseEnd.y);
+        ctx.stroke();
+        ctx.fillStyle = '#c084fc';
+        ctx.textAlign = 'left';
+        ctx.fillText('+Z_GSE (North)', zGseEnd.x + 8, zGseEnd.y + 3);
+      }
+
+      ctx.restore();
+    }
 
     // 4. Draw Animated Solar Wind Streamflow Particles (Strictly emanating from Sun)
     const animToggle = document.getElementById('orbit-anim-toggle');
@@ -518,6 +629,7 @@ class OrbitRenderer {
     if (this.orbitsData) {
       for (const [key, sat] of Object.entries(this.orbitsData)) {
         if (!sat.path || sat.path.length === 0) continue;
+        if (this.visibleSatellites && !this.visibleSatellites.has(key)) continue;
 
         ctx.save();
         const satColor = sat.color || '#38bdf8';

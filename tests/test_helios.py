@@ -138,13 +138,20 @@ def test_parker_spiral():
 def test_report_generator():
     dl = DataDownloader()
     data = dl.generate_synthetic_telemetry("DSCOVR", hours=2)
-    cls = SpaceWeatherPhysics.classify_noaa_scales(3.0, -2.0, 1e-6)
+    cls = SpaceWeatherPhysics.classify_noaa_scales(3.0, -2.0, 1e-6, proton_flux=15.0)
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
     auroral = AuroralModel.calculate_auroral_boundaries(3.0, -2.0)
 
     html = ScientificReportGenerator.generate_html_bulletin("DSCOVR", data, cls, shocks, auroral)
     assert "HELIOS-L1" in html
     assert "Solar Wind Velocity" in html
+    assert "S1 (Minor)" in html
+
+    md = ScientificReportGenerator.generate_markdown_executive_summary("DSCOVR", data, cls, shocks, auroral)
+    assert "HELIOS-L1 SPACE WEATHER EXECUTIVE SUMMARY" in md
+    assert "OPERATIONAL ALERT POSTURE" in md
+    assert "24-HOUR SYNOPTIC TELEMETRY EXTREMA" in md
+    assert "Rankine-Hugoniot" in md
 
 def test_api_endpoints():
     # 1. Status
@@ -204,6 +211,17 @@ def test_api_endpoints():
     assert res.status_code == 200
     assert "predictions_timeline" in res.json()
     assert "hazard_assessment" in res.json()
+
+    # 12. Reports (HTML & Markdown Executive Summary)
+    res_html = client.get("/api/report/html?mission_id=DSCOVR")
+    assert res_html.status_code == 200
+    assert "text/html" in res_html.headers["content-type"]
+    assert "HELIOS-L1 Space Weather Scientific Bulletin" in res_html.text
+
+    res_md = client.get("/api/report/markdown?mission_id=DSCOVR")
+    assert res_md.status_code == 200
+    assert "text/markdown" in res_md.headers["content-type"]
+    assert "HELIOS-L1 SPACE WEATHER EXECUTIVE SUMMARY" in res_md.text
 
 def test_telemetry_importer_direct():
     from helios.core.importer import TelemetryImporter

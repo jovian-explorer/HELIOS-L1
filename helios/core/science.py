@@ -96,10 +96,16 @@ class SpaceWeatherPhysics:
         return round(float(delay_seconds / 60.0), 1)
 
     @staticmethod
-    def classify_noaa_scales(kp: Optional[float], bz_gsm: Optional[float], xray_flux: Optional[float]) -> Dict[str, Any]:
+    def classify_noaa_scales(
+        kp: Optional[float],
+        bz_gsm: Optional[float],
+        xray_flux: Optional[float],
+        proton_flux: Optional[float] = None
+    ) -> Dict[str, Any]:
         """
         Classify Space Weather according to NOAA G-scale (Geomagnetic),
-        Bz southward severity, and R-scale (Radio Blackout via X-ray flux).
+        Bz southward severity, R-scale (Radio Blackout via X-ray flux),
+        and S-scale (Solar Radiation Storm via >= 10 MeV proton flux in pfu).
         """
         # 1. Geomagnetic Storm (G-Scale)
         g_scale = "G0 (Quiet)"
@@ -154,6 +160,22 @@ class SpaceWeatherPhysics:
             else:
                 flare_class = f"B ({xray_flux:.1e})"
 
+        # 4. Solar Radiation Storm (S-Scale based on >= 10 MeV proton flux in pfu)
+        s_scale = "S0 (Nominal)"
+        s_level = 0
+        s_color = "#10b981"
+        pfu_val = float(proton_flux) if (proton_flux is not None and proton_flux > 0) else 0.8
+        if pfu_val >= 1e5:
+            s_scale, s_level, s_color = "S5 (Extreme)", 5, "#dc2626"
+        elif pfu_val >= 1e4:
+            s_scale, s_level, s_color = "S4 (Severe)", 4, "#ea580c"
+        elif pfu_val >= 1e3:
+            s_scale, s_level, s_color = "S3 (Strong)", 3, "#f59e0b"
+        elif pfu_val >= 100.0:
+            s_scale, s_level, s_color = "S2 (Moderate)", 2, "#eab308"
+        elif pfu_val >= 10.0:
+            s_scale, s_level, s_color = "S1 (Minor)", 1, "#3b82f6"
+
         return {
             "g_scale": g_scale,
             "g_level": g_level,
@@ -162,7 +184,11 @@ class SpaceWeatherPhysics:
             "bz_color": bz_color,
             "r_scale": r_scale,
             "r_level": r_level,
-            "flare_class": flare_class
+            "flare_class": flare_class,
+            "s_scale": s_scale,
+            "s_level": s_level,
+            "s_color": s_color,
+            "proton_flux_pfu": round(pfu_val, 2)
         }
 
     @staticmethod

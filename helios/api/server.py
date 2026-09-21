@@ -151,7 +151,8 @@ async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
     classification = SpaceWeatherPhysics.classify_noaa_scales(
         kp=kp_proxy,
         bz_gsm=latest.get("bz_gsm"),
-        xray_flux=latest.get("xray_flux_long", 1.5e-6)
+        xray_flux=latest.get("xray_flux_long", 1.5e-6),
+        proton_flux=latest.get("proton_flux", 1.2)
     )
 
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
@@ -298,7 +299,7 @@ async def get_gic_hazard(
 
 
 @app.get("/api/report/html")
-async def get_html_report(mission_id: str = "DSCOVR"):
+async def get_html_report(mission_id: str = "DSCOVR", download: bool = False):
     mission_key = mission_id.upper()
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
@@ -314,7 +315,8 @@ async def get_html_report(mission_id: str = "DSCOVR"):
     classification = SpaceWeatherPhysics.classify_noaa_scales(
         kp=kp_proxy,
         bz_gsm=latest.get("bz_gsm"),
-        xray_flux=latest.get("xray_flux_long", 1.5e-6)
+        xray_flux=latest.get("xray_flux_long", 1.5e-6),
+        proton_flux=latest.get("proton_flux", 1.2)
     )
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
     auroral_data = AuroralModel.calculate_auroral_boundaries(kp_proxy, latest.get("bz_gsm", 0))
@@ -326,7 +328,45 @@ async def get_html_report(mission_id: str = "DSCOVR"):
         shocks=shocks,
         auroral_data=auroral_data
     )
-    return Response(content=html, media_type="text/html")
+    headers = {}
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="HELIOS-L1-{mission_key}-Bulletin.html"'
+    return Response(content=html, media_type="text/html", headers=headers)
+
+@app.get("/api/report/markdown")
+async def get_markdown_report(mission_id: str = "DSCOVR", download: bool = False):
+    mission_key = mission_id.upper()
+    if mission_key not in MISSIONS:
+        mission_key = "DSCOVR"
+    data = await downloader.get_satellite_telemetry(mission_key, span_days=1)
+    latest = data[-1] if data else {}
+    kp_proxy = 3.0
+    if latest.get("bz_gsm", 0) < -15:
+        kp_proxy = 8.5
+    elif latest.get("bz_gsm", 0) < -10:
+        kp_proxy = 7.0
+    elif latest.get("bz_gsm", 0) < -5:
+        kp_proxy = 5.0
+    classification = SpaceWeatherPhysics.classify_noaa_scales(
+        kp=kp_proxy,
+        bz_gsm=latest.get("bz_gsm"),
+        xray_flux=latest.get("xray_flux_long", 1.5e-6),
+        proton_flux=latest.get("proton_flux", 1.2)
+    )
+    shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
+    auroral_data = AuroralModel.calculate_auroral_boundaries(kp_proxy, latest.get("bz_gsm", 0))
+
+    md = ScientificReportGenerator.generate_markdown_executive_summary(
+        mission_name=MISSIONS[mission_key]["name"],
+        telemetry=data,
+        classification=classification,
+        shocks=shocks,
+        auroral_data=auroral_data
+    )
+    headers = {}
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="HELIOS-L1-{mission_key}-Executive-Summary.md"'
+    return Response(content=md, media_type="text/markdown; charset=utf-8", headers=headers)
 
 @app.get("/api/spectrum")
 async def get_spectrum(mission_id: str = "DSCOVR", parameter: str = "bz_gsm"):
