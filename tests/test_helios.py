@@ -642,3 +642,94 @@ def test_missions_catalog_contains_psp_and_solo():
     names = [m["name"] for m in data]
     assert "Parker Solar Probe" in names
     assert "Solar Orbiter" in names
+
+def test_spice_engine_initialization_and_kernels():
+    from helios.core.spice_engine import get_spice_engine
+    engine = get_spice_engine()
+    assert engine is not None
+    assert engine.is_spice_available is True
+    assert "CSPICE" in engine.toolkit_version
+    assert len(engine.loaded_kernels) >= 3
+
+    # Planetary Gravitational Parameters (GM in km^3/s^2)
+    mu_sun = engine.get_body_gm("10")
+    mu_earth = engine.get_body_gm("399")
+    assert 1.327e11 < mu_sun < 1.328e11
+    assert 3.985e5 < mu_earth < 3.987e5
+
+    # Epoch ET conversion
+    et = engine.epoch_to_et("2026-09-22T08:00:00")
+    assert et > 800000000.0
+    iso = engine.et_to_utc(et)
+    assert "2026-09-22" in iso
+
+def test_spice_engine_spacecraft_fleet():
+    from helios.core.spice_engine import get_spice_engine
+    engine = get_spice_engine()
+
+    # 1. Parker Solar Probe (PSP)
+    psp = engine.get_spacecraft_state("PARKER_SOLAR_PROBE")
+    assert psp["name"] == "Parker Solar Probe (PSP)"
+    assert 0.04 < psp["heliocentric"]["distance_au"] < 0.75
+    assert 10.0 <= psp["velocity"]["speed_kms"] <= 200.0
+    assert 86.0 < psp["orbital_elements"]["orbital_period_days"] < 90.0
+    assert 0.88 < psp["orbital_elements"]["eccentricity"] < 0.89
+
+    # 2. Aditya-L1 (ISRO Sun-Earth L1 Halo)
+    aditya = engine.get_spacecraft_state("ADITYA_L1")
+    assert aditya["name"] == "Aditya-L1"
+    assert 1400000.0 < aditya["earth_relative"]["distance_km"] < 1650000.0
+    assert 220.0 < aditya["earth_relative"]["distance_re"] < 260.0
+    assert 25.0 < aditya["velocity"]["speed_kms"] < 35.0
+
+    # 3. GOES-16 (Geostationary)
+    goes = engine.get_spacecraft_state("GOES_16")
+    assert goes["name"] == "GOES-16"
+    assert 40000.0 < goes["earth_relative"]["distance_km"] < 44000.0
+    assert 3.0 < goes["velocity"]["speed_kms"] < 3.15
+
+    # 4. Solar Orbiter (SolO)
+    solo = engine.get_spacecraft_state("SOLAR_ORBITER")
+    assert solo["name"] == "Solar Orbiter (SolO)"
+    assert 0.25 < solo["heliocentric"]["distance_au"] < 0.95
+    assert 20.0 < solo["velocity"]["speed_kms"] < 75.0
+    assert 0.52 < solo["orbital_elements"]["eccentricity"] < 0.54
+
+def test_spice_rest_api_endpoints():
+    # 1. SPICE status endpoint
+    res_status = client.get("/api/ephemeris/spice/status")
+    assert res_status.status_code == 200
+    st_data = res_status.json()
+    assert st_data["spice_available"] is True
+    assert "CSPICE" in st_data["toolkit_version"]
+    assert st_data["kernel_count"] >= 3
+    assert "naif0012.tls" in st_data["loaded_kernels"]
+
+    # 2. SPICE fleet ephemeris endpoint
+    res_eph = client.get("/api/ephemeris/spice?satellites=PARKER_SOLAR_PROBE,ADITYA_L1,SOLAR_ORBITER,DSCOVR")
+    assert res_eph.status_code == 200
+    eph_data = res_eph.json()
+    assert eph_data["spacecraft_count"] == 4
+    fleet = eph_data["fleet"]
+    assert "PARKER_SOLAR_PROBE" in fleet
+    assert "ADITYA_L1" in fleet
+    assert fleet["ADITYA_L1"]["is_spice_verified"] is True
+    assert fleet["PARKER_SOLAR_PROBE"]["velocity"]["speed_kms"] > 0
+
+    # 3. Trajectory endpoint
+    res_traj = client.get("/api/ephemeris/spice/trajectory?satellite=PARKER_SOLAR_PROBE&points=15")
+    assert res_traj.status_code == 200
+    traj_data = res_traj.json()
+    assert traj_data["points_count"] == 15
+    assert len(traj_data["trajectory"]) == 15
+    assert "x_au" in traj_data["trajectory"][0]
+
+    # 4. Upgraded orbits endpoint with SPICE telemetry
+    res_orbits = client.get("/api/orbits")
+    assert res_orbits.status_code == 200
+    orbits_data = res_orbits.json()
+    assert "orbits" in orbits_data
+    orbits = orbits_data["orbits"]
+    assert "ADITYA_L1" in orbits
+    assert "PARKER_SOLAR_PROBE" in orbits
+    assert orbits["ADITYA_L1"].get("spice_telemetry") is not None

@@ -34,6 +34,7 @@ from helios.core.ml_forecast import SpaceWeatherForecaster
 from helios.core.solar_cycle import SolarCycleEngine
 from helios.core.ionosphere import IonosphericModel
 from helios.core.gic_model import GICHazardModel
+from helios.core.spice_engine import get_spice_engine
 
 app = FastAPI(
     title="HELIOS-L1 API",
@@ -295,12 +296,60 @@ async def get_event(event_id: str):
     return await downloader.get_historical_event(event_id)
 
 @app.get("/api/orbits")
-async def get_orbits():
+async def get_orbits(epoch: Optional[str] = Query(None, description="UTC ISO epoch for spacecraft position calculations")):
     lagrange = OrbitalMechanics.get_lagrange_points()
-    orbits = OrbitalMechanics.get_satellite_orbits()
+    orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc=epoch)
     return {
         "lagrange_points": lagrange,
         "orbits": orbits
+    }
+
+@app.get("/api/ephemeris/spice")
+async def get_spice_ephemeris(
+    satellites: Optional[str] = Query(None, description="Comma-separated spacecraft IDs (e.g. PARKER_SOLAR_PROBE,ADITYA_L1,SOLAR_ORBITER)"),
+    epoch: Optional[str] = Query(None, description="Epoch timestamp in UTC ISO format (defaults to current time)"),
+    frame: str = Query("ECLIPJ2000", description="Coordinate reference frame: ECLIPJ2000 or GSE")
+):
+    """
+    Computes rigorous state vectors [x, y, z, vx, vy, vz] using NASA JPL NAIF SPICE (CSPICE_N0067).
+    Returns verified positions (km, AU), orbital velocities (km/s, AU/day),
+    heliocentric distances, Earth-relative distances, true anomalies, and orbital elements.
+    """
+    engine = get_spice_engine()
+    sc_list = [s.strip().upper() for s in satellites.split(",")] if satellites else None
+    return engine.get_fleet_states(spacecraft_ids=sc_list, epoch_utc=epoch, frame=frame)
+
+@app.get("/api/ephemeris/spice/trajectory")
+async def get_spice_trajectory(
+    satellite: str = Query("PARKER_SOLAR_PROBE", description="Spacecraft ID (e.g. PARKER_SOLAR_PROBE, SOLAR_ORBITER, ADITYA_L1)"),
+    points: int = Query(120, ge=10, le=500, description="Number of trajectory track points"),
+    epoch: Optional[str] = Query(None, description="Reference epoch in UTC ISO format")
+):
+    """
+    Generates full 3D orbital path track points across an entire orbital period using SPICE.
+    """
+    engine = get_spice_engine()
+    trajectory = engine.get_orbit_trajectory(spacecraft_id=satellite, num_points=points, epoch_utc=epoch)
+    return {
+        "satellite": satellite,
+        "points_count": len(trajectory),
+        "trajectory": trajectory
+    }
+
+@app.get("/api/ephemeris/spice/status")
+async def get_spice_status():
+    """
+    Returns NASA JPL NAIF SPICE kernel repository status, loaded kernels, and planetary constants.
+    """
+    engine = get_spice_engine()
+    return {
+        "spice_available": engine.is_spice_available,
+        "toolkit_version": engine.toolkit_version,
+        "kernel_count": len(engine.loaded_kernels),
+        "loaded_kernels": [os.path.basename(k) for k in engine.loaded_kernels],
+        "sun_gm": engine.get_body_gm("10"),
+        "earth_gm": engine.get_body_gm("399"),
+        "earth_radii_km": [6378.1366, 6378.1366, 6356.7519]
     }
 
 @app.get("/api/aurora")

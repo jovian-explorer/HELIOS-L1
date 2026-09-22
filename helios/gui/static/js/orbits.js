@@ -44,7 +44,7 @@ class OrbitRenderer {
     // GSE Coordinate Grid, Spacecraft Filter Sets, and Dipole Field
     this.showGseGrid = true;
     this.showDipoleField = true;
-    this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16']);
+    this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16', 'PARKER_SOLAR_PROBE', 'SOLAR_ORBITER']);
 
     this.initStars();
     this.initParticles();
@@ -75,7 +75,7 @@ class OrbitRenderer {
 
   toggleAllSatellites(visible) {
     if (visible) {
-      this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16']);
+      this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16', 'PARKER_SOLAR_PROBE', 'SOLAR_ORBITER']);
     } else {
       this.visibleSatellites.clear();
     }
@@ -341,6 +341,22 @@ class OrbitRenderer {
 
       if (found.type === 'sat') {
         const s = found.data;
+        const spice = s.spice_telemetry;
+        let spiceBlock = '';
+        if (spice) {
+          spiceBlock = `
+            <div class="mt-2 pt-1.5 border-t border-slate-700/60 text-[10px] space-y-0.5">
+              <div class="flex justify-between"><span class="text-slate-400">Orbital Speed:</span> <span class="font-mono text-emerald-400 font-semibold">${spice.velocity.speed_kms.toFixed(2)} km/s</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Earth Distance:</span> <span class="font-mono text-slate-300">${(spice.earth_relative.distance_km / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})}k km (${spice.earth_relative.distance_re.toFixed(1)} R_E)</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Solar Distance:</span> <span class="font-mono text-amber-300">${spice.heliocentric.distance_au.toFixed(4)} AU</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">True Anomaly (ν):</span> <span class="font-mono text-cyan-300">${spice.orbital_elements.true_anomaly_deg.toFixed(1)}°</span></div>
+              <div class="mt-1 text-[9px] text-emerald-300/90 font-mono flex items-center justify-between border-t border-slate-800/80 pt-1">
+                <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${spice.spice_toolkit}</span>
+                <span class="text-slate-400">JPL Ephemeris</span>
+              </div>
+            </div>
+          `;
+        }
         this.tooltip.innerHTML = `
           <div class="flex items-center space-x-2 border-b border-sky-500/30 pb-1 mb-1">
             <span class="w-2 h-2 rounded-full" style="background:${s.color}"></span>
@@ -348,10 +364,11 @@ class OrbitRenderer {
           </div>
           <div class="text-slate-300 text-[11px]">${s.type}</div>
           <div class="text-slate-400 text-[10px] mt-1 font-mono">
-            X: ${s.current_pos.x.toLocaleString()} km<br>
-            Y: ${s.current_pos.y.toLocaleString()} km<br>
-            Z: ${(s.current_pos.z || 0).toLocaleString()} km
+            GSE X: ${s.current_pos.x.toLocaleString()}k km<br>
+            GSE Y: ${s.current_pos.y.toLocaleString()}k km<br>
+            GSE Z: ${(s.current_pos.z || 0).toLocaleString()}k km
           </div>
+          ${spiceBlock}
         `;
       } else if (found.type === 'earth') {
         const b = this.lastComputedBoundaries;

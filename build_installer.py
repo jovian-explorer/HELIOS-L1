@@ -67,6 +67,7 @@ def build_app(root_dir: Path, icon_path: Path):
         "--hidden-import", "matplotlib",
         "--hidden-import", "scipy",
         "--hidden-import", "webview",
+        "--hidden-import", "spiceypy",
         "run.py"
     ]
 
