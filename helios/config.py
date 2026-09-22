@@ -268,6 +268,57 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
         ],
         "primary_params": ["euv_flares", "magnetic_complexity"],
         "color": "#e11d48"
+    },
+    "PARKER_SOLAR_PROBE": {
+        "name": "Parker Solar Probe",
+        "full_name": "NASA Parker Solar Probe (PSP)",
+        "agency": "NASA / JHUAPL",
+        "location": "Inner Heliosphere (Perihelion 9.86 R☉ ~ 0.046 AU, Aphelion 0.73 AU)",
+        "orbit_distance_km": 6850000,
+        "launch_year": 2018,
+        "status": "Active (Solar Corona Plunge & Alfvén Surface Penetration)",
+        "coordinate_system": "Heliocentric Radial Tangential Normal (RTN)",
+        "cadence": "High-rate FIELDS vector magnetic & SWEAP plasma moments",
+        "data_portal_name": "NASA CDAWeb & JHUAPL PSP Science Gateway",
+        "data_portal_url": "https://parkersolarprobe.jhuapl.edu/",
+        "data_license": "NASA Open Data Policy (CC0 1.0 Universal)",
+        "license_badge": "CC0 / Open Access",
+        "doi": "10.1007/s11214-015-0211-6",
+        "primary_citation": "Fox, N. J., et al. (2016). The Solar Probe Plus Mission: Humanity's First Visit to Our Star. Space Sci. Rev., 204, 7–48.",
+        "instruments": [
+            {"id": "FIELDS", "name": "Electromagnetic Fields Suite", "measures": "DC/AC magnetic fields, Poynting flux, and magnetic switchbacks"},
+            {"id": "SWEAP", "name": "Solar Wind Electrons Alphas and Protons", "measures": "Thermal electrons, protons, and alpha velocity distributions"},
+            {"id": "ISOIS", "name": "Integrated Science Investigation of the Sun", "measures": "Energetic solar particles across wide energy spectra"},
+            {"id": "WISPR", "name": "Wide-field Imager for Solar PRobe", "measures": "Heliospheric white-light imaging of coronal streamers and CMEs"}
+        ],
+        "primary_params": ["v_vis_viva_kms", "r_heliocentric_au", "switchback_deflections"],
+        "color": "#f43f5e"
+    },
+    "SOLAR_ORBITER": {
+        "name": "Solar Orbiter",
+        "full_name": "ESA / NASA Solar Orbiter (SolO)",
+        "agency": "ESA / NASA",
+        "location": "Inclined Heliocentric Orbit (Perihelion 0.28 AU, Aphelion 0.91 AU)",
+        "orbit_distance_km": 42000000,
+        "launch_year": 2020,
+        "status": "Active (High-Latitude Solar Polar & Coronal In-Situ)",
+        "coordinate_system": "Heliocentric Stonyhurst & RTN Coordinates",
+        "cadence": "Continuous MAG / SWA plasma composition streams",
+        "data_portal_name": "ESA Solar Orbiter Archive (SOAR)",
+        "data_portal_url": "https://soar.esac.esa.int/",
+        "data_license": "ESA Open Access (CC-BY-SA 3.0 IGO)",
+        "license_badge": "CC-BY-SA 3.0",
+        "doi": "10.1051/0004-6361/202038570",
+        "primary_citation": "Müller, D., et al. (2020). The Solar Orbiter mission: Science overview. Astronomy & Astrophysics, 642, A1.",
+        "instruments": [
+            {"id": "MAG", "name": "Magnetometer", "measures": "High-precision vector magnetic field measurements"},
+            {"id": "SWA", "name": "Solar Wind Analyser", "measures": "Solar wind ion and electron velocity distributions and composition"},
+            {"id": "EPD", "name": "Energetic Particle Detector", "measures": "Supra-thermal and energetic particles"},
+            {"id": "RPW", "name": "Radio and Plasma Waves", "measures": "Magnetic and electric fields and radio emissions"},
+            {"id": "EUI", "name": "Extreme Ultraviolet Imager", "measures": "High-resolution solar atmospheric imaging up to solar poles"}
+        ],
+        "primary_params": ["v_vis_viva_kms", "r_heliocentric_au", "polar_magnetic_field"],
+        "color": "#06b6d4"
     }
 }
 

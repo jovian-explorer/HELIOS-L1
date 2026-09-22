@@ -177,6 +177,16 @@
           <span>Data Studio &amp; Science</span>
           <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">OPEN SCI</span>
         </button>
+        <button onclick="openSettingsModal()" class="domain-btn text-amber-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700" title="Station Settings: Theme, Font Scaling, CPU Processors (S)">
+          <i class="fa-solid fa-gear text-amber-400"></i>
+          <span>Settings</span>
+          <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">SYS</span>
+        </button>
+        <button onclick="openAboutModal()" class="domain-btn text-sky-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700" title="About Software &amp; Creator Dr. Keshav Aggarwal (O)">
+          <i class="fa-solid fa-circle-info text-sky-400"></i>
+          <span>About</span>
+          <span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono">CREATOR</span>
+        </button>
       </div>
 
       <!-- RIGHT UTILITY CONTROLS -->
@@ -1264,6 +1274,39 @@
               <input type="checkbox" id="parker-toggle-sectors" checked onchange="toggleParkerFeature('sectors', this.checked)" class="rounded text-sky-500">
               <span class="text-slate-300">Magnetic Sectors</span>
             </label>
+        </div>
+
+        <!-- PSP Ephemeris Controller & Anomaly Scrubber -->
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-slate-950/90 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center space-x-3 flex-wrap">
+            <span class="font-bold text-rose-400 flex items-center space-x-1.5 font-mono">
+              <i class="fa-solid fa-satellite text-xs"></i>
+              <span>PSP Orbit Controller:</span>
+            </span>
+            <button onclick="togglePSPAnimation()" id="btn-psp-play" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-mono text-[11px] flex items-center space-x-1 transition" title="Toggle Real-Time Orbit Animation">
+              <i class="fa-solid fa-pause text-[10px]" id="icon-psp-play"></i>
+              <span id="text-psp-play">Pause</span>
+            </button>
+            <div class="flex items-center space-x-2">
+              <span class="text-[11px] text-slate-400 font-mono">True Anomaly (&nu;):</span>
+              <input type="range" id="psp-anomaly-slider" min="0" max="360" step="1" value="0" oninput="onPSPAnomalyScrub(this.value)" class="w-28 sm:w-36 accent-rose-400 cursor-pointer">
+              <span id="psp-anomaly-val" class="text-rose-300 font-mono font-bold w-12 text-right">0°</span>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-1.5 flex-wrap">
+            <button onclick="setPSPLocationPreset('perihelion')" class="px-2.5 py-1 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/50 text-[11px] font-mono transition" title="PSP Record Perihelion: 9.86 R☉ (~0.046 AU) @ 190.8 km/s">
+              Perihelion (9.9 R☉ | 191 km/s)
+            </button>
+            <button onclick="setPSPLocationPreset('aphelion')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-mono transition" title="PSP Aphelion: 0.730 AU @ 12.0 km/s">
+              Aphelion (0.73 AU | 12 km/s)
+            </button>
+            <button onclick="setPSPLocationPreset('venus')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-[11px] font-mono transition" title="Venus Gravity Assist Encounter (0.72 AU)">
+              Venus Leg (0.72 AU)
+            </button>
+            <button onclick="setPSPLocationPreset('auto')" class="px-2.5 py-1 rounded bg-sky-950/70 hover:bg-sky-900 text-sky-300 border border-sky-800/50 text-[11px] font-mono transition" title="Resume Real-Time Smooth Orbit Progression">
+              Auto-Animate
+            </button>
           </div>
         </div>
 
@@ -2531,7 +2574,7 @@
   <!-- MODAL: ABOUT HELIOS-L1 & CREATOR PROFILE -->
   <!-- ========================================================================= -->
   <div id="modal-about" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden font-sans">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
         <div class="flex items-center space-x-3">
           <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
@@ -2539,92 +2582,212 @@
           </div>
           <div>
             <h3 class="font-tech font-bold text-slate-100 text-sm">About HELIOS-L1 &amp; Scientific Directorate</h3>
-            <p class="text-[11px] text-slate-400">Software architecture, mission directorate, creator profile &amp; mathematical foundations</p>
+            <p class="text-[11px] text-slate-400">Mission Overview, Operational Usecases, Mathematical Formalisms &amp; Creator Profile</p>
           </div>
         </div>
-        <button onclick="closeAboutModal()" class="text-slate-400 hover:text-white p-1">
+        <button onclick="closeAboutModal()" class="text-slate-400 hover:text-white p-1" title="Close (Esc)">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
       <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs font-sans">
-        <!-- CREATOR & MISSION PROFILE -->
-        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-          <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-600/30 via-sky-600/30 to-purple-600/30 border border-amber-500/40 flex items-center justify-center text-amber-400 text-2xl shrink-0">
-            <i class="fa-solid fa-user-astronaut"></i>
-          </div>
-          <div class="space-y-1 flex-1">
-            <div class="flex items-center space-x-2">
-              <h4 class="font-bold text-slate-100 text-sm">Lead Scientist &amp; System Architect</h4>
-              <span class="px-2 py-0.2 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold">Principal Investigator</span>
-            </div>
-            <p class="text-[11px] text-slate-300 leading-relaxed">
-              Designed, formulated, and engineered as a sovereign, offline-capable space weather mission console.
-              Spearheading computational heliophysics, real-time interplanetary magnetic field (IMF) diagnostics at the Sun-Earth
-              Lagrangian equilibrium point L1, and predictive planetary magnetohydrodynamic (MHD) hazard modeling.
-            </p>
-            <div class="flex items-center space-x-3 text-[10px] font-mono text-slate-400 pt-1">
-              <span>Domain: Computational Heliophysics &amp; Space Situational Awareness</span>
-              <span>•</span>
-              <span>Platform: HELIOS-L1 Operational Console</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- SOFTWARE ARCHITECTURE -->
+        <!-- 1. SOFTWARE IDENTITY & ARCHITECTURE -->
         <div class="space-y-2">
-          <h4 class="font-bold text-slate-200 text-xs flex items-center space-x-2">
-            <i class="fa-solid fa-network-wired text-sky-400"></i>
-            <span>Architecture &amp; Autonomous Offline Design</span>
-          </h4>
+          <div class="flex items-center space-x-2">
+            <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[10px] font-mono font-bold">SOVEREIGN SCIENTIFIC SUITE</span>
+            <h4 class="font-bold text-slate-100 text-sm">HELIOS-L1 Mission Architecture</h4>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            <strong>HELIOS-L1</strong> (<em>Heliophysical Exploration, Lagrange-1 Interplanetary Observation &amp; Space-weather Suite</em>)
+            is an autonomous, air-gapped, sovereign scientific mission operations and space weather analysis console.
+            Engineered to operate with complete local independence, HELIOS-L1 couples an embedded Python 3.13 FastAPI computational engine
+            with high-cadence HTML5 Canvas 2D and WebGL scientific renderers.
+          </p>
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            HELIOS-L1 is built as a zero-dependency, local-first scientific suite. In contrast to web-dependent dashboards,
-            it maintains a local embedded Python 3.13 FastAPI backend paired with high-cadence HTML5 Canvas 2D / WebGL visualizers.
-            During severe space weather disruptions (such as catastrophic geomagnetic storms inducing power grid or submarine cable failures),
-            HELIOS-L1 operates 100% autonomously without external cloud telemetry, third-party CDNs, or remote API tracking.
+            During extreme solar storm events (such as severe G5 coronal mass ejection impacts causing terrestrial power grid tripping,
+            high-frequency radio blackouts, and trans-oceanic communications latency), HELIOS-L1 functions 100% offline with zero reliance
+            on remote cloud APIs, third-party CDNs, or external tracking services.
           </p>
         </div>
 
-        <!-- MATHEMATICAL & PEER-REVIEWED FOUNDATIONS -->
+        <!-- 2. MULTI-SPACECRAFT FLEET INTEGRATION -->
+        <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+          <h4 class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+            <i class="fa-solid fa-satellite-dish text-sky-400"></i>
+            <span>Multi-Spacecraft Sensor Fleet Integration</span>
+          </h4>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            HELIOS-L1 integrates in-situ and remote-sensing datasets across the international heliospheric fleet:
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono">
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-amber-400 block">Aditya-L1 (ISRO)</strong>
+              <span>ASPEX, PAPA, MAG, VELC</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-sky-400 block">DSCOVR (NOAA)</strong>
+              <span>PlasMag FC &amp; Vector MAG</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-emerald-400 block">ACE (NASA)</strong>
+              <span>MAG, SWEPAM, EPAM</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-cyan-400 block">WIND (NASA)</strong>
+              <span>MFI, SWE, 3DP Moments</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-rose-400 block">Parker Solar Probe</strong>
+              <span>FIELDS, SWEAP (9.86 R☉)</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-teal-400 block">Solar Orbiter (ESA)</strong>
+              <span>MAG, SWA, EUI (0.28 AU)</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-purple-400 block">SOHO (ESA/NASA)</strong>
+              <span>LASCO C2/C3 Coronagraph</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-pink-400 block">GOES-16 (NOAA)</strong>
+              <span>XRS EUV &amp; GEO Magnetometer</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. REAL-WORLD OPERATIONAL USE CASES -->
+        <div class="space-y-2.5">
+          <h4 class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+            <i class="fa-solid fa-shield-halved text-amber-400"></i>
+            <span>Key Scientific &amp; Operational Use Cases</span>
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px]">
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <div class="font-bold text-amber-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-satellite text-[10px]"></i>
+                <span>Satellite Orbit &amp; Avionics Protection</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed">
+                Tracks Solar Energetic Particle (SEP) proton events (&gt;10 MeV, &gt;100 MeV) to safeguard satellite electronics against Single Event Upsets (SEUs), latch-ups, and payload sensor degradation. Models thermospheric neutral density enhancements to predict orbital drag and prevent premature LEO satellite re-entry.
+              </p>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <div class="font-bold text-rose-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-bolt text-[10px]"></i>
+                <span>Power Grid GIC Hazard Mitigation</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed">
+                Computes telluric geoelectric fields (E(t) in V/km) via 1D layered Earth conductivity convolutions to provide early warnings for high-voltage transmission utilities against transformer core half-cycle saturation, harmonic distortion, and cascading grid collapse.
+              </p>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <div class="font-bold text-sky-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-tower-broadcast text-[10px]"></i>
+                <span>Trans-Polar Aviation &amp; HF Radio (D-RAP)</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed">
+                Evaluates ionospheric D-region absorption spectra (A(f) &prop; f<sup>-1.5</sup>) across 5–30 MHz for Polar Cap Absorption (PCA) events, enabling commercial trans-polar airlines to reroute flights and prevent loss of emergency high-frequency communications.
+              </p>
+            </div>
+            <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <div class="font-bold text-emerald-300 flex items-center space-x-1.5">
+                <i class="fa-solid fa-location-crosshairs text-[10px]"></i>
+                <span>GNSS &amp; NavIC Scintillation Forecasting</span>
+              </div>
+              <p class="text-slate-400 leading-relaxed">
+                Analyzes auroral electrojet currents and equatorial plasma bubble triggers that induce Total Electron Content (TEC) rapid fluctuations, forecasting satellite navigation loss-of-lock and positioning degradation for aviation, defense, and maritime operations.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. MATHEMATICAL FOUNDATIONS & PEER-REVIEWED FORMALISMS -->
         <div class="space-y-2.5">
           <h4 class="font-bold text-slate-200 text-xs flex items-center space-x-2">
             <i class="fa-solid fa-square-root-variable text-emerald-400"></i>
-            <span>Governing Scientific Formulations &amp; Peer-Reviewed Formalisms</span>
+            <span>Governing Peer-Reviewed Scientific Formulations</span>
           </h4>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
               <strong class="text-sky-300 block">Vršnak et al. (2013) Drag-Based Model (DBM)</strong>
-              <span class="text-slate-400">Solves aerodynamic heliospheric drag deceleration a = -&Gamma;(v - w)|v - w| across 0.05 to 1.1 AU.</span>
+              <span class="text-slate-400">Closed-form MHD drag: dv/dt = -&Gamma;(v - w)|v - w| with Newton-Raphson L1/Earth transit inversion.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <strong class="text-amber-300 block">Parker (1958) &amp; Vis-Viva PSP Ephemeris</strong>
-              <span class="text-slate-400">Archimedean IMF spiral pitch angle &amp; exact Vis-Viva orbital speeds (191 km/s at 9.86 R_sun perihelion).</span>
+              <strong class="text-amber-300 block">Vis-Viva &amp; Keplerian Ephemeris</strong>
+              <span class="text-slate-400">Exact Vis-Viva orbital speed: v(r) = &radic;(&mu;(2/r - 1/a)) strictly bounding PSP perihelion to 190.8 km/s (9.86 R☉).</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <strong class="text-emerald-300 block">Chao (2002) &amp; Shue (1998) Geospace Boundaries</strong>
-              <span class="text-slate-400">Dynamic magnetopause (r_0, &alpha;) &amp; bow shock standoff under variable dynamic pressure P_dyn and Bz.</span>
+              <strong class="text-emerald-300 block">Chao (2002) &amp; Shue (1998) Boundaries</strong>
+              <span class="text-slate-400">Dynamic magnetopause &amp; bow shock standoff r(&theta;) = r_0(2/(1+cos&theta;))^&alpha; under solar wind P_dyn and Bz compression.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
               <strong class="text-rose-300 block">Boteler (2012) &amp; Pirjola (2002) GIC Induction</strong>
-              <span class="text-slate-400">1-D layered Earth geoelectric conductivity and geomagnetically induced currents in transmission lines.</span>
+              <span class="text-slate-400">1D layered lithosphere impedance and magnetotelluric electric field E(t) = -1/&radic;(&pi;&mu;&sigma;) &int; (dB/dt)/&radic;(t-u) du.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <strong class="text-purple-300 block">Sauer &amp; Wilkinson (2008) D-RAP Model</strong>
-              <span class="text-slate-400">Polar cap and dayside ionospheric HF radio absorption A(f) = A_10 &bull; (10/f)^1.5.</span>
+              <strong class="text-purple-300 block">Sauer &amp; Wilkinson (2008) D-RAP</strong>
+              <span class="text-slate-400">Ionospheric HF radio blackout absorption scaling A(f) = A_10 &bull; (10/f)^1.5 across high-latitude polar routes.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <strong class="text-cyan-300 block">Rankine-Hugoniot &amp; Kolmogorov Turbulence</strong>
-              <span class="text-slate-400">MHD shock jump invariants and -5/3 inertial range turbulence power spectral density (PSD) diagnostics.</span>
+              <strong class="text-cyan-300 block">Kolmogorov (-5/3) &amp; Kraichnan (-3/2) PSD</strong>
+              <span class="text-slate-400">In-situ solar wind turbulence Power Spectral Density with ion-cyclotron dissipation frequency break identification.</span>
             </div>
           </div>
         </div>
 
-        <!-- ENVIRONMENT & METADATA -->
+        <!-- 5. ABOUT THE CREATOR (DR. KESHAV AGGARWAL) -->
+        <div class="p-4 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-amber-500/40 space-y-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xl shrink-0 shadow-sm">
+              <i class="fa-solid fa-user-astronaut"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <h4 class="font-bold text-slate-100 text-sm">Dr. Keshav Aggarwal</h4>
+                <span class="px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold">Creator &amp; System Architect</span>
+              </div>
+              <p class="text-[11px] text-slate-300">
+                Research Associate, Space Physics Laboratory (SPL), Vikram Sarabhai Space Centre (VSSC), ISRO
+              </p>
+            </div>
+          </div>
+
+          <div class="space-y-2 text-[11px] text-slate-300 leading-relaxed pt-1 border-t border-slate-800">
+            <p>
+              <strong>Dr. Keshav Aggarwal</strong> is a researcher specializing in planetary and exoplanetary atmospheres,
+              ionospheres, radio occultation data analysis, and solar-planetary space weather interactions. He is currently
+              a <strong>Research Associate at the Space Physics Laboratory (SPL)</strong>, <strong>Vikram Sarabhai Space Centre (VSSC)</strong>,
+              Indian Space Research Organisation (<strong>ISRO</strong>), Thiruvananthapuram.
+            </p>
+            <p>
+              He completed his <strong>Ph.D. at the Department of Astronomy, Astrophysics and Space Engineering (DAASE)</strong>,
+              <strong>Indian Institute of Technology (IIT) Indore</strong> under the mentorship of Prof. Abhirup Datta, and was awarded
+              the prestigious <strong>Prime Minister's Research Fellowship (PMRF)</strong>.
+            </p>
+            <p>
+              His scientific investigations incorporate deep space observations from prominent planetary missions including
+              India's <strong>Mars Orbiter Mission (MOM)</strong>, <strong>Chandrayaan-2</strong>, and <strong>Chandrayaan-3</strong>,
+              as well as JAXA's <strong>Akatsuki</strong> mission. Dr. Aggarwal designed and developed <strong>HELIOS-L1</strong>
+              as a sovereign, precision computational platform to bridge operational multi-mission telemetry (including ISRO's Aditya-L1)
+              with peer-reviewed heliospheric and magnetospheric modeling.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-800/80">
+            <span class="flex items-center space-x-1"><i class="fa-solid fa-building-columns text-amber-400"></i><span>SPL, VSSC / ISRO</span></span>
+            <span>&bull;</span>
+            <span class="flex items-center space-x-1"><i class="fa-solid fa-graduation-cap text-sky-400"></i><span>IIT Indore (Ph.D., PMRF)</span></span>
+            <span>&bull;</span>
+            <span class="flex items-center space-x-1"><i class="fa-solid fa-satellite text-emerald-400"></i><span>MOM, Chandrayaan-2/3, Akatsuki, Aditya-L1</span></span>
+          </div>
+        </div>
+
+        <!-- 6. VERSION & PROVENANCE METADATA -->
         <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between text-[11px] font-mono text-slate-400">
           <div>
             <span>Version: <strong class="text-slate-200">HELIOS-L1 v1.2.0 SciSuite</strong></span>
-            <span class="mx-2">•</span>
-            <span>Target OS: <strong class="text-slate-200">Windows x86_64</strong></span>
+            <span class="mx-2">&bull;</span>
+            <span>Platform: <strong class="text-slate-200">Sovereign Offline Architecture</strong></span>
           </div>
           <div class="text-emerald-400 flex items-center space-x-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -2786,6 +2949,24 @@
       </span>
     </div>
   </footer>
+
+  <!-- PERSISTENT FLOATING QUICK SETTINGS & ABOUT DOCK -->
+  <aside aria-label="Persistent quick settings and about actions" class="fixed bottom-4 right-4 z-40 flex items-center space-x-2 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-full px-3 py-1.5 shadow-2xl">
+    <button onclick="openSettingsModal()" class="px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 text-xs font-semibold flex items-center space-x-1.5 border border-amber-500/30 transition" title="Station Settings: Theme, Font Size &amp; CPU Cores (S)">
+      <i class="fa-solid fa-gear text-amber-400 text-xs"></i>
+      <span>Settings</span>
+    </button>
+    <span class="text-slate-700">|</span>
+    <button onclick="openAboutModal()" class="px-2.5 py-1 rounded-full bg-sky-500/10 hover:bg-sky-500/25 text-sky-300 text-xs font-semibold flex items-center space-x-1.5 border border-sky-500/30 transition" title="About HELIOS-L1 &amp; Creator Dr. Keshav Aggarwal (O)">
+      <i class="fa-solid fa-circle-info text-sky-400 text-xs"></i>
+      <span>About</span>
+    </button>
+    <span class="text-slate-700">|</span>
+    <button onclick="openTimezoneModal()" class="px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono flex items-center space-x-1 border border-slate-700 transition" title="Change Timezone (T)">
+      <i class="fa-regular fa-clock text-sky-400 text-[10px]"></i>
+      <span id="dock-tz-badge">UTC</span>
+    </button>
+  </aside>
 
   <script src="/static/js/audio.js"></script>
   <script src="/static/js/orbits.js"></script>

@@ -101,7 +101,9 @@ const DOMAINS = {
     context: 'DOMAIN: DATA STUDIO & SCIENCE // CUSTOM OMNI & PEER-REVIEWED DOIS',
     views: [
       { id: 'import', label: 'Custom Ingestion & OMNI', icon: 'fa-database', color: 'text-indigo-400' },
-      { id: 'references', label: 'References & Portals', icon: 'fa-book-atlas', color: 'text-emerald-400', isModal: true }
+      { id: 'references', label: 'References & Portals', icon: 'fa-book-atlas', color: 'text-emerald-400', isModal: true },
+      { id: 'settings', label: 'System Settings', icon: 'fa-gear', color: 'text-amber-400', isModal: true },
+      { id: 'about', label: 'About & Creator', icon: 'fa-user-astronaut', color: 'text-sky-400', isModal: true }
     ]
   }
 };
@@ -190,8 +192,39 @@ function startClock() {
   setInterval(updateClock, 1000);
 }
 
-function toggleClockMode() {
-  openTimezoneModal();
+function formatTimestampToTimezone(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const raw = isoStr.endsWith('Z') ? isoStr : isoStr + 'Z';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return isoStr.slice(5, 16);
+    if (selectedTimezone === 'UTC') {
+      return isoStr.slice(5, 16);
+    } else if (selectedTimezone === 'LOCAL') {
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${m}-${day} ${h}:${min}`;
+    } else {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: selectedTimezone,
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = formatter.formatToParts(d);
+      const m = parts.find(p => p.type === 'month')?.value || '01';
+      const day = parts.find(p => p.type === 'day')?.value || '01';
+      const h = parts.find(p => p.type === 'hour')?.value || '00';
+      const min = parts.find(p => p.type === 'minute')?.value || '00';
+      return `${m}-${day} ${h}:${min}`;
+    }
+  } catch (e) {
+    return isoStr.slice(5, 16);
+  }
 }
 
 function updateClock() {
@@ -250,6 +283,8 @@ function updateClock() {
   if (preview) preview.innerText = timeStr;
   if (previewBadge) previewBadge.innerText = badgeStr;
   if (settingsTzPreview) settingsTzPreview.innerText = timeStr;
+  const dockBadge = document.getElementById('dock-tz-badge');
+  if (dockBadge) dockBadge.innerText = badgeStr;
 }
 
 // Modal open/close methods for Settings, About, and Timezones
@@ -357,6 +392,9 @@ function setTimezone(tz) {
   const sel = document.getElementById('settings-timezone-select');
   if (sel) sel.value = tz;
   updateClock();
+  if (typeof currentTelemetryData !== 'undefined' && currentTelemetryData) {
+    updateTelemetryUI(currentTelemetryData);
+  }
 }
 
 function applyCustomTimezone() {
@@ -415,9 +453,10 @@ function renderSubnav(domainKey) {
   if (!domain) return;
 
   const html = domain.views.map(v => {
-    const isActive = v.id === currentTab;
-    const activeClass = isActive ? 'active' : '';
-    const clickHandler = v.isModal ? `openReferencesModal()` : `switchTab('${v.id}')`;
+    let clickHandler = `switchTab('${v.id}')`;
+    if (v.id === 'references') clickHandler = 'openReferencesModal()';
+    else if (v.id === 'settings') clickHandler = 'openSettingsModal()';
+    else if (v.id === 'about') clickHandler = 'openAboutModal()';
     return `
       <button onclick="${clickHandler}" id="subnav-btn-${v.id}" class="subnav-btn ${activeClass}" title="${v.label}">
         <i class="fa-solid ${v.icon} ${v.color}"></i>
@@ -933,7 +972,7 @@ function updateTelemetryUI(data) {
     missionIncidentLogger.checkTelemetry(latest, mission);
   }
 
-  const times = records.map(r => r.time_tag.slice(5, 16));
+  const times = records.map(r => formatTimestampToTimezone(r.time_tag));
   const bzVals = records.map(r => r.bz_gsm);
   const byVals = records.map(r => r.by_gsm);
   const btVals = records.map(r => r.bt);
@@ -1323,6 +1362,56 @@ function toggleParkerFeature(feature, state) {
   else if (feature === 'sectors') parkerRenderer.showSectors = state;
 }
 
+function togglePSPAnimation() {
+  if (!parkerRenderer) return;
+  const isRunning = parkerRenderer.togglePSPPlay();
+  const icon = document.getElementById('icon-psp-play');
+  const text = document.getElementById('text-psp-play');
+  if (icon && text) {
+    if (isRunning) {
+      icon.className = 'fa-solid fa-pause text-[10px]';
+      text.innerText = 'Pause';
+    } else {
+      icon.className = 'fa-solid fa-play text-[10px]';
+      text.innerText = 'Play';
+    }
+  }
+}
+
+function onPSPAnomalyScrub(val) {
+  if (!parkerRenderer) return;
+  parkerRenderer.setPSPAnomaly(val);
+  const readout = document.getElementById('psp-anomaly-val');
+  if (readout) readout.innerText = `${val}°`;
+  const icon = document.getElementById('icon-psp-play');
+  const text = document.getElementById('text-psp-play');
+  if (icon && text) {
+    icon.className = 'fa-solid fa-play text-[10px]';
+    text.innerText = 'Play';
+  }
+}
+
+function setPSPLocationPreset(preset) {
+  if (!parkerRenderer) return;
+  parkerRenderer.setPSPPreset(preset);
+  const icon = document.getElementById('icon-psp-play');
+  const text = document.getElementById('text-psp-play');
+  if (icon && text) {
+    if (preset === 'auto') {
+      icon.className = 'fa-solid fa-pause text-[10px]';
+      text.innerText = 'Pause';
+    } else {
+      icon.className = 'fa-solid fa-play text-[10px]';
+      text.innerText = 'Play';
+    }
+  }
+}
+
+// Attach PSP functions to window
+window.togglePSPAnimation = togglePSPAnimation;
+window.onPSPAnomalyScrub = onPSPAnomalyScrub;
+window.setPSPLocationPreset = setPSPLocationPreset;
+
 // =========================================================================
 // CUSTOM INGESTION & OMNI STUDIO
 // =========================================================================
@@ -1490,10 +1579,7 @@ function renderCustomTimeseriesChart(records) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
-  const labels = records.map(r => {
-    const t = r.time_tag || '';
-    return t.length > 11 ? t.slice(11, 16) : t;
-  });
+  const labels = records.map(r => formatTimestampToTimezone(r.time_tag));
   const speeds = records.map(r => r.speed);
   const bzs = records.map(r => r.bz_gsm);
   const pdyns = records.map(r => r.dynamic_pressure);

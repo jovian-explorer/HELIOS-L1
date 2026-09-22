@@ -624,7 +624,21 @@ def test_parker_solar_probe_ephemeris_physics():
     t_days = t_years * 365.25
     assert 86.0 < t_days < 90.0, f"Expected orbital period ~88.2 days, got {t_days}"
 
+def test_missions_catalog_contains_psp_and_solo():
+    from helios.config import MISSIONS
+    assert "PARKER_SOLAR_PROBE" in MISSIONS
+    assert "SOLAR_ORBITER" in MISSIONS
+    psp = MISSIONS["PARKER_SOLAR_PROBE"]
+    assert psp["name"] == "Parker Solar Probe"
+    assert "FIELDS" in [inst["id"] for inst in psp["instruments"]]
 
+    solo = MISSIONS["SOLAR_ORBITER"]
+    assert solo["name"] == "Solar Orbiter"
+    assert "MAG" in [inst["id"] for inst in solo["instruments"]]
 
-
-
+    res = client.get("/api/missions")
+    assert res.status_code == 200
+    data = res.json()
+    names = [m["name"] for m in data]
+    assert "Parker Solar Probe" in names
+    assert "Solar Orbiter" in names

@@ -34,6 +34,9 @@ class ParkerSpiralRenderer {
     this.isDragging = false;
     this.dragStart = { x: 0, y: 0 };
     this.mouseWorld = null;
+    this.isPaused = false;
+    this.manualAnomalyDeg = null;
+    this.pspOrbitSpeedMultiplier = 0.00075; // Graceful, observable scientific orbital progression
 
     // Display Toggles
     this.showPlasmaFlow = true;
@@ -51,6 +54,37 @@ class ParkerSpiralRenderer {
     this.resize();
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+  }
+
+  setPSPAnomaly(deg) {
+    this.manualAnomalyDeg = (deg !== null && deg !== undefined && !isNaN(deg)) ? Number(deg) : null;
+  }
+
+  setPSPPreset(preset) {
+    if (preset === 'perihelion') {
+      this.manualAnomalyDeg = 0;
+      this.isPaused = true;
+    } else if (preset === 'aphelion') {
+      this.manualAnomalyDeg = 180;
+      this.isPaused = true;
+    } else if (preset === 'venus') {
+      this.manualAnomalyDeg = 100;
+      this.isPaused = true;
+    } else {
+      this.manualAnomalyDeg = null;
+      this.isPaused = false;
+    }
+    const slider = document.getElementById('psp-anomaly-slider');
+    const readout = document.getElementById('psp-anomaly-val');
+    if (slider && this.manualAnomalyDeg !== null) {
+      slider.value = this.manualAnomalyDeg;
+      if (readout) readout.innerText = `${this.manualAnomalyDeg}°`;
+    }
+  }
+
+  togglePSPPlay() {
+    this.isPaused = !this.isPaused;
+    return !this.isPaused;
   }
 
   resize() {
@@ -117,19 +151,39 @@ class ParkerSpiralRenderer {
     const muSun = 1.3271244e11; // km^3/s^2 (G * M_sun)
     const aKm = aAu * this.auKm;
 
-    // Period T = 88.2 days. Simulated smooth orbital progression
-    const meanAnomaly = ((this.time * 0.006) % (Math.PI * 2));
-    const E = this.solveKepler(meanAnomaly, ecc);
-    const rAu = aAu * (1.0 - ecc * Math.cos(E));
+    let trueAnomaly, rAu, E;
+    if (this.manualAnomalyDeg !== null) {
+      // Direct operator anomaly scrub
+      trueAnomaly = (this.manualAnomalyDeg * Math.PI) / 180.0;
+      rAu = (aAu * (1.0 - ecc * ecc)) / (1.0 + ecc * Math.cos(trueAnomaly));
+      E = Math.atan2(Math.sqrt(1.0 - ecc * ecc) * Math.sin(trueAnomaly), ecc + Math.cos(trueAnomaly));
+    } else {
+      // Period T = 88.2 days. Smooth, graceful real-time Keplerian orbital progression
+      const meanAnomaly = ((this.time * this.pspOrbitSpeedMultiplier) % (Math.PI * 2));
+      E = this.solveKepler(meanAnomaly, ecc);
+      rAu = aAu * (1.0 - ecc * Math.cos(E));
+      trueAnomaly = Math.atan2(Math.sqrt(1.0 - ecc * ecc) * Math.sin(E), Math.cos(E) - ecc);
+    }
+
     const rKm = rAu * this.auKm;
     const rSun = rKm / this.rSunKm;
-
-    // True anomaly and argument of perihelion
-    const trueAnomaly = Math.atan2(Math.sqrt(1.0 - ecc * ecc) * Math.sin(E), Math.cos(E) - ecc);
-    const theta = trueAnomaly + 1.95; // orientation in ecliptic plane
+    const theta = trueAnomaly + 1.95; // orientation in heliocentric ecliptic plane
 
     // Rigorous Vis-Viva orbital speed: v = sqrt(mu * (2/r - 1/a)) [km/s]
     const vKms = Math.sqrt(Math.max(10.0, muSun * (2.0 / rKm - 1.0 / aKm)));
+    const vAuDay = (vKms * 86400.0) / this.auKm;
+    const trueAnomalyDeg = ((trueAnomaly * 180.0 / Math.PI) + 360) % 360;
+
+    let phase = 'Intermediate Orbit Leg';
+    if (rSun <= 12.0) {
+      phase = 'Perihelion Plunge (9.86 R☉ record, Alfvén Surface crossing)';
+    } else if (rAu >= 0.70) {
+      phase = 'Aphelion Turnaround (0.730 AU near Venus orbit)';
+    } else if (E < Math.PI) {
+      phase = 'Outward Ascent toward Aphelion';
+    } else {
+      phase = 'Inward Plunge toward Solar Perihelion';
+    }
 
     return {
       name: 'Parker Solar Probe (PSP)',
@@ -139,9 +193,10 @@ class ParkerSpiralRenderer {
       rKm,
       rSun,
       theta,
+      trueAnomalyDeg,
       vKms,
-      vKmh: vKms * 3600.0,
-      phase: E < Math.PI ? 'Outward leg (to Aphelion 0.73 AU)' : 'Inward plunge (to Perihelion 9.86 R☉)'
+      vAuDay,
+      phase
     };
   }
 
@@ -153,7 +208,7 @@ class ParkerSpiralRenderer {
     const muSun = 1.3271244e11;
     const aKm = aAu * this.auKm;
 
-    const meanAnomaly = ((this.time * 0.0035 + 1.8) % (Math.PI * 2));
+    const meanAnomaly = ((this.time * (this.pspOrbitSpeedMultiplier * 0.6) + 1.8) % (Math.PI * 2));
     const E = this.solveKepler(meanAnomaly, ecc);
     const rAu = aAu * (1.0 - ecc * Math.cos(E));
     const rKm = rAu * this.auKm;
@@ -162,6 +217,8 @@ class ParkerSpiralRenderer {
     const trueAnomaly = Math.atan2(Math.sqrt(1.0 - ecc * ecc) * Math.sin(E), Math.cos(E) - ecc);
     const theta = trueAnomaly + 3.85;
     const vKms = Math.sqrt(Math.max(10.0, muSun * (2.0 / rKm - 1.0 / aKm)));
+    const vAuDay = (vKms * 86400.0) / this.auKm;
+    const trueAnomalyDeg = ((trueAnomaly * 180.0 / Math.PI) + 360) % 360;
 
     return {
       name: 'Solar Orbiter (SolO)',
@@ -171,8 +228,9 @@ class ParkerSpiralRenderer {
       rKm,
       rSun,
       theta,
+      trueAnomalyDeg,
       vKms,
-      vKmh: vKms * 3600.0
+      vAuDay
     };
   }
 
@@ -241,14 +299,15 @@ class ParkerSpiralRenderer {
             <i class="fa-solid fa-satellite text-[10px]"></i>
             <span>NASA Parker Solar Probe (PSP)</span>
           </strong>
-          <span class="text-[10px] text-amber-300 font-mono font-bold">${p.rAu.toFixed(3)} AU</span>
+          <span class="text-[10px] text-amber-300 font-mono font-bold">${p.rAu.toFixed(4)} AU</span>
         </div>
         <div class="text-[11px] font-mono space-y-1 text-slate-200">
           <div>Solar Distance: <span class="text-slate-100 font-bold">${p.rSun.toFixed(1)} R☉</span> (${(p.rKm / 1e6).toFixed(2)}M km)</div>
-          <div>Orbital Velocity: <span class="text-rose-400 font-bold">${p.vKms.toFixed(1)} km/s</span> (${Math.round(p.vKmh).toLocaleString()} km/h)</div>
-          <div>Perihelion Record: <span class="text-amber-400 font-bold">9.86 R☉ (~0.046 AU)</span> @ 191 km/s</div>
-          <div>Aphelion: <span class="text-slate-400">0.730 AU (Venus Resonance)</span></div>
-          <div>Orbital Period: <span class="text-slate-400">88.2 Days (Keplerian e = 0.882)</span></div>
+          <div>Vis-Viva Orbital Velocity: <span class="text-rose-400 font-bold">${p.vKms.toFixed(1)} km/s</span> (${p.vAuDay.toFixed(4)} AU/day)</div>
+          <div>True Anomaly (ν): <span class="text-cyan-300 font-bold">${p.trueAnomalyDeg.toFixed(1)}°</span></div>
+          <div>Perihelion Record: <span class="text-amber-400 font-bold">9.86 R☉ (0.0458 AU)</span> @ 190.8 km/s</div>
+          <div>Aphelion Boundary: <span class="text-slate-300 font-bold">0.730 AU</span> @ 12.0 km/s</div>
+          <div>Keplerian Period: <span class="text-slate-400 font-bold">88.2 Days (e = 0.8819)</span></div>
           <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${p.phase}</div>
         </div>
       `;
@@ -266,13 +325,14 @@ class ParkerSpiralRenderer {
             <i class="fa-solid fa-satellite text-[10px]"></i>
             <span>ESA / NASA Solar Orbiter (SolO)</span>
           </strong>
-          <span class="text-[10px] text-cyan-300 font-mono font-bold">${s.rAu.toFixed(3)} AU</span>
+          <span class="text-[10px] text-cyan-300 font-mono font-bold">${s.rAu.toFixed(4)} AU</span>
         </div>
         <div class="text-[11px] font-mono space-y-1 text-slate-200">
           <div>Solar Distance: <span class="text-slate-100 font-bold">${s.rSun.toFixed(1)} R☉</span> (${(s.rKm / 1e6).toFixed(2)}M km)</div>
-          <div>Orbital Velocity: <span class="text-cyan-400 font-bold">${s.vKms.toFixed(1)} km/s</span> (${Math.round(s.vKmh).toLocaleString()} km/h)</div>
+          <div>Vis-Viva Velocity: <span class="text-cyan-400 font-bold">${s.vKms.toFixed(1)} km/s</span> (${s.vAuDay.toFixed(4)} AU/day)</div>
+          <div>True Anomaly (ν): <span class="text-sky-300 font-bold">${s.trueAnomalyDeg.toFixed(1)}°</span></div>
           <div>Perihelion: <span class="text-amber-400">0.28 AU</span> | Aphelion: <span class="text-slate-400">0.91 AU</span></div>
-          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">Inclined Ecliptic High-Latitude Solar Probe</div>
+          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">High-Latitude Solar Wind Probe (Inclination 24-33°)</div>
         </div>
       `;
       this.positionTooltip(clientX, clientY);
@@ -696,7 +756,15 @@ class ParkerSpiralRenderer {
 
     ctx.fillStyle = '#fecdd3';
     ctx.font = 'bold 9px "JetBrains Mono", monospace';
-    ctx.fillText(`PSP (${psp.vKms.toFixed(0)} km/s)`, pspX + 6, pspY - 4);
+    ctx.fillText(`PSP: ${psp.rSun.toFixed(1)} R☉ (${psp.vKms.toFixed(0)} km/s)`, pspX + 6, pspY - 4);
+
+    // Sync scrubber UI slider if operator is not manually scrubbing
+    if (this.manualAnomalyDeg === null) {
+      const slider = document.getElementById('psp-anomaly-slider');
+      const readout = document.getElementById('psp-anomaly-val');
+      if (slider) slider.value = Math.round(psp.trueAnomalyDeg);
+      if (readout) readout.innerText = `${Math.round(psp.trueAnomalyDeg)}°`;
+    }
 
     // 5. Solar Orbiter (ESA/NASA High-Latitude Heliocentric Probe)
     const solo = this.getSolOState();
@@ -820,7 +888,9 @@ class ParkerSpiralRenderer {
 
   animate() {
     if (this.canvas && this.canvas.offsetParent !== null) {
-      this.time += 1;
+      if (!this.isPaused && this.manualAnomalyDeg === null) {
+        this.time += 1;
+      }
       this.draw();
     }
     requestAnimationFrame(this.animate);

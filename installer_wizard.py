@@ -20,7 +20,7 @@ import subprocess
 APP_NAME = "HELIOS-L1"
 APP_FULL_NAME = "Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite"
 APP_VERSION = "1.2.0"
-APP_PUBLISHER = "Heliophysics Space Weather Analytics Team"
+APP_PUBLISHER = "Dr. Keshav Aggarwal (SPL, VSSC / ISRO & IIT Indore)"
 
 def get_default_install_dir() -> Path:
     # Use user profile root (e.g. C:\Users\<Username>\HELIOS-L1)
