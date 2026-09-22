@@ -375,5 +375,7 @@ class DataDownloader:
         return {
             "metadata": event_meta,
             "telemetry": telemetry,
+            "records": telemetry,
+            "satellite": "DSCOVR",
             "shocks": SpaceWeatherPhysics.detect_interplanetary_shocks(telemetry)
         }

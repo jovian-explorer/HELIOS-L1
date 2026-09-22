@@ -13,6 +13,7 @@ import io
 import csv
 import json
 import math
+import numpy as np
 from datetime import datetime, timezone
 
 from helios.config import (
@@ -210,8 +211,11 @@ async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
 
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
 
+    mission_info = dict(MISSIONS[mission_key])
+    mission_info["id"] = mission_key
+
     return {
-        "mission": MISSIONS[mission_key],
+        "mission": mission_info,
         "data_points": len(data),
         "latest": latest,
         "classification": classification,
@@ -292,6 +296,7 @@ async def get_events():
     ]
 
 @app.get("/api/event/{event_id}")
+@app.get("/api/events/{event_id}")
 async def get_event(event_id: str):
     return await downloader.get_historical_event(event_id)
 
@@ -474,6 +479,7 @@ async def calculate_cme_kinematics(req: CMEKinematicsRequest):
     )
 
 @app.get("/api/parker_spiral")
+@app.get("/api/parker/spiral")
 async def get_parker_spiral(speed_kms: float = 450.0):
     pitch = ParkerSpiralModel.spiral_pitch_angle(speed_kms)
     footpoint = ParkerSpiralModel.magnetic_footpoint_longitude(speed_kms)
@@ -481,7 +487,9 @@ async def get_parker_spiral(speed_kms: float = 450.0):
     return {
         "speed_kms": speed_kms,
         "spiral_pitch_angle_deg": pitch,
+        "pitch_angle_1au_deg": pitch,
         "connected_footpoint_deg_west": footpoint,
+        "earth_connected_footpoint_deg_w": footpoint,
         "streamlines": streamlines
     }
 
