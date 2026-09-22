@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HELIOS-L1 | Space Weather & L1 Heliophysics Observatory</title>
+  <link rel="icon" type="image/png" href="/static/img/helios_logo.png">
+  <link rel="shortcut icon" href="/static/img/helios.ico">
+  <link rel="apple-touch-icon" href="/static/img/helios_logo.png">
   <link rel="stylesheet" href="/static/css/font-awesome.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="/static/js/tailwind.min.js"></script>
@@ -89,8 +92,9 @@
   <!-- TOP APP BAR -->
   <header class="border-b border-slate-800/80 bg-slate-900/95 backdrop-blur sticky top-0 z-40 px-6 py-2 flex items-center justify-between shadow-lg">
     <div class="flex items-center space-x-3.5">
-      <div class="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700/80 flex items-center justify-center text-amber-400 shadow-sm">
-        <i class="fa-solid fa-sun text-amber-400 text-lg"></i>
+      <div class="relative group cursor-pointer" onclick="openAboutModal()" title="HELIOS-L1 Mission Observatory Emblem (Click for Details & Creator Profile)">
+        <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Mission Emblem" class="w-10 h-10 rounded-full shadow-lg border border-amber-500/40 group-hover:border-sky-400 group-hover:scale-105 transition duration-200 object-cover bg-space-950">
+        <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse" title="Telemetry Feed Live"></span>
       </div>
       <div>
         <div class="flex items-center space-x-2.5">
@@ -2579,9 +2583,7 @@
     <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden font-sans">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
         <div class="flex items-center space-x-3">
-          <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-            <i class="fa-solid fa-sun text-base"></i>
-          </div>
+          <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Mission Patch" class="w-10 h-10 rounded-full border border-amber-500/40 shadow-md object-cover bg-space-950">
           <div>
             <h3 class="font-tech font-bold text-slate-100 text-sm">About HELIOS-L1 &amp; Scientific Directorate</h3>
             <p class="text-[11px] text-slate-400">Mission Overview, Operational Usecases, Mathematical Formalisms &amp; Creator Profile</p>
@@ -2594,22 +2596,28 @@
 
       <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs font-sans">
         <!-- 1. SOFTWARE IDENTITY & ARCHITECTURE -->
-        <div class="space-y-2">
-          <div class="flex items-center space-x-2">
-            <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[10px] font-mono font-bold">SOVEREIGN SCIENTIFIC SUITE</span>
-            <h4 class="font-bold text-slate-100 text-sm">HELIOS-L1 Mission Architecture</h4>
+        <div class="p-4 rounded-xl bg-gradient-to-r from-space-950 via-slate-900 to-space-950 border border-slate-800 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+          <div class="relative shrink-0">
+            <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Official Insignia" class="w-24 h-24 rounded-full border-2 border-amber-500/50 shadow-2xl object-cover bg-space-950 hover:scale-105 transition duration-300">
+            <span class="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-mono font-bold">L1 SUITE</span>
           </div>
-          <p class="text-[11px] text-slate-300 leading-relaxed">
-            <strong>HELIOS-L1</strong> (<em>Heliophysical Exploration, Lagrange-1 Interplanetary Observation &amp; Space-weather Suite</em>)
-            is an autonomous, air-gapped, sovereign scientific mission operations and space weather analysis console.
-            Engineered to operate with complete local independence, HELIOS-L1 couples an embedded Python 3.13 FastAPI computational engine
-            with high-cadence HTML5 Canvas 2D and WebGL scientific renderers.
-          </p>
-          <p class="text-[11px] text-slate-400 leading-relaxed">
-            During extreme solar storm events (such as severe G5 coronal mass ejection impacts causing terrestrial power grid tripping,
-            high-frequency radio blackouts, and trans-oceanic communications latency), HELIOS-L1 functions 100% offline with zero reliance
-            on remote cloud APIs, third-party CDNs, or external tracking services.
-          </p>
+          <div class="space-y-2 flex-1">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[10px] font-mono font-bold">SOVEREIGN SCIENTIFIC SUITE</span>
+              <h4 class="font-bold text-slate-100 text-sm">HELIOS-L1 Mission Architecture</h4>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+              <strong>HELIOS-L1</strong> (<em>Heliophysical Exploration, Lagrange-1 Interplanetary Observation &amp; Space-weather Suite</em>)
+              is an autonomous, air-gapped, sovereign scientific mission operations and space weather analysis console.
+              Engineered to operate with complete local independence, HELIOS-L1 couples an embedded Python 3.13 FastAPI computational engine
+              with high-cadence HTML5 Canvas 2D and WebGL scientific renderers.
+            </p>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              During extreme solar storm events (such as severe G5 coronal mass ejection impacts causing terrestrial power grid tripping,
+              high-frequency radio blackouts, and trans-oceanic communications latency), HELIOS-L1 functions 100% offline with zero reliance
+              on remote cloud APIs, third-party CDNs, or external tracking services.
+            </p>
+          </div>
         </div>
 
         <!-- 2. MULTI-SPACECRAFT FLEET INTEGRATION -->

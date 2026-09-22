@@ -15,24 +15,28 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 def create_app_icon(output_path: Path):
-    """Draw a high-resolution solar corona icon with L1 Lagrange orbit."""
+    """Ensure production multi-resolution icon is in place."""
+    assets_png = output_path.parent / "helios_logo.png"
+    if assets_png.exists():
+        img = Image.open(assets_png).convert("RGBA")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        img.resize((256, 256), Image.Resampling.LANCZOS).save(
+            str(output_path),
+            format="ICO",
+            sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (24, 24), (16, 16)]
+        )
+        print(f"[+] Production multi-resolution icon verified: {output_path}")
+        return
+
+    # Fallback generator if image not present
     img = Image.new("RGBA", (256, 256), (11, 19, 41, 0))
     draw = ImageDraw.Draw(img)
-
-    # Outer glow
     for r in range(120, 70, -5):
         alpha = int(255 * (1 - (r - 70) / 50) * 0.4)
         draw.ellipse([128 - r, 128 - r, 128 + r, 128 + r], fill=(245, 158, 11, alpha))
-
-    # Sun core
     draw.ellipse([128 - 65, 128 - 65, 128 + 65, 128 + 65], fill=(251, 191, 36, 255), outline=(245, 158, 11, 255), width=3)
-
-    # Orbit ring
     draw.ellipse([20, 80, 236, 176], outline=(56, 189, 248, 200), width=4)
-
-    # L1 satellite dot
     draw.ellipse([190, 100, 208, 118], fill=(16, 185, 129, 255), outline=(255, 255, 255, 255), width=2)
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(str(output_path), format="ICO", sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
     print(f"[+] Icon generated: {output_path}")
@@ -81,6 +85,10 @@ def build_app(root_dir: Path, icon_path: Path):
     assets_dest = dist_dir / "assets"
     assets_dest.mkdir(parents=True, exist_ok=True)
     shutil.copy2(icon_path, assets_dest / "helios.ico")
+    for asset_file in ["helios_logo.png", "helios_logo.svg"]:
+        src_asset = root_dir / "assets" / asset_file
+        if src_asset.exists():
+            shutil.copy2(src_asset, assets_dest / asset_file)
 
     for f in ["Launch-HELIOS.bat", "README.md"]:
         src = root_dir / f
