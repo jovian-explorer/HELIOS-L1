@@ -353,12 +353,28 @@ async def get_spice_status():
     }
 
 @app.get("/api/aurora")
-async def get_aurora(kp: float = 3.0, bz_gsm: float = -3.0):
-    boundaries = AuroralModel.calculate_auroral_boundaries(kp, bz_gsm)
-    oval_polygon = AuroralModel.generate_auroral_oval_coordinates(kp, bz_gsm)
+async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None):
     data = await downloader.get_satellite_telemetry("DSCOVR", span_days=1)
+    latest_rec = data[-1] if (isinstance(data, list) and len(data) > 0) else (data.get("latest", {}) if isinstance(data, dict) else {})
+
+    if bz_gsm is None:
+        bz_val = float(latest_rec.get("bz_gsm", -3.0))
+    else:
+        bz_val = float(bz_gsm)
+
+    if kp is None:
+        speed_val = float(latest_rec.get("speed", 420.0))
+        kp_est = max(0.5, min(9.0, 2.0 + max(0.0, (speed_val - 400.0) / 80.0) + max(0.0, -bz_val) * 0.35))
+        kp_val = round(kp_est, 1)
+    else:
+        kp_val = float(kp)
+
+    boundaries = AuroralModel.calculate_auroral_boundaries(kp_val, bz_val)
+    oval_polygon = AuroralModel.generate_auroral_oval_coordinates(kp_val, bz_val)
     dst_sim = AuroralModel.simulate_dst_evolution(data)
     return {
+        "kp": kp_val,
+        "bz_gsm": bz_val,
         "boundaries": boundaries,
         "oval_polygon": oval_polygon,
         "dst_evolution": dst_sim

@@ -121,7 +121,9 @@ const TAB_TO_DOMAIN = {
   hazards: 'geospace',
   events: 'geospace',
   import: 'data',
-  references: 'data'
+  references: 'data',
+  settings: 'data',
+  about: 'data'
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -457,6 +459,7 @@ function renderSubnav(domainKey) {
     if (v.id === 'references') clickHandler = 'openReferencesModal()';
     else if (v.id === 'settings') clickHandler = 'openSettingsModal()';
     else if (v.id === 'about') clickHandler = 'openAboutModal()';
+    const activeClass = v.id === currentTab ? 'active' : '';
     return `
       <button onclick="${clickHandler}" id="subnav-btn-${v.id}" class="subnav-btn ${activeClass}" title="${v.label}">
         <i class="fa-solid ${v.icon} ${v.color}"></i>
@@ -546,6 +549,13 @@ function switchTab(tabId, checkDomain = true) {
     loadHazardsAndCycle();
   } else if (tabId === 'turbulence') {
     loadSpectralAnalysis();
+  } else if (tabId === 'events') {
+    loadEvents();
+  } else if (tabId === 'missions') {
+    loadMissions();
+  } else if (tabId === 'import') {
+    loadCustomPresets();
+    loadCustomLatest();
   }
 }
 
@@ -1225,7 +1235,9 @@ async function loadAuroralForecast() {
     // Feed real-time geomagnetic parameters to high-resolution Auroral Renderer
     if (auroralRenderer) {
       auroralRenderer.resize();
-      auroralRenderer.setConditions(data.kp || 3.5, -3.2, b.hemispheric_power_gw || 45);
+      const kpVal = data.kp !== undefined ? data.kp : (b.kp_used || 3.5);
+      const bzVal = data.bz_gsm !== undefined ? data.bz_gsm : (b.bz_used !== undefined ? b.bz_used : -3.2);
+      auroralRenderer.setConditions(kpVal, bzVal, b.hemispheric_power_gw || 45);
     }
   } catch (err) {
     console.error('Error loading auroral forecast:', err);
@@ -1271,7 +1283,7 @@ async function calculateCMEKinematics() {
     if (cmeSimulator) {
       setTimeout(() => {
         cmeSimulator.resize();
-        cmeSimulator.setInitialSpeed(cme.initial_speed_kms);
+        cmeSimulator.updateFromBackendResult(cme);
         const playIcon = document.getElementById('icon-cme-play');
         const playText = document.getElementById('text-cme-play');
         if (playIcon) playIcon.className = 'fa-solid fa-pause';
@@ -1417,6 +1429,46 @@ window.setPSPLocationPreset = setPSPLocationPreset;
 // =========================================================================
 let customIngestChart = null;
 let currentCustomDataset = null;
+
+async function loadCustomPresets() {
+  try {
+    const res = await fetch('/api/custom/presets');
+    if (!res.ok) return;
+    const data = await res.json();
+    const presets = data.presets || [];
+    const grid = document.getElementById('import-presets-grid');
+    if (grid && presets.length > 0) {
+      grid.innerHTML = presets.map(p => `
+        <button onclick="loadCustomPreset('${p.id}')" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-slate-700/60 hover:border-sky-500/60 text-left transition group">
+          <div class="flex items-center justify-between text-[10px] font-mono mb-1">
+            <span class="font-bold text-sky-400">${p.tag || 'DATASET'}</span>
+            <span class="text-slate-500">${p.records_count || ''} pts</span>
+          </div>
+          <div class="font-bold text-xs text-slate-200 group-hover:text-sky-300 transition truncate">${p.name}</div>
+          <div class="text-[10px] text-slate-400 line-clamp-1 mt-0.5">${p.description || ''}</div>
+        </button>
+      `).join('');
+    }
+  } catch (err) {
+    console.warn('Error fetching custom presets:', err);
+  }
+}
+
+async function loadCustomLatest() {
+  try {
+    const res = await fetch('/api/custom/latest');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.status === 'success' && data.total_records > 0) {
+      currentCustomDataset = data;
+      const dash = document.getElementById('import-result-dashboard');
+      if (dash) dash.classList.remove('hidden');
+      renderCustomIngestUI(data);
+    }
+  } catch (err) {
+    // Nominal if no custom dataset has been ingested yet
+  }
+}
 
 async function loadCustomPreset(presetId) {
   window.playBlip?.();

@@ -68,6 +68,23 @@ class CMESimulator {
     this.isPlaying = true;
   }
 
+  updateFromBackendResult(cme) {
+    if (!cme) return;
+    this.v0 = cme.initial_speed_kms || this.v0;
+    if (cme.transit_to_l1_hours) this.transitL1Hrs = Number(cme.transit_to_l1_hours);
+    if (cme.transit_to_earth_hours) this.transitEarthHrs = Number(cme.transit_to_earth_hours);
+    if (cme.ambient_wind_kms) this.vAmbient = Number(cme.ambient_wind_kms);
+    this.maxHrs = Math.max(48, Math.ceil(this.transitEarthHrs * 1.25));
+    this.timeHrs = 0;
+    this.isPlaying = true;
+
+    const slider = document.getElementById('cme-timeline-slider');
+    if (slider) {
+      slider.max = this.maxHrs;
+      slider.value = 0;
+    }
+  }
+
   recomputeTrajectory() {
     this.transitL1Hrs = this.solveTransitHours(this.l1Km);
     this.transitEarthHrs = this.solveTransitHours(this.earthKm);

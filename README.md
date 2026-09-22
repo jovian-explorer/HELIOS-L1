@@ -113,10 +113,21 @@ powershell -ExecutionPolicy Bypass -File .\Create-Installer.ps1
 
 ---
 
+## 👨‍🔬 Creator & Lead Architect
+
+* **Dr. Keshav Aggarwal**
+  * **Current Affiliation:** Research Associate, Space Physics Laboratory (SPL), Vikram Sarabhai Space Centre (VSSC), Indian Space Research Organisation (ISRO), Thiruvananthapuram.
+  * **Doctoral Education:** Ph.D. in Astronomy and Space Engineering, Department of Astronomy, Astrophysics and Space Engineering (DAASE), Indian Institute of Technology (IIT) Indore.
+  * **Fellowship:** Prime Minister's Research Fellow (PMRF).
+  * **Research Focus:** Planetary/exoplanetary atmospheres, ionospheres, planetary radio occultation, solar-planetary space weather interactions across MOM, Chandrayaan-2, Chandrayaan-3, Akatsuki, and Aditya-L1.
+
+---
+
 ## 🧪 Automated Test Suite
 
 Run the full pytest suite:
 ```powershell
 python -m pytest tests/test_helios.py -v
 ```
-All **12 unit and integration tests** pass with 100% success.
+All **26 unit, scientific verification, SPICE ephemeris, and API integration tests** pass with 100% success.
+
