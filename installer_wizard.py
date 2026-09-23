@@ -219,6 +219,19 @@ class InstallerWizardGUI:
         self.start_shortcut_var = tk.BooleanVar(value=True)
         self.launch_after_var = tk.BooleanVar(value=True)
 
+        icon_cand = Path("assets") / "helios.ico"
+        if getattr(sys, "frozen", False):
+            base_dir = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+            if (base_dir / "assets" / "helios.ico").exists():
+                icon_cand = base_dir / "assets" / "helios.ico"
+            elif (Path(sys.executable).parent / "assets" / "helios.ico").exists():
+                icon_cand = Path(sys.executable).parent / "assets" / "helios.ico"
+        if icon_cand.exists():
+            try:
+                self.root.iconbitmap(str(icon_cand))
+            except Exception:
+                pass
+
         self.setup_styles()
         self.build_ui()
 

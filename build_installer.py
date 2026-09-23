@@ -122,6 +122,7 @@ def build_setup_installer(root_dir: Path, icon_path: Path):
         raise FileNotFoundError(f"Missing payload: {payload_zip}")
 
     add_data_payload = f"{payload_zip};."
+    add_data_icon = f"{icon_path};assets"
 
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -131,6 +132,7 @@ def build_setup_installer(root_dir: Path, icon_path: Path):
         "--name", "HELIOS-L1-Setup",
         "--icon", str(icon_path),
         "--add-data", add_data_payload,
+        "--add-data", add_data_icon,
         "installer_wizard.py"
     ]
 
