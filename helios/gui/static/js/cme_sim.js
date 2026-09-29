@@ -46,12 +46,16 @@ class CMESimulator {
 
   resize() {
     if (!this.canvas) return;
-    const rect = this.canvas.parentElement.getBoundingClientRect();
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
     const dpr = window.devicePixelRatio || 1;
     this.canvas.width = rect.width * dpr;
     this.canvas.height = rect.height * dpr;
     this.canvas.style.width = `${rect.width}px`;
     this.canvas.style.height = `${rect.height}px`;
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.scale(dpr, dpr);
     this.width = rect.width;
     this.height = rect.height;
@@ -457,8 +461,11 @@ class CMESimulator {
 
   animate() {
     if (this.canvas && this.canvas.offsetParent !== null) {
+      if (this.width === 0 || this.height === 0) {
+        this.resize();
+      }
       if (this.isPlaying) {
-        // Advance by playback speed (1 real sec = 2 hrs of simulation)
+        // Advance by playback speed (1 real sec = 2.5 hrs of simulation)
         this.timeHrs += (1 / 60) * 2.5 * this.playbackSpeed;
         if (this.timeHrs > this.maxHrs) {
           this.timeHrs = this.maxHrs;

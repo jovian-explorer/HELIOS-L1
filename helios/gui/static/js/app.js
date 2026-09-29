@@ -101,9 +101,7 @@ const DOMAINS = {
     context: 'DOMAIN: DATA STUDIO & SCIENCE // CUSTOM OMNI & PEER-REVIEWED DOIS',
     views: [
       { id: 'import', label: 'Custom Ingestion & OMNI', icon: 'fa-database', color: 'text-indigo-400' },
-      { id: 'references', label: 'References & Portals', icon: 'fa-book-atlas', color: 'text-emerald-400', isModal: true },
-      { id: 'settings', label: 'System Settings', icon: 'fa-gear', color: 'text-amber-400', isModal: true },
-      { id: 'about', label: 'About & Creator', icon: 'fa-user-astronaut', color: 'text-sky-400', isModal: true }
+      { id: 'references', label: 'References & Portals', icon: 'fa-book-atlas', color: 'text-emerald-400', isModal: true }
     ]
   }
 };
@@ -121,9 +119,7 @@ const TAB_TO_DOMAIN = {
   hazards: 'geospace',
   events: 'geospace',
   import: 'data',
-  references: 'data',
-  settings: 'data',
-  about: 'data'
+  references: 'data'
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -138,6 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
   animateOrbits();
   initVisualizers();
   missionIncidentLogger = new MissionIncidentLogger();
+
+  ['modal-settings', 'modal-about', 'modal-timezone', 'shortcuts-modal', 'modal-incident-log', 'references-modal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('click', (e) => {
+        if (e.target === el) closeAllModals();
+      });
+    }
+  });
 });
 
 async function initSettingsAndPreferences() {
@@ -293,34 +298,55 @@ function updateClock() {
 function openSettingsModal() {
   window.playBlip?.();
   const modal = document.getElementById('modal-settings');
-  if (modal) modal.classList.remove('hidden');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.style.zIndex = '99999';
+  }
 }
 
 function closeSettingsModal() {
   const modal = document.getElementById('modal-settings');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+  }
 }
 
 function openAboutModal() {
   window.playBlip?.();
   const modal = document.getElementById('modal-about');
-  if (modal) modal.classList.remove('hidden');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.style.zIndex = '99999';
+  }
 }
 
 function closeAboutModal() {
   const modal = document.getElementById('modal-about');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+  }
 }
 
 function openTimezoneModal() {
   window.playBlip?.();
   const modal = document.getElementById('modal-timezone');
-  if (modal) modal.classList.remove('hidden');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.style.zIndex = '99999';
+  }
 }
 
 function closeTimezoneModal() {
   const modal = document.getElementById('modal-timezone');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+  }
 }
 
 function setTheme(themeName) {
@@ -521,10 +547,13 @@ function switchTab(tabId, checkDomain = true) {
   const targetTab = document.getElementById(`tab-${tabId}`);
   if (targetTab) targetTab.classList.remove('hidden');
 
-  if (tabId === 'orbits' && orbitViewer) {
+  if (tabId === 'orbits') {
     setTimeout(() => {
-      orbitViewer.resize();
-      orbitViewer.resetView();
+      if (orbitViewer) {
+        orbitViewer.resize();
+        orbitViewer.resetView();
+        orbitViewer.draw();
+      }
     }, 50);
   } else if (tabId === 'aurora') {
     setTimeout(() => {
@@ -537,9 +566,15 @@ function switchTab(tabId, checkDomain = true) {
     }, 50);
     loadParkerSpiral();
   } else if (tabId === 'coronagraph') {
+    const panel = document.getElementById('cme-results-panel');
+    if (panel) panel.classList.remove('hidden');
     setTimeout(() => {
-      if (cmeSimulator) cmeSimulator.resize();
+      if (cmeSimulator) {
+        cmeSimulator.resize();
+        cmeSimulator.draw();
+      }
       if (solarDiskViewer) solarDiskViewer.resize();
+      calculateCMEKinematics();
     }, 50);
   } else if (tabId === 'comparator') {
     loadFleetMatrix();
@@ -2104,6 +2139,9 @@ async function initOrbits() {
 
 function animateOrbits() {
   if (orbitViewer && orbitViewer.canvas && orbitViewer.canvas.offsetParent !== null) {
+    if (orbitViewer.canvas.width === 0 || orbitViewer.canvas.height === 0 || orbitViewer.offsetX === 0) {
+      orbitViewer.resize();
+    }
     orbitViewer.draw();
     if (orbitViewer.lastComputedBoundaries) {
       updateBoundaryCards(orbitViewer.lastComputedBoundaries);

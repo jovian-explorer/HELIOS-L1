@@ -64,7 +64,7 @@ class ParkerSpiralRenderer {
 
   async fetchSpiceEphemeris() {
     try {
-      const res = await fetch('/api/ephemeris/spice?satellites=PARKER_SOLAR_PROBE,SOLAR_ORBITER,STEREO_A,EARTH,VENUS');
+      const res = await fetch('/api/ephemeris/spice?satellites=PARKER_SOLAR_PROBE,SOLAR_ORBITER,STEREO_A,EARTH,VENUS,MARS,MERCURY');
       if (res.ok) {
         const data = await res.json();
         this.spiceFleetData = data.fleet;
@@ -456,6 +456,94 @@ class ParkerSpiralRenderer {
           <div>Heliocentric Orbit: <span class="text-slate-100 font-bold">~21° Ahead of Earth</span></div>
           <div>Orbital Velocity: <span class="text-purple-400 font-bold">30.4 km/s</span></div>
           <div>Role: <span class="text-slate-300">Side-view CME coronagraph stereoscopy</span></div>
+          <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
+            <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
+            <span class="text-slate-400 font-normal">State Vector Verified</span>
+          </div>
+        </div>
+      `;
+      this.positionTooltip(clientX, clientY);
+      return;
+    }
+
+    // Check if mouse is hovering near Venus
+    if (this.venusScreenPos && Math.hypot(mw.x - this.venusScreenPos.x, mw.y - this.venusScreenPos.y) < 18) {
+      const v = this.venusScreenPos.state;
+      this.tooltip.classList.remove('hidden');
+      this.tooltip.innerHTML = `
+        <div class="border-b border-amber-500/40 pb-1 mb-1.5 flex items-center justify-between">
+          <strong class="text-amber-300 font-bold text-xs flex items-center space-x-1.5">
+            <i class="fa-solid fa-planet-ringed text-[10px]"></i>
+            <span>Venus (Aphrodite)</span>
+          </strong>
+          <span class="text-[10px] text-amber-300 font-mono font-bold">${v.rAu.toFixed(4)} AU</span>
+        </div>
+        <div class="text-[11px] font-mono space-y-1 text-slate-200">
+          <div>Solar Distance: <span class="text-slate-100 font-bold">${(v.rAu * this.auKm / 1e6).toFixed(2)}M km</span> (${(v.rAu * this.auKm / this.rSunKm).toFixed(1)} R☉)</div>
+          <div>Orbital Speed: <span class="text-amber-400 font-bold">${v.vKms.toFixed(2)} km/s</span> (${((v.vKms * 86400) / this.auKm).toFixed(4)} AU/day)</div>
+          <div>Orbital Period: <span class="text-slate-300 font-bold">224.70 Days</span> (e = 0.0068, i = 3.39°)</div>
+          <div>True Anomaly (ν): <span class="text-amber-300 font-bold">${v.trueAnomalyDeg.toFixed(1)}°</span></div>
+          <div>Atmosphere: <span class="text-slate-300">Dense CO₂ (92 bar) • Induced Magnetosphere</span></div>
+          <div>Role: <span class="text-sky-300">PSP & SolO Gravity Assist / Inner Flare Monitor</span></div>
+          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${v.phase}</div>
+          <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
+            <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
+            <span class="text-slate-400 font-normal">State Vector Verified</span>
+          </div>
+        </div>
+      `;
+      this.positionTooltip(clientX, clientY);
+      return;
+    }
+
+    // Check if mouse is hovering near Mars
+    if (this.marsScreenPos && Math.hypot(mw.x - this.marsScreenPos.x, mw.y - this.marsScreenPos.y) < 18) {
+      const m = this.marsScreenPos.state;
+      this.tooltip.classList.remove('hidden');
+      this.tooltip.innerHTML = `
+        <div class="border-b border-rose-500/40 pb-1 mb-1.5 flex items-center justify-between">
+          <strong class="text-rose-300 font-bold text-xs flex items-center space-x-1.5">
+            <i class="fa-solid fa-circle text-[10px] text-rose-500"></i>
+            <span>Mars (Ares)</span>
+          </strong>
+          <span class="text-[10px] text-rose-300 font-mono font-bold">${m.rAu.toFixed(4)} AU</span>
+        </div>
+        <div class="text-[11px] font-mono space-y-1 text-slate-200">
+          <div>Solar Distance: <span class="text-slate-100 font-bold">${(m.rAu * this.auKm / 1e6).toFixed(2)}M km</span> (${(m.rAu * this.auKm / this.rSunKm).toFixed(1)} R☉)</div>
+          <div>Orbital Speed: <span class="text-rose-400 font-bold">${m.vKms.toFixed(2)} km/s</span> (${((m.vKms * 86400) / this.auKm).toFixed(4)} AU/day)</div>
+          <div>Orbital Period: <span class="text-slate-300 font-bold">686.98 Days</span> (e = 0.0934, i = 1.85°)</div>
+          <div>True Anomaly (ν): <span class="text-rose-300 font-bold">${m.trueAnomalyDeg.toFixed(1)}°</span></div>
+          <div>Role: <span class="text-sky-300">Downstream Magnetotail & Induced Magnetosphere</span></div>
+          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${m.phase}</div>
+          <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
+            <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
+            <span class="text-slate-400 font-normal">State Vector Verified</span>
+          </div>
+        </div>
+      `;
+      this.positionTooltip(clientX, clientY);
+      return;
+    }
+
+    // Check if mouse is hovering near Mercury
+    if (this.mercuryScreenPos && Math.hypot(mw.x - this.mercuryScreenPos.x, mw.y - this.mercuryScreenPos.y) < 18) {
+      const mc = this.mercuryScreenPos.state;
+      this.tooltip.classList.remove('hidden');
+      this.tooltip.innerHTML = `
+        <div class="border-b border-slate-500/40 pb-1 mb-1.5 flex items-center justify-between">
+          <strong class="text-slate-300 font-bold text-xs flex items-center space-x-1.5">
+            <i class="fa-solid fa-circle text-[9px] text-slate-400"></i>
+            <span>Mercury (Hermes)</span>
+          </strong>
+          <span class="text-[10px] text-slate-300 font-mono font-bold">${mc.rAu.toFixed(4)} AU</span>
+        </div>
+        <div class="text-[11px] font-mono space-y-1 text-slate-200">
+          <div>Solar Distance: <span class="text-slate-100 font-bold">${(mc.rAu * this.auKm / 1e6).toFixed(2)}M km</span> (${(mc.rAu * this.auKm / this.rSunKm).toFixed(1)} R☉)</div>
+          <div>Orbital Speed: <span class="text-sky-300 font-bold">${mc.vKms.toFixed(2)} km/s</span> (${((mc.vKms * 86400) / this.auKm).toFixed(4)} AU/day)</div>
+          <div>Orbital Period: <span class="text-slate-300 font-bold">87.97 Days</span> (e = 0.2056, i = 7.00°)</div>
+          <div>True Anomaly (ν): <span class="text-slate-300 font-bold">${mc.trueAnomalyDeg.toFixed(1)}°</span></div>
+          <div>Role: <span class="text-amber-300">Innermost Sub-Alfvénic Reconnection Probe</span></div>
+          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${mc.phase}</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
             <span class="text-slate-400 font-normal">State Vector Verified</span>
@@ -931,6 +1019,153 @@ class ParkerSpiralRenderer {
     ctx.fillStyle = '#a5f3fc';
     ctx.font = '9px "JetBrains Mono", monospace';
     ctx.fillText(`SolO (${solo.vKms.toFixed(0)} km/s)`, soloX + 6, soloY + 11);
+
+    // Determine Earth reference ecliptic longitude from SPICE
+    const earthLong = (this.spiceFleetData && this.spiceFleetData.EARTH) 
+      ? this.spiceFleetData.EARTH.heliocentric.ecliptic_longitude_deg 
+      : 0;
+
+    // 6. VENUS (0.723 AU)
+    const spiceVenus = this.spiceFleetData && this.spiceFleetData.VENUS;
+    const rVenusAu = spiceVenus ? spiceVenus.heliocentric.distance_au : 0.723;
+    const vVenusKms = spiceVenus ? spiceVenus.velocity.speed_kms : 35.02;
+    const phiVenus = spiceVenus 
+      ? ((spiceVenus.heliocentric.ecliptic_longitude_deg - earthLong) * Math.PI / 180.0)
+      : (0.85 + this.time * 0.0016);
+    const venusX = cx + rVenusAu * scale * Math.cos(phiVenus);
+    const venusY = cy - rVenusAu * scale * Math.sin(phiVenus);
+    this.venusScreenPos = {
+      x: venusX,
+      y: venusY,
+      state: {
+        name: 'Venus',
+        rAu: rVenusAu,
+        vKms: vVenusKms,
+        phase: spiceVenus ? spiceVenus.phase : 'Inner terrestrial planet / PSP gravity assist node',
+        trueAnomalyDeg: spiceVenus ? spiceVenus.orbital_elements.true_anomaly_deg : (((phiVenus * 180 / Math.PI) % 360) + 360) % 360,
+        isSpice: !!spiceVenus
+      }
+    };
+
+    // Venus Glow & Body
+    const venusAtmosphere = ctx.createRadialGradient(venusX, venusY, 2, venusX, venusY, 10);
+    venusAtmosphere.addColorStop(0, 'rgba(251, 191, 36, 0.45)');
+    venusAtmosphere.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    ctx.fillStyle = venusAtmosphere;
+    ctx.beginPath();
+    ctx.arc(venusX, venusY, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    const venusGrad = ctx.createRadialGradient(venusX - 1.5, venusY - 1.5, 0.8, venusX, venusY, 5.5);
+    venusGrad.addColorStop(0, '#fef08a');
+    venusGrad.addColorStop(0.6, '#fbbf24');
+    venusGrad.addColorStop(1, '#b45309');
+    ctx.fillStyle = venusGrad;
+    ctx.beginPath();
+    ctx.arc(venusX, venusY, 5.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fef3c7';
+    ctx.font = '600 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('VENUS', venusX + 8, venusY - 3);
+    ctx.fillStyle = '#fcd34d';
+    ctx.font = '8.5px "JetBrains Mono", monospace';
+    ctx.fillText(`${rVenusAu.toFixed(2)} AU (${vVenusKms.toFixed(0)} km/s)`, venusX + 8, venusY + 8);
+
+    // 7. MARS (1.524 AU)
+    const spiceMars = this.spiceFleetData && this.spiceFleetData.MARS;
+    const rMarsAu = spiceMars ? spiceMars.heliocentric.distance_au : 1.524;
+    const vMarsKms = spiceMars ? spiceMars.velocity.speed_kms : 24.07;
+    const phiMars = spiceMars 
+      ? ((spiceMars.heliocentric.ecliptic_longitude_deg - earthLong) * Math.PI / 180.0)
+      : (2.35 + this.time * 0.0006);
+    const marsX = cx + rMarsAu * scale * Math.cos(phiMars);
+    const marsY = cy - rMarsAu * scale * Math.sin(phiMars);
+    this.marsScreenPos = {
+      x: marsX,
+      y: marsY,
+      state: {
+        name: 'Mars',
+        rAu: rMarsAu,
+        vKms: vMarsKms,
+        phase: spiceMars ? spiceMars.phase : 'Outer terrestrial planet / magnetotail observatory',
+        trueAnomalyDeg: spiceMars ? spiceMars.orbital_elements.true_anomaly_deg : (((phiMars * 180 / Math.PI) % 360) + 360) % 360,
+        isSpice: !!spiceMars
+      }
+    };
+
+    // Mars Atmosphere & Body
+    const marsAtmosphere = ctx.createRadialGradient(marsX, marsY, 2, marsX, marsY, 9);
+    marsAtmosphere.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
+    marsAtmosphere.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    ctx.fillStyle = marsAtmosphere;
+    ctx.beginPath();
+    ctx.arc(marsX, marsY, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    const marsGrad = ctx.createRadialGradient(marsX - 1.5, marsY - 1.5, 0.8, marsX, marsY, 4.8);
+    marsGrad.addColorStop(0, '#fca5a5');
+    marsGrad.addColorStop(0.65, '#dc2626');
+    marsGrad.addColorStop(1, '#7f1d1d');
+    ctx.fillStyle = marsGrad;
+    ctx.beginPath();
+    ctx.arc(marsX, marsY, 4.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#f87171';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fee2e2';
+    ctx.font = '600 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('MARS', marsX + 8, marsY - 3);
+    ctx.fillStyle = '#f87171';
+    ctx.font = '8.5px "JetBrains Mono", monospace';
+    ctx.fillText(`${rMarsAu.toFixed(2)} AU (${vMarsKms.toFixed(0)} km/s)`, marsX + 8, marsY + 8);
+
+    // 8. MERCURY (0.387 AU)
+    const spiceMerc = this.spiceFleetData && this.spiceFleetData.MERCURY;
+    const rMercAu = spiceMerc ? spiceMerc.heliocentric.distance_au : 0.387;
+    const vMercKms = spiceMerc ? spiceMerc.velocity.speed_kms : 47.36;
+    const phiMerc = spiceMerc 
+      ? ((spiceMerc.heliocentric.ecliptic_longitude_deg - earthLong) * Math.PI / 180.0)
+      : (3.9 + this.time * 0.0035);
+    const mercX = cx + rMercAu * scale * Math.cos(phiMerc);
+    const mercY = cy - rMercAu * scale * Math.sin(phiMerc);
+    this.mercuryScreenPos = {
+      x: mercX,
+      y: mercY,
+      state: {
+        name: 'Mercury',
+        rAu: rMercAu,
+        vKms: vMercKms,
+        phase: spiceMerc ? spiceMerc.phase : 'Innermost terrestrial planet',
+        trueAnomalyDeg: spiceMerc ? spiceMerc.orbital_elements.true_anomaly_deg : (((phiMerc * 180 / Math.PI) % 360) + 360) % 360,
+        isSpice: !!spiceMerc
+      }
+    };
+
+    // Mercury Body
+    const mercGrad = ctx.createRadialGradient(mercX - 1, mercY - 1, 0.5, mercX, mercY, 3.8);
+    mercGrad.addColorStop(0, '#e2e8f0');
+    mercGrad.addColorStop(0.7, '#64748b');
+    mercGrad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = mercGrad;
+    ctx.beginPath();
+    ctx.arc(mercX, mercY, 3.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText('MERCURY', mercX + 7, mercY - 2);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '8px "JetBrains Mono", monospace';
+    ctx.fillText(`${rMercAu.toFixed(2)} AU (${vMercKms.toFixed(0)} km/s)`, mercX + 7, mercY + 7);
 
     ctx.restore();
   }

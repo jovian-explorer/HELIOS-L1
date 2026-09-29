@@ -710,6 +710,8 @@ class SpiceEphemerisEngine:
                 "GOES_16",
                 "EARTH",
                 "VENUS",
+                "MARS",
+                "MERCURY",
                 "MOON",
             ]
 

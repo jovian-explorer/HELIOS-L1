@@ -112,18 +112,25 @@ class OrbitRenderer {
 
   resize() {
     if (!this.canvas) return;
-    const rect = this.canvas.parentElement.getBoundingClientRect();
-    this.canvas.width = rect.width;
-    this.canvas.height = rect.height;
-    if (this.offsetX === 0 && this.offsetY === 0) {
-      this.resetView();
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const prevW = this.canvas.width;
+      this.canvas.width = rect.width;
+      this.canvas.height = rect.height;
+      if (this.offsetX === 0 || this.offsetY === 0 || prevW === 0) {
+        this.resetView();
+      }
     }
   }
 
   resetView() {
     this.scale = 1.05;
-    this.offsetX = this.canvas.width * 0.58;
-    this.offsetY = this.canvas.height * 0.5;
+    const w = (this.canvas && this.canvas.width > 0) ? this.canvas.width : 900;
+    const h = (this.canvas && this.canvas.height > 0) ? this.canvas.height : 580;
+    this.offsetX = w * 0.58;
+    this.offsetY = h * 0.5;
   }
 
   setViewMode(mode) {
@@ -446,9 +453,13 @@ class OrbitRenderer {
 
   draw() {
     if (!this.canvas || !this.ctx) return;
+    if (this.canvas.width === 0 || this.canvas.height === 0 || this.offsetX === 0) {
+      this.resize();
+    }
     const ctx = this.ctx;
     const w = this.canvas.width;
     const h = this.canvas.height;
+    if (w === 0 || h === 0) return;
 
     this.timeStep += 0.02;
 
