@@ -3,42 +3,38 @@ Configuration and mission catalog for HELIOS-L1.
 """
 import sys
 import os
+import tempfile
 from pathlib import Path
 from typing import Dict, Any
 
-# Root directories - resilient across source, PyInstaller onedir, PyInstaller onefile, and Windows installed path
-if getattr(sys, 'frozen', False):
-    bundle_root = Path(getattr(sys, '_MEIPASS', Path(sys.executable).parent))
-    if (bundle_root / "helios" / "gui" / "static").exists():
-        BASE_DIR = bundle_root / "helios"
-    elif (bundle_root / "gui" / "static").exists():
-        BASE_DIR = bundle_root
-    elif (Path(sys.executable).parent / "_internal" / "helios" / "gui" / "static").exists():
-        BASE_DIR = Path(sys.executable).parent / "_internal" / "helios"
-    else:
-        BASE_DIR = Path(sys.executable).parent / "helios"
-    PROJECT_DIR = Path(sys.executable).parent
+from platformdirs import user_cache_path, user_log_path
+
+# Package resources (GUI static files, SPICE kernels). Works from a source checkout,
+# a pip install, and PyInstaller bundles (where the package is unpacked under sys._MEIPASS).
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    BASE_DIR = Path(sys._MEIPASS) / "helios"
 else:
     BASE_DIR = Path(__file__).resolve().parent
-    PROJECT_DIR = BASE_DIR.parent
 
 STATIC_DIR = BASE_DIR / "gui" / "static"
-SAMPLE_EVENTS_DIR = BASE_DIR / "data" / "sample_events"
-try:
-    SAMPLE_EVENTS_DIR.mkdir(parents=True, exist_ok=True)
-except Exception:
-    pass
 
-# Safe writable Cache Directory:
-# Uses user home directory to guarantee write permissions and bypass Windows Store AppContainer virtualization
-CACHE_DIR = Path.home() / ".helios" / "cache"
+def _writable_dir(preferred: Path, fallback_name: str) -> Path:
+    """Create `preferred` if possible, otherwise fall back to a temp directory."""
+    try:
+        preferred.mkdir(parents=True, exist_ok=True)
+        return preferred
+    except OSError:
+        fallback = Path(tempfile.gettempdir()) / "helios" / fallback_name
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
 
-try:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-except Exception:
-    import tempfile
-    CACHE_DIR = Path(tempfile.gettempdir()) / "helios_cache"
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+# Writable per-user directories. HELIOS_HOME overrides both (useful for portable installs and tests).
+if os.environ.get("HELIOS_HOME"):
+    CACHE_DIR = _writable_dir(Path(os.environ["HELIOS_HOME"]) / "cache", "cache")
+    LOG_DIR = _writable_dir(Path(os.environ["HELIOS_HOME"]) / "logs", "logs")
+else:
+    CACHE_DIR = _writable_dir(user_cache_path("HELIOS-L1", appauthor=False), "cache")
+    LOG_DIR = _writable_dir(user_log_path("HELIOS-L1", appauthor=False), "logs")
 
 # Network & Server Settings
 DEFAULT_HOST = "127.0.0.1"

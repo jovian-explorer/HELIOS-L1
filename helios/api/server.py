@@ -16,6 +16,7 @@ import math
 import numpy as np
 from datetime import datetime, timezone
 
+from helios import __version__
 from helios.config import (
     MISSIONS, STATIC_DIR, DATA_PROVIDERS,
     SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
@@ -40,7 +41,7 @@ from helios.core.spice_engine import get_spice_engine
 app = FastAPI(
     title="HELIOS-L1 API",
     description="Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite",
-    version="1.2.0"
+    version=__version__
 )
 
 app.add_middleware(
@@ -77,7 +78,7 @@ async def get_status():
         "status": "online",
         "app_name": "HELIOS-L1",
         "full_name": "Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite",
-        "version": "1.2.0",
+        "version": __version__,
         "missions_count": len(MISSIONS),
         "system": settings
     }

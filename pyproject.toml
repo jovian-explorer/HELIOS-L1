@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "helios-l1"
+dynamic = ["version"]
+description = "HELIOS-L1: Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Keshav Aggarwal", email = "keshavaggarwal2310@gmail.com" }]
+dependencies = [
+    "fastapi>=0.100",
+    "uvicorn>=0.23",
+    "pydantic>=2.0",
+    "httpx>=0.24",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+    "spiceypy>=6.0",
+    "platformdirs>=3.0",
+    "pywebview>=4.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.3", "pillow>=9.5"]
+build = ["pyinstaller>=6.0"]
+
+[project.scripts]
+helios = "helios.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "helios.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["helios*"]
+
+[tool.setuptools.package-data]
+helios = ["gui/static/**/*", "data/spice_kernels/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

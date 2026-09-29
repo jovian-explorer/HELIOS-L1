@@ -14,16 +14,17 @@ import urllib.request
 import json
 import uvicorn
 
-from helios.config import DEFAULT_HOST, DEFAULT_PORT, CACHE_DIR
+from helios.config import DEFAULT_HOST, DEFAULT_PORT, LOG_DIR
 from helios.api.server import app
 
-# Setup local file logging
-log_path = CACHE_DIR.parent / "helios_app.log"
-logging.basicConfig(
-    filename=str(log_path),
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
+
+def _setup_logging():
+    """Log launcher events to the per-user HELIOS log directory."""
+    logging.basicConfig(
+        filename=str(LOG_DIR / "helios_app.log"),
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s"
+    )
 
 def is_port_in_use(port: int, host: str = DEFAULT_HOST) -> bool:
     """Check if server port is already bound."""
@@ -83,6 +84,7 @@ def launch_desktop(
     force_browser: bool = False
 ):
     """Launch the HELIOS-L1 application."""
+    _setup_logging()
     print("=" * 65)
     print(" HELIOS-L1: Heliophysical Exploration & L1 Space-weather Suite")
     print("=" * 65)
@@ -117,7 +119,7 @@ def launch_desktop(
     if not force_browser:
         try:
             import webview
-            print("[+] Initializing native desktop UI window (WebView2)...")
+            print("[+] Initializing native desktop UI window...")
             window = webview.create_window(
                 title="HELIOS-L1 | Space Weather & L1 Heliophysics Observatory",
                 url=url,
@@ -126,7 +128,7 @@ def launch_desktop(
                 min_size=(960, 600)
             )
             webview.start()
-            logging.info("WebView2 window closed normally.")
+            logging.info("Desktop window closed normally.")
             return
         except (Exception, BaseException) as e:
             logging.warning(f"Native webview fallback triggered: {e}")
