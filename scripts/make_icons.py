@@ -163,11 +163,8 @@ CLEAN_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" wid
 def generate_clean_logo_and_icons(project_dir: Path):
     img_dir = project_dir / "helios" / "gui" / "static" / "img"
     assets_dir = project_dir / "assets"
-    installed_dir = Path("C:/Users/AGY-VCO/HELIOS-L1")
-    installed_assets = installed_dir / "assets"
-    installed_static = installed_dir / "_internal" / "helios" / "gui" / "static" / "img"
 
-    for d in [img_dir, assets_dir, installed_assets, installed_static]:
+    for d in [img_dir, assets_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
     # 1. Save SVG
@@ -299,8 +296,6 @@ def generate_clean_logo_and_icons(project_dir: Path):
     for p in [
         assets_dir / "helios_logo.png",
         img_dir / "helios_logo.png",
-        installed_assets / "helios_logo.png",
-        installed_static / "helios_logo.png"
     ]:
         logo_512.save(str(p), format="PNG")
         print(f"[+] Clean PNG logo saved: {p}")
@@ -310,8 +305,6 @@ def generate_clean_logo_and_icons(project_dir: Path):
     for p in [
         assets_dir / "helios.ico",
         img_dir / "helios.ico",
-        installed_assets / "helios.ico",
-        installed_static / "helios.ico"
     ]:
         logo_256.save(str(p), format="ICO", sizes=icon_sizes)
         print(f"[+] Clean multi-res ICO saved: {p}")
