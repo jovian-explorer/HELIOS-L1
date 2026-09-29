@@ -82,33 +82,82 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 
 ## 🚀 How to Install and Run
 
-### Method 1: Windows Setup Installer Executable (`.exe`) — Recommended
-Double-click the generated setup wizard executable:
+HELIOS-L1 runs on Windows, macOS and Linux. It starts a local science server and opens the dashboard in a desktop window, or in your web browser if no native window backend is available.
+
+### Option 1: Download the standalone app (no Python needed)
+From the [Releases](https://github.com/jovian-explorer/HELIOS-L1/releases) page, download the archive for your system:
+
+| System | File | Run |
+|---|---|---|
+| Windows (x64) | `HELIOS-L1-<version>-windows-x86_64.zip` | Unzip, then double-click `HELIOS-L1\HELIOS-L1.exe` |
+| macOS (Apple Silicon) | `HELIOS-L1-<version>-macos-arm64.tar.gz` | Extract, then run `HELIOS-L1/HELIOS-L1` |
+| Linux (x86_64) | `HELIOS-L1-<version>-linux-x86_64.tar.gz` | Extract, then run `HELIOS-L1/HELIOS-L1` |
+
+The builds are unsigned. On Windows, click **More info → Run anyway** if SmartScreen warns. On macOS, the first time, right-click the executable and choose **Open** (or run `xattr -dr com.apple.quarantine HELIOS-L1`).
+
+### Option 2: Install with pip (Python 3.10+)
+```bash
+pip install "git+https://github.com/jovian-explorer/HELIOS-L1.git"
+helios            # or: python -m helios
 ```
-dist\HELIOS-L1-Setup.exe
+The repository is private, so pip needs GitHub access (e.g. `gh auth login` with git credentials set up).
+
+### Command-line options
 ```
-This standalone setup wizard:
-* Prompts for installation directory (defaults to `%LOCALAPPDATA%\Programs\HELIOS-L1`).
-* Extracts all binaries, libraries, and scientific assets.
-* Creates high-resolution Windows Desktop and Start Menu shortcuts.
-* Registers the application in Windows Settings (Apps & Features) with clean uninstaller.
-* Can also run silently via command line: `dist\HELIOS-L1-Setup.exe /S`.
+helios [--host 127.0.0.1] [--port 8765] [--headless] [--browser] [--version]
+```
+* `--headless` runs only the server (open `http://127.0.0.1:8765` yourself).
+* `--browser` skips the desktop window and uses the default browser.
+* If the port is busy, HELIOS picks the next free one automatically.
 
-### Method 2: One-Click Desktop Batch Launcher
-Double-click `Launch-HELIOS.bat` in the project root folder. It automatically detects and launches `HELIOS-L1.exe` or falls back to Python.
+### Where HELIOS keeps its files
+Downloaded telemetry cache and logs go in the per-user app folders:
 
-### Method 3: Direct Standalone Executable
-Run the pre-compiled binary directly:
-```powershell
-.\dist\HELIOS-L1\HELIOS-L1.exe
+| System | Cache | Logs |
+|---|---|---|
+| Windows | `%LOCALAPPDATA%\HELIOS-L1\Cache` | `%LOCALAPPDATA%\HELIOS-L1\Logs` |
+| macOS | `~/Library/Caches/HELIOS-L1` | `~/Library/Logs/HELIOS-L1` |
+| Linux | `~/.cache/HELIOS-L1` | `~/.local/state/HELIOS-L1/log` |
+
+Set `HELIOS_HOME=/some/folder` to keep everything in one place instead (portable installs, tests).
+
+### Platform notes
+* **Windows:** the desktop window uses Microsoft Edge WebView2 (preinstalled on Windows 10/11).
+* **macOS:** uses the built-in WebKit. Nothing extra is needed.
+* **Linux:** the desktop window needs GTK or Qt bindings, e.g. `sudo apt install python3-gi gir1.2-webkit2-4.1` (or `pip install "pywebview[qt]"`). Without them HELIOS opens in your browser instead.
+
+---
+
+## 🛠️ Development
+
+```bash
+git clone https://github.com/jovian-explorer/HELIOS-L1.git
+cd HELIOS-L1
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+python -m pytest            # full test suite
+helios                      # run from source
 ```
 
-### Method 4: Portable Distribution ZIP Archive
-Unpack `dist/HELIOS-L1-v1.0-Windows-x64.zip` on any Windows PC and launch `HELIOS-L1.exe` (100% offline-ready, no Python required).
+### Building the standalone app
+```bash
+pip install -e ".[build]"
+python packaging/build.py
+```
+This produces `dist/HELIOS-L1/` and an archive for the current OS. PyInstaller can't cross-compile, so every OS builds its own. Pushing a tag like `v1.2.0` runs `.github/workflows/release.yml`, which builds Windows, macOS and Linux and attaches them to a GitHub Release.
 
-### Method 5: PowerShell Shortcut Creator
-```powershell
-powershell -ExecutionPolicy Bypass -File .\Create-Installer.ps1
+### Project layout
+```
+helios/            application package
+  api/server.py    FastAPI REST API
+  core/            physics, telemetry, SPICE ephemeris engines
+  gui/app.py       launcher (server + desktop window / browser)
+  gui/static/      dashboard frontend (offline: vendored JS, fonts, images)
+  data/spice_kernels/  bundled NAIF generic kernels
+tests/             pytest suite
+packaging/         PyInstaller spec and build script
+scripts/make_icons.py  regenerates the logo and icon set
+assets/            application icon used for the Windows build
 ```
 
 ---
@@ -125,9 +174,8 @@ powershell -ExecutionPolicy Bypass -File .\Create-Installer.ps1
 
 ## 🧪 Automated Test Suite
 
-Run the full pytest suite:
-```powershell
-python -m pytest tests/test_helios.py -v
+```bash
+python -m pytest
 ```
-All **26 unit, scientific verification, SPICE ephemeris, and API integration tests** pass with 100% success.
+The suite covers the physics models, telemetry pipeline, SPICE ephemeris engine and the REST API. CI runs it on Windows, macOS and Linux for every push to `main`.
 
