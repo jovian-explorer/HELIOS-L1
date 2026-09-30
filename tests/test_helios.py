@@ -576,16 +576,17 @@ def test_settings_and_system_concurrency_api():
     assert "timezone" in data
     assert data["total_cpu_cores"] >= 1
 
-    # 2. POST /api/settings
+    # 2. POST /api/settings (pick a core count valid on any machine; CI runners have 2)
+    target_cores = min(6, data["total_cpu_cores"])
     update_res = client.post("/api/settings", json={
-        "processors": 6,
+        "processors": target_cores,
         "theme": "deep-space",
         "font_size": "compact",
         "timezone": "Asia/Kolkata"
     })
     assert update_res.status_code == 200
     updated = update_res.json()
-    assert updated["active_processors"] == 6
+    assert updated["active_processors"] == target_cores
     assert updated["theme"] == "deep-space"
     assert updated["font_size"] == "compact"
     assert updated["timezone"] == "Asia/Kolkata"
