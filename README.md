@@ -144,7 +144,7 @@ helios                      # run from source
 pip install -e ".[build]"
 python packaging/build.py
 ```
-This produces `dist/HELIOS-L1/` and an archive for the current OS. PyInstaller can't cross-compile, so every OS builds its own. Pushing a tag like `v1.2.0` runs `.github/workflows/release.yml`, which builds Windows, macOS and Linux and attaches them to a GitHub Release.
+This produces `dist/HELIOS-L1/` and an archive for the current OS. PyInstaller can't cross-compile, so every OS builds its own. Pushing a tag like `v0.0.1` runs `.github/workflows/release.yml`, which builds Windows, macOS and Linux and attaches them to a GitHub Release.
 
 ### Project layout
 ```
