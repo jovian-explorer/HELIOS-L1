@@ -143,7 +143,8 @@ class SpaceWeatherPhysics:
 
         if mod == "shue":
             r0_mp = SpaceWeatherPhysics.magnetopause_standoff(pdyn, bz)
-            alpha_mp = (0.58 - 0.007 * bz) * (1.0 + 0.024 * math.log(pdyn + 1.0))
+            # Shue et al. (1998): alpha = (0.58 - 0.007 Bz) * (1 + 0.024 ln(P_dyn))
+            alpha_mp = (0.58 - 0.007 * bz) * (1.0 + 0.024 * math.log(pdyn))
             alpha_mp = max(0.4, min(0.9, alpha_mp))
             r0_bs = round(r0_mp * (1.0 + 1.1 * ((2.0/3.0 * m**2 + 2.0) / (8.0/3.0 * (m**2 - 1.0)))), 2)
             alpha_bs = 0.60
@@ -401,6 +402,21 @@ class SpaceWeatherPhysics:
         return round(float(delay_seconds / 60.0), 1)
 
     @staticmethod
+    def goes_flare_class(xray_flux: Optional[float]) -> Optional[str]:
+        """
+        GOES 0.1-0.8 nm flare class from peak flux in W/m^2, e.g. 5.3e-4 -> 'X5.3',
+        2.1e-6 -> 'C2.1', 4e-8 -> 'A4.0'. The multiplier is truncated (not rounded)
+        to one decimal, so 9.99e-5 is 'M9.9' rather than 'M10.0'.
+        """
+        if xray_flux is None or not xray_flux > 0:
+            return None
+        for letter, base in (("X", 1e-4), ("M", 1e-5), ("C", 1e-6), ("B", 1e-7), ("A", 1e-8)):
+            if xray_flux >= base or letter == "A":
+                multiplier = math.floor(round(xray_flux / base, 9) * 10.0) / 10.0
+                return f"{letter}{multiplier:.1f}"
+        return None
+
+    @staticmethod
     def classify_noaa_scales(
         kp: Optional[float],
         bz_gsm: Optional[float],
@@ -446,31 +462,32 @@ class SpaceWeatherPhysics:
                 bz_color = "#10b981"
 
         # 3. Solar Flare Radio Blackout (R-Scale based on GOES X-ray W/m^2)
+        # Thresholds: R1 >= M1, R2 >= M5, R3 >= X1, R4 >= X10, R5 >= X20.
         r_scale = "R0 (None)"
         r_level = 0
-        flare_class = "A/B"
+        flare_class = "No data"
         if xray_flux is not None and xray_flux > 0:
+            flare_class = f"{SpaceWeatherPhysics.goes_flare_class(xray_flux)} ({xray_flux:.1e} W/m^2)"
             if xray_flux >= 2e-3:
-                r_scale, r_level, flare_class = "R5 (Extreme)", 5, f"X20+ ({xray_flux:.1e})"
+                r_scale, r_level = "R5 (Extreme)", 5
             elif xray_flux >= 1e-3:
-                r_scale, r_level, flare_class = "R4 (Severe)", 4, f"X10 ({xray_flux:.1e})"
+                r_scale, r_level = "R4 (Severe)", 4
             elif xray_flux >= 1e-4:
-                r_scale, r_level, flare_class = "R3 (Strong)", 3, f"X1 ({xray_flux:.1e})"
+                r_scale, r_level = "R3 (Strong)", 3
             elif xray_flux >= 5e-5:
-                r_scale, r_level, flare_class = "R2 (Moderate)", 2, f"M5 ({xray_flux:.1e})"
+                r_scale, r_level = "R2 (Moderate)", 2
             elif xray_flux >= 1e-5:
-                r_scale, r_level, flare_class = "R1 (Minor)", 1, f"M1 ({xray_flux:.1e})"
-            elif xray_flux >= 1e-6:
-                flare_class = f"C ({xray_flux:.1e})"
-            else:
-                flare_class = f"B ({xray_flux:.1e})"
+                r_scale, r_level = "R1 (Minor)", 1
 
         # 4. Solar Radiation Storm (S-Scale based on >= 10 MeV proton flux in pfu)
+        # No measurement means no classification: never substitute a made-up flux.
         s_scale = "S0 (Nominal)"
         s_level = 0
         s_color = "#10b981"
-        pfu_val = float(proton_flux) if (proton_flux is not None and proton_flux > 0) else 0.8
-        if pfu_val >= 1e5:
+        pfu_val = float(proton_flux) if (proton_flux is not None and proton_flux >= 0) else None
+        if pfu_val is None:
+            s_scale, s_color = "S-- (No proton data)", "#64748b"
+        elif pfu_val >= 1e5:
             s_scale, s_level, s_color = "S5 (Extreme)", 5, "#dc2626"
         elif pfu_val >= 1e4:
             s_scale, s_level, s_color = "S4 (Severe)", 4, "#ea580c"
@@ -493,7 +510,7 @@ class SpaceWeatherPhysics:
             "s_scale": s_scale,
             "s_level": s_level,
             "s_color": s_color,
-            "proton_flux_pfu": round(pfu_val, 2)
+            "proton_flux_pfu": round(pfu_val, 2) if pfu_val is not None else None
         }
 
     @staticmethod

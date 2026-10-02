@@ -180,7 +180,9 @@ class ScientificReportGenerator:
         g_scale = classification.get("g_scale", "G0 (Quiet)")
         s_scale = classification.get("s_scale", "S0 (Nominal)")
         r_scale = classification.get("r_scale", "R0 (None)")
-        proton_pfu = classification.get("proton_flux_pfu", 0.8)
+        proton_pfu = classification.get("proton_flux_pfu")
+        if proton_pfu is None:
+            proton_pfu = "n/a"
         flare_cls = classification.get("flare_class", "Quiet")
 
         bz_val = latest.get("bz_gsm", 0.0)

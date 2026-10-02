@@ -21,3 +21,32 @@ def test_akasofu_epsilon_includes_4pi_over_mu0():
     expected = 1e7 * 4e5 * 1e-16 * (7.0 * 6.371e6) ** 2 / 1e9
     assert eps == pytest.approx(expected, rel=1e-6)
     assert 700.0 < eps < 900.0
+
+
+def test_shue_1998_flaring_uses_ln_pdyn():
+    """Shue et al. (1998): alpha = (0.58 - 0.007 Bz)(1 + 0.024 ln Dp); Dp = 4 nPa, Bz = 0 -> 0.5993."""
+    res = SpaceWeatherPhysics.calculate_magnetospheric_boundaries(4.0, 0.0, model="shue")
+    expected = 0.58 * (1.0 + 0.024 * math.log(4.0))
+    assert res["magnetopause"]["flaring_alpha"] == pytest.approx(expected, abs=1e-9)
+
+
+@pytest.mark.parametrize("flux, label", [
+    (5.3e-4, "X5.3"), (1.7e-3, "X17.0"), (1.0e-4, "X1.0"), (9.99e-5, "M9.9"),
+    (2.1e-5, "M2.1"), (3.4e-6, "C3.4"), (7.0e-7, "B7.0"), (4.0e-8, "A4.0"),
+])
+def test_goes_flare_class_labels(flux, label):
+    assert SpaceWeatherPhysics.goes_flare_class(flux) == label
+
+
+def test_noaa_scales_report_actual_flare_class_and_no_invented_proton_flux():
+    cls = SpaceWeatherPhysics.classify_noaa_scales(kp=3.0, bz_gsm=-2.0, xray_flux=5.3e-4)
+    # An X5.3 flare used to be labelled "X1".
+    assert cls["flare_class"].startswith("X5.3")
+    assert cls["r_level"] == 3
+    # Without a proton measurement no flux value may be reported.
+    assert cls["proton_flux_pfu"] is None
+    assert "No proton data" in cls["s_scale"]
+    # An A-class background used to be labelled "B".
+    quiet = SpaceWeatherPhysics.classify_noaa_scales(kp=1.0, bz_gsm=1.0, xray_flux=4e-8, proton_flux=0.3)
+    assert quiet["flare_class"].startswith("A4.0")
+    assert quiet["proton_flux_pfu"] == 0.3

@@ -3165,7 +3165,7 @@ function computeSandboxPhysics(p) {
 
   // 5. Shue et al. (1997) Magnetopause
   const shue_r0_mp = Math.max(3.5, Math.min(16.0, (10.22 + 1.29 * Math.tanh(0.184 * (bz + 8.14))) * pFactor));
-  const shue_alpha_mp = Math.max(0.40, Math.min(0.90, (0.58 - 0.007 * bz) * (1.0 + 0.024 * Math.log(pdyn + 1.0))));
+  const shue_alpha_mp = Math.max(0.40, Math.min(0.90, (0.58 - 0.007 * bz) * (1.0 + 0.024 * Math.log(pdyn))));
 
   // Sheath thickness
   const sheath_re = Math.max(0.5, chao_r0_bs - chao_r0_mp);
