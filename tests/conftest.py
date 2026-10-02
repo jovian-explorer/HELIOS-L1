@@ -1,0 +1,32 @@
+"""
+Shared pytest configuration.
+
+* Points HELIOS_HOME at a throw-away folder before any helios module is imported,
+  so the suite never reads or writes the user's real cache and log folders.
+* Blocks network access by default: DataDownloader.fetch_json returns None, which
+  exercises the documented offline path. Tests that need specific archive payloads
+  patch fetch_json themselves.
+"""
+import os
+import shutil
+import tempfile
+
+import pytest
+
+_TEST_HOME = tempfile.mkdtemp(prefix="helios-test-home-")
+os.environ["HELIOS_HOME"] = _TEST_HOME
+
+
+@pytest.fixture(autouse=True)
+def _offline_downloader(monkeypatch):
+    from helios.core.downloader import DataDownloader
+
+    async def _no_network(self, url, cache_key):
+        return None
+
+    monkeypatch.setattr(DataDownloader, "fetch_json", _no_network)
+    yield
+
+
+def pytest_sessionfinish(session, exitstatus):
+    shutil.rmtree(_TEST_HOME, ignore_errors=True)
