@@ -3181,7 +3181,7 @@ function computeSandboxPhysics(p) {
   const mu_0 = 1.25663706e-6;
   const l0 = 7.0 * 6371000.0;
   const sin4 = Math.pow(Math.sin(theta / 2.0), 4);
-  const akasofu_gw = ((v_ms * b_tesla * b_tesla / mu_0) * sin4 * l0 * l0) / 1e9;
+  const akasofu_gw = ((4.0 * Math.PI / mu_0) * v_ms * b_tesla * b_tesla * sin4 * l0 * l0) / 1e9;
 
   // Newell universal coupling (Wb/s)
   const dphi = Math.pow(vsw, 4.0 / 3.0) * Math.pow(Math.max(0.01, bt_trans), 2.0 / 3.0) * Math.pow(Math.sin(theta / 2.0), 8.0 / 3.0);

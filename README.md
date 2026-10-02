@@ -45,7 +45,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    * **Sub-GEO Compression Alert:** Alerts if $r_0 < 6.6 R_E$, signifying that geostationary spacecraft (GOES, telecommunications) are exposed directly to unshielded magnetosheath plasma.
 
 3. **Akasofu Epsilon Energy Coupling ($\epsilon$):**
-   $$\epsilon = \frac{v_{sw} B_t^2}{\mu_0} \sin^4\left(\frac{\theta}{2}\right) l_0^2 \quad [\text{GW}]$$
+   $$\epsilon = \frac{4\pi}{\mu_0} v_{sw} B_t^2 \sin^4\left(\frac{\theta}{2}\right) l_0^2 \quad [\text{GW}]$$
    Measures power transfer into the magnetosphere driving substorms and auroral displays.
 
 4. **Auroral Oval Boundaries & Dst Ring Current (Burton Model):**

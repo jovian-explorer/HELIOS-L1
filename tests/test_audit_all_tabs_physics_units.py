@@ -58,8 +58,9 @@ class TestTab1DashboardL1Telemetry:
     def test_akasofu_epsilon_physics_and_units(self):
         """
         Akasofu Epsilon Poynting Flux:
-        epsilon = (v * B^2 / mu_0) * sin^4(theta / 2) * l_0^2
+        epsilon = (4 * pi / mu_0) * v * B^2 * sin^4(theta / 2) * l_0^2
         Units: v [m/s], B [Tesla], mu_0 [H/m], l_0 [m] (7 R_E = 4.4597e7 m)
+        (4 * pi / mu_0 = 1e7 converts the Gaussian v * B^2 * l_0^2 [erg/s] to W.)
         Output in Gigawatts (GW = 1e9 W).
         """
         # Northward IMF (theta = 0): sin(0) = 0 -> epsilon = 0 GW (no dayside reconnection)
@@ -68,10 +69,10 @@ class TestTab1DashboardL1Telemetry:
 
         # Southward IMF (theta = pi): sin(pi/2) = 1 -> maximum coupling
         # v = 500 km/s = 5e5 m/s, B = 10 nT = 1e-8 T, B^2 = 1e-16 T^2
-        # Energy rate = (5e5 * 1e-16 / 1.2566e-6) * 1 * (4.4597e7)^2
-        # = 3.9788e-5 * 1.9889e15 = 7.9135e10 W = 79.135 GW
+        # Energy rate = 1e7 * 5e5 * 1e-16 * 1 * (4.4597e7)^2
+        # = 5e-4 * 1.9889e15 = 9.944e11 W = 994.4 GW
         eps_south = SpaceWeatherPhysics.akasofu_epsilon(500.0, 10.0, 0.0, -10.0)
-        assert 70.0 < eps_south < 90.0, f"Expected ~79.1 GW, got {eps_south}"
+        assert abs(eps_south - 994.4) < 1.0, f"Expected ~994.4 GW, got {eps_south}"
 
     def test_propagation_delay_physics(self):
         """

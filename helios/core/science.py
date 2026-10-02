@@ -225,8 +225,10 @@ class SpaceWeatherPhysics:
     def akasofu_epsilon(speed_kms: float, b_total_nt: float, by_gsm_nt: float, bz_gsm_nt: float) -> float:
         """
         Calculate Akasofu solar wind energy coupling parameter epsilon (in Gigawatts).
-        Epsilon = (v * B^2 / mu_0) * sin^4(theta / 2) * l_0^2
-        where l_0 approx 7 R_E (Earth radii = 6371 km).
+        Perreault & Akasofu (1978), written in SI units:
+        Epsilon = (4 * pi / mu_0) * v * B^2 * sin^4(theta / 2) * l_0^2
+        where l_0 approx 7 R_E (Earth radii = 6371 km). The 4*pi/mu_0 (= 1e7) factor
+        converts the original Gaussian form v * B^2 * l_0^2 [erg/s] to watts.
         Values > 100 GW cause substorms; > 1000 GW trigger major geomagnetic storms.
         """
         if not speed_kms or not b_total_nt or speed_kms <= 0 or b_total_nt <= 0:
@@ -239,7 +241,7 @@ class SpaceWeatherPhysics:
         theta = SpaceWeatherPhysics.clock_angle(by_gsm_nt, bz_gsm_nt)
 
         sin_term = math.sin(theta / 2.0) ** 4
-        energy_rate_watts = (v_ms * (b_tesla ** 2) / mu_0) * sin_term * (l0_m ** 2)
+        energy_rate_watts = (4.0 * math.pi / mu_0) * v_ms * (b_tesla ** 2) * sin_term * (l0_m ** 2)
         return float(energy_rate_watts / 1e9)  # Return in Gigawatts (GW)
 
     @staticmethod
