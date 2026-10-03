@@ -41,6 +41,7 @@
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
 ### Interface and robustness
+- Orbit view: the flaring-parameter card still cited the old Chao et al. (2002) DOI and implied both α came from that paper; it now names Shue et al. (1998) for α_mp and the Chao bow shock (or the Farris & Russell conic) for α_bs, with the correct DOI.
 - Auroral oval: the map label computed its own equatorward midnight boundary (68 - 1.8 Kp, e.g. 63.2°) while the card showed the server's value (60.9°); the map now shows the server's value. The boundaries come from a linear Kp/Bz approximation, not the Starkov (1994) model they were labelled as; the labels say so.
 - Solar imagery: the EUV panel and the feeds labelled "SDO / AIA 193/304" were GOES SUVI images, and their URLs had moved (the browser blocked the 404 page). They are labelled GOES / SUVI 195 and 304 Å with the current SWPC URLs. The "Aditya-L1 / VELC" feed showed the SOHO LASCO C2 image; VELC has no public real-time image (ISSDC PRADAN requires a registered login), so the entry now says so instead of showing another instrument's picture.
 - Opening the Data Import tab before anything was imported logged a console error: `/api/custom/latest` answered 404. It now answers `{"status": "empty"}`.
