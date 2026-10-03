@@ -15,8 +15,8 @@ class IonosphericModel:
         zenith_angle_deg: float = 30.0
     ) -> Dict[str, Any]:
         """
-        Computes ionospheric absorption with the NOAA SWPC D-RAP X-ray formulation
-        (Sauer & Wilkinson, 2008):
+        Computes ionospheric absorption with the NOAA SWPC D-RAP X-ray (flare) relation
+        (D-RAP documentation; Sauer & Wilkinson 2008 describe its proton/polar part, not modelled here):
             HAF_0 = 10 * log10(F_x) + 65            [MHz, subsolar; F_x in W/m^2]
             HAF   = HAF_0 * cos(chi)^0.75           [zenith-angle reduction]
             A(f)  = (HAF / f)^1.5                   [dB]

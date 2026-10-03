@@ -2032,7 +2032,7 @@
               <span class="w-2.5 h-2.5 rounded-full bg-rose-500 pulse-beacon"></span>
               <h3 class="font-tech font-bold text-base text-slate-100">D-Region Ionospheric Radio Absorption (D-RAP) &amp; HF Blackout Simulator</h3>
             </div>
-            <p class="text-xs text-slate-400">Quantifies 3–30 MHz signal attenuation and Highest Affected Frequency (HAF) for trans-polar aviation routes based on Sauer &amp; Wilkinson (2008).</p>
+            <p class="text-xs text-slate-400">Quantifies 3–30 MHz signal attenuation and Highest Affected Frequency (HAF) with the NOAA SWPC D-RAP flare relation HAF = 10 log₁₀(Fx) + 65 MHz (the proton part of D-RAP, Sauer &amp; Wilkinson 2008, is not modelled).</p>
           </div>
 
           <!-- Controls -->
@@ -2106,7 +2106,7 @@
               <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 pulse-beacon"></span>
               <h3 class="font-tech font-bold text-base text-slate-100">Geomagnetically Induced Currents (GIC) &amp; Surface Geoelectric Field Model</h3>
             </div>
-            <p class="text-xs text-slate-400">Simulates horizontal electric field induction ($E_H = \sqrt{\rho / \mu_0 \omega} \cdot |dB/dt|$) and transformer quasi-DC neutral saturation based on Boteler &amp; Pirjola (2017).</p>
+            <p class="text-xs text-slate-400">Simulates horizontal electric field induction (E_H = √(ρ / (μ₀ω)) · |dB/dt|) and transformer quasi-DC neutral saturation based on Boteler &amp; Pirjola (2017).</p>
           </div>
 
           <!-- GIC Controls -->
@@ -2785,8 +2785,8 @@
               <span class="text-slate-400">1D layered lithosphere impedance and magnetotelluric electric field E(t) = -1/&radic;(&pi;&mu;&sigma;) &int; (dB/dt)/&radic;(t-u) du.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <strong class="text-purple-300 block">Sauer &amp; Wilkinson (2008) D-RAP</strong>
-              <span class="text-slate-400">Ionospheric HF radio blackout absorption scaling A(f) = A_10 &bull; (10/f)^1.5 across high-latitude polar routes.</span>
+              <strong class="text-purple-300 block">NOAA SWPC D-RAP (X-ray flare absorption)</strong>
+              <span class="text-slate-400">Dayside HF absorption A(f) = (HAF/f)^1.5 dB with HAF = 10 log₁₀(Fx) + 65 MHz, reduced by cos(χ)^0.75 away from the subsolar point.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
               <strong class="text-cyan-300 block">Kolmogorov (-5/3) &amp; Kraichnan (-3/2) PSD</strong>
