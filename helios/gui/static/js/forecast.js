@@ -2,7 +2,7 @@
  * HELIOS-L1: MACHINE LEARNING & ADVANCED MAGNETOSPHERIC COUPLING CONTROLLER
  * Features:
  * - Newell Solar Wind Magnetosphere Coupling Function Monitor
- * - Burton-McPherron Ring Current Dst* Prediction
+ * - O'Brien & McPherron (2000) ring current Dst forecast, started from observed Kyoto Dst
  * - Multi-Horizon (1h to 12h) Kp Confidence Interval Charting
  * - Probabilistic NOAA Geomagnetic Storm Scale Gauges (G1, G3, G5)
  * - Critical Infrastructure Hazard Advisories (GIC, Aviation, Satellites)
@@ -119,7 +119,7 @@ function renderForecastChart(timeline) {
           yAxisID: 'yKp'
         },
         {
-          label: 'Ring Current Dst* Forecast [nT]',
+          label: 'Ring Current Dst Forecast [nT]',
           data: dstVals,
           borderColor: '#00f0ff',
           backgroundColor: 'rgba(0, 240, 255, 0.08)',
@@ -162,7 +162,7 @@ function renderForecastChart(timeline) {
           position: 'right',
           grid: { drawOnChartArea: false },
           ticks: { color: '#00f0ff' },
-          title: { display: true, text: 'Burton Model Dst [nT]', color: '#00f0ff' }
+          title: { display: true, text: "O'Brien-McPherron Dst [nT]", color: '#00f0ff' }
         }
       }
     }
