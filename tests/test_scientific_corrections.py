@@ -102,3 +102,39 @@ def test_spectrum_api_uses_record_cadence():
     assert res["dt_seconds"] == 300.0
     n = 24 * 12  # 24 h of 5-minute samples
     assert res["frequencies_hz"][0] == pytest.approx(1.0 / (n * 300.0), rel=1e-3)
+
+
+def _storm_records(step_min, hours=6):
+    from datetime import datetime, timedelta
+    t0 = datetime(2026, 10, 2, 0, 0, 0)
+    return [{"time_tag": (t0 + timedelta(minutes=i * step_min)).strftime("%Y-%m-%d %H:%M:%S"),
+             "speed": 600.0, "bz_gsm": -15.0, "dynamic_pressure": 5.0}
+            for i in range(int(hours * 60 / step_min) + 1)]
+
+
+def test_dst_simulation_independent_of_cadence():
+    """
+    Burton model with Ey = 9 mV/m: Q = -4.4 (9 - 0.5) = -37.4 nT/h, tau = 7.7 h.
+    After 6 h: Dst* = -5 e^(-6/7.7) + Q tau (1 - e^(-6/7.7)) ~ -158.8 nT, regardless
+    of whether the inputs are 1-minute or 5-minute samples (1-minute data used to be
+    integrated as if each step lasted 5 minutes).
+    """
+    from helios.core.aurora_model import AuroralModel
+    tau, q = 7.7, -4.4 * (9.0 - 0.5)
+    decay = math.exp(-6.0 / tau)
+    expected_star = -5.0 * decay + q * tau * (1.0 - decay)
+    p_term = 7.26 * math.sqrt(5.0) - 11.0
+    one_min = AuroralModel.simulate_dst_evolution(_storm_records(1))[-1]["dst_predicted_nt"]
+    five_min = AuroralModel.simulate_dst_evolution(_storm_records(5))[-1]["dst_predicted_nt"]
+    # The first record carries one default (5-min) step before the time stamps take over.
+    assert five_min == pytest.approx(expected_star + p_term, abs=3.0)
+    assert one_min == pytest.approx(five_min, abs=3.0)
+
+
+def test_dst_simulation_handles_gaps():
+    from helios.core.aurora_model import AuroralModel
+    recs = _storm_records(5, hours=1)
+    recs[3]["speed"] = None
+    out = AuroralModel.simulate_dst_evolution(recs)
+    assert out[3]["ey_electric_field_mvm"] is None
+    assert len(out) == len(recs)

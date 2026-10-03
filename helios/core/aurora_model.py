@@ -102,37 +102,60 @@ class AuroralModel:
         Simulate Disturbance Storm Time (Dst) ring current evolution using the
         Burton et al. (1975) & O'Brien-McPherron (2000) differential equation:
         d(Dst*)/dt = Q(t) - Dst* / tau
+
+        The time step is taken from consecutive time stamps (live data are 1-minute,
+        7-day views and the offline model 5-minute); a fixed 5-minute step made 1-minute
+        data inject and decay five times too fast. Each step uses the exact solution for
+        constant Q over the step, so long gaps cannot make the integration unstable.
+        Missing speed/Bz means no injection during that step; the pressure correction
+        uses the most recent valid P_dyn.
         """
         if not telemetry:
             return []
 
-        dst_current = -5.0
+        from datetime import datetime
+
+        def parse_t(tag):
+            try:
+                return datetime.fromisoformat(str(tag).replace("Z", "").replace("T", " ")[:19])
+            except (TypeError, ValueError):
+                return None
+
+        dst_star = -5.0
         decay_tau_hours = 7.7
-        dt_hours = 5.0 / 60.0
+        default_dt_hours = 5.0 / 60.0
+        last_pdyn = None
+        prev_t = None
 
         results = []
         for row in telemetry:
-            v = row.get("speed", 400.0) or 400.0
-            bz = row.get("bz_gsm", 0.0) or 0.0
-            pdyn = row.get("dynamic_pressure", 2.0) or 2.0
-
-            ey = -v * bz * 1e-3
-
-            if ey > 0.5:
-                q_injection = -4.4 * (ey - 0.5)
+            t = parse_t(row.get("time_tag"))
+            if prev_t is not None and t is not None and t > prev_t:
+                dt_hours = (t - prev_t).total_seconds() / 3600.0
             else:
-                q_injection = 0.0
+                dt_hours = default_dt_hours
+            if t is not None:
+                prev_t = t
 
-            d_dst = (q_injection - (dst_current / decay_tau_hours)) * dt_hours
-            dst_current += d_dst
+            v = row.get("speed")
+            bz = row.get("bz_gsm")
+            pdyn = row.get("dynamic_pressure")
+            if pdyn is not None and pdyn > 0:
+                last_pdyn = pdyn
 
-            p_term = 7.26 * math.sqrt(max(0.1, pdyn)) - 11.0
-            total_dst = round(dst_current + p_term, 1)
+            ey = -v * bz * 1e-3 if (v is not None and bz is not None) else None
+            q_injection = -4.4 * (ey - 0.5) if (ey is not None and ey > 0.5) else 0.0
 
+            # Exact step of d(Dst*)/dt = Q - Dst*/tau with Q constant over dt.
+            decay = math.exp(-dt_hours / decay_tau_hours)
+            dst_star = dst_star * decay + q_injection * decay_tau_hours * (1.0 - decay)
+
+            p_term = 7.26 * math.sqrt(max(0.1, last_pdyn)) - 11.0 if last_pdyn is not None else 0.0
+            total_dst = round(dst_star + p_term, 1)
             results.append({
                 "time_tag": row.get("time_tag", ""),
                 "dst_predicted_nt": total_dst,
-                "ey_electric_field_mvm": round(ey, 2),
+                "ey_electric_field_mvm": round(ey, 2) if ey is not None else None,
                 "storm_category": (
                     "Extreme Superstorm (Dst <= -300)" if total_dst <= -300 else
                     "Intense Storm (Dst <= -100)" if total_dst <= -100 else
