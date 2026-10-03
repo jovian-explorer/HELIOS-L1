@@ -20,6 +20,7 @@
 - Comparator no longer bridges long data gaps with interpolated values that were then counted as real samples; mixed time zone formats can be compared.
 - A single interplanetary shock was reported up to three times; it is now one event.
 - GSE Z axis in the ephemeris engine pointed to ecliptic south (left-handed frame), flipping the sign of every GSE z. Orbit trajectories returned the same point for every step.
+- Boyle et al. (1997) polar cap potential uses the IMF magnitude |B| (it used √(By² + Bz²)).
 - Newell coupling in the forecaster used |B| instead of the transverse field B_T = √(By² + Bz²).
 - D-RAP absorption follows the SWPC relation HAF = 10 log₁₀(Fx) + 65 MHz (reduced by cos^0.75 χ) and A(f) = (HAF/f)^1.5 dB.
 

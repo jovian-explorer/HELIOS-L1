@@ -276,9 +276,10 @@ class SpaceWeatherPhysics:
     @staticmethod
     def sound_speed(temp_k: float) -> float:
         """
-        Calculate ion acoustic sound speed C_s:
-        C_s = sqrt(gamma * k_B * (T_p + T_e) / m_p) ≈ 0.1174 * sqrt(T [K]) km/s
-        for polytropic index gamma = 5/3.
+        Calculate the proton sound speed C_s:
+        C_s = sqrt(gamma * k_B * T_p / m_p) ≈ 0.1174 * sqrt(T_p [K]) km/s
+        for polytropic index gamma = 5/3. Electron pressure is not included
+        (with T_e ≈ T_p the speed would be sqrt(2) larger).
         """
         t = max(1000.0, float(temp_k if temp_k is not None else 100000.0))
         cs = 0.1174 * math.sqrt(t)
