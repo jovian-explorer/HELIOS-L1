@@ -186,3 +186,19 @@ def test_archive_api_endpoint(monkeypatch, tmp_path):
     assert client.get("/api/archive/OMNI?start=2024-01-01&end=2024-03-01").status_code == 422
     assert client.get("/api/archive/OMNI?start=yesterday&end=2024-03-01").status_code == 422
     assert "WIND" in client.get("/api/archive").json()["missions"]
+
+
+def test_processors_setting_sizes_the_worker_pool():
+    import threading
+    from helios import config
+
+    before = config.ACTIVE_PROCESSOR_CORES
+    try:
+        config.update_system_settings(processors=2)
+        assert config.get_worker_pool()._max_workers == 2
+        name = asyncio.run(config.run_in_workers(lambda: threading.current_thread().name))
+        assert name.startswith("helios-worker")
+        config.update_system_settings(processors=3)
+        assert config.get_worker_pool()._max_workers == 3
+    finally:
+        config.update_system_settings(processors=before)

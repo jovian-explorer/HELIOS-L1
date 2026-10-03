@@ -2549,8 +2549,9 @@
             <span class="text-[11px] text-emerald-400 font-mono font-bold" id="settings-cores-readout">4 Cores Active</span>
           </div>
           <p class="text-[11px] text-slate-400">
-            Defines the number of parallel worker threads allocated to intensive tasks: FFT turbulence power spectra,
-            Rankine-Hugoniot shock jumps, machine-learning solar storm forecasting, and magnetosphere boundary solutions.
+            Number of worker threads for the heavy computations: decoding NASA CDAWeb archive days, turbulence
+            power spectra, cross-calibration and the fleet correlation matrix. They run off the server's main
+            loop, so the dashboard stays responsive and several analyses can run at once.
           </p>
           <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div class="w-full sm:w-2/3 space-y-2">

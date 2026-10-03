@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 
 from helios.core.coordinates import gse_to_gsm
+from helios.config import run_in_workers
 
 HAPI_SERVER = "https://cdaweb.gsfc.nasa.gov/hapi"
 
@@ -298,9 +299,13 @@ class ArchiveClient:
         text = await self.fetch_text(hapi_data_url(spec["id"], spec["parameters"], day, day + timedelta(days=1)))
         if text is None:
             return cached  # offline: stale cache, or None
-        try:
+        def decode():
             raw = parse_hapi_csv(text)
-            frame = to_minute_means(spec["reduce"](raw)) if not raw.empty else pd.DataFrame()
+            return to_minute_means(spec["reduce"](raw)) if not raw.empty else pd.DataFrame()
+
+        try:
+            # A DSCOVR magnetometer day is 86,400 rows: decode it in a worker thread.
+            frame = await run_in_workers(decode)
         except (HapiError, KeyError, ValueError):
             return cached
         tmp = path + ".tmp"

@@ -4,6 +4,10 @@ Configuration and mission catalog for HELIOS-L1.
 import sys
 import os
 import tempfile
+import asyncio
+import functools
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, Any
 
@@ -47,11 +51,39 @@ ACTIVE_THEME = "mission-slate"
 ACTIVE_FONT_SIZE = "normal"
 ACTIVE_TIMEZONE = "UTC"
 
+# Worker threads for CPU-heavy work (archive decoding, spectra, comparisons), sized by the
+# "processors" setting. Running it off the event loop keeps the server responsive, and
+# numpy / pandas release the GIL in their inner loops, so several requests run in parallel.
+_WORKER_POOL = None
+_WORKER_POOL_SIZE = 0
+_WORKER_LOCK = threading.Lock()
+
+
+def get_worker_pool() -> ThreadPoolExecutor:
+    """Thread pool with ACTIVE_PROCESSOR_CORES workers (rebuilt when the setting changes)."""
+    global _WORKER_POOL, _WORKER_POOL_SIZE
+    with _WORKER_LOCK:
+        if _WORKER_POOL is None or _WORKER_POOL_SIZE != ACTIVE_PROCESSOR_CORES:
+            old = _WORKER_POOL
+            _WORKER_POOL = ThreadPoolExecutor(max_workers=ACTIVE_PROCESSOR_CORES, thread_name_prefix="helios-worker")
+            _WORKER_POOL_SIZE = ACTIVE_PROCESSOR_CORES
+            if old is not None:
+                old.shutdown(wait=False)  # running jobs finish; new work goes to the new pool
+        return _WORKER_POOL
+
+
+async def run_in_workers(fn, *args, **kwargs):
+    """Run a blocking function in the worker pool from async code."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(get_worker_pool(), functools.partial(fn, *args, **kwargs))
+
+
 def get_system_settings() -> Dict[str, Any]:
     """Returns current system execution and user preference configuration."""
     return {
         "total_cpu_cores": TOTAL_CPU_CORES,
         "active_processors": ACTIVE_PROCESSOR_CORES,
+        "worker_threads": ACTIVE_PROCESSOR_CORES,
         "theme": ACTIVE_THEME,
         "font_size": ACTIVE_FONT_SIZE,
         "timezone": ACTIVE_TIMEZONE,

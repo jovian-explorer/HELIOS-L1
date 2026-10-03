@@ -38,6 +38,7 @@
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
 ### Interface and robustness
+- The "processors" setting is now used: it sizes the worker-thread pool that runs archive decoding, power spectra, cross-calibration and the fleet matrix off the server's event loop (it was stored but never used). The settings text describes what it actually controls.
 - The comparator panel shows a warning above the statistics when either spacecraft is simulated or synthetic, since r, RMSE, bias and lag then describe the model rather than two instruments.
 - Time labels convert UTC to the selected time zone correctly in WebKit-based windows (macOS, Linux).
 - Export endpoints reject unknown missions and spans outside 1–7 days.
