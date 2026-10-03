@@ -744,9 +744,10 @@ async def get_custom_preset(preset_id: str):
 
 @app.get("/api/custom/latest")
 async def get_latest_custom():
-    """Returns currently loaded custom ingested telemetry, or 404 if none."""
+    """Returns currently loaded custom ingested telemetry ({"status": "empty"} if none yet)."""
     if not latest_custom_dataset:
-        raise HTTPException(status_code=404, detail="No custom telemetry dataset has been ingested yet.")
+        # Not an error: the import tab asks on every visit, before anything was imported.
+        return {"status": "empty", "total_records": 0, "detail": "No custom telemetry dataset has been ingested yet."}
     return latest_custom_dataset
 
 @app.get("/api/custom/export/{export_format}")

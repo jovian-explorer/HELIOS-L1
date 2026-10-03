@@ -380,3 +380,12 @@ def test_reference_dois_point_to_the_cited_papers():
     assert refs["starkov_aurora_1994"]["doi"] is None
     assert MISSIONS["SOHO"]["doi"] == "10.1007/BF00733425"
     assert MISSIONS["SOLAR_ORBITER"]["doi"] == "10.1051/0004-6361/202038467"
+
+
+def test_custom_latest_is_not_an_error_before_any_import(monkeypatch):
+    """The import tab asks for the latest dataset on every visit; nothing imported is not a 404."""
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    monkeypatch.setattr(server, "latest_custom_dataset", None)
+    res = TestClient(server.app).get("/api/custom/latest")
+    assert res.status_code == 200 and res.json()["status"] == "empty" and res.json()["total_records"] == 0
