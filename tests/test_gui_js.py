@@ -10,7 +10,10 @@ from pathlib import Path
 
 import pytest
 
-APP_JS = Path(__file__).resolve().parents[1] / "helios" / "gui" / "static" / "js" / "app.js"
+import helios
+
+# Resolve through the package so the test also works when CI runs it against the installed wheel.
+APP_JS = Path(helios.__file__).resolve().parent / "gui" / "static" / "js" / "app.js"
 NODE = shutil.which("node")
 
 
