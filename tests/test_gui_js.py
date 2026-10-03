@@ -106,3 +106,10 @@ def test_drap_power_loss_text_is_computed():
     html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
     assert "79.1% Signal Power Loss" not in html and 'id="drap-att10-loss"' in html
     assert "Math.pow(10, -drap.attenuation_at_10mhz_db / 10)" in src
+
+
+def test_comparator_scatter_uses_numeric_axes():
+    src = APP_JS.read_text(encoding="utf-8")
+    body = src[src.index("function renderCompScatterChart") if "function renderCompScatterChart" in src else src.index("chart-comp-scatter"):]
+    body = body[:body.index("function renderCompResidualChart")]
+    assert "type: 'linear', position: 'bottom'" in body

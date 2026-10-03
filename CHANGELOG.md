@@ -41,6 +41,7 @@
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
 ### Interface and robustness
+- Comparator scatter plot: the regression and 1:1 lines turned the x axis into a category axis, so every pair was drawn at the left edge in one vertical stripe; the axis is numeric again.
 - Hazards tab text: the GIC formula was shown as raw LaTeX source, and the flare absorption panel credited Sauer & Wilkinson (2008), whose paper covers D-RAP's solar-proton (polar cap) absorption; the panel now states the SWPC flare relation it uses and that the proton part is not modelled.
 - Hazards tab: the 10 MHz attenuation card always said "~79.1% signal power loss" whatever the flare; it now shows 1 - 10^(-A/10) for the computed attenuation (e.g. 76.6% for 6.3 dB).
 - Forecast tab: the Dst card and axis were labelled "Dst*" and "Burton model"; the card shows the current (observed) Dst and the trajectory comes from the O'Brien-McPherron model, and the labels now say that.

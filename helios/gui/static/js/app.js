@@ -1302,8 +1302,10 @@ function renderCompScatterChart(comp) {
     options: {
       ...darkChartOptions,
       scales: {
-        x: { ...darkChartOptions.scales.x, title: { display: true, text: `${comp.mission_b} [${comp.parameter}]`, color: '#64748b' } },
-        y: { ...darkChartOptions.scales.y, title: { display: true, text: `${comp.mission_a} [${comp.parameter}]`, color: '#64748b' } }
+        // The fit and identity lines are 'line' datasets, which would make x a category axis
+        // and stack every point at the left edge: force a numeric axis.
+        x: { ...darkChartOptions.scales.x, type: 'linear', position: 'bottom', title: { display: true, text: `${comp.mission_b} [${comp.parameter}]`, color: '#64748b' } },
+        y: { ...darkChartOptions.scales.y, type: 'linear', title: { display: true, text: `${comp.mission_a} [${comp.parameter}]`, color: '#64748b' } }
       }
     }
   });
