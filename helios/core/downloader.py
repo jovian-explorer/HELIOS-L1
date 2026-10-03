@@ -118,6 +118,25 @@ def infer_cadence_seconds(records: List[Dict[str, Any]], default: float = 60.0) 
         return default
 
 
+def regular_series(records: List[Dict[str, Any]], key: str, dt_seconds: float) -> List[Optional[float]]:
+    """
+    Values of `key` on a regular dt_seconds grid spanning the records, with None where a
+    sample is missing (either a null value or a missing row). Needed for spectral analysis,
+    which assumes even sampling.
+    """
+    if not records:
+        return []
+    import pandas as pd
+    df = pd.DataFrame(records)
+    if key not in df.columns:
+        return []
+    series = pd.Series(pd.to_numeric(df[key], errors="coerce").to_numpy(),
+                       index=pd.to_datetime(df["time_tag"])).sort_index()
+    series = series[~series.index.duplicated(keep="last")]
+    gridded = series.resample(f"{max(1, int(round(dt_seconds)))}s").mean()
+    return [None if pd.isna(v) else float(v) for v in gridded.to_numpy()]
+
+
 class DataDownloader:
     """Downloader and manager for space weather telemetry."""
 

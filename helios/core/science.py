@@ -571,8 +571,24 @@ class SpaceWeatherPhysics:
         magnetic field / plasma turbulence. Identifies spectral slope alpha,
         Kolmogorov -5/3 inertial subrange, Iroshnikov-Kraichnan -3/2 slope,
         and Taylor frozen-in-flow spatial wavelength scales.
+
+        `values` must be evenly sampled every `dt_seconds`; missing samples (None/NaN)
+        are linearly interpolated across interior gaps rather than removed, because
+        removing them would splice the series and corrupt the frequency axis. Leading
+        and trailing gaps are trimmed. The PSD is one-sided and normalised by the
+        window power, so it is in (input unit)^2 / Hz and integrates to the variance.
         """
-        clean_vals = [float(v) for v in values if v is not None and not np.isnan(v)]
+        raw = np.array([np.nan if v is None else float(v) for v in values], dtype=float)
+        finite = np.isfinite(raw)
+        if finite.any():
+            idx = np.flatnonzero(finite)
+            raw = raw[idx[0]:idx[-1] + 1]
+            finite = np.isfinite(raw)
+        gap_fraction = float(1.0 - finite.mean()) if raw.size else 1.0
+        if raw.size and not finite.all():
+            pos = np.arange(raw.size)
+            raw[~finite] = np.interp(pos[~finite], pos[finite], raw[finite])
+        clean_vals = raw.tolist() if finite.any() else []
         if len(clean_vals) < 32:
             return {
                 "frequencies_hz": [],
@@ -596,9 +612,15 @@ class SpaceWeatherPhysics:
         window = np.hanning(len(arr_detrended))
         arr_windowed = arr_detrended * window
 
-        # Real FFT
+        # Real FFT -> one-sided PSD normalised by the window power:
+        # P(f_k) = 2 |X_k|^2 / (f_s * sum(w^2)), without doubling DC and Nyquist.
         fft_vals = np.fft.rfft(arr_windowed)
-        psd_raw = (np.abs(fft_vals) ** 2) / (len(arr) * (1.0 / dt_seconds))
+        fs = 1.0 / dt_seconds
+        psd_raw = (np.abs(fft_vals) ** 2) / (fs * float(np.sum(window ** 2)))
+        if len(arr) % 2 == 0:
+            psd_raw[1:-1] *= 2.0
+        else:
+            psd_raw[1:] *= 2.0
         freqs_raw = np.fft.rfftfreq(len(arr), d=dt_seconds)
 
         # Truncate DC component, take up to first 120 modes
@@ -636,11 +658,11 @@ class SpaceWeatherPhysics:
 
             # Kolmogorov -5/3 (-1.667)
             log_kolmo = - (5.0 / 3.0) * (np.log10(f_arr) - f_mid) + p_mid
-            kolmogorov_psd = [round(float(10 ** val), 5) for val in log_kolmo]
+            kolmogorov_psd = [float(f"{10 ** val:.6g}") for val in log_kolmo]
 
             # Iroshnikov-Kraichnan -3/2 (-1.50)
             log_ik = - 1.5 * (np.log10(f_arr) - f_mid) + p_mid
-            iroshnikov_psd = [round(float(10 ** val), 5) for val in log_ik]
+            iroshnikov_psd = [float(f"{10 ** val:.6g}") for val in log_ik]
 
             # Regime identification
             if 1.55 <= alpha <= 1.80:
@@ -661,8 +683,11 @@ class SpaceWeatherPhysics:
         taylor_re_1mhz = taylor_km_1mhz / r_earth_km
 
         return {
-            "frequencies_hz": [round(f, 6) for f in freqs],
-            "power_density": [round(p, 5) for p in psd],
+            # Significant figures, not fixed decimals: PSD values span many decades.
+            "frequencies_hz": [float(f"{f:.6g}") for f in freqs],
+            "power_density": [float(f"{p:.6g}") for p in psd],
+            "dt_seconds": float(dt_seconds),
+            "gap_fraction": round(gap_fraction, 4),
             "spectral_slope_alpha": round(alpha, 3),
             "r_squared": round(max(0.0, min(1.0, r2)), 3),
             "cascade_regime": regime,

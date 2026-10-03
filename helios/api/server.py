@@ -22,7 +22,7 @@ from helios.config import (
     SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
     get_system_settings, update_system_settings
 )
-from helios.core.downloader import DataDownloader
+from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
@@ -670,10 +670,13 @@ async def get_spectrum(mission_id: str = "DSCOVR", parameter: str = "bz_gsm", sp
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
     data = await downloader.get_satellite_telemetry(mission_key, span_days=span_days)
-    values = [float(d.get(parameter)) for d in data if d.get(parameter) is not None and isinstance(d.get(parameter), (int, float))]
+    # Keep gaps in place (None) so the series stays evenly sampled; the sample interval
+    # comes from the time stamps (1 min live, 5 min for 7-day averages and the offline model).
+    dt_seconds = infer_cadence_seconds(data, default=60.0)
+    values = regular_series(data, parameter, dt_seconds)
     speeds = [float(d.get("speed")) for d in data if d.get("speed") is not None and isinstance(d.get("speed"), (int, float))]
     v_mean = float(np.mean(speeds)) if speeds else 450.0
-    res = SpaceWeatherPhysics.power_spectral_density(values, dt_seconds=60.0, v_sw_kms=v_mean)
+    res = SpaceWeatherPhysics.power_spectral_density(values, dt_seconds=dt_seconds, v_sw_kms=v_mean)
     res["mission_id"] = mission_key
     res["parameter"] = parameter
     res["span_days"] = span_days

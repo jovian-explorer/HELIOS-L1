@@ -66,3 +66,39 @@ def test_forecaster_newell_uses_transverse_field_and_tolerates_gaps():
     out = F.forecast_geomagnetic_storm(recs)
     assert len(out["predictions_timeline"]) == 12
     assert out["current_coupling"]["newell_coupling_rate"] > 10000
+
+
+def test_psd_is_one_sided_and_integrates_to_variance():
+    """White noise of variance s^2 sampled every dt has a one-sided PSD of 2 s^2 dt."""
+    rng = np.random.default_rng(1)
+    dt, sigma = 60.0, 3.0
+    x = rng.normal(0.0, sigma, 4096)
+    res = SpaceWeatherPhysics.power_spectral_density(x.tolist(), dt_seconds=dt)
+    level = float(np.mean(res["power_density"]))
+    assert level == pytest.approx(2.0 * sigma ** 2 * dt, rel=0.25)
+    assert res["dt_seconds"] == dt
+
+
+def test_psd_gaps_are_interpolated_not_spliced():
+    """Removing gap samples would shift the spectral peak; interpolation keeps it in place."""
+    dt = 60.0
+    n = 512
+    f0 = 1.0 / (32 * dt)
+    t = np.arange(n) * dt
+    x = np.sin(2 * np.pi * f0 * t).tolist()
+    for i in range(100, 180):  # a 15 % gap
+        x[i] = None
+    res = SpaceWeatherPhysics.power_spectral_density(x, dt_seconds=dt)
+    peak_f = res["frequencies_hz"][int(np.argmax(res["power_density"]))]
+    assert peak_f == pytest.approx(f0, rel=0.05)
+    assert res["gap_fraction"] == pytest.approx(80 / 512, abs=1e-3)
+
+
+def test_spectrum_api_uses_record_cadence():
+    """The offline model is 5-minute data; the API used to assume 60 s, putting every frequency 5x too high."""
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+    res = TestClient(app).get("/api/spectrum?mission_id=DSCOVR&parameter=bz_gsm").json()
+    assert res["dt_seconds"] == 300.0
+    n = 24 * 12  # 24 h of 5-minute samples
+    assert res["frequencies_hz"][0] == pytest.approx(1.0 / (n * 300.0), rel=1e-3)
