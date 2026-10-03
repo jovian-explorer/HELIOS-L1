@@ -4,7 +4,7 @@
  * - High-detail global continent cartography in Equirectangular projection
  * - Real-time Astronomical Solar Day/Night Terminator & Twilight Shadow Mask
  * - Dual-Hemisphere Dancing Auroral Curtains (557.7 nm Green, 630.0 nm Red, 427.8 nm Violet)
- * - Animated Shimmering Luminescence via Starkov-Feldstein Geomagnetic Formulation
+ * - Animated Shimmering Luminescence around a Kp/Bz oval approximation
  * - Global Space Weather Ground Observation Station Network with live MLT
  * - Interactive HUD Telemetry Tooltips & Geomagnetic Coordinate Mapping
  */
@@ -107,10 +107,12 @@ class AuroralMapRenderer {
     });
   }
 
-  setConditions(kp, bz, power) {
+  setConditions(kp, bz, power, eqMidnightLat) {
     this.kpIndex = Math.max(0, Math.min(9, kp || 3.5));
     this.imfBz = bz || 0;
     this.hemisphericPower = power || 35;
+    // Equatorward midnight boundary from the server model, so the map label matches the card
+    this.eqMidnightLat = (eqMidnightLat !== undefined && eqMidnightLat !== null) ? Number(eqMidnightLat) : null;
   }
 
   // Converts geographic (lon, lat) to canvas (x, y)
@@ -167,7 +169,7 @@ class AuroralMapRenderer {
     return mlt;
   }
 
-  // Starkov-Feldstein Auroral Oval Polygon Generator
+  // Auroral oval polygon (Kp/Bz approximation, drawn around the geomagnetic pole)
   generateAuroralOval(isNorth = true) {
     const pole = isNorth ? this.magPoleNorth : this.magPoleSouth;
     const kp = this.kpIndex;
@@ -554,11 +556,14 @@ class AuroralMapRenderer {
 
     ctx.fillStyle = '#38bdf8';
     ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('STARKOV-FELDSTEIN AURORAL OVAL MODEL', 18, 26);
+    ctx.fillText('AURORAL OVAL (Kp/Bz APPROXIMATION)', 18, 26);
 
     ctx.fillStyle = '#94a3b8';
     ctx.font = '9px "JetBrains Mono", monospace';
-    ctx.fillText(`EQUATORWARD MIDNIGHT: ${(68 - this.kpIndex * 1.8).toFixed(1)}° MLAT`, 18, 40);
+    const eqMid = this.eqMidnightLat !== null && this.eqMidnightLat !== undefined
+      ? this.eqMidnightLat
+      : Math.max(38.0, 66.5 - 2.1 * this.kpIndex - Math.abs(Math.min(0, this.imfBz)) * 0.45);
+    ctx.fillText(`EQUATORWARD MIDNIGHT: ${eqMid.toFixed(1)}° MLAT`, 18, 40);
     ctx.fillText(`KP: ${this.kpIndex.toFixed(1)} • IMF BZ: ${this.imfBz.toFixed(1)} nT • HPI: ${this.hemisphericPower} GW`, 18, 54);
 
     // Bottom-Right Mouse Geo Readout

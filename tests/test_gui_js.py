@@ -90,3 +90,12 @@ console.log(JSON.stringify(out));
     assert beta == pytest.approx(S.plasma_beta(5, 1e5, 5), abs=1e-9)
     # OMNI: V_A = 20 * 5 / sqrt(5) = 44.72, C_s = 0.12 sqrt(2.28e5) = 57.30 -> M_ms = 450 / 72.69
     assert mms == pytest.approx(450 / math.hypot(44.7214, 57.2992), abs=1e-3)
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_aurora_map_label_uses_the_server_boundary():
+    """The map overlay computed its own equatorward boundary (68 - 1.8 Kp), disagreeing with the card."""
+    src = (APP_JS.parent / "aurora.js").read_text(encoding="utf-8")
+    assert "68 - this.kpIndex * 1.8" not in src
+    assert "this.eqMidnightLat" in src
+    assert "b.equatorward_midnight_lat" in APP_JS.read_text(encoding="utf-8")

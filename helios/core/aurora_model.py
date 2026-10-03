@@ -1,6 +1,6 @@
 """
 Auroral oval dynamics and geomagnetic storm ring current (Dst) forecasting engine.
-Implements Feldstein/Starkov auroral oval empirical boundary models and
+Implements a linear Kp/Bz approximation of the auroral oval boundaries and
 Burton et al. (1975) and O'Brien & McPherron (2000) Dst ring current models.
 """
 import math
@@ -13,7 +13,10 @@ class AuroralModel:
     def calculate_auroral_boundaries(kp: float, bz_gsm: float = 0.0) -> Dict[str, Any]:
         """
         Calculate equatorward and poleward auroral oval geomagnetic latitude boundaries
-        at midnight, dawn, dusk, and noon based on the Starkov (1994) / Feldstein empirical models.
+        at midnight, dawn, dusk, and noon from a linear approximation in Kp and southward Bz.
+        This is not the Starkov (1994) model (whose coefficients are cubic in log10|AL|);
+        it reproduces the familiar Feldstein-oval behaviour (about 2 degrees equatorward
+        per Kp step at midnight) and is labelled as an approximation in the interface.
         """
         kp_eff = max(0.0, min(9.0, float(kp)))
         bz_eff = float(bz_gsm) if bz_gsm is not None else 0.0

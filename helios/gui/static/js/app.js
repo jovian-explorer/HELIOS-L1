@@ -1373,7 +1373,7 @@ async function loadAuroralForecast() {
       auroralRenderer.resize();
       const kpVal = data.kp !== undefined ? data.kp : (b.kp_used || 3.5);
       const bzVal = data.bz_gsm !== undefined ? data.bz_gsm : (b.bz_used !== undefined ? b.bz_used : -3.2);
-      auroralRenderer.setConditions(kpVal, bzVal, b.hemispheric_power_gw || 45);
+      auroralRenderer.setConditions(kpVal, bzVal, b.hemispheric_power_gw || 45, b.equatorward_midnight_lat);
     }
   } catch (err) {
     console.error('Error loading auroral forecast:', err);
@@ -3200,7 +3200,7 @@ function renderUserGuideTab(container) {
       title: '6. Geospace Hazards, GIC Modeling & HF Ionospheric Absorption',
       icon: 'fa-bolt',
       color: 'text-rose-400',
-      summary: 'Starkov-Feldstein auroral oval boundary, Boteler GIC geoelectric fields on power grids, and NOAA D-RAP radio absorption.',
+      summary: 'Auroral oval boundary (Kp/Bz approximation), Boteler GIC geoelectric fields on power grids, and NOAA D-RAP radio absorption.',
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
@@ -3210,7 +3210,7 @@ function renderUserGuideTab(container) {
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
               <span class="font-bold text-emerald-300">Auroral Oval Visibility</span>
               <p class="text-slate-400 text-[11px]">
-                Computes dynamic poleward and equatorward boundaries via Starkov (1994) / Feldstein empirical models. Projects luminescence curtains and ground observatory visibility on an interactive world map with day/night terminator.
+                Computes poleward and equatorward boundaries from a linear Kp/Bz approximation of the Feldstein oval (not the Starkov 1994 coefficients). Projects luminescence curtains and ground observatory visibility on an interactive world map with day/night terminator.
               </p>
             </div>
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
