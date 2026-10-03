@@ -1070,8 +1070,8 @@ function updateTelemetryUI(data) {
 
   // Feed Live Physical Telemetry to Orbit Simulator & HUD
   if (orbitViewer) {
-    const mach = latest.mach_number || 8.0;
-    orbitViewer.setSolarWindConditions(latest.speed, latest.dynamic_pressure, latest.bz_gsm, mach);
+    const mb = solarWindMachBeta(latest);
+    orbitViewer.setSolarWindConditions(latest.speed, latest.dynamic_pressure, latest.bz_gsm, mb.mms, mb.beta);
     const hudFlux = document.getElementById('hud-flux-speed');
     if (hudFlux && latest.speed) hudFlux.innerText = `${latest.speed} km/s`;
     if (orbitViewer.lastComputedBoundaries) {
@@ -2283,11 +2283,11 @@ function setOrbitBoundaryModel(model) {
 function setOrbitSolarWindPreset(presetKey) {
   if (!orbitViewer) return;
   if (presetKey === 'quiet') {
-    orbitViewer.setSolarWindConditions(380, 1.8, 2.5, 8.5);
+    orbitViewer.setSolarWindConditions(380, 1.8, 2.5, 8.5, 2.0);
   } else if (presetKey === 'storm') {
-    orbitViewer.setSolarWindConditions(580, 8.0, -6.5, 6.0);
+    orbitViewer.setSolarWindConditions(580, 8.0, -6.5, 6.0, 1.0);
   } else if (presetKey === 'severe') {
-    orbitViewer.setSolarWindConditions(920, 32.0, -28.0, 4.2);
+    orbitViewer.setSolarWindConditions(920, 32.0, -28.0, 4.2, 0.3);
   }
   orbitViewer.draw();
   if (orbitViewer.lastComputedBoundaries) {
@@ -2303,8 +2303,8 @@ function setOrbitSolarWindPreset(presetKey) {
 function syncOrbitLiveTelemetry() {
   if (!orbitViewer || !currentTelemetryData || !currentTelemetryData.latest) return;
   const latest = currentTelemetryData.latest;
-  const mach = latest.mach_number || 8.0;
-  orbitViewer.setSolarWindConditions(latest.speed, latest.dynamic_pressure, latest.bz_gsm, mach);
+  const mb = solarWindMachBeta(latest);
+  orbitViewer.setSolarWindConditions(latest.speed, latest.dynamic_pressure, latest.bz_gsm, mb.mms, mb.beta);
   orbitViewer.draw();
   if (orbitViewer.lastComputedBoundaries) {
     updateBoundaryCards(orbitViewer.lastComputedBoundaries);
@@ -2998,10 +2998,10 @@ function renderUserGuideTab(container) {
     },
     {
       id: 'guide-boundaries',
-      title: '2. Sun-Earth L1 Orbital Geometry & Chao Magnetopause Modeling',
+      title: '2. Sun-Earth L1 Orbital Geometry & Magnetopause / Bow Shock Modeling',
       icon: 'fa-shield-halved',
       color: 'text-amber-400',
-      summary: 'Analytical Chao et al. (2002) and Shue et al. (1997) magnetopause and bow shock physics, GSE coordinates, and sub-GEO compression warnings.',
+      summary: 'Shue et al. (1998) magnetopause with the Chao et al. (2002) or Farris & Russell (1994) bow shock, GSE coordinates, and sub-GEO compression warnings.',
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
@@ -3011,14 +3011,16 @@ function renderUserGuideTab(container) {
           <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-2">
             <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
               <i class="fa-solid fa-calculator"></i>
-              <span>Governing Equations: Chao et al. (2002) Empirical Bilinear Model</span>
+              <span>Governing Equations</span>
             </div>
             <div class="font-mono text-xs text-amber-300 space-y-1 pl-2 border-l-2 border-amber-500/50">
-              <div>r₀,mp = (11.12 + 0.057 · Bz) · P_dyn^(-1/6.6)&nbsp;&nbsp;[for Bz ≥ 0 nT]</div>
-              <div>r₀,mp = (11.12 + 0.541 · Bz) · P_dyn^(-1/6.6)&nbsp;&nbsp;[for Bz &lt; 0 nT (Enhanced Erosion)]</div>
-              <div>α_mp = (0.58 - 0.007 · Bz) · (1 + 0.024 · P_dyn)</div>
-              <div>R₀,bs = (14.5 + 0.08 · Bz) · P_dyn^(-1/6.6) · [1 + 0.8 · ((γ-1)M² + 2) / ((γ+1)(M² - 1))] · (1 / 1.25)</div>
-              <div>α_bs = 0.61 · (1 + 0.015 · P_dyn)&nbsp;&nbsp;[Polytropic index γ = 5/3]</div>
+              <div>Magnetopause, Shue et al. (1998): r = r₀ (2 / (1 + cos θ))^α</div>
+              <div>r₀ = (10.22 + 1.29 tanh(0.184 (Bz + 8.14))) · P_dyn^(-1/6.6),&nbsp;&nbsp;α = (0.58 − 0.007 Bz)(1 + 0.024 ln P_dyn)</div>
+              <div>Bow shock, Chao et al. (2002): r = r₀ ((1 + ε) / (1 + ε cos θ))^α,&nbsp;&nbsp;ε = 1.029</div>
+              <div>r₀ = a₁(1 + a₂Bz)(1 + a₉β)(1 + a₄((a₈ − 1)M_ms² + 2) / ((a₈ + 1)M_ms²)) · P_dyn^(-1/a₁₁)</div>
+              <div>α = a₅(1 + a₁₃Bz)(1 + a₇P_dyn)(1 + a₁₀ ln(1 + β))(1 + a₁₄M_ms)&nbsp;&nbsp;[a₃, a₆ replace a₂, a₁₃ for Bz &lt; 0]</div>
+              <div>Bow shock, Farris &amp; Russell (1994): R_bs = r₀,mp [1 + 1.1 ((γ − 1)M_ms² + 2) / ((γ + 1)(M_ms² − 1))],&nbsp;&nbsp;γ = 5/3</div>
+              <div>M_ms = magnetosonic Mach number, β = plasma beta (OMNI definitions)</div>
             </div>
           </div>
 
@@ -3249,28 +3251,23 @@ function computeSandboxPhysics(p) {
   const ma = vsw / Math.max(1.0, va);
   const mms = vsw / Math.max(1.0, vms);
 
-  // 4. Chao et al. (2002) Magnetopause & Bow Shock
-  let chao_r0_mp;
-  if (bz >= 0) {
-    chao_r0_mp = (11.12 + 0.057 * bz) * pFactor;
-  } else {
-    chao_r0_mp = (11.12 + 0.541 * bz) * pFactor;
-  }
-  chao_r0_mp = Math.max(3.5, Math.min(16.0, chao_r0_mp));
-  const chao_alpha_mp = Math.max(0.35, Math.min(0.95, (0.58 - 0.007 * bz) * (1.0 + 0.024 * pdyn)));
+  // 4. Plasma beta (OMNI definition)
+  const beta = (temp * 4.16e-5 + 5.34) * n / (bt * bt);
 
-  const gamma = 5.0 / 3.0;
-  const machFactor = 1.0 + 0.8 * (((gamma - 1.0) * (ma * ma) + 2.0) / ((gamma + 1.0) * (ma * ma - 1.0)));
-  let chao_r0_bs = (14.5 + 0.08 * bz) * pFactor * (machFactor / 1.25);
-  chao_r0_bs = Math.max(5.0, Math.min(25.0, chao_r0_bs));
-  const chao_alpha_bs = Math.max(0.40, Math.min(0.90, 0.61 * (1.0 + 0.015 * pdyn)));
+  // 5. Shue et al. (1998) magnetopause and Chao et al. (2002) bow shock (orbits.js)
+  const mp = shue1998Magnetopause(pdyn, bz);
+  const mp_r0 = mp.r0;
+  const mp_alpha = mp.alpha;
+  const bs = chaoBowShock(pdyn, bz, mms, beta);
+  const bs_r0 = bs.r0;
+  const bs_alpha = bs.alpha;
 
-  // 5. Shue et al. (1997) Magnetopause
-  const shue_r0_mp = Math.max(3.5, Math.min(16.0, (10.22 + 1.29 * Math.tanh(0.184 * (bz + 8.14))) * pFactor));
-  const shue_alpha_mp = Math.max(0.40, Math.min(0.90, (0.58 - 0.007 * bz) * (1.0 + 0.024 * Math.log(pdyn))));
+  // Shue et al. (1997) standoff (the one OMNI uses) and Farris & Russell (1994) bow shock for comparison
+  const shue97_r0 = shue1997Standoff(pdyn, bz);
+  const fr_bs_r0 = mms > 1.0 ? farrisRussellBowShock(mp_r0, mms).r0 : null;
 
   // Sheath thickness
-  const sheath_re = Math.max(0.5, chao_r0_bs - chao_r0_mp);
+  const sheath_re = bs_r0 - mp_r0;
 
   // 6. Clock angle & couplings
   const bt_trans = Math.sqrt(by * by + bz * bz);
@@ -3304,9 +3301,10 @@ function computeSandboxPhysics(p) {
     pdyn,
     va, cs, vms,
     ma, mms,
-    chao_r0_mp, chao_alpha_mp,
-    chao_r0_bs, chao_alpha_bs,
-    shue_r0_mp, shue_alpha_mp,
+    beta,
+    mp_r0, mp_alpha,
+    bs_r0, bs_alpha,
+    shue97_r0, fr_bs_r0,
     sheath_re,
     clock_deg,
     akasofu_gw,
@@ -3314,8 +3312,8 @@ function computeSandboxPhysics(p) {
     phi_pc,
     ae,
     ey,
-    inside_geo_chao: chao_r0_mp < 6.6,
-    inside_geo_shue: shue_r0_mp < 6.6
+    inside_geo: mp_r0 < 6.6,
+    inside_geo_shue97: shue97_r0 < 6.6
   };
 }
 
@@ -3423,24 +3421,24 @@ function renderSandboxTab(container) {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="bg-space-950 p-3.5 rounded-xl border border-sky-500/30 space-y-1">
               <div class="text-[10px] uppercase font-bold text-sky-400 flex items-center justify-between">
-                <span>Chao et al. (2002) Magnetopause</span>
-                <span id="sbx-chao-mp-geo" class="text-[9px] px-1.5 py-0.2 rounded font-mono ${res.inside_geo_chao ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${res.inside_geo_chao ? 'SUB-GEO' : 'CLEAR'}</span>
+                <span>Shue et al. (1998) Magnetopause</span>
+                <span id="sbx-chao-mp-geo" class="text-[9px] px-1.5 py-0.2 rounded font-mono ${res.inside_geo ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${res.inside_geo ? 'SUB-GEO' : 'CLEAR'}</span>
               </div>
               <div class="flex items-baseline space-x-2">
-                <span id="sbx-chao-mp-re" class="text-xl font-bold font-hud ${res.inside_geo_chao ? 'text-rose-400' : 'text-sky-300'}">${res.chao_r0_mp.toFixed(2)} R_E</span>
-                <span id="sbx-chao-mp-km" class="text-xs text-slate-400 font-mono">~${Math.round(res.chao_r0_mp * 6371).toLocaleString()} km</span>
+                <span id="sbx-chao-mp-re" class="text-xl font-bold font-hud ${res.inside_geo ? 'text-rose-400' : 'text-sky-300'}">${res.mp_r0.toFixed(2)} R_E</span>
+                <span id="sbx-chao-mp-km" class="text-xs text-slate-400 font-mono">~${Math.round(res.mp_r0 * 6371).toLocaleString()} km</span>
               </div>
-              <div class="text-[11px] text-slate-400 font-mono">Flaring: α = <span id="sbx-chao-alpha">${res.chao_alpha_mp.toFixed(3)}</span></div>
+              <div class="text-[11px] text-slate-400 font-mono">Flaring: α = <span id="sbx-chao-alpha">${res.mp_alpha.toFixed(3)}</span></div>
             </div>
 
             <div class="bg-space-950 p-3.5 rounded-xl border border-sky-500/30 space-y-1">
               <div class="text-[10px] uppercase font-bold text-cyan-400 flex items-center justify-between">
-                <span>Chao (2002) Bow Shock</span>
-                <span class="text-[9px] text-slate-400 font-mono">M_A: <strong id="sbx-mach-badge" class="text-cyan-300">${res.ma.toFixed(1)}</strong></span>
+                <span>Chao et al. (2002) Bow Shock</span>
+                <span class="text-[9px] text-slate-400 font-mono">M_ms: <strong id="sbx-mach-badge" class="text-cyan-300">${res.mms.toFixed(1)}</strong> β: <strong id="sbx-beta-badge" class="text-cyan-300">${res.beta.toFixed(2)}</strong></span>
               </div>
               <div class="flex items-baseline space-x-2">
-                <span id="sbx-chao-bs-re" class="text-xl font-bold font-hud text-cyan-300">${res.chao_r0_bs.toFixed(2)} R_E</span>
-                <span id="sbx-chao-bs-km" class="text-xs text-slate-400 font-mono">~${Math.round(res.chao_r0_bs * 6371).toLocaleString()} km</span>
+                <span id="sbx-chao-bs-re" class="text-xl font-bold font-hud text-cyan-300">${res.bs_r0.toFixed(2)} R_E</span>
+                <span id="sbx-chao-bs-km" class="text-xs text-slate-400 font-mono">~${Math.round(res.bs_r0 * 6371).toLocaleString()} km</span>
               </div>
               <div class="text-[11px] text-slate-400 font-mono">Sheath: ΔR = <span id="sbx-sheath-re" class="text-emerald-400 font-bold">${res.sheath_re.toFixed(1)} R_E</span></div>
             </div>
@@ -3461,10 +3459,10 @@ function renderSandboxTab(container) {
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
               <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Shue (1997) Model Standoff</div>
               <div class="flex items-baseline space-x-2">
-                <span id="sbx-shue-re" class="text-lg font-bold font-hud text-slate-200">${res.shue_r0_mp.toFixed(2)} R_E</span>
-                <span id="sbx-shue-delta" class="text-[11px] text-slate-400 font-mono">Δ: ${(res.chao_r0_mp - res.shue_r0_mp).toFixed(2)} R_E</span>
+                <span id="sbx-shue-re" class="text-lg font-bold font-hud text-slate-200">${res.shue97_r0.toFixed(2)} R_E</span>
+                <span id="sbx-shue-delta" class="text-[11px] text-slate-400 font-mono">Δ: ${(res.mp_r0 - res.shue97_r0).toFixed(2)} R_E</span>
               </div>
-              <p class="text-[10px] text-slate-500 font-mono">Tanh boundary model comparison</p>
+              <p class="text-[10px] text-slate-500 font-mono">(11.4 + K·Bz)·P^(-1/6.6), as in OMNI; Δ = Shue 1998 − Shue 1997</p>
             </div>
 
             <!-- Wave Speeds -->
@@ -3532,41 +3530,43 @@ function onSandboxParamChange(param, val) {
   // Update output elements
   const elChaoMpRe = document.getElementById('sbx-chao-mp-re');
   if (elChaoMpRe) {
-    elChaoMpRe.innerText = `${res.chao_r0_mp.toFixed(2)} R_E`;
-    elChaoMpRe.className = `text-xl font-bold font-hud ${res.inside_geo_chao ? 'text-rose-400 animate-pulse' : 'text-sky-300'}`;
+    elChaoMpRe.innerText = `${res.mp_r0.toFixed(2)} R_E`;
+    elChaoMpRe.className = `text-xl font-bold font-hud ${res.inside_geo ? 'text-rose-400 animate-pulse' : 'text-sky-300'}`;
   }
   const elChaoMpKm = document.getElementById('sbx-chao-mp-km');
-  if (elChaoMpKm) elChaoMpKm.innerText = `~${Math.round(res.chao_r0_mp * 6371).toLocaleString()} km`;
+  if (elChaoMpKm) elChaoMpKm.innerText = `~${Math.round(res.mp_r0 * 6371).toLocaleString()} km`;
 
   const elChaoGeo = document.getElementById('sbx-chao-mp-geo');
   if (elChaoGeo) {
-    elChaoGeo.innerText = res.inside_geo_chao ? 'SUB-GEO' : 'CLEAR';
-    elChaoGeo.className = `text-[9px] px-1.5 py-0.2 rounded font-mono ${res.inside_geo_chao ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}`;
+    elChaoGeo.innerText = res.inside_geo ? 'SUB-GEO' : 'CLEAR';
+    elChaoGeo.className = `text-[9px] px-1.5 py-0.2 rounded font-mono ${res.inside_geo ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}`;
   }
 
   const elChaoAlpha = document.getElementById('sbx-chao-alpha');
-  if (elChaoAlpha) elChaoAlpha.innerText = res.chao_alpha_mp.toFixed(3);
+  if (elChaoAlpha) elChaoAlpha.innerText = res.mp_alpha.toFixed(3);
 
   const elChaoBsRe = document.getElementById('sbx-chao-bs-re');
-  if (elChaoBsRe) elChaoBsRe.innerText = `${res.chao_r0_bs.toFixed(2)} R_E`;
+  if (elChaoBsRe) elChaoBsRe.innerText = `${res.bs_r0.toFixed(2)} R_E`;
 
   const elChaoBsKm = document.getElementById('sbx-chao-bs-km');
-  if (elChaoBsKm) elChaoBsKm.innerText = `~${Math.round(res.chao_r0_bs * 6371).toLocaleString()} km`;
+  if (elChaoBsKm) elChaoBsKm.innerText = `~${Math.round(res.bs_r0 * 6371).toLocaleString()} km`;
 
   const elSheath = document.getElementById('sbx-sheath-re');
   if (elSheath) elSheath.innerText = `${res.sheath_re.toFixed(1)} R_E`;
 
   const elMach = document.getElementById('sbx-mach-badge');
-  if (elMach) elMach.innerText = res.ma.toFixed(1);
+  if (elMach) elMach.innerText = res.mms.toFixed(1);
+  const elBeta = document.getElementById('sbx-beta-badge');
+  if (elBeta) elBeta.innerText = res.beta.toFixed(2);
 
   const elPdyn = document.getElementById('sbx-pdyn');
   if (elPdyn) elPdyn.innerText = `${res.pdyn.toFixed(2)} nPa`;
 
   const elShueRe = document.getElementById('sbx-shue-re');
-  if (elShueRe) elShueRe.innerText = `${res.shue_r0_mp.toFixed(2)} R_E`;
+  if (elShueRe) elShueRe.innerText = `${res.shue97_r0.toFixed(2)} R_E`;
 
   const elShueDelta = document.getElementById('sbx-shue-delta');
-  if (elShueDelta) elShueDelta.innerText = `Δ: ${(res.chao_r0_mp - res.shue_r0_mp).toFixed(2)} R_E`;
+  if (elShueDelta) elShueDelta.innerText = `Δ: ${(res.mp_r0 - res.shue97_r0).toFixed(2)} R_E`;
 
   const elVa = document.getElementById('sbx-va');
   if (elVa) elVa.innerText = `${res.va.toFixed(1)} km/s`;
@@ -3648,7 +3648,7 @@ function loadSandboxFromLive() {
 function injectSandboxToOrbit() {
   if (orbitViewer) {
     const res = computeSandboxPhysics(sandboxParams);
-    orbitViewer.setSolarWindConditions(res.vsw, res.pdyn, res.bz, res.ma);
+    orbitViewer.setSolarWindConditions(res.vsw, res.pdyn, res.bz, res.mms, res.beta);
     orbitViewer.draw();
     if (orbitViewer.lastComputedBoundaries) {
       updateBoundaryCards(orbitViewer.lastComputedBoundaries);

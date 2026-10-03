@@ -790,8 +790,8 @@
             <div class="flex items-center space-x-1.5 bg-space-950/80 px-2.5 py-1 rounded-xl border border-sky-500/30">
               <span class="text-[10px] font-bold text-slate-400 uppercase font-mono"><i class="fa-solid fa-shield-halved text-sky-400 mr-1"></i>Model:</span>
               <select id="orbit-model-select" onchange="setOrbitBoundaryModel(this.value)" class="bg-space-900 text-sky-300 font-tech font-bold text-xs border border-sky-500/30 rounded-lg px-2 py-0.5 focus:outline-none focus:border-sky-400 cursor-pointer">
-                <option value="chao" selected>Chao et al. (2002) [BS + MP]</option>
-                <option value="shue">Shue et al. (1997) [Tanh MP]</option>
+                <option value="chao" selected>Bow shock: Chao et al. (2002)</option>
+                <option value="shue">Bow shock: Farris &amp; Russell (1994)</option>
               </select>
             </div>
 
@@ -916,7 +916,7 @@
           </div>
         </div>
 
-        <!-- Magnetospheric Physics & Chao Boundary Metrics Strip -->
+        <!-- Magnetospheric Physics & Boundary Metrics Strip -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
           <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
@@ -927,7 +927,7 @@
               <span id="card-bow-standoff" class="text-2xl font-hud font-bold text-sky-300">13.8 RE</span>
               <span id="card-bow-km" class="text-[11px] font-mono text-slate-400">~87,900 km</span>
             </div>
-            <div class="text-[10px] text-slate-400 mt-1">Chao (2002) Mach-coupled standoff scaling with polytropic index γ = 5/3</div>
+            <div class="text-[10px] text-slate-400 mt-1">Chao et al. (2002) or Farris &amp; Russell (1994): depends on P_dyn, Bz, magnetosonic Mach number and β</div>
           </div>
 
           <div class="metric-card" style="border-left: 3px solid var(--accent-solar);">
@@ -2763,8 +2763,8 @@
               <span class="text-slate-400">Exact Vis-Viva orbital speed: v(r) = &radic;(&mu;(2/r - 1/a)) strictly bounding PSP perihelion to 190.8 km/s (9.86 R☉).</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <strong class="text-emerald-300 block">Chao (2002) &amp; Shue (1998) Boundaries</strong>
-              <span class="text-slate-400">Dynamic magnetopause &amp; bow shock standoff r(&theta;) = r_0(2/(1+cos&theta;))^&alpha; under solar wind P_dyn and Bz compression.</span>
+              <strong class="text-emerald-300 block">Shue (1998) Magnetopause &amp; Chao (2002) Bow Shock</strong>
+              <span class="text-slate-400">Magnetopause r(&theta;) = r_0(2/(1+cos&theta;))^&alpha; and bow shock r(&theta;) = r_0((1+&epsilon;)/(1+&epsilon;cos&theta;))^&alpha; under solar wind P_dyn, Bz, M_ms and &beta;.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
               <strong class="text-rose-300 block">Boteler (2012) &amp; Pirjola (2002) GIC Induction</strong>

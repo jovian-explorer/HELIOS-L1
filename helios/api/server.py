@@ -529,18 +529,23 @@ async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None)
 async def get_magnetospheric_boundaries(
     dynamic_pressure: float = Query(2.0, ge=0.01, le=120.0, description="Solar wind dynamic pressure P_dyn (nPa)"),
     bz_gsm: float = Query(0.0, ge=-80.0, le=80.0, description="Interplanetary Magnetic Field Bz component (nT)"),
-    mach_number: float = Query(8.0, ge=1.2, le=30.0, description="Solar wind Alfvén / magnetosonic Mach number"),
-    model: str = Query("chao", description="Magnetospheric boundary model: 'chao' (Chao et al., 2002) or 'shue' (Shue et al., 1997, 1998)")
+    mach_number: float = Query(8.0, ge=1.2, le=30.0, description="Solar wind magnetosonic Mach number M_ms"),
+    plasma_beta: float = Query(2.0, ge=0.0, le=100.0, description="Solar wind plasma beta (OMNI definition)"),
+    model: str = Query("chao", description="Bow shock model: 'chao' (Chao et al., 2002) or 'shue' (Farris & Russell, 1994, from the Shue et al. 1998 magnetopause)")
 ):
     """
-    Computes 2D/3D magnetopause and bow shock standoff distances, flaring parameters,
-    and GSE spatial coordinate profiles using Chao et al. (2002) or Shue et al. (1997).
+    Computes magnetopause and bow shock standoff distances, flaring parameters and
+    GSE coordinate profiles. The magnetopause is Shue et al. (1998); the bow shock is
+    Chao et al. (2002) or Farris & Russell (1994).
     """
+    if model.lower().strip() not in ("chao", "shue", "farris"):
+        raise HTTPException(status_code=400, detail="model must be 'chao' or 'shue'")
     return SpaceWeatherPhysics.calculate_magnetospheric_boundaries(
         dynamic_pressure_npa=dynamic_pressure,
         bz_gsm_nt=bz_gsm,
         mach_number=mach_number,
-        model=model
+        model=model,
+        plasma_beta=plasma_beta
     )
 
 @app.get("/api/geospace/coupling")

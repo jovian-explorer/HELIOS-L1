@@ -252,3 +252,49 @@ def test_boyle_polar_cap_potential_uses_imf_magnitude():
     from helios.api.server import app
     api = TestClient(app).get("/api/geospace/coupling?speed_kms=500&b_total_nt=10&by_gsm_nt=0&bz_gsm_nt=-6").json()
     assert api["polar_cap_potential"]["polar_cap_potential_kv"] == pytest.approx(142.0, abs=0.06)
+
+
+def test_chao_2002_bow_shock_reproduces_published_standoff():
+    """
+    Chao et al. (2002) bow shock with its published coefficients. Mo et al. (2025, JGR,
+    Table 1) give r0 = 13.325 R_E for the initial Chao parameters at P_dyn = 2.42 nPa,
+    Bz = -0.35 nT, beta = 3.02, M_ms = 5.77 (their inputs are rounded, hence 0.01 R_E).
+    """
+    bs = SpaceWeatherPhysics.chao_bow_shock(2.42, -0.35, mach_number=5.77, plasma_beta=3.02)
+    assert bs["standoff_r0_re"] == pytest.approx(13.325, abs=0.01)
+    assert bs["eccentricity"] == 1.029
+    # alpha = a5 (1 + a6 Bz)(1 + a7 P)(1 + a10 ln(1 + beta))(1 + a14 M_ms) for Bz < 0
+    alpha = 0.8182 * (1 - 0.0170 * -0.35) * (1 - 0.0122 * 2.42) * (1 - 0.0328 * math.log(4.02)) * (1 - 0.002 * 5.77)
+    assert bs["flaring_alpha"] == pytest.approx(alpha, abs=5e-4)
+    # The conic flares outward: at 90 deg r = r0 (1 + eps)^alpha
+    side = SpaceWeatherPhysics.chao_bow_shock(2.42, -0.35, mach_number=5.77, plasma_beta=3.02, theta_rad=math.pi / 2)
+    assert side["radial_distance_re"] == pytest.approx(13.33 * 2.029 ** alpha, abs=0.02)
+
+
+def test_shue_1998_and_farris_russell_1994_standoffs():
+    """Shue et al. (1998) magnetopause and the Farris & Russell (1994) bow shock relation used by OMNI."""
+    r0, alpha = SpaceWeatherPhysics.shue1998_magnetopause(2.0, 0.0)
+    assert r0 == pytest.approx((10.22 + 1.29 * math.tanh(0.184 * 8.14)) * 2.0 ** (-1 / 6.6), abs=1e-9)
+    assert r0 == pytest.approx(10.252, abs=1e-3)
+    assert alpha == pytest.approx(0.58 * (1 + 0.024 * math.log(2.0)), abs=1e-9)
+    # OMNI: Rt = Rmp [1 + 1.1 ((2/3) M^2 + 2) / ((8/3)(M^2 - 1))]; Rmp = 10, M_ms = 8 -> 12.925
+    assert SpaceWeatherPhysics.farris_russell_bow_shock(10.0, 8.0)["standoff_r0_re"] == pytest.approx(12.92, abs=0.01)
+    with pytest.raises(ValueError):
+        SpaceWeatherPhysics.farris_russell_bow_shock(10.0, 0.9)
+    # OMNI Shue et al. (1997) standoff: (11.4 + 0.140 Bz) P^(-1/6.6) for Bz < 0
+    assert SpaceWeatherPhysics.shue1997_standoff(2.0, -5.0) == pytest.approx(9.633, abs=1e-3)
+    # OMNI plasma beta: [(T * 4.16e-5) + 5.34] Np / B^2
+    assert SpaceWeatherPhysics.plasma_beta(5.0, 1e5, 5.0) == pytest.approx(1.9, abs=1e-9)
+
+
+def test_boundary_endpoint_models_and_inputs():
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+    client = TestClient(app)
+    chao = client.get("/api/magnetosphere/boundaries?dynamic_pressure=2.42&bz_gsm=-0.35"
+                      "&mach_number=5.77&plasma_beta=3.02&model=chao").json()
+    assert chao["bow_shock"]["standoff_re"] == pytest.approx(13.325, abs=0.01)
+    assert chao["magnetopause_model"] == "Shue et al. (1998)" and chao["bow_shock_model"] == "Chao et al. (2002)"
+    fr = client.get("/api/magnetosphere/boundaries?dynamic_pressure=2.0&bz_gsm=0&mach_number=8&model=shue").json()
+    assert fr["bow_shock"]["standoff_re"] == pytest.approx(10.2519 * 1.2924603, abs=0.01)
+    assert client.get("/api/magnetosphere/boundaries?model=fairfield").status_code == 400

@@ -750,12 +750,12 @@ SCIENTIFIC_REFERENCES = [
         "year": 2002,
         "volume": "12",
         "pages": "127-135",
-        "doi": "10.1016/S0964-2749(02)80214-7",
-        "doi_url": "https://doi.org/10.1016/S0964-2749(02)80214-7",
+        "doi": "10.1016/S0964-2749(02)80212-8",
+        "doi_url": "https://doi.org/10.1016/S0964-2749(02)80212-8",
         "category": "Magnetospheric Cavity & Bow Shock Geometry",
-        "formula": "r(theta) = r_0 * [2 / (1 + cos(theta))]^alpha,  r_0,mp = (11.12 + 0.541*Bz)*Pdyn^(-1/6.6),  r_0,bs = (14.5 + 0.08*Bz)*Pdyn^(-1/6.6)*f(M_A)",
-        "parameters": ["r_0,mp (subsolar magnetopause distance in R_E)", "r_0,bs (subsolar bow shock standoff distance in R_E)", "M_A (Alfvén Mach number)", "alpha (tail flaring exponent)"],
-        "physical_meaning": "Coupled empirical models parameterizing both the dayside magnetopause and upstream bow shock standoffs and flaring geometry based on solar wind dynamic pressure, IMF Bz, and upstream Mach number."
+        "formula": "Bow shock: r = r_0 * ((1 + eps) / (1 + eps*cos(theta)))^alpha, eps = 1.029; r_0 = a1 (1 + a2 Bz)(1 + a9 beta)(1 + a4 ((a8 - 1) M_ms^2 + 2) / ((a8 + 1) M_ms^2)) P_dyn^(-1/a11); alpha = a5 (1 + a13 Bz)(1 + a7 P_dyn)(1 + a10 ln(1 + beta))(1 + a14 M_ms); a3, a6 replace a2, a13 for Bz < 0",
+        "parameters": ["r_0 (subsolar bow shock standoff distance in R_E)", "M_ms (magnetosonic Mach number)", "beta (plasma beta)", "alpha (flaring exponent)", "eps (eccentricity)"],
+        "physical_meaning": "Empirical bow shock size and shape from Geotail crossings with Wind upstream data, as a function of dynamic pressure, IMF Bz, plasma beta and magnetosonic Mach number. Coefficients as reproduced in Mo et al. (2025, JGR, doi:10.1029/2025JA033966). HELIOS-L1 uses only the bow shock part of this paper; the magnetopause is Shue et al. (1998)."
     },
     {
         "id": "boyle_polar_cap_1997",
@@ -946,10 +946,10 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "unit": "R_E (Earth Radii ~ 6,371 km)",
         "nominal_range": "13.0 - 15.5 R_E (~83,000 - 99,000 km)",
         "disturbed_range": "< 10.0 R_E (Intense CME Compression), < 7.5 R_E (Severe Superstorm Shock)",
-        "formula": "R_bs = r_0,bs * [2 / (1 + cos(theta))]^alpha_bs",
+        "formula": "R_bs(theta) = r_0,bs * ((1 + eps) / (1 + eps * cos(theta)))^alpha_bs (Chao et al. 2002, eps = 1.029)",
         "instrument": "Multi-satellite bow shock crossings (Cluster, THEMIS, MMS, Geotail)",
         "description": "Subsolar distance to Earth's detached collisionless bow shock where supersonic solar wind is decelerated and heated into the subsonic magnetosheath.",
-        "doi": "10.1016/S0964-2749(02)80214-7"
+        "doi": "10.1016/S0964-2749(02)80212-8"
     },
     "magnetosheath_thickness": {
         "name": "Subsolar Magnetosheath Thickness",
@@ -960,7 +960,7 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "formula": "Delta R = R_bs,0 - r_mp,0",
         "instrument": "Dual-boundary satellite transit differential",
         "description": "Spatial separation along the Sun-Earth line between the collisionless bow shock and the dayside magnetopause.",
-        "doi": "10.1016/S0964-2749(02)80214-7"
+        "doi": "10.1016/S0964-2749(02)80212-8"
     },
     "polar_cap_potential": {
         "name": "Cross Polar Cap Potential Drop",

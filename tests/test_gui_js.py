@@ -3,6 +3,7 @@ Checks of small pure functions in the dashboard JavaScript, run with Node.js whe
 is installed (skipped otherwise).
 """
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -56,3 +57,36 @@ console.log(JSON.stringify([
     assert none == ""
     assert "Spacecraft B (WIND) is SIMULATED" in sim and "not a comparison of two instruments" in sim
     assert "Spacecraft A (DSCOVR) is SYNTHETIC" in syn and "Spacecraft B" not in syn
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_orbit_boundary_models_match_python():
+    """orbits.js boundary formulas give the same numbers as helios.core.science."""
+    from helios.core.science import SpaceWeatherPhysics as S
+    src = (APP_JS.parent / "orbits.js").read_text(encoding="utf-8")
+    head = src[:src.index("class OrbitRenderer {")]
+    script = head + """
+const out = [];
+for (const [p, bz, m, b] of [[2.42, -0.35, 5.77, 3.02], [2.0, 3.0, 8.0, 1.0], [30.0, -20.0, 3.0, 0.4]]) {
+  const mp = shue1998Magnetopause(p, bz), bs = chaoBowShock(p, bz, m, b);
+  out.push([mp.r0, mp.alpha, bs.r0, bs.alpha, farrisRussellBowShock(mp.r0, m).r0, shue1997Standoff(p, bz)]);
+}
+const mb = solarWindMachBeta({speed: 450, density: 5, temperature: 1e5, bt: 5});
+out.push([mb.mms, mb.beta]);
+console.log(JSON.stringify(out));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    rows = json.loads(res.stdout)
+    for row, (p, bz, m, b) in zip(rows, [(2.42, -0.35, 5.77, 3.02), (2.0, 3.0, 8.0, 1.0), (30.0, -20.0, 3.0, 0.4)]):
+        r0, alpha = S.shue1998_magnetopause(p, bz)
+        bs = S.chao_bow_shock(p, bz, mach_number=m, plasma_beta=b)
+        assert row[0] == pytest.approx(r0, abs=1e-9) and row[1] == pytest.approx(alpha, abs=1e-9)
+        assert row[2] == pytest.approx(bs["standoff_r0_re"], abs=0.006)
+        assert row[3] == pytest.approx(bs["flaring_alpha"], abs=6e-4)
+        assert row[4] == pytest.approx(S.farris_russell_bow_shock(r0, m)["standoff_r0_re"], abs=0.006)
+        assert row[5] == pytest.approx(S.shue1997_standoff(p, bz), abs=1e-9)
+    mms, beta = rows[3]
+    assert beta == pytest.approx(S.plasma_beta(5, 1e5, 5), abs=1e-9)
+    # OMNI: V_A = 20 * 5 / sqrt(5) = 44.72, C_s = 0.12 sqrt(2.28e5) = 57.30 -> M_ms = 450 / 72.69
+    assert mms == pytest.approx(450 / math.hypot(44.7214, 57.2992), abs=1e-3)

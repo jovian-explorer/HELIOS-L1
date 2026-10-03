@@ -39,8 +39,10 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    $$P_{dyn} = 1.6726 \times 10^{-6} \cdot n_p \cdot v_{sw}^2 \quad [\text{nPa}]$$
    Quantifies solar wind momentum flux compressing Earth's magnetosphere.
 
-2. **Magnetopause & Bow Shock Boundaries (Chao et al., 2002 / Shue et al., 1998):**
-   * **Chao et al. (2002) Bilinear Model:** Computes dayside magnetopause standoff $r_0$ with distinct slope breaks across $B_z \ge 0$ ($+0.057 B_z$) and $B_z < 0$ ($+0.541 B_z$) erosion regimes, coupled with upstream Alfvén Mach-dependent Bow Shock standoff $R_0,bs$ and flaring parameters ($\alpha_{mp}, \alpha_{bs}$).
+2. **Magnetopause & Bow Shock Boundaries (Shue et al., 1998 / Chao et al., 2002 / Farris & Russell, 1994):**
+   * **Magnetopause, Shue et al. (1998):** $r = r_0 (2/(1+\cos\theta))^{\alpha}$ with $r_0 = (10.22 + 1.29\tanh(0.184(B_z + 8.14)))P_{dyn}^{-1/6.6}$ and $\alpha = (0.58 - 0.007B_z)(1 + 0.024\ln P_{dyn})$.
+   * **Bow shock, Chao et al. (2002):** $r = r_0((1+\epsilon)/(1+\epsilon\cos\theta))^{\alpha}$, $\epsilon = 1.029$, with $r_0$ and $\alpha$ depending on $P_{dyn}$, $B_z$, plasma $\beta$ and the magnetosonic Mach number $M_{ms}$ (14 published coefficients, as reproduced in Mo et al. 2025, JGR, doi:10.1029/2025JA033966). Alternative: **Farris & Russell (1994)**, $R_{bs} = r_{0,mp}[1 + 1.1((\gamma-1)M_{ms}^2 + 2)/((\gamma+1)(M_{ms}^2 - 1))]$, the relation OMNI uses for its bow shock nose.
+   * $M_{ms}$ and $\beta$ come from the measured speed, density, temperature and $|B|$ with the OMNI definitions.
    * **Magnetosheath Thickness ($\Delta R$):** Subsolar separation between Bow Shock and Magnetopause ($\Delta R = R_0,bs - r_0,mp$).
    * **Sub-GEO Compression Alert:** Alerts if $r_0 < 6.6 R_E$, signifying that geostationary spacecraft (GOES, telecommunications) are exposed directly to unshielded magnetosheath plasma.
 

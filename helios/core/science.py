@@ -30,98 +30,129 @@ class SpaceWeatherPhysics:
         """
         if dynamic_pressure_npa <= 0.0:
             return 10.0
-        bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
-        # Shue et al.: r0 = (10.22 + 1.29 * tanh(0.184 * (Bz + 8.14))) * (Pdyn)^(-1/6.6)
-        r0 = (10.22 + 1.29 * math.tanh(0.184 * (bz + 8.14))) * (dynamic_pressure_npa ** (-1.0 / 6.6))
-        return round(float(r0), 2)
+        r0, _ = SpaceWeatherPhysics.shue1998_magnetopause(dynamic_pressure_npa, bz_gsm_nt)
+        return round(r0, 2)
+
+    # Chao et al. (2002) bow shock coefficients a1..a14 (a12 is the eccentricity epsilon).
+    # The COSPAR chapter itself is not openly available; the functional form is reproduced in
+    # Zhou et al. (2020, Chin. J. Space Sci. 40(6), 990) and Mo et al. (2025, JGR 130,
+    # e2025JA033966, open access), whose Table 1 lists these values to three decimals and a
+    # standoff of 13.325 R_E for P_dyn = 2.42 nPa, Bz = -0.35 nT, beta = 3.02, M_ms = 5.77.
+    CHAO_2002_BS = (11.1266, 0.0010, -0.0005, 2.5966, 0.8182, -0.0170, -0.0122,
+                    1.3007, -0.0049, -0.0328, 6.047, 1.029, 0.0231, -0.002)
 
     @staticmethod
-    def chao_magnetopause(dynamic_pressure_npa: float, bz_gsm_nt: float, theta_rad: float = 0.0) -> Dict[str, Any]:
+    def shue1998_magnetopause(dynamic_pressure_npa: float, bz_gsm_nt: float) -> Tuple[float, float]:
         """
-        Chao et al. (2002) empirical model for the size and shape of Earth's magnetopause:
-        r(theta) = r_0 * (2 / (1 + cos(theta)))^alpha
-
-        Subsolar standoff r_0:
-          r_0 = (11.12 + 0.057 * Bz) * (P_dyn)^(-1/6.6)   [for Bz >= 0]
-          r_0 = (11.12 + 0.541 * Bz) * (P_dyn)^(-1/6.6)   [for Bz < 0]
-
-        Flaring parameter alpha:
-          alpha = (0.58 - 0.007 * Bz) * (1 + 0.024 * P_dyn)
+        Shue et al. (1998) magnetopause: r = r0 * (2 / (1 + cos(theta)))^alpha with
+          r0    = (10.22 + 1.29 * tanh(0.184 * (Bz + 8.14))) * P_dyn^(-1/6.6)
+          alpha = (0.58 - 0.007 * Bz) * (1 + 0.024 * ln(P_dyn))
+        Returns (r0 in R_E, alpha), unrounded.
         """
-        pdyn = max(0.05, float(dynamic_pressure_npa if dynamic_pressure_npa is not None else 2.0))
+        pdyn = max(0.01, float(dynamic_pressure_npa))
         bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
+        r0 = (10.22 + 1.29 * math.tanh(0.184 * (bz + 8.14))) * pdyn ** (-1.0 / 6.6)
+        alpha = (0.58 - 0.007 * bz) * (1.0 + 0.024 * math.log(pdyn))
+        return float(r0), float(alpha)
 
-        pressure_factor = pdyn ** (-1.0 / 6.6)
-        if bz >= 0.0:
-            r0 = (11.12 + 0.057 * bz) * pressure_factor
-        else:
-            r0 = (11.12 + 0.541 * bz) * pressure_factor
+    @staticmethod
+    def shue1997_standoff(dynamic_pressure_npa: float, bz_gsm_nt: float) -> float:
+        """
+        Shue et al. (1997) subsolar magnetopause, as used for the OMNI bow shock nose:
+          r0 = (11.4 + K * Bz) * P_dyn^(-1/6.6),  K = 0.013 (Bz >= 0), 0.140 (Bz < 0)
+        """
+        pdyn = max(0.01, float(dynamic_pressure_npa))
+        bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
+        k = 0.013 if bz >= 0.0 else 0.140
+        return float((11.4 + k * bz) * pdyn ** (-1.0 / 6.6))
 
-        r0 = max(3.5, min(16.0, r0))
-
-        alpha = (0.58 - 0.007 * bz) * (1.0 + 0.024 * pdyn)
-        alpha = max(0.35, min(0.95, alpha))
-
-        th = max(-2.6, min(2.6, theta_rad))
-        denominator = 1.0 + math.cos(th)
-        r_theta = r0 * ((2.0 / max(0.01, denominator)) ** alpha)
-
-        r0_val = round(float(r0), 2)
-        return {
-            "standoff_r0_re": r0_val,
-            "standoff_km": round(float(r0_val * 6371.0), 1),
-            "flaring_alpha": round(float(alpha), 3),
-            "radial_distance_re": round(float(r_theta), 2),
-            "inside_geo": bool(r0_val < 6.6),
-            "model": "Chao et al. (2002)"
-        }
+    @staticmethod
+    def plasma_beta(density_cm3: float, temp_k: float, b_total_nt: float) -> Optional[float]:
+        """
+        Solar wind plasma beta with the OMNI definition (protons plus a fixed electron and
+        alpha contribution): beta = [(T * 4.16e-5) + 5.34] * Np / B^2, B in nT.
+        """
+        if not density_cm3 or not temp_k or not b_total_nt or b_total_nt <= 0 or density_cm3 <= 0:
+            return None
+        return float((temp_k * 4.16e-5 + 5.34) * density_cm3 / b_total_nt ** 2)
 
     @staticmethod
     def chao_bow_shock(
         dynamic_pressure_npa: float,
         bz_gsm_nt: float,
         mach_number: float = 8.0,
-        theta_rad: float = 0.0
+        theta_rad: float = 0.0,
+        plasma_beta: float = 2.0
     ) -> Dict[str, Any]:
         """
-        Chao et al. (2002) empirical model for the size and shape of Earth's Bow Shock:
-        R_bs(theta) = R_0,bs * (2 / (1 + cos(theta)))^alpha_bs
-
-        Subsolar Bow Shock standoff R_0,bs:
-          R_0,bs = (14.5 + 0.08 * Bz) * (P_dyn)^(-1/6.6) * [1 + 0.8 * ((gamma - 1)*M^2 + 2) / ((gamma + 1)*(M^2 - 1))]
-          where polytropic index gamma = 5/3 ~ 1.667.
-
-        Bow shock flaring parameter:
-          alpha_bs = 0.61 * (1 + 0.015 * P_dyn)
+        Chao et al. (2002) bow shock: r = r0 * ((1 + eps) / (1 + eps * cos(theta)))^alpha, eps = a12,
+          r0    = a1 (1 + a2 Bz)(1 + a9 beta)(1 + a4 ((a8 - 1) M_ms^2 + 2) / ((a8 + 1) M_ms^2)) P_dyn^(-1/a11)
+          alpha = a5 (1 + a13 Bz)(1 + a7 P_dyn)(1 + a10 ln(1 + beta))(1 + a14 M_ms)
+        for Bz >= 0; for Bz < 0, a3 replaces a2 and a6 replaces a13.
+        mach_number is the magnetosonic Mach number M_ms; theta is measured from the
+        (aberrated) Sun-Earth line.
         """
-        pdyn = max(0.05, float(dynamic_pressure_npa if dynamic_pressure_npa is not None else 2.0))
+        a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, eps, a13, a14 = SpaceWeatherPhysics.CHAO_2002_BS
+        pdyn = max(0.01, float(dynamic_pressure_npa if dynamic_pressure_npa is not None else 2.0))
         bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
-        m = max(1.15, float(mach_number if mach_number is not None else 8.0))
+        m = max(1.0, float(mach_number if mach_number is not None else 8.0))
+        beta = max(0.0, float(plasma_beta if plasma_beta is not None else 2.0))
 
-        gamma = 5.0 / 3.0
-        mach_factor = 1.0 + 0.8 * (((gamma - 1.0) * (m ** 2) + 2.0) / ((gamma + 1.0) * ((m ** 2) - 1.0)))
+        rh = ((a8 - 1.0) * m ** 2 + 2.0) / ((a8 + 1.0) * m ** 2)
+        common_r = (1.0 + a9 * beta) * (1.0 + a4 * rh) * pdyn ** (-1.0 / a11)
+        common_a = (1.0 + a7 * pdyn) * (1.0 + a10 * math.log(1.0 + beta)) * (1.0 + a14 * m)
+        if bz >= 0.0:
+            r0 = a1 * (1.0 + a2 * bz) * common_r
+            alpha = a5 * (1.0 + a13 * bz) * common_a
+        else:
+            r0 = a1 * (1.0 + a3 * bz) * common_r
+            alpha = a5 * (1.0 + a6 * bz) * common_a
 
-        pressure_factor = pdyn ** (-1.0 / 6.6)
-        r0_bs = (14.5 + 0.08 * bz) * pressure_factor * (mach_factor / 1.25)
-
-        r0_bs = max(5.0, min(25.0, r0_bs))
-
-        alpha_bs = 0.61 * (1.0 + 0.015 * pdyn)
-        alpha_bs = max(0.40, min(0.90, alpha_bs))
-
-        th = max(-2.6, min(2.6, theta_rad))
-        denominator = 1.0 + math.cos(th)
-        r_theta_bs = r0_bs * ((2.0 / max(0.01, denominator)) ** alpha_bs)
-
-        r0_bs_val = round(float(r0_bs), 2)
+        r_theta = SpaceWeatherPhysics.conic_radius(r0, alpha, eps, theta_rad)
         return {
-            "standoff_r0_re": r0_bs_val,
-            "standoff_km": round(float(r0_bs_val * 6371.0), 1),
-            "flaring_alpha": round(float(alpha_bs), 3),
-            "radial_distance_re": round(float(r_theta_bs), 2),
+            "standoff_r0_re": round(float(r0), 2),
+            "standoff_km": round(float(r0) * 6371.0, 1),
+            "flaring_alpha": round(float(alpha), 3),
+            "eccentricity": eps,
+            "radial_distance_re": round(r_theta, 2) if r_theta is not None else None,
             "mach_number": round(float(m), 2),
+            "plasma_beta": round(float(beta), 2),
             "model": "Chao et al. (2002)"
         }
+
+    @staticmethod
+    def farris_russell_bow_shock(r0_mp_re: float, mach_number: float, theta_rad: float = 0.0) -> Dict[str, Any]:
+        """
+        Farris & Russell (1994) standoff from the magnetopause nose distance and the
+        magnetosonic Mach number (gamma = 5/3), as used for the OMNI bow shock nose:
+          R_bs = R_mp * [1 + 1.1 * ((gamma - 1) M_ms^2 + 2) / ((gamma + 1)(M_ms^2 - 1))]
+        Shape: Farris et al. (1991) conic r = R_bs (1 + eps) / (1 + eps cos(theta)), eps = 0.81.
+        Undefined for M_ms <= 1 (no shock).
+        """
+        gamma = 5.0 / 3.0
+        m = float(mach_number if mach_number is not None else 8.0)
+        if m <= 1.0:
+            raise ValueError("Farris & Russell (1994) needs a super-magnetosonic flow (M_ms > 1)")
+        r0 = float(r0_mp_re) * (1.0 + 1.1 * ((gamma - 1.0) * m ** 2 + 2.0) / ((gamma + 1.0) * (m ** 2 - 1.0)))
+        eps = 0.81
+        r_theta = SpaceWeatherPhysics.conic_radius(r0, 1.0, eps, theta_rad)
+        return {
+            "standoff_r0_re": round(r0, 2),
+            "standoff_km": round(r0 * 6371.0, 1),
+            "flaring_alpha": 1.0,
+            "eccentricity": eps,
+            "radial_distance_re": round(r_theta, 2) if r_theta is not None else None,
+            "mach_number": round(m, 2),
+            "model": "Farris & Russell (1994)"
+        }
+
+    @staticmethod
+    def conic_radius(r0: float, alpha: float, eps: float, theta_rad: float) -> Optional[float]:
+        """r = r0 * ((1 + eps) / (1 + eps * cos(theta)))^alpha; None beyond an open (eps >= 1) conic's asymptote."""
+        den = 1.0 + eps * math.cos(theta_rad)
+        if den <= 1e-6:
+            return None
+        return float(r0 * ((1.0 + eps) / den) ** alpha)
 
     @staticmethod
     def calculate_magnetospheric_boundaries(
@@ -129,34 +160,33 @@ class SpaceWeatherPhysics:
         bz_gsm_nt: float,
         mach_number: float = 8.0,
         model: str = "chao",
-        num_points: int = 60
+        num_points: int = 60,
+        plasma_beta: float = 2.0
     ) -> Dict[str, Any]:
         """
         Generate complete 2D GSE profiles (X, Y in Earth Radii) for both
         the terrestrial Magnetopause and Bow Shock.
-        Supports both 'chao' (Chao et al., 2002) and 'shue' (Shue et al., 1997, 1998).
+        The magnetopause is always Shue et al. (1998). The bow shock is Chao et al. (2002)
+        for model 'chao' and Farris & Russell (1994) for model 'shue' (alias 'farris').
+        mach_number is the magnetosonic Mach number M_ms; plasma_beta uses the OMNI definition.
         """
         pdyn = max(0.05, float(dynamic_pressure_npa if dynamic_pressure_npa is not None else 2.0))
         bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
         m = max(1.15, float(mach_number if mach_number is not None else 8.0))
+        beta = max(0.0, float(plasma_beta if plasma_beta is not None else 2.0))
         mod = model.lower().strip()
 
-        if mod == "shue":
-            r0_mp = SpaceWeatherPhysics.magnetopause_standoff(pdyn, bz)
-            # Shue et al. (1998): alpha = (0.58 - 0.007 Bz) * (1 + 0.024 ln(P_dyn))
-            alpha_mp = (0.58 - 0.007 * bz) * (1.0 + 0.024 * math.log(pdyn))
-            alpha_mp = max(0.4, min(0.9, alpha_mp))
-            r0_bs = round(r0_mp * (1.0 + 1.1 * ((2.0/3.0 * m**2 + 2.0) / (8.0/3.0 * (m**2 - 1.0)))), 2)
-            alpha_bs = 0.60
-            model_name = "Shue et al. (1997, 1998)"
+        r0_mp_raw, alpha_mp_raw = SpaceWeatherPhysics.shue1998_magnetopause(pdyn, bz)
+        r0_mp, alpha_mp = round(r0_mp_raw, 2), alpha_mp_raw
+        if mod in ("shue", "farris"):
+            bs_res = SpaceWeatherPhysics.farris_russell_bow_shock(r0_mp_raw, m)
+            model_name = "Shue et al. (1998) magnetopause + Farris & Russell (1994) bow shock"
         else:
-            mp_res = SpaceWeatherPhysics.chao_magnetopause(pdyn, bz)
-            bs_res = SpaceWeatherPhysics.chao_bow_shock(pdyn, bz, mach_number=m)
-            r0_mp = mp_res["standoff_r0_re"]
-            alpha_mp = mp_res["flaring_alpha"]
-            r0_bs = bs_res["standoff_r0_re"]
-            alpha_bs = bs_res["flaring_alpha"]
-            model_name = "Chao et al. (2002)"
+            bs_res = SpaceWeatherPhysics.chao_bow_shock(pdyn, bz, mach_number=m, plasma_beta=beta)
+            model_name = "Shue et al. (1998) magnetopause + Chao et al. (2002) bow shock"
+        r0_bs = bs_res["standoff_r0_re"]
+        alpha_bs = bs_res["flaring_alpha"]
+        eps_bs = bs_res["eccentricity"]
 
         thetas = np.linspace(-2.356, 2.356, num_points)
 
@@ -175,8 +205,9 @@ class SpaceWeatherPhysics:
                 "r_re": round(float(r_mp), 2)
             })
 
-            den_bs = 1.0 + math.cos(th)
-            r_bs = r0_bs * ((2.0 / max(0.001, den_bs)) ** alpha_bs)
+            r_bs = SpaceWeatherPhysics.conic_radius(r0_bs, alpha_bs, eps_bs, th)
+            if r_bs is None:
+                continue
             x_bs = r_bs * math.cos(th)
             y_bs = r_bs * math.sin(th)
             bs_profile.append({
@@ -191,9 +222,12 @@ class SpaceWeatherPhysics:
         return {
             "status": "success",
             "model": model_name,
+            "magnetopause_model": "Shue et al. (1998)",
+            "bow_shock_model": bs_res["model"],
             "dynamic_pressure_npa": pdyn,
             "bz_gsm_nt": bz,
             "mach_number": m,
+            "plasma_beta": beta,
             "magnetopause": {
                 "standoff_re": r0_mp,
                 "standoff_km": round(r0_mp * 6371.0, 1),
@@ -206,6 +240,7 @@ class SpaceWeatherPhysics:
                 "standoff_re": r0_bs,
                 "standoff_km": round(r0_bs * 6371.0, 1),
                 "flaring_alpha": alpha_bs,
+                "eccentricity": eps_bs,
                 "profile": bs_profile
             },
             "magnetosheath_thickness_re": sheath_thickness_re,

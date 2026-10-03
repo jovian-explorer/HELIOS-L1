@@ -220,29 +220,23 @@ class TestTab3OrbitsAndSpiceEphemeris:
         assert 1.3e6 <= aditya["earth_relative"]["distance_km"] <= 1.7e6
         assert abs(aditya["velocity"]["speed_kms"] - 29.8) < 4.0
 
-    def test_chao_magnetopause_and_bow_shock_physics(self):
+    def test_magnetopause_and_bow_shock_physics(self):
         """
-        Verify Chao et al. (2002) empirical boundary models:
-        r_0,mp = (11.12 + 0.057*Bz)*P^(-1/6.6) for Bz >= 0
-        r_0,mp = (11.12 + 0.541*Bz)*P^(-1/6.6) for Bz < 0
+        Shue et al. (1998) magnetopause and Chao et al. (2002) bow shock:
+        r_0,mp = (10.22 + 1.29 tanh(0.184 (Bz + 8.14))) P^(-1/6.6)
         """
-        # Nominal: P_dyn = 2.0 nPa, Bz = 0 nT
-        # factor = 2.0^(-1/6.6) = 0.9003
-        # r0 = 11.12 * 0.9003 = 10.01 R_E
-        res_nom = SpaceWeatherPhysics.chao_magnetopause(2.0, 0.0)
-        assert abs(res_nom["standoff_r0_re"] - 10.01) < 0.2
-        assert not res_nom["inside_geo"]
+        # Nominal: P_dyn = 2.0 nPa, Bz = 0 nT -> 11.387 * 0.9003 = 10.25 R_E
+        r0, alpha = SpaceWeatherPhysics.shue1998_magnetopause(2.0, 0.0)
+        assert abs(r0 - 10.25) < 0.01
+        assert r0 > 6.6
 
         # Compressed inside GEO: P_dyn = 18.0 nPa, Bz = -15.0 nT
-        # factor = 18.0^(-1/6.6) = 0.6455
-        # r0 = (11.12 + 0.541 * -15.0) * factor = (11.12 - 8.115) * 0.6455 = 3.005 * 0.6455 = 1.94 -> clamped min 3.5
-        res_storm = SpaceWeatherPhysics.chao_magnetopause(18.0, -15.0)
-        assert res_storm["inside_geo"] is True
-        assert res_storm["standoff_r0_re"] < 6.6
+        r0_storm, _ = SpaceWeatherPhysics.shue1998_magnetopause(18.0, -15.0)
+        assert r0_storm < 6.6
 
-        # Bow shock standoff and thickness
+        # Bow shock stands upstream of the magnetopause
         bs_res = SpaceWeatherPhysics.chao_bow_shock(2.0, 0.0, mach_number=8.0)
-        assert bs_res["standoff_r0_re"] > res_nom["standoff_r0_re"], "Bow shock must stand upstream of magnetopause"
+        assert bs_res["standoff_r0_re"] > r0, "Bow shock must stand upstream of magnetopause"
 
         # Boundary profile generation endpoint
         res_b = client.get("/api/magnetosphere/boundaries?dynamic_pressure=2.5&bz_gsm=-4.0&mach_number=7.5&model=chao")

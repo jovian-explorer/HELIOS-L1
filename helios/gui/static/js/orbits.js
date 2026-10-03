@@ -5,6 +5,68 @@
  * and high-precision spacecraft ephemeris rendering.
  */
 
+// Magnetospheric boundary models (same equations and coefficients as helios/core/science.py).
+
+// Shue et al. (1998): r0 = (10.22 + 1.29 tanh(0.184 (Bz + 8.14))) P^(-1/6.6),
+// alpha = (0.58 - 0.007 Bz)(1 + 0.024 ln P)
+function shue1998Magnetopause(pdyn, bz) {
+  const p = Math.max(0.01, pdyn);
+  return {
+    r0: (10.22 + 1.29 * Math.tanh(0.184 * (bz + 8.14))) * Math.pow(p, -1.0 / 6.6),
+    alpha: (0.58 - 0.007 * bz) * (1.0 + 0.024 * Math.log(p))
+  };
+}
+
+// Shue et al. (1997) standoff as used for the OMNI bow shock nose: (11.4 + K Bz) P^(-1/6.6)
+function shue1997Standoff(pdyn, bz) {
+  const k = bz >= 0 ? 0.013 : 0.140;
+  return (11.4 + k * bz) * Math.pow(Math.max(0.01, pdyn), -1.0 / 6.6);
+}
+
+// Chao et al. (2002) bow shock coefficients a1..a14 (a12 = eccentricity), as reproduced
+// in Mo et al. (2025, JGR, Table 1) and Zhou et al. (2020, Chin. J. Space Sci.).
+const CHAO_2002_BS = [11.1266, 0.0010, -0.0005, 2.5966, 0.8182, -0.0170, -0.0122,
+                      1.3007, -0.0049, -0.0328, 6.047, 1.029, 0.0231, -0.002];
+
+// mms: magnetosonic Mach number; beta: plasma beta (OMNI definition)
+function chaoBowShock(pdyn, bz, mms, beta) {
+  const [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, eps, a13, a14] = CHAO_2002_BS;
+  const p = Math.max(0.01, pdyn);
+  const m = Math.max(1.0, mms);
+  const b = Math.max(0.0, beta);
+  const rh = ((a8 - 1.0) * m * m + 2.0) / ((a8 + 1.0) * m * m);
+  const commonR = (1.0 + a9 * b) * (1.0 + a4 * rh) * Math.pow(p, -1.0 / a11);
+  const commonA = (1.0 + a7 * p) * (1.0 + a10 * Math.log(1.0 + b)) * (1.0 + a14 * m);
+  const r0 = a1 * (1.0 + (bz >= 0 ? a2 : a3) * bz) * commonR;
+  const alpha = a5 * (1.0 + (bz >= 0 ? a13 : a6) * bz) * commonA;
+  return { r0, alpha, eps };
+}
+
+// Farris & Russell (1994) standoff from the magnetopause nose (gamma = 5/3), with the
+// Farris et al. (1991) conic shape (eps = 0.81, alpha = 1). Needs mms > 1.
+function farrisRussellBowShock(r0mp, mms) {
+  const m2 = mms * mms;
+  return { r0: r0mp * (1.0 + 1.1 * ((2.0 / 3.0) * m2 + 2.0) / ((8.0 / 3.0) * (m2 - 1.0))), alpha: 1.0, eps: 0.81 };
+}
+
+// r = r0 ((1 + eps) / (1 + eps cos th))^alpha; null beyond the asymptote of an open conic
+function conicRadius(r0, alpha, eps, th) {
+  const den = 1.0 + eps * Math.cos(th);
+  if (den <= 1e-6) return null;
+  return r0 * Math.pow((1.0 + eps) / den, alpha);
+}
+
+// Magnetosonic Mach number and plasma beta from a telemetry record, with the OMNI
+// definitions (V_A = 20 B / sqrt(N), C_s = 0.12 sqrt(T + 1.28e5),
+// beta = (4.16e-5 T + 5.34) N / B^2). Missing inputs give null.
+function solarWindMachBeta(rec) {
+  const v = rec && rec.speed, n = rec && rec.density, t = rec && rec.temperature, b = rec && rec.bt;
+  if (!(v > 0) || !(n > 0) || !(b > 0) || !(t > 0)) return { mms: null, beta: null };
+  const va = 20.0 * b / Math.sqrt(n);
+  const cs = 0.12 * Math.sqrt(t + 1.28e5);
+  return { mms: v / Math.sqrt(va * va + cs * cs), beta: (t * 4.16e-5 + 5.34) * n / (b * b) };
+}
+
 class OrbitRenderer {
   constructor(canvasId, tooltipId) {
     this.canvas = document.getElementById(canvasId);
@@ -32,8 +94,11 @@ class OrbitRenderer {
     this.solarWindSpeed = 450; // km/s
     this.dynamicPressure = 1.8; // nPa
     this.bz = 0.0; // nT (GSM)
-    this.machNumber = 8.0; // upstream Mach number
-    this.boundaryModel = 'chao'; // 'chao' (Chao et al. 2002) or 'shue' (Shue et al. 1997)
+    this.machNumber = 8.0; // upstream magnetosonic Mach number M_ms
+    this.plasmaBeta = 2.0; // upstream plasma beta (OMNI definition)
+    // Bow shock model: 'chao' (Chao et al. 2002) or 'shue' (Farris & Russell 1994 from the
+    // Shue et al. 1998 magnetopause); the magnetopause is Shue et al. (1998) in both.
+    this.boundaryModel = 'chao';
     this.lastComputedBoundaries = null;
 
     this.timeStep = 0;
@@ -141,11 +206,12 @@ class OrbitRenderer {
     this.boundaryModel = model === 'shue' ? 'shue' : 'chao';
   }
 
-  setSolarWindConditions(speed, pdyn, bz, mach) {
+  setSolarWindConditions(speed, pdyn, bz, mach, beta) {
     if (speed !== undefined && speed !== null && !isNaN(speed)) this.solarWindSpeed = Number(speed);
     if (pdyn !== undefined && pdyn !== null && !isNaN(pdyn)) this.dynamicPressure = Math.max(0.05, Number(pdyn));
     if (bz !== undefined && bz !== null && !isNaN(bz)) this.bz = Number(bz);
     if (mach !== undefined && mach !== null && !isNaN(mach)) this.machNumber = Math.max(1.15, Number(mach));
+    if (beta !== undefined && beta !== null && !isNaN(beta)) this.plasmaBeta = Math.max(0.0, Number(beta));
   }
 
   calculateBoundaries() {
@@ -154,36 +220,14 @@ class OrbitRenderer {
     const m = Math.max(1.15, this.machNumber || 8.0);
     const mod = this.boundaryModel || 'chao';
 
-    let r0_mp, alpha_mp, r0_bs, alpha_bs, modelName;
-
-    if (mod === 'shue') {
-      // Shue et al. (1997, 1998)
-      r0_mp = (10.22 + 1.29 * Math.tanh(0.184 * (bz + 8.14))) * Math.pow(pdyn, -1.0 / 6.6);
-      alpha_mp = (0.58 - 0.007 * bz) * (1.0 + 0.024 * Math.log(pdyn + 1.0));
-      alpha_mp = Math.max(0.40, Math.min(0.90, alpha_mp));
-      r0_bs = r0_mp * (1.0 + 1.1 * ((2.0 / 3.0 * (m * m) + 2.0) / (8.0 / 3.0 * (m * m - 1.0))));
-      alpha_bs = 0.60;
-      modelName = 'Shue et al. (1997, 1998)';
-    } else {
-      // Chao et al. (2002) Empirical Bilinear Model
-      const pFactor = Math.pow(pdyn, -1.0 / 6.6);
-      if (bz >= 0.0) {
-        r0_mp = (11.12 + 0.057 * bz) * pFactor;
-      } else {
-        r0_mp = (11.12 + 0.541 * bz) * pFactor;
-      }
-      r0_mp = Math.max(3.5, Math.min(16.0, r0_mp));
-      alpha_mp = (0.58 - 0.007 * bz) * (1.0 + 0.024 * pdyn);
-      alpha_mp = Math.max(0.35, Math.min(0.95, alpha_mp));
-
-      const gamma = 5.0 / 3.0;
-      const machFactor = 1.0 + 0.8 * (((gamma - 1.0) * (m * m) + 2.0) / ((gamma + 1.0) * (m * m - 1.0)));
-      r0_bs = (14.5 + 0.08 * bz) * pFactor * (machFactor / 1.25);
-      r0_bs = Math.max(5.0, Math.min(25.0, r0_bs));
-      alpha_bs = 0.61 * (1.0 + 0.015 * pdyn);
-      alpha_bs = Math.max(0.40, Math.min(0.90, alpha_bs));
-      modelName = 'Chao et al. (2002)';
-    }
+    const mp = shue1998Magnetopause(pdyn, bz);
+    const r0_mp = mp.r0;
+    const alpha_mp = mp.alpha;
+    const bs = mod === 'shue' ? farrisRussellBowShock(r0_mp, m) : chaoBowShock(pdyn, bz, m, this.plasmaBeta);
+    const r0_bs = bs.r0;
+    const alpha_bs = bs.alpha;
+    const eps_bs = bs.eps;
+    const modelName = mod === 'shue' ? 'Shue 1998 MP + Farris & Russell 1994 BS' : 'Shue 1998 MP + Chao 2002 BS';
 
     // Scale conversion: Earth radii to canvas world pixels
     // GEO is at 6.6 R_E = 25px -> scaleRe = 25.0 / 6.6 ~ 3.788 px / R_E
@@ -208,8 +252,8 @@ class OrbitRenderer {
       const yMp = rMp * Math.sin(th) * scaleRe;
       mpPts.push({ x: xMp, y: yMp, r: rMp, th });
 
-      const denBs = 1.0 + Math.cos(th);
-      const rBs = r0_bs * Math.pow(2.0 / Math.max(0.001, denBs), alpha_bs);
+      const rBs = conicRadius(r0_bs, alpha_bs, eps_bs, th);
+      if (rBs === null) continue;
       const xBs = -rBs * Math.cos(th) * scaleRe;
       const yBs = rBs * Math.sin(th) * scaleRe;
       bsPts.push({ x: xBs, y: yBs, r: rBs, th });
@@ -223,6 +267,7 @@ class OrbitRenderer {
       alpha_mp,
       r0_bs,
       alpha_bs,
+      eps_bs,
       sheathRe,
       insideGeo: r0_mp < 6.6,
       mpPts,
@@ -426,8 +471,8 @@ class OrbitRenderer {
           <div class="text-sky-300 text-[11px] font-mono mt-1.5 space-y-0.5">
             <div>Subsolar Standoff (R₀,bs): <strong>${b.r0_bs.toFixed(2)} R_E</strong> (~${Math.round(b.r0_bs * 6371).toLocaleString()} km)</div>
             <div>Flaring Parameter (α_bs): <strong>${b.alpha_bs.toFixed(3)}</strong></div>
-            <div>Upstream Mach Number (M_A): <strong>${this.machNumber.toFixed(1)}</strong></div>
-            <div>Polytropic Index: <strong>γ = 5/3</strong></div>
+            <div>Eccentricity (ε): <strong>${b.eps_bs.toFixed(3)}</strong></div>
+            <div>Magnetosonic Mach (M_ms): <strong>${this.machNumber.toFixed(1)}</strong> • β: <strong>${this.plasmaBeta.toFixed(2)}</strong></div>
           </div>
         `;
       } else if (found.type === 'magnetosheath') {
@@ -698,7 +743,7 @@ class OrbitRenderer {
     ctx.setLineDash([]);
     ctx.restore();
 
-    // 6. Earth & Magnetospheric Cavity (Chao et al. 2002 / Shue et al. 1997)
+    // 6. Earth & Magnetospheric Cavity (Shue et al. 1998 magnetopause; Chao et al. 2002 or Farris & Russell 1994 bow shock)
     ctx.save();
     const earthP = this.project(0, 0, 0);
 
@@ -835,7 +880,7 @@ class OrbitRenderer {
       hudMargin.className = margin < 0 ? 'text-rose-400 font-bold animate-pulse' : 'text-emerald-400 font-bold';
     }
     const hudModel = document.getElementById('hud-model-name');
-    if (hudModel) hudModel.innerText = this.boundaryModel === 'shue' ? 'Shue 1997' : 'Chao 2002';
+    if (hudModel) hudModel.innerText = this.boundaryModel === 'shue' ? 'Farris-Russell 1994' : 'Chao 2002';
 
     // Earth Sphere with Day/Night Lighting (Sun on left illuminates -X)
     const earthGlow = ctx.createRadialGradient(earthP.x, earthP.y, 8, earthP.x, earthP.y, 18);

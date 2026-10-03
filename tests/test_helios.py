@@ -424,21 +424,20 @@ def test_magnetospheric_boundaries_chao_and_shue():
     from helios.core.science import SpaceWeatherPhysics
 
     # 1. Nominal quiet solar wind conditions: P = 2.0 nPa, Bz = 0 nT
-    nom_mp = SpaceWeatherPhysics.chao_magnetopause(2.0, 0.0)
-    assert 9.5 <= nom_mp["standoff_r0_re"] <= 12.0
-    assert nom_mp["inside_geo"] is False
-    assert nom_mp["standoff_km"] == round(nom_mp["standoff_r0_re"] * 6371.0, 1)
-    assert 0.45 <= nom_mp["flaring_alpha"] <= 0.70
+    r0_mp, alpha_mp = SpaceWeatherPhysics.shue1998_magnetopause(2.0, 0.0)
+    assert 9.5 <= r0_mp <= 12.0
+    assert 0.45 <= alpha_mp <= 0.70
 
     nom_bs = SpaceWeatherPhysics.chao_bow_shock(2.0, 0.0, mach_number=8.0)
-    assert nom_bs["standoff_r0_re"] > nom_mp["standoff_r0_re"]
+    assert nom_bs["standoff_r0_re"] > r0_mp
     assert 12.0 <= nom_bs["standoff_r0_re"] <= 16.0
-    assert 0.50 <= nom_bs["flaring_alpha"] <= 0.75
+    assert abs(nom_bs["standoff_km"] - nom_bs["standoff_r0_re"] * 6371.0) < 40.0
+    assert 0.50 <= nom_bs["flaring_alpha"] <= 0.95
 
     # 2. Extreme coronal mass ejection shock compression: P = 32.0 nPa, Bz = -25.0 nT
-    shock_mp = SpaceWeatherPhysics.chao_magnetopause(32.0, -25.0)
-    assert shock_mp["standoff_r0_re"] < 6.6
-    assert shock_mp["inside_geo"] is True
+    shock = SpaceWeatherPhysics.calculate_magnetospheric_boundaries(32.0, -25.0, mach_number=4.0)
+    assert shock["magnetopause"]["standoff_re"] < 6.6
+    assert shock["magnetopause"]["inside_geo"] is True
 
     # 3. Mach number scaling: lower Mach expands Bow Shock standoff
     bs_low_mach = SpaceWeatherPhysics.chao_bow_shock(2.0, 0.0, mach_number=2.0)
@@ -454,10 +453,10 @@ def test_magnetospheric_boundaries_chao_and_shue():
     assert chao_bounds["magnetosheath_thickness_re"] > 0
     assert chao_bounds["magnetosheath_thickness_km"] == round(chao_bounds["magnetosheath_thickness_re"] * 6371.0, 1)
 
-    # 5. Shue et al. (1997) model comparison
+    # 5. Farris & Russell (1994) bow shock on the Shue et al. (1998) magnetopause
     shue_bounds = SpaceWeatherPhysics.calculate_magnetospheric_boundaries(2.5, -4.0, mach_number=7.5, model="shue")
     assert shue_bounds["status"] == "success"
-    assert "Shue" in shue_bounds["model"]
+    assert "Farris & Russell" in shue_bounds["model"]
     assert len(shue_bounds["magnetopause"]["profile"]) == 60
 
     # 6. REST API Endpoint: GET /api/magnetosphere/boundaries
