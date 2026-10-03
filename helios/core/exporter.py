@@ -12,17 +12,54 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
 
+# Physical units of the telemetry fields (exports and metadata).
+FIELD_UNITS: Dict[str, str] = {
+    "time_tag": "UTC (YYYY-MM-DD HH:MM:SS)",
+    "speed": "km/s",
+    "density": "cm^-3",
+    "temperature": "K",
+    "bx_gsm": "nT", "by_gsm": "nT", "bz_gsm": "nT",
+    "bx_gse": "nT", "by_gse": "nT", "bz_gse": "nT",
+    "bt": "nT",
+    "hp_mag": "nT",
+    "dynamic_pressure": "nPa",
+    "magnetopause_re": "R_E",
+    "akasofu_gw": "GW",
+    "l1_travel_time_min": "min",
+}
+
+
 class DataExporter:
     """Exports space weather telemetry and scientific figures."""
 
     @staticmethod
-    def to_csv(records: List[Dict[str, Any]]) -> str:
-        """Export telemetry records to clean standard CSV string."""
+    def _fieldnames(records: List[Dict[str, Any]]) -> List[str]:
+        """Union of the record keys in first-seen order (records need not share keys)."""
+        names: Dict[str, None] = {}
+        for r in records:
+            for k in r.keys():
+                names.setdefault(k, None)
+        return list(names)
+
+    @staticmethod
+    def to_csv(records: List[Dict[str, Any]], metadata: Dict[str, Any] = None) -> str:
+        """
+        Export telemetry records to a CSV string. Missing values are empty cells.
+        With `metadata`, '# key: value' header lines (provenance, units, time standard)
+        precede the table; read them with e.g. pandas.read_csv(path, comment='#').
+        """
         if not records:
             return ""
         output = io.StringIO()
-        fieldnames = list(records[0].keys())
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        fieldnames = DataExporter._fieldnames(records)
+        if metadata:
+            for key, value in metadata.items():
+                if isinstance(value, (list, tuple)):
+                    value = ", ".join(str(v) for v in value)
+                output.write(f"# {key}: {value}\n")
+            units = [f"{f}={FIELD_UNITS[f]}" for f in fieldnames if f in FIELD_UNITS]
+            output.write("# units: " + "; ".join(units) + "\n")
+        writer = csv.DictWriter(output, fieldnames=fieldnames, restval="", lineterminator="\n")
         writer.writeheader()
         for r in records:
             writer.writerow(r)
@@ -40,13 +77,14 @@ class DataExporter:
         if not records:
             return {}
 
-        df = pd.DataFrame(records)
         variables = {}
-        for col in df.columns:
+        for col in DataExporter._fieldnames(records):
             if col != "time_tag":
+                # Units from the field table; the old substring guess labelled e.g.
+                # temperature, standoff and epsilon as nPa.
                 variables[col] = {
-                    "data": df[col].tolist(),
-                    "units": "nT" if "b" in col else ("km/s" if "speed" in col else ("cm^-3" if "dens" in col else "nPa"))
+                    "data": [r.get(col) for r in records],
+                    "units": FIELD_UNITS.get(col, "1")
                 }
 
         return {

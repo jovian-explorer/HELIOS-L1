@@ -243,3 +243,32 @@ def test_importer_reads_omni_year_doy_columns():
     # Day of year 131 of 2024 (leap year) is 10 May.
     assert res["records"][0]["time_tag"] == "2024-05-10 17:05:00"
     assert res["records"][0]["bz_gsm"] == -30.5 and res["records"][0]["speed"] == 740.5
+
+
+def test_csv_export_handles_mixed_keys_and_carries_metadata():
+    import io
+    import pandas as pd
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+    from helios.core.exporter import DataExporter
+
+    # Records with different key sets used to raise ValueError in csv.DictWriter.
+    out = DataExporter.to_csv([{"time_tag": "a", "speed": 400.0}, {"time_tag": "b", "speed": None, "hp_mag": 90.0}])
+    assert out.splitlines()[0] == "time_tag,speed,hp_mag"
+
+    text = TestClient(app).get("/api/export/csv?mission_id=DSCOVR").text
+    assert text.startswith("# title:")
+    assert "# data_kind: synthetic" in text  # offline test run
+    assert "speed=km/s" in text
+    df = pd.read_csv(io.StringIO(text), comment="#")
+    assert "data_source" in df.columns and len(df) > 0
+    plain = TestClient(app).get("/api/export/csv?mission_id=DSCOVR&metadata=false").text
+    assert plain.startswith("time_tag,")
+
+
+def test_netcdf_schema_units():
+    from helios.core.exporter import DataExporter
+    schema = DataExporter.to_netcdf_schema(
+        [{"time_tag": "a", "temperature": 1e5, "magnetopause_re": 10.0, "akasofu_gw": 50.0, "bz_gsm": -2.0}], "X")
+    units = {k: v["units"] for k, v in schema["variables"].items()}
+    assert units == {"temperature": "K", "magnetopause_re": "R_E", "akasofu_gw": "GW", "bz_gsm": "nT"}

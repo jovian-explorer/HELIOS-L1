@@ -579,13 +579,8 @@ async def export_custom_telemetry(export_format: str):
     mission_slug = latest_custom_dataset.get("mission_name", "custom").lower().replace(" ", "_")
 
     if export_format.lower() == "csv":
-        output = io.StringIO()
-        if records:
-            writer = csv.DictWriter(output, fieldnames=list(records[0].keys()))
-            writer.writeheader()
-            writer.writerows(records)
         return Response(
-            content=output.getvalue(),
+            content=DataExporter.to_csv(records),
             media_type="text/csv",
             headers={"Content-Disposition": f"attachment; filename=helios_{mission_slug}_telemetry.csv"}
         )
@@ -683,11 +678,31 @@ async def get_spectrum(mission_id: str = "DSCOVR", parameter: str = "bz_gsm", sp
     return res
 
 @app.get("/api/export/csv")
-async def export_csv(mission_id: str = "DSCOVR", span_days: int = Query(1, ge=1, le=7)):
+async def export_csv(
+    mission_id: str = "DSCOVR",
+    span_days: int = Query(1, ge=1, le=7),
+    metadata: bool = Query(True, description="Prepend '# key: value' provenance and unit lines")
+):
     if mission_id.upper() not in MISSIONS:
         raise HTTPException(status_code=404, detail=f"Mission '{mission_id}' not recognized.")
-    data = await downloader.get_satellite_telemetry(mission_id.upper(), span_days=span_days)
-    csv_str = DataExporter.to_csv(data)
+    bundle = await downloader.get_telemetry_bundle(mission_id.upper(), span_days=span_days)
+    data = bundle["records"]
+    meta = None
+    if metadata:
+        prov = bundle["provenance"]
+        meta = {
+            "title": f"HELIOS-L1 telemetry export: {MISSIONS[mission_id.upper()]['name']}",
+            "software": f"HELIOS-L1 {__version__}",
+            "data_kind": prov.get("kind"),
+            "provenance": prov.get("description"),
+            "source_spacecraft": prov.get("source_spacecraft") or "n/a",
+            "time_standard": "UTC",
+            "time_coverage": f"{prov.get('time_coverage_start')} to {prov.get('time_coverage_end')}",
+            "cadence_seconds": prov.get("cadence_seconds"),
+            "retrieved_utc": prov.get("retrieved_utc"),
+            "missing_values": "empty cell",
+        }
+    csv_str = DataExporter.to_csv(data, metadata=meta)
     return Response(content=csv_str, media_type="text/csv", headers={
         "Content-Disposition": f"attachment; filename=HELIOS_{mission_id}_telemetry.csv"
     })
