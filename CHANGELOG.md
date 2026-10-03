@@ -37,6 +37,7 @@
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
 ### Interface and robustness
+- The comparator panel shows a warning above the statistics when either spacecraft is simulated or synthetic, since r, RMSE, bias and lag then describe the model rather than two instruments.
 - Time labels convert UTC to the selected time zone correctly in WebKit-based windows (macOS, Linux).
 - Export endpoints reject unknown missions and spans outside 1–7 days.
 - The test suite runs offline against a temporary `HELIOS_HOME` and no longer touches the user's cache folder.

@@ -1144,6 +1144,28 @@ function updateShocksTable(shocks) {
   `).join('');
 }
 
+// Statistics between a measurement and a simulated / synthetic series describe the model,
+// not two instruments: say so above the numbers.
+function comparisonProvenanceWarning(comp, satA, satB) {
+  const sides = [['A', satA, comp.provenance_a], ['B', satB, comp.provenance_b]];
+  const notes = sides
+    .filter(([, , prov]) => prov && prov.kind && !['observed', 'imported'].includes(prov.kind))
+    .map(([side, sat, prov]) => `Spacecraft ${side} (${sat}) is ${prov.kind.toUpperCase()}${prov.kind === 'simulated'
+      ? ': derived from the operational L1 stream with fixed offsets and noise'
+      : ': offline model output'}.`);
+  if (!notes.length) return '';
+  return notes.join(' ') + ' The correlation, RMSE, bias and lag below describe that model, not a comparison of two instruments.';
+}
+
+function showComparisonProvenanceWarning(comp, satA, satB) {
+  const box = document.getElementById('comp-provenance-warning');
+  const textEl = document.getElementById('comp-provenance-warning-text');
+  if (!box || !textEl) return;
+  const msg = comparisonProvenanceWarning(comp, satA, satB);
+  textEl.innerText = msg;
+  box.classList.toggle('hidden', !msg);
+}
+
 async function runComparison() {
   const satA = document.getElementById('comp-sat-a').value;
   const satB = document.getElementById('comp-sat-b').value;
@@ -1154,6 +1176,7 @@ async function runComparison() {
     if (!res.ok) throw new Error('Failed to run comparison');
     const comp = await res.json();
 
+    showComparisonProvenanceWarning(comp, satA, satB);
     if (comp.status !== 'success') {
       alert('Insufficient overlapping telemetry data between selected spacecraft.');
       return;

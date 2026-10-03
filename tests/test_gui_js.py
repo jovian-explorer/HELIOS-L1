@@ -38,3 +38,21 @@ console.log(JSON.stringify(out));
     res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
     assert res.returncode == 0, res.stderr
     assert json.loads(res.stdout) == ["10-03 00:10", "10-03 00:10", "10-02 18:40"]
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_comparator_warns_when_a_side_is_not_measured():
+    script = _extract("comparisonProvenanceWarning") + """
+const obs = {kind: 'observed'}, sim = {kind: 'simulated'}, syn = {kind: 'synthetic'};
+console.log(JSON.stringify([
+  comparisonProvenanceWarning({provenance_a: obs, provenance_b: obs}, 'DSCOVR', 'ACE'),
+  comparisonProvenanceWarning({provenance_a: obs, provenance_b: sim}, 'DSCOVR', 'WIND'),
+  comparisonProvenanceWarning({provenance_a: syn, provenance_b: {kind: 'imported'}}, 'DSCOVR', 'File'),
+]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    none, sim, syn = json.loads(res.stdout)
+    assert none == ""
+    assert "Spacecraft B (WIND) is SIMULATED" in sim and "not a comparison of two instruments" in sim
+    assert "Spacecraft A (DSCOVR) is SYNTHETIC" in syn and "Spacecraft B" not in syn

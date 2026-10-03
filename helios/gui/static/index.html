@@ -645,6 +645,12 @@
         </button>
       </div>
 
+      <!-- Shown when either side of the comparison is not a measurement (simulated / synthetic) -->
+      <div id="comp-provenance-warning" class="hidden p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-200 text-xs flex items-start space-x-2">
+        <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+        <span id="comp-provenance-warning-text"></span>
+      </div>
+
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
           <div class="text-slate-400 text-xs mb-1 font-semibold">Pearson Correlation (r)</div>
