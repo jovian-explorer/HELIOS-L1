@@ -2204,11 +2204,15 @@ async function loadSpectralAnalysis() {
     if (chartSpectrum) chartSpectrum.destroy();
 
     const unit = param === 'speed' ? '(km/s)²/Hz' : (param === 'density' ? '(cm⁻³)²/Hz' : 'nT²/Hz');
+    // (frequency in mHz, value) points so the frequency axis can be logarithmic: on a
+    // category axis the power laws were not straight lines and the slope looked wrong.
+    const fm = psd.frequencies_hz.map(f => f * 1000);
+    const xy = arr => arr.map((v, i) => ({ x: fm[i], y: v }));
 
     const datasets = [
       {
         label: `Observed PSD [${sat} • ${param}] (${unit})`,
-        data: psd.power_density,
+        data: xy(psd.power_density),
         borderColor: '#a855f7',
         backgroundColor: 'rgba(168, 85, 247, 0.12)',
         fill: true,
@@ -2221,7 +2225,7 @@ async function loadSpectralAnalysis() {
     if (psd.kolmogorov_psd && psd.kolmogorov_psd.length === psd.frequencies_hz.length) {
       datasets.push({
         label: 'Kolmogorov Inertial Cascade (f⁻⁵/³)',
-        data: psd.kolmogorov_psd,
+        data: xy(psd.kolmogorov_psd),
         borderColor: '#38bdf8',
         borderWidth: 1.6,
         borderDash: [5, 5],
@@ -2233,7 +2237,7 @@ async function loadSpectralAnalysis() {
     if (psd.iroshnikov_psd && psd.iroshnikov_psd.length === psd.frequencies_hz.length) {
       datasets.push({
         label: 'Iroshnikov-Kraichnan MHD (f⁻³/²)',
-        data: psd.iroshnikov_psd,
+        data: xy(psd.iroshnikov_psd),
         borderColor: '#10b981',
         borderWidth: 1.6,
         borderDash: [3, 4],
@@ -2245,7 +2249,6 @@ async function loadSpectralAnalysis() {
     chartSpectrum = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: psd.frequencies_hz.map(f => (f * 1000).toFixed(2) + ' mHz'),
         datasets: datasets
       },
       options: {
@@ -2253,6 +2256,7 @@ async function loadSpectralAnalysis() {
         scales: {
           x: {
             ...darkChartOptions.scales.x,
+            type: 'logarithmic',
             title: { display: true, text: 'Frequency (mHz) — [Taylor frozen scale λ = v_sw / f]', color: '#94a3b8' }
           },
           y: {
@@ -2266,7 +2270,7 @@ async function loadSpectralAnalysis() {
           tooltip: {
             callbacks: {
               label: function(context) {
-                return `${context.dataset.label}: ${context.raw.toExponential(3)}`;
+                return `${context.dataset.label}: ${context.parsed.y.toExponential(3)} at ${context.parsed.x.toFixed(3)} mHz`;
               }
             }
           }

@@ -113,3 +113,10 @@ def test_comparator_scatter_uses_numeric_axes():
     body = src[src.index("function renderCompScatterChart") if "function renderCompScatterChart" in src else src.index("chart-comp-scatter"):]
     body = body[:body.index("function renderCompResidualChart")]
     assert "type: 'linear', position: 'bottom'" in body
+
+
+def test_psd_plot_frequency_axis_is_logarithmic():
+    src = APP_JS.read_text(encoding="utf-8")
+    block = src[src.index("chartSpectrum = new Chart"):]
+    block = block[:block.index("async function initOrbits")]
+    assert block.count("type: 'logarithmic'") == 2 and "labels:" not in block

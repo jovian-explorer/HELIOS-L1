@@ -41,6 +41,7 @@
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
 ### Interface and robustness
+- Spectrum tab: the "log-log" PSD plot had a linear (category) frequency axis, so the f^-5/3 and f^-3/2 references were curves and the spectrum crowded at low frequency; the frequency axis is logarithmic and tooltips give the frequency.
 - Comparator scatter plot: the regression and 1:1 lines turned the x axis into a category axis, so every pair was drawn at the left edge in one vertical stripe; the axis is numeric again.
 - Hazards tab text: the GIC formula was shown as raw LaTeX source, and the flare absorption panel credited Sauer & Wilkinson (2008), whose paper covers D-RAP's solar-proton (polar cap) absorption; the panel now states the SWPC flare relation it uses and that the proton part is not modelled.
 - Hazards tab: the 10 MHz attenuation card always said "~79.1% signal power loss" whatever the flare; it now shows 1 - 10^(-A/10) for the computed attenuation (e.g. 76.6% for 6.3 dB).
