@@ -202,7 +202,10 @@ function startClock() {
 function formatTimestampToTimezone(isoStr) {
   if (!isoStr) return '';
   try {
-    const raw = isoStr.endsWith('Z') ? isoStr : isoStr + 'Z';
+    // Server time stamps are UTC 'YYYY-MM-DD HH:MM:SS'. Use the ISO 'T' separator: WebKit
+    // (macOS/Linux windows) rejects 'YYYY-MM-DD HH:MM:SSZ' and the label silently stayed UTC.
+    const iso = String(isoStr).trim().replace(' ', 'T');
+    const raw = /([zZ]|[+-]\d\d:?\d\d)$/.test(iso) ? iso : iso + 'Z';
     const d = new Date(raw);
     if (isNaN(d.getTime())) return isoStr.slice(5, 16);
     if (selectedTimezone === 'UTC') {
@@ -220,7 +223,7 @@ function formatTimestampToTimezone(isoStr) {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false
+        hourCycle: 'h23'
       });
       const parts = formatter.formatToParts(d);
       const m = parts.find(p => p.type === 'month')?.value || '01';
