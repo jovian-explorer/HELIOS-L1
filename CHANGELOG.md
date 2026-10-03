@@ -41,6 +41,7 @@
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
 ### Interface and robustness
+- Reference library: every DOI was checked against Crossref. Several pointed to unrelated papers and are corrected: Burton et al. (1975) now cites the JGR paper the Dst model comes from (10.1029/JA080i031p04204; the Science paper stays on the E_y parameter), Boyle et al. (1997) 10.1029/96JA01742, Sauer & Wilkinson (2008) 10.1029/2008SW000399 with its actual title, and the mission papers for DSCOVR (Burt & Smith 2012, IEEE Aerospace), Aditya-L1 (Current Science 2017), WIND (Acuña et al. 1995), SOHO (Domingo et al. 1995), GOES-16 (Kress et al. 2020, SEISS), SDO (Pesnell et al. 2012) and Solar Orbiter (Müller et al. 2020). Starkov (1994) has no DOI; the one listed belonged to a plasma-soliton paper, and the formula shown now matches the paper (HELIOS-L1 does not use its coefficients).
 - The "processors" setting is now used: it sizes the worker-thread pool that runs archive decoding, power spectra, cross-calibration and the fleet matrix off the server's event loop (it was stored but never used). The settings text describes what it actually controls.
 - The comparator panel shows a warning above the statistics when either spacecraft is simulated or synthetic, since r, RMSE, bias and lag then describe the model rather than two instruments.
 - Time labels convert UTC to the selected time zone correctly in WebKit-based windows (macOS, Linux).

@@ -317,7 +317,8 @@ def test_scientific_references_and_data_provenance():
     for r in refs:
         assert "doi" in r
         assert "doi_url" in r
-        assert r["doi_url"].startswith("https://doi.org/")
+        # Starkov (1994, Geomagn. Aeron.) has no DOI: such entries carry None
+        assert r["doi_url"] is None or r["doi_url"].startswith("https://doi.org/")
 
     # 2. Data Providers catalog
     prov_res = client.get("/api/providers")

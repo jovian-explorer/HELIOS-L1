@@ -368,3 +368,15 @@ def test_aurora_endpoint_shows_observed_dst_next_to_model(monkeypatch):
     assert [o["dst"] for o in body["dst_observed"]] == [-10.0, -20.0, -30.0, -40.0]
     assert body["dst_skill"]["n"] == 3  # 01, 02, 03 h are complete; 04:00 has one sample
     assert TestClient(server.app).get("/api/aurora?dst_model=xyz").status_code == 400
+
+
+def test_reference_dois_point_to_the_cited_papers():
+    """DOIs were checked against Crossref; several pointed to unrelated papers."""
+    from helios.config import SCIENTIFIC_REFERENCES, MISSIONS
+    refs = {r["id"]: r for r in SCIENTIFIC_REFERENCES}
+    assert refs["burton_dst_1975"]["doi"] == "10.1029/JA080i031p04204"
+    assert refs["boyle_polar_cap_1997"]["doi"] == "10.1029/96JA01742"
+    assert refs["sauer_drap_2008"]["doi"] == "10.1029/2008SW000399"
+    assert refs["starkov_aurora_1994"]["doi"] is None
+    assert MISSIONS["SOHO"]["doi"] == "10.1007/BF00733425"
+    assert MISSIONS["SOLAR_ORBITER"]["doi"] == "10.1051/0004-6361/202038467"
