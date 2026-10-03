@@ -150,3 +150,50 @@ def test_parse_kp_both_formats_and_goes_channels():
     pr = [{"time_tag": "2026-10-02T18:40:00Z", "flux": 0.24, "energy": ">=10 MeV"},
           {"time_tag": "2026-10-02T18:40:00Z", "flux": 16.5, "energy": ">=1 MeV"}]
     assert DataDownloader.parse_goes_latest(pr, ">=10 MeV")[0] == 0.24
+
+
+def test_telemetry_api_uses_observed_indices_and_reports_provenance(monkeypatch):
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+
+    kp_rows = [{"time_tag": "2026-10-02T15:00:00", "Kp": 7.33}]
+    xr_rows = [{"time_tag": "2026-10-02T18:04:00Z", "flux": 5.3e-4, "energy": "0.1-0.8nm"}]
+    pr_rows = [{"time_tag": "2026-10-02T18:40:00Z", "flux": 150.0, "energy": ">=10 MeV"}]
+
+    async def fake_fetch(self, url, cache_key):
+        if "rtsw_mag" in url:
+            return MAG
+        if "rtsw_wind" in url:
+            return WIND
+        if "k-index" in url:
+            return kp_rows
+        if "xrays" in url:
+            return xr_rows
+        if "protons" in url:
+            return pr_rows
+        return None
+
+    monkeypatch.setattr(DataDownloader, "fetch_json", fake_fetch)
+    data = TestClient(app).get("/api/telemetry/DSCOVR").json()
+    assert data["provenance"]["kind"] == "observed"
+    cls = data["classification"]
+    # Previously: Kp guessed from Bz (3.0 here), X-ray fixed at 1.5e-6, protons fixed at 1.2 pfu.
+    assert cls["kp"] == 7.33 and cls["g_level"] == 3 and "Observed" in cls["kp_source"]
+    assert cls["flare_class"].startswith("X5.3") and cls["r_level"] == 3
+    assert cls["proton_flux_pfu"] == 150.0 and cls["s_level"] == 2
+    # "latest" skips trailing partial rows; here the newest row is complete.
+    assert data["latest"]["time_tag"] == "2026-10-02 18:02:00"
+
+
+def test_latest_valid_record_skips_partial_rows():
+    from helios.api.server import latest_valid_record
+    recs = [{"time_tag": "a", "speed": 400.0, "bz_gsm": -1.0}, {"time_tag": "b", "speed": None, "bz_gsm": -2.0}]
+    assert latest_valid_record(recs)["time_tag"] == "a"
+
+
+def test_export_rejects_unknown_mission():
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+    client = TestClient(app)
+    assert client.get("/api/export/csv?mission_id=NOT_A_MISSION").status_code == 404
+    assert client.get("/api/export/csv?mission_id=DSCOVR&span_days=99").status_code == 422

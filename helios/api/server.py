@@ -55,6 +55,50 @@ app.add_middleware(
 downloader = DataDownloader()
 latest_custom_dataset: Optional[Dict[str, Any]] = None
 
+def latest_valid_record(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Most recent record with both speed and Bz present (the newest row is often a partial gap)."""
+    for rec in reversed(records or []):
+        if rec.get("speed") is not None and rec.get("bz_gsm") is not None:
+            return rec
+    return records[-1] if records else {}
+
+
+def kp_proxy_from_bz(bz: Optional[float]) -> float:
+    """Crude Kp estimate from IMF Bz, used only when no observed Kp can be fetched."""
+    if bz is None:
+        return 3.0
+    if bz < -15:
+        return 8.5
+    if bz < -10:
+        return 7.0
+    if bz < -5:
+        return 5.0
+    return 3.0
+
+
+async def classify_current_conditions(latest: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    NOAA G/R/S classification from observed indices (planetary Kp, GOES 0.1-0.8 nm X-rays,
+    GOES >=10 MeV protons). Kp falls back to a Bz-based estimate, flagged as such; missing
+    X-ray or proton data is reported as missing, never replaced by a default.
+    """
+    indices = await downloader.get_space_weather_indices()
+    if indices.get("kp") is not None:
+        kp, kp_source = indices["kp"], f"Observed planetary Kp (NOAA SWPC, {indices.get('kp_time')} UTC)"
+    else:
+        kp, kp_source = kp_proxy_from_bz(latest.get("bz_gsm")), "Estimated from IMF Bz (observed Kp unavailable)"
+    cls = SpaceWeatherPhysics.classify_noaa_scales(
+        kp=kp,
+        bz_gsm=latest.get("bz_gsm"),
+        xray_flux=indices.get("xray_flux_long"),
+        proton_flux=indices.get("proton_flux_10mev")
+    )
+    cls["kp"] = kp
+    cls["kp_source"] = kp_source
+    cls["indices"] = indices
+    return cls
+
+
 class CMEKinematicsRequest(BaseModel):
     r1_rsun: float = 2.5
     r2_rsun: float = 6.0
@@ -192,23 +236,11 @@ async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
     if mission_key not in MISSIONS:
         raise HTTPException(status_code=404, detail=f"Mission '{mission_id}' not recognized.")
     
-    data = await downloader.get_satellite_telemetry(mission_key, span_days=span_days)
-    
-    latest = data[-1] if data else {}
-    kp_proxy = 3.0
-    if latest.get("bz_gsm", 0) < -15:
-        kp_proxy = 8.5
-    elif latest.get("bz_gsm", 0) < -10:
-        kp_proxy = 7.0
-    elif latest.get("bz_gsm", 0) < -5:
-        kp_proxy = 5.0
+    bundle = await downloader.get_telemetry_bundle(mission_key, span_days=span_days)
+    data = bundle["records"]
 
-    classification = SpaceWeatherPhysics.classify_noaa_scales(
-        kp=kp_proxy,
-        bz_gsm=latest.get("bz_gsm"),
-        xray_flux=latest.get("xray_flux_long", 1.5e-6),
-        proton_flux=latest.get("proton_flux", 1.2)
-    )
+    latest = latest_valid_record(data)
+    classification = await classify_current_conditions(latest)
 
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
 
@@ -217,6 +249,7 @@ async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
 
     return {
         "mission": mission_info,
+        "provenance": bundle["provenance"],
         "data_points": len(data),
         "latest": latest,
         "classification": classification,
@@ -361,17 +394,24 @@ async def get_spice_status():
 @app.get("/api/aurora")
 async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None):
     data = await downloader.get_satellite_telemetry("DSCOVR", span_days=1)
-    latest_rec = data[-1] if (isinstance(data, list) and len(data) > 0) else (data.get("latest", {}) if isinstance(data, dict) else {})
+    latest_rec = latest_valid_record(data)
 
     if bz_gsm is None:
-        bz_val = float(latest_rec.get("bz_gsm", -3.0))
+        bz_val = latest_rec.get("bz_gsm")
+        bz_val = float(bz_val) if bz_val is not None else -3.0
     else:
         bz_val = float(bz_gsm)
 
+    kp_source = "user input"
     if kp is None:
-        speed_val = float(latest_rec.get("speed", 420.0))
-        kp_est = max(0.5, min(9.0, 2.0 + max(0.0, (speed_val - 400.0) / 80.0) + max(0.0, -bz_val) * 0.35))
-        kp_val = round(kp_est, 1)
+        indices = await downloader.get_space_weather_indices()
+        if indices.get("kp") is not None:
+            kp_val, kp_source = float(indices["kp"]), "observed planetary Kp (NOAA SWPC)"
+        else:
+            speed_val = latest_rec.get("speed")
+            speed_val = float(speed_val) if speed_val is not None else 420.0
+            kp_est = max(0.5, min(9.0, 2.0 + max(0.0, (speed_val - 400.0) / 80.0) + max(0.0, -bz_val) * 0.35))
+            kp_val, kp_source = round(kp_est, 1), "estimated from solar wind speed and Bz"
     else:
         kp_val = float(kp)
 
@@ -380,6 +420,7 @@ async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None)
     dst_sim = AuroralModel.simulate_dst_evolution(data)
     return {
         "kp": kp_val,
+        "kp_source": kp_source,
         "bz_gsm": bz_val,
         "boundaries": boundaries,
         "oval_polygon": oval_polygon,
@@ -583,22 +624,10 @@ async def get_html_report(mission_id: str = "DSCOVR", download: bool = False):
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
     data = await downloader.get_satellite_telemetry(mission_key, span_days=1)
-    latest = data[-1] if data else {}
-    kp_proxy = 3.0
-    if latest.get("bz_gsm", 0) < -15:
-        kp_proxy = 8.5
-    elif latest.get("bz_gsm", 0) < -10:
-        kp_proxy = 7.0
-    elif latest.get("bz_gsm", 0) < -5:
-        kp_proxy = 5.0
-    classification = SpaceWeatherPhysics.classify_noaa_scales(
-        kp=kp_proxy,
-        bz_gsm=latest.get("bz_gsm"),
-        xray_flux=latest.get("xray_flux_long", 1.5e-6),
-        proton_flux=latest.get("proton_flux", 1.2)
-    )
+    latest = latest_valid_record(data)
+    classification = await classify_current_conditions(latest)
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
-    auroral_data = AuroralModel.calculate_auroral_boundaries(kp_proxy, latest.get("bz_gsm", 0))
+    auroral_data = AuroralModel.calculate_auroral_boundaries(classification["kp"], latest.get("bz_gsm") or 0.0)
 
     html = ScientificReportGenerator.generate_html_bulletin(
         mission_name=MISSIONS[mission_key]["name"],
@@ -618,22 +647,10 @@ async def get_markdown_report(mission_id: str = "DSCOVR", download: bool = False
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
     data = await downloader.get_satellite_telemetry(mission_key, span_days=1)
-    latest = data[-1] if data else {}
-    kp_proxy = 3.0
-    if latest.get("bz_gsm", 0) < -15:
-        kp_proxy = 8.5
-    elif latest.get("bz_gsm", 0) < -10:
-        kp_proxy = 7.0
-    elif latest.get("bz_gsm", 0) < -5:
-        kp_proxy = 5.0
-    classification = SpaceWeatherPhysics.classify_noaa_scales(
-        kp=kp_proxy,
-        bz_gsm=latest.get("bz_gsm"),
-        xray_flux=latest.get("xray_flux_long", 1.5e-6),
-        proton_flux=latest.get("proton_flux", 1.2)
-    )
+    latest = latest_valid_record(data)
+    classification = await classify_current_conditions(latest)
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
-    auroral_data = AuroralModel.calculate_auroral_boundaries(kp_proxy, latest.get("bz_gsm", 0))
+    auroral_data = AuroralModel.calculate_auroral_boundaries(classification["kp"], latest.get("bz_gsm") or 0.0)
 
     md = ScientificReportGenerator.generate_markdown_executive_summary(
         mission_name=MISSIONS[mission_key]["name"],
@@ -663,7 +680,9 @@ async def get_spectrum(mission_id: str = "DSCOVR", parameter: str = "bz_gsm", sp
     return res
 
 @app.get("/api/export/csv")
-async def export_csv(mission_id: str = "DSCOVR", span_days: int = 1):
+async def export_csv(mission_id: str = "DSCOVR", span_days: int = Query(1, ge=1, le=7)):
+    if mission_id.upper() not in MISSIONS:
+        raise HTTPException(status_code=404, detail=f"Mission '{mission_id}' not recognized.")
     data = await downloader.get_satellite_telemetry(mission_id.upper(), span_days=span_days)
     csv_str = DataExporter.to_csv(data)
     return Response(content=csv_str, media_type="text/csv", headers={
@@ -671,8 +690,10 @@ async def export_csv(mission_id: str = "DSCOVR", span_days: int = 1):
     })
 
 @app.get("/api/export/plot")
-async def export_plot(mission_id: str = "DSCOVR", span_days: int = 1):
+async def export_plot(mission_id: str = "DSCOVR", span_days: int = Query(1, ge=1, le=7)):
     mission_key = mission_id.upper()
+    if mission_key not in MISSIONS:
+        raise HTTPException(status_code=404, detail=f"Mission '{mission_id}' not recognized.")
     data = await downloader.get_satellite_telemetry(mission_key, span_days=span_days)
     name = MISSIONS.get(mission_key, {}).get("name", mission_id)
     png_bytes = DataExporter.generate_overview_chart(data, name)

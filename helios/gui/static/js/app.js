@@ -806,16 +806,24 @@ function updateFeedStatus(data, latency = 0) {
   }
 
   const recCount = (data.records || []).length;
-  const isLive = (data.source || '').toLowerCase().includes('noaa') || (data.source || '').toLowerCase().includes('live');
+  const prov = data.provenance || {};
+  const kind = prov.kind || 'synthetic';
+  const badge = document.getElementById('feed-status-badge');
+  if (badge) badge.title = prov.description || 'Telemetry Feed Diagnostic & Latency';
 
-  if (isLive) {
-    badgeText.innerText = `NOAA SWPC (${recCount} pts • ${latency}ms)`;
+  if (kind === 'observed') {
+    const src = (prov.source_spacecraft || []).join(', ');
+    badgeText.innerText = `Observed: NOAA RTSW${src ? ' ' + src : ''} (${recCount} pts • ${latency}ms)`;
     badgeText.className = 'text-emerald-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-emerald-400 pulse-beacon';
-  } else {
-    badgeText.innerText = `Physics Model (${recCount} pts • ${latency}ms)`;
+  } else if (kind === 'simulated') {
+    badgeText.innerText = `SIMULATED from L1 stream (${recCount} pts • ${latency}ms)`;
     badgeText.className = 'text-amber-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+  } else {
+    badgeText.innerText = `SYNTHETIC model, archive offline (${recCount} pts • ${latency}ms)`;
+    badgeText.className = 'text-rose-300 font-mono text-[11px]';
+    badgeDot.className = 'w-2 h-2 rounded-full bg-rose-400';
   }
 }
 
