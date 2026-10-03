@@ -15,7 +15,7 @@ import csv
 import json
 import math
 import numpy as np
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from helios import __version__
 from helios.config import (
@@ -24,6 +24,7 @@ from helios.config import (
     get_system_settings, update_system_settings
 )
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
+from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
@@ -257,6 +258,80 @@ async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
         "detected_shocks": shocks,
         "records": data
     }
+
+ARCHIVE_MAX_DAYS = 31
+
+
+def _parse_utc(value: str, name: str) -> datetime:
+    """ISO 8601 date or date-time; naive values are UTC, offsets are converted to UTC."""
+    try:
+        t = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except (AttributeError, ValueError):
+        raise HTTPException(status_code=422, detail=f"'{name}' must be an ISO 8601 UTC time, e.g. 2024-05-10T12:00.")
+    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t.astimezone(timezone.utc)
+
+
+@app.get("/api/archive")
+async def get_archive_catalog():
+    """Missions and CDAWeb datasets available for archive retrieval (preferred dataset first)."""
+    return {
+        "server": HAPI_SERVER,
+        "max_days": ARCHIVE_MAX_DAYS,
+        "missions": {
+            key: [[{"id": d["id"], "level": d["level"], "label": d["label"]} for d in group]
+                  for group in src["groups"]]
+            for key, src in ARCHIVE_SOURCES.items()
+        },
+    }
+
+
+@app.get("/api/archive/{mission_id}")
+async def get_archive(
+    mission_id: str,
+    start: str = Query(..., description="UTC start, ISO 8601 (e.g. 2024-05-10T00:00)"),
+    end: str = Query(..., description="UTC end (exclusive), ISO 8601"),
+    cadence_minutes: int = Query(1, ge=1, le=60, description="1 = 1-minute means; larger values are block averages"),
+    format: str = Query("json", pattern="^(json|csv)$")
+):
+    """Measured solar wind for any interval from the NASA CDAWeb archive (WIND, ACE, DSCOVR, OMNI)."""
+    key = mission_id.upper()
+    if key not in ARCHIVE_SOURCES:
+        raise HTTPException(status_code=404, detail=f"No archive source for '{mission_id}'. Available: {', '.join(ARCHIVE_SOURCES)}.")
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    if t1 - t0 > timedelta(days=ARCHIVE_MAX_DAYS):
+        raise HTTPException(status_code=422, detail=f"Intervals are limited to {ARCHIVE_MAX_DAYS} days.")
+
+    bundle = await downloader.get_archive_bundle(key, t0, t1, cadence_minutes=cadence_minutes)
+    data, prov = bundle["records"], bundle["provenance"]
+    if format == "csv":
+        meta = {
+            "title": f"HELIOS-L1 archive export: {key}",
+            "software": f"HELIOS-L1 {__version__}",
+            "data_kind": prov.get("kind"),
+            "provenance": prov.get("description"),
+            "datasets": ", ".join(d["id"] for d in prov.get("datasets", [])) or "n/a",
+            "archive": HAPI_SERVER,
+            "time_standard": "UTC",
+            "time_coverage": f"{prov.get('time_coverage_start')} to {prov.get('time_coverage_end')}",
+            "cadence_seconds": prov.get("cadence_seconds"),
+            "retrieved_utc": prov.get("retrieved_utc"),
+            "missing_values": "empty cell",
+        }
+        stamp = f"{t0:%Y%m%dT%H%M}_{t1:%Y%m%dT%H%M}"
+        return Response(content=DataExporter.to_csv(data, metadata=meta), media_type="text/csv", headers={
+            "Content-Disposition": f"attachment; filename=HELIOS_{key}_archive_{stamp}.csv"
+        })
+    return {
+        "mission": {"id": key, "name": MISSIONS.get(key, {}).get("name", key)},
+        "provenance": prov,
+        "data_points": len(data),
+        "latest": latest_valid_record(data),
+        "detected_shocks": SpaceWeatherPhysics.detect_interplanetary_shocks(data),
+        "records": data
+    }
+
 
 @app.get("/api/compare")
 async def compare_missions(

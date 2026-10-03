@@ -1,0 +1,42 @@
+#{
+#"HAPI": "2.0",
+#"status": {"code": 1200, "message": "OK"},
+#"format": "csv",
+#"parameters": [
+#{
+#"name": "Time",
+#"type": "isotime",
+#"units": "UTC",
+#"length":24,
+#"fill": null
+#},
+#{
+#"name": "B1F1",
+#"type": "double",
+#"units": "nT",
+#"fill": "-1.0E31",
+#"description": "Magnetic field magnitude (1 sec)"
+#},
+#{
+#"name": "B1GSE",
+#"type": "double",
+#"units": "nT",
+#"fill": "-1.0E31",
+#"description": "Magnetic field vector in GSE cartesian coordinates (1 sec)",
+#"size": [3]
+#},
+#{
+#"name": "FLAG1",
+#"type": "integer",
+#"units": " ",
+#"fill": "-32768",
+#"description": "Data quality flag (1 sec): 0-good quality"
+#}
+#]
+#}
+2018-05-10T16:57:00.500Z,3.447182e+00,2.002031e+00,-2.634129e+00,-9.654772e-01,0
+2018-05-10T16:57:01.500Z,3.425346e+00,1.966580e+00,-2.622389e+00,-9.906767e-01,0
+2018-05-10T16:57:02.500Z,3.482934e+00,1.821903e+00,-2.767300e+00,-1.068793e+00,0
+2018-05-10T16:57:03.500Z,3.468660e+00,1.666955e+00,-2.765967e+00,-1.261936e+00,0
+2018-05-10T16:57:04.500Z,3.430584e+00,1.603049e+00,-2.717379e+00,-1.345298e+00,0
+2018-05-10T16:57:05.500Z,3.408664e+00,1.572485e+00,-2.747354e+00,-1.258666e+00,0

@@ -1,0 +1,46 @@
+#{
+#"HAPI": "2.0",
+#"status": {"code": 1200, "message": "OK"},
+#"format": "csv",
+#"parameters": [
+#{
+#"name": "Time",
+#"type": "isotime",
+#"units": "UTC",
+#"length":24,
+#"fill": null
+#},
+#{
+#"name": "fit_flag",
+#"type": "integer",
+#"units": "(10=He_OK,>1=P_OK)",
+#"fill": "-128",
+#"description": "This flag denotes the fit quality and encodes any contingencies in the ion VDF analysis (10=SW parameters OK)"
+#},
+#{
+#"name": "Proton_V_nonlin",
+#"type": "double",
+#"units": "km/s",
+#"fill": "99999.9",
+#"description": "Proton bulk speed"
+#},
+#{
+#"name": "Proton_W_nonlin",
+#"type": "double",
+#"units": "km/s",
+#"fill": "99999.9",
+#"description": "Scalar [isotropic] proton thermal speed [km/s], from the trace of the anisotropic temperatures."
+#},
+#{
+#"name": "Proton_Np_nonlin",
+#"type": "double",
+#"units": "cm^{-3}",
+#"fill": "100000.0",
+#"description": "Proton number density Np (n/cc) from non-linear analysis"
+#}
+#]
+#}
+2024-05-20T17:00:58.351Z,2,3.50e+02,3.28e+01,3.90e+00
+2024-05-20T17:02:38.871Z,2,3.51e+02,2.90e+01,4.03e+00
+2024-05-20T17:04:16.251Z,1,3.53e+02,3.58e+01,4.31e+00
+2024-05-20T17:05:56.771Z,2,3.50e+02,2.95e+01,3.91e+00

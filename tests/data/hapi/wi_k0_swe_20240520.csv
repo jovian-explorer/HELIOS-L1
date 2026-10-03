@@ -1,0 +1,53 @@
+#{
+#"HAPI": "2.0",
+#"status": {"code": 1200, "message": "OK"},
+#"format": "csv",
+#"parameters": [
+#{
+#"name": "Time",
+#"type": "isotime",
+#"units": "UTC",
+#"length":24,
+#"fill": null
+#},
+#{
+#"name": "QF_V",
+#"type": "integer",
+#"units": " ",
+#"fill": "-2147483648",
+#"description": "Velocity Quality Flag: 0=OK; 2 or 130 = caution; Other values NOT VALID"
+#},
+#{
+#"name": "QF_Np",
+#"type": "integer",
+#"units": " ",
+#"fill": "-2147483648",
+#"description": "Proton Density Quality Flag: 0=OK; 2 or 130 = caution; Other values NOT VALID"
+#},
+#{
+#"name": "V_GSE",
+#"type": "double",
+#"units": "km/s",
+#"fill": "-1.0E31",
+#"description": "Solar Wind Velocity in GSE coord., 3 comp.",
+#"size": [3]
+#},
+#{
+#"name": "THERMAL_SPD",
+#"type": "double",
+#"units": "km/s",
+#"fill": "-1.0E31",
+#"description": "Solar Wind Most Probable Thermal Speed = sqrt(2kT/M), scalar"
+#},
+#{
+#"name": "Np",
+#"type": "double",
+#"units": "#/cc",
+#"fill": "-1.0E31",
+#"description": "Solar Wind Proton Number Density, scalar (linear)"
+#}
+#]
+#}
+2024-05-20T17:01:34.359Z,14338,14338,-352.3,-8.9,-21.2,28.7,5.6
+2024-05-20T17:03:08.597Z,14338,14338,-352.3,-10.3,-23.3,27.5,5.7
+2024-05-20T17:04:47.652Z,4098,4098,-356.5,-21.0,-20.6,31.9,5.6

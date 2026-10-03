@@ -1,0 +1,83 @@
+#{
+#"HAPI": "2.0",
+#"status": {"code": 1200, "message": "OK"},
+#"format": "csv",
+#"parameters": [
+#{
+#"name": "Time",
+#"type": "isotime",
+#"units": "UTC",
+#"length":24,
+#"fill": null
+#},
+#{
+#"name": "F",
+#"type": "double",
+#"units": "nT",
+#"fill": "9999.99",
+#"description": "Magnitude of avg. field vector (nT) (last currently-available OMNI B-field data Sep 02, 2026)"
+#},
+#{
+#"name": "BX_GSE",
+#"type": "double",
+#"units": "nT",
+#"fill": "9999.99",
+#"description": "Bx (nT), GSE"
+#},
+#{
+#"name": "BY_GSE",
+#"type": "double",
+#"units": "nT",
+#"fill": "9999.99",
+#"description": "By (nT), GSE"
+#},
+#{
+#"name": "BZ_GSE",
+#"type": "double",
+#"units": "nT",
+#"fill": "9999.99",
+#"description": "Bz (nT), GSE"
+#},
+#{
+#"name": "BY_GSM",
+#"type": "double",
+#"units": "nT",
+#"fill": "9999.99",
+#"description": "By (nT), GSM, determined from post-shift GSE components"
+#},
+#{
+#"name": "BZ_GSM",
+#"type": "double",
+#"units": "nT",
+#"fill": "9999.99",
+#"description": "Bz (nT), GSM, determined from post-shift GSE components"
+#},
+#{
+#"name": "flow_speed",
+#"type": "double",
+#"units": "km/s",
+#"fill": "99999.9",
+#"description": "Flow Speed (km/s), GSE"
+#},
+#{
+#"name": "proton_density",
+#"type": "double",
+#"units": "n/cc",
+#"fill": "999.99",
+#"description": "Proton density (n/cc) (last currently-available OMNI plasma data Sep 02, 2026)"
+#},
+#{
+#"name": "T",
+#"type": "double",
+#"units": "K",
+#"fill": "9999999.0",
+#"description": "Temperature (K)"
+#}
+#]
+#}
+2024-05-10T17:00:00.000Z,4.26,-1.20,2.70,3.07,1.75,3.70,99999.9,999.99,9999999.0
+2024-05-10T17:01:00.000Z,4.19,-1.06,2.63,3.08,1.68,3.69,447.4,14.88,45156
+2024-05-10T17:02:00.000Z,4.14,-1.07,2.70,2.94,1.78,3.57,447.4,14.88,45156
+2024-05-10T17:03:00.000Z,4.01,-1.30,2.20,3.08,1.26,3.57,99999.9,999.99,9999999.0
+2024-05-10T17:04:00.000Z,22.12,9.01,0.24,-16.35,4.78,-15.64,99999.9,999.99,9999999.0
+2024-05-10T17:05:00.000Z,19.96,-2.54,-5.90,-13.47,-1.90,-14.58,713.7,48.55,918075

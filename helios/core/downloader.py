@@ -1,8 +1,9 @@
 """
 Data acquisition and caching engine for Sun-Earth L1 and heliospheric missions.
-Supports NOAA SWPC Real-Time Solar Wind (RTSW) telemetry, GOES X-ray / proton and
-planetary Kp indices, simulated feeds for missions without a public real-time
-stream, and historical space weather benchmark profiles.
+Supports NOAA SWPC Real-Time Solar Wind (RTSW) telemetry, NASA CDAWeb archive data
+through HAPI (WIND, ACE, DSCOVR, OMNI; see core.archive), GOES X-ray / proton and
+planetary Kp indices, simulated feeds for missions without public data, and
+historical space weather events (real OMNI data where it exists).
 
 Every record carries a "data_source" label ("observed", "simulated" or "synthetic")
 and every bundle a provenance description, so measured and modelled values can
@@ -20,6 +21,7 @@ import httpx
 
 from helios.config import CACHE_DIR, NOAA_SWPC_ENDPOINTS, MISSIONS
 from helios.core.science import SpaceWeatherPhysics
+from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER, ArchiveClient, frame_to_records
 
 # Primary plasma / field quantities carried by telemetry records.
 PRIMARY_FIELDS = ("density", "speed", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt",
@@ -39,6 +41,15 @@ SIMULATION_OFFSETS = {
 # Missions that have their own "source"-tagged rows in the NOAA RTSW feed.
 RTSW_SOURCES = {"DSCOVR": "DSCOVR", "ACE": "ACE"}
 
+# UTC windows (48 h around the shock arrival) for historical events covered by OMNI.
+EVENT_WINDOWS = {
+    "may_2024_g5": ("2024-05-10 06:00", "2024-05-12 06:00"),
+    "st_patricks_2015": ("2015-03-16 12:00", "2015-03-18 12:00"),
+    "halloween_2003": ("2003-10-28 12:00", "2003-10-30 12:00"),
+    "bastille_2000": ("2000-07-14 12:00", "2000-07-16 12:00"),
+    "quebec_1989": ("1989-03-12 12:00", "1989-03-14 12:00"),
+}
+
 
 def _num(value) -> Optional[float]:
     """Float conversion that maps None, blanks, NaN and non-numeric values to None."""
@@ -56,10 +67,11 @@ def _iso_space(time_tag: str) -> str:
     return str(time_tag).replace("T", " ").replace("Z", "")[:19]
 
 
-def add_derived_fields(rec: Dict[str, Any], distance_km: float = 1500000.0) -> Dict[str, Any]:
+def add_derived_fields(rec: Dict[str, Any], distance_km: Optional[float] = 1500000.0) -> Dict[str, Any]:
     """
     Fill the derived quantities of a telemetry record from its primary fields.
     A derived value whose inputs are missing is None (a data gap), never a default.
+    distance_km=None (data already propagated to Earth, e.g. OMNI) leaves the travel time empty.
     """
     dens, spd = rec.get("density"), rec.get("speed")
     bt, by, bz = rec.get("bt"), rec.get("by_gsm"), rec.get("bz_gsm")
@@ -70,12 +82,12 @@ def add_derived_fields(rec: Dict[str, Any], distance_km: float = 1500000.0) -> D
     rec["akasofu_gw"] = (round(SpaceWeatherPhysics.akasofu_epsilon(spd, bt, by, bz), 2)
                          if (spd and bt is not None and by is not None and bz is not None) else None)
     rec["l1_travel_time_min"] = (SpaceWeatherPhysics.propagation_delay_minutes(distance_km, spd)
-                                 if (spd and spd > 0) else None)
+                                 if (spd and spd > 0 and distance_km is not None) else None)
     return rec
 
 
 def block_average(records: List[Dict[str, Any]], minutes: int = 5,
-                  distance_km: float = 1500000.0) -> List[Dict[str, Any]]:
+                  distance_km: Optional[float] = 1500000.0) -> List[Dict[str, Any]]:
     """
     Average records onto a regular `minutes` grid (time stamps mark bin starts).
     Primary quantities are averaged and the nonlinear derived quantities are recomputed
@@ -143,6 +155,8 @@ class DataDownloader:
     def __init__(self, cache_ttl_seconds: int = 180):
         self.cache_ttl = cache_ttl_seconds
         self.cache_dir = CACHE_DIR
+        # The lambda looks fetch_text up at call time, so it can be replaced (tests, offline mode).
+        self.archive = ArchiveClient(lambda url: self.fetch_text(url), self.cache_dir)
 
     def _get_cache_path(self, key: str) -> str:
         return os.path.join(self.cache_dir, f"{key}.json")
@@ -189,6 +203,82 @@ class DataDownloader:
         if os.path.exists(cache_path):
             return self._read_cache(cache_path)
         return None
+
+    async def fetch_text(self, url: str, timeout: float = 120.0) -> Optional[str]:
+        """Body of a GET request, or None on a network error or non-200 status. Not cached here."""
+        try:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+                resp = await client.get(url)
+            if resp.status_code == 200:
+                return resp.text
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def _provenance(kind: str, description: str, sources: List[str],
+                    records: List[Dict[str, Any]], **extra) -> Dict[str, Any]:
+        prov = {
+            "kind": kind,
+            "description": description,
+            "source_spacecraft": sources,
+            "cadence_seconds": infer_cadence_seconds(records),
+            "n_records": len(records),
+            "time_coverage_start": records[0]["time_tag"] if records else None,
+            "time_coverage_end": records[-1]["time_tag"] if records else None,
+            "time_standard": "UTC",
+            "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        prov.update(extra)
+        return prov
+
+    # ------------------------------------------------------------------
+    # NASA CDAWeb archive (HAPI)
+    # ------------------------------------------------------------------
+    async def get_archive_bundle(self, mission_id: str, start: datetime, end: datetime,
+                                 cadence_minutes: int = 1) -> Dict[str, Any]:
+        """
+        Archive records for [start, end) from CDAWeb (WIND, ACE, DSCOVR, OMNI), as 1-minute
+        means or `cadence_minutes` block averages. provenance["kind"] is "observed", or
+        "unavailable" when the archive has nothing for the interval (or cannot be reached).
+        """
+        mission_id = mission_id.upper()
+        if mission_id not in ARCHIVE_SOURCES:
+            raise KeyError(mission_id)
+        name = MISSIONS.get(mission_id, {}).get("name", mission_id)
+        dist = None if mission_id == "OMNI" else MISSIONS.get(mission_id, {}).get("orbit_distance_km", 1500000)
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+
+        res = await self.archive.fetch_mission(mission_id, start, end)
+        records = frame_to_records(res["frame"], name, add_derived_fields, dist)
+        if records and cadence_minutes > 1:
+            records = block_average(records, cadence_minutes, dist)
+
+        if records:
+            used = "; ".join(f"{d['id']} ({d['label']}, {d['level']})" for d in res["datasets"])
+            description = (f"NASA CDAWeb archive via HAPI: {used}. "
+                           + ("1-minute means." if cadence_minutes <= 1 else f"{cadence_minutes}-minute means."))
+            if mission_id == "OMNI":
+                description += " OMNI values are time-shifted to the bow shock nose."
+            if any(d["id"] in ("DSCOVR_H0_MAG", "AC_K1_MFI") for d in res["datasets"]):
+                description += " GSM components rotated from GSE (Hapgood 1992, IGRF dipole)."
+        elif res["offline"]:
+            description = "The CDAWeb HAPI server could not be reached and nothing is cached for this interval."
+        else:
+            description = (f"The CDAWeb archive has no {name} data for this interval "
+                           "(archives lag real time by days to months).")
+        if res["failed_days"]:
+            description += f" {res['failed_days']} day file(s) could not be retrieved."
+        prov = self._provenance(
+            "observed" if records else "unavailable", description,
+            [ARCHIVE_SOURCES[mission_id]["spacecraft"]] if records else [], records,
+            archive=HAPI_SERVER, datasets=res["datasets"], short_label=f"CDAWeb {name}",
+            requested_start=start.strftime("%Y-%m-%d %H:%M:%S"),
+            requested_end=end.strftime("%Y-%m-%d %H:%M:%S"))
+        return {"records": records, "provenance": prov}
 
     # ------------------------------------------------------------------
     # NOAA SWPC Real-Time Solar Wind (RTSW)
@@ -261,26 +351,32 @@ class DataDownloader:
 
     async def get_telemetry_bundle(self, mission_id: str, span_days: int = 1) -> Dict[str, Any]:
         """
-        Telemetry records plus a provenance description for one mission.
+        Telemetry records for the last `span_days` days plus a provenance description.
 
         provenance["kind"] is one of:
-          "observed"  - measured values from the NOAA RTSW feed
-          "simulated" - no public real-time feed for this mission; values are the
-                        operational L1 stream shifted by fixed calibration offsets plus noise
-          "synthetic" - the archive could not be reached (and nothing was cached); values
-                        come from the offline solar wind model and are not measurements
+          "observed"  - measured values: the NOAA RTSW feed (about the last 24 h) and/or the
+                        NASA CDAWeb archive (WIND always; DSCOVR and ACE for spans > 1 day,
+                        with RTSW filling the hours the archive does not reach yet)
+          "simulated" - no data for this mission and window; values are the operational
+                        L1 stream shifted by fixed calibration offsets plus noise
+          "synthetic" - nothing could be reached (and nothing was cached); values come
+                        from the offline solar wind model and are not measurements
         """
         mission_id = mission_id.upper()
         meta = MISSIONS.get(mission_id, {})
         name = meta.get("name", mission_id)
         dist = meta.get("orbit_distance_km", 1500000)
+        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        window_start = now - timedelta(days=span_days)
 
         records: List[Dict[str, Any]] = []
         sources: List[str] = []
         kind = "synthetic"
         description = ""
+        extra: Dict[str, Any] = {}
+        archive_note = ""
 
-        if mission_id in RTSW_SOURCES or mission_id == "DSCOVR":
+        if mission_id in RTSW_SOURCES:
             mag, wind = await self._fetch_rtsw()
             if mag or wind:
                 tag = RTSW_SOURCES[mission_id]
@@ -294,9 +390,43 @@ class DataDownloader:
                         kind = "observed"
                         description = ("NOAA SWPC RTSW operational L1 stream. DSCOVR itself is not in the feed; "
                                        f"source spacecraft: {', '.join(sources)}.")
-            if kind == "observed" and span_days > 1:
-                records = block_average(records, 5, dist)
-                description += " Averaged to 5-minute bins; the RTSW feed only covers about the last 24 h."
+            if span_days > 1:
+                # Archive data for the longer window; RTSW only after the last archive sample.
+                arch = await self.get_archive_bundle(mission_id, window_start, now, cadence_minutes=5)
+                arch_recs = arch["records"]
+                if arch_recs:
+                    last = arch_recs[-1]["time_tag"]
+                    tail = [r for r in records if r["time_tag"] > last] if kind == "observed" else []
+                    rt_description = description
+                    records = arch_recs + tail
+                    description = arch["provenance"]["description"]
+                    if tail:
+                        description += f" After {last} UTC: {rt_description} Averaged to 5-minute bins."
+                        sources = sorted(set(arch["provenance"]["source_spacecraft"]) | set(sources))
+                    else:
+                        sources = arch["provenance"]["source_spacecraft"]
+                    kind = "observed"
+                    extra = {"archive": HAPI_SERVER, "datasets": arch["provenance"]["datasets"]}
+                elif kind == "observed":
+                    description += (" " + arch["provenance"]["description"]
+                                    + " Only the RTSW feed (about the last 24 h) is shown.")
+                if kind == "observed":
+                    records = block_average(records, 5, dist)  # leaves the 5-minute archive bins unchanged
+                    if not arch_recs:
+                        description += " Averaged to 5-minute bins."
+        elif mission_id in ARCHIVE_SOURCES:
+            arch = await self.get_archive_bundle(mission_id, window_start, now,
+                                                 cadence_minutes=5 if span_days > 1 else 1)
+            if arch["records"]:
+                records = arch["records"]
+                kind = "observed"
+                sources = arch["provenance"]["source_spacecraft"]
+                description = arch["provenance"]["description"]
+                extra = {"archive": HAPI_SERVER, "datasets": arch["provenance"]["datasets"]}
+                if records[-1]["time_tag"] < (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S"):
+                    description += f" The archive currently ends at {records[-1]['time_tag']} UTC."
+            else:
+                archive_note = " " + arch["provenance"]["description"]
 
         if kind != "observed":
             if mission_id == "DSCOVR":
@@ -308,24 +438,14 @@ class DataDownloader:
                 records = self._simulate_from_base(mission_id, base["records"])
                 kind = "simulated" if base["provenance"]["kind"] == "observed" else "synthetic"
                 description = (f"No public real-time feed for {name} is available here; values are simulated from "
-                               "the operational L1 stream with fixed calibration offsets and noise. Not a measurement.")
+                               "the operational L1 stream with fixed calibration offsets and noise. Not a measurement."
+                               + archive_note)
                 if kind == "synthetic":
                     description += " The operational stream itself is synthetic (archive unreachable)."
                 for r in records:
                     r["data_source"] = kind
 
-        provenance = {
-            "kind": kind,
-            "description": description,
-            "source_spacecraft": sources,
-            "cadence_seconds": infer_cadence_seconds(records),
-            "n_records": len(records),
-            "time_coverage_start": records[0]["time_tag"] if records else None,
-            "time_coverage_end": records[-1]["time_tag"] if records else None,
-            "time_standard": "UTC",
-            "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        return {"records": records, "provenance": provenance}
+        return {"records": records, "provenance": self._provenance(kind, description, sources, records, **extra)}
 
     async def get_dscovr_realtime_data(self, span_days: int = 1) -> List[Dict[str, Any]]:
         """Operational L1 solar wind records (see get_telemetry_bundle for provenance)."""
@@ -520,6 +640,11 @@ class DataDownloader:
         - 'st_patricks_2015': March 17, 2015 G4 Severe Geomagnetic Storm
         - 'halloween_2003': October 2003 Solar Storms (X17+ flare and CME)
         - 'quiet_baseline': Low solar activity calibration baseline
+
+        Events covered by OMNI (EVENT_WINDOWS) return 48 h of real OMNI data as 5-minute
+        means, with the observed extremes in metadata["observed_5min"]. Otherwise (no
+        OMNI data, archive unreachable, Carrington 1859, quiet baseline) an illustrative
+        synthetic profile built from the published peak values is returned, labelled so.
         """
         descriptions = {
             "may_2024_g5": {
@@ -580,13 +705,38 @@ class DataDownloader:
             }
         }
 
-        event_meta = descriptions.get(event_id, descriptions["may_2024_g5"])
-        
+        if event_id not in descriptions:
+            event_id = "may_2024_g5"
+        event_meta = descriptions[event_id]
+
+        # Real data first: OMNI 1-minute data (5-minute means) for events since 1981 that it covers.
+        if event_id in EVENT_WINDOWS:
+            start, end = (datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in EVENT_WINDOWS[event_id])
+            arch = await self.get_archive_bundle("OMNI", start, end, cadence_minutes=5)
+            telemetry = arch["records"]
+            if telemetry:
+                observed = {}
+                for key, fn in (("min_bz", min), ("peak_speed", max), ("peak_dyn_pressure", max)):
+                    field = {"min_bz": "bz_gsm", "peak_speed": "speed", "peak_dyn_pressure": "dynamic_pressure"}[key]
+                    vals = [r[field] for r in telemetry if r.get(field) is not None]
+                    observed[key] = round(fn(vals), 2) if vals else None
+                return {
+                    "metadata": dict(event_meta, observed_5min=observed),
+                    "provenance": arch["provenance"],
+                    "telemetry": telemetry,
+                    "records": telemetry,
+                    "satellite": "OMNI",
+                    "shocks": SpaceWeatherPhysics.detect_interplanetary_shocks(telemetry)
+                }
+            omni_note = " " + arch["provenance"]["description"]
+        else:
+            omni_note = " No spacecraft data exist for this event in OMNI." if event_id == "carrington_1859" else ""
+
         # Generate event time-series profile
         hours = 48
         condition = "cme_shock" if any(yr in event_id for yr in ["2024", "2003", "2000", "1859", "1989"]) else ("storm" if "2015" in event_id else "quiet")
         telemetry = self.generate_synthetic_telemetry("DSCOVR", hours=hours, condition=condition)
-        
+
         # Inject storm profile signature
         if condition in ("cme_shock", "storm"):
             shock_idx = len(telemetry) // 3
@@ -604,7 +754,8 @@ class DataDownloader:
             "provenance": {
                 "kind": "synthetic",
                 "description": ("Illustrative profile built from the event's published peak values "
-                                "(speed, Bz) on top of the offline solar wind model. Not archival measurements."),
+                                "(speed, Bz) on top of the offline solar wind model. Not archival measurements."
+                                + omni_note),
                 "time_standard": "UTC"
             },
             "telemetry": telemetry,

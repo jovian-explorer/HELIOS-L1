@@ -10,6 +10,11 @@
 - HTTP error pages and non-JSON responses fall back to the cached copy; cache files are written atomically.
 - NOAA G/R/S scales use observed planetary Kp, GOES X-ray and ≥10 MeV proton flux instead of a Kp guessed from Bz and fixed X-ray (1.5e-6 W/m²) and proton (1.2 pfu) values.
 
+- Real archive data from NASA CDAWeb through its HAPI server for WIND (MFI 1-min, SWE), ACE (MAG and SWEPAM Level 2, then preliminary key parameters), the DSCOVR science archive (1-s magnetometer from 2015, Faraday cup 2016-2019) and OMNI 1-min HRO. Dataset IDs and parameter names were checked against the live HAPI catalog. Declared fill values and samples flagged bad by the instrument teams are dropped; data are reduced to 1-minute means and cached per day (days that ended more than two days ago are kept, recent days are re-checked every six hours).
+- New `/api/archive/{mission}?start=&end=&cadence_minutes=` endpoint (JSON or `format=csv`) returns measured data for any interval of up to 31 days, with the datasets used, their level and coverage in the provenance. `/api/archive` lists the sources.
+- WIND is no longer simulated when the archive has data for the window. The 7-day DSCOVR and ACE views use archive data where it exists and the RTSW feed only after the archive's last sample, instead of showing just the ~24 h RTSW window. When the archive has nothing yet (it lags real time by days to months), the view says so and keeps the labelled fallback.
+- Historical events (May 2024, St. Patrick's Day 2015, Halloween 2003, Bastille Day 2000) show 48 h of real OMNI data as 5-minute means, with the observed extremes next to the published values. Events without OMNI coverage (March 1989, Carrington 1859) and the quiet baseline remain illustrative synthetic profiles, labelled as such.
+
 ### Scientific corrections
 - Akasofu ε lacked the 4π/μ₀ factor of the SI form and was 12.6 times too small (500 km/s, 10 nT southward: 994 GW, previously 79 GW).
 - Shue et al. (1998) flaring exponent used ln(P_dyn + 1) instead of ln(P_dyn) (API and in-browser calculator).

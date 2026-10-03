@@ -87,14 +87,25 @@ Every telemetry record carries a `data_source` field and every API response a `p
 
 | `data_source` | Meaning |
 |---|---|
-| `observed` | Measured values from the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`). |
-| `simulated` | No public real-time feed exists here for the mission (Aditya-L1, WIND, SOHO, GOES-16 Hp, STEREO-A); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. |
+| `observed` | Measured values: the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`) or the NASA CDAWeb archive (HAPI). |
+| `simulated` | No data for the mission and window (Aditya-L1, SOHO, GOES-16 Hp, STEREO-A; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. |
 | `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. Historical storm profiles are also synthetic (built from published peak values). |
 | `imported` | Rows from a user file in the Custom Ingestion tab. |
 
 * **DSCOVR view:** the RTSW operational stream (rows flagged active). The spacecraft actually supplying it (e.g. SOLAR1) is stored per record in `source_spacecraft`.
 * **ACE view:** the RTSW rows tagged `source = ACE` (real ACE data), so ACE vs. operational-monitor comparisons are genuine inter-spacecraft comparisons.
-* **Coverage:** the RTSW feeds hold about the last 24 h. The 7-day span shows that window as 5-minute block averages.
+* **Coverage:** the RTSW feeds hold about the last 24 h. The 7-day span uses the CDAWeb archive where it has data and RTSW after the archive's last sample, as 5-minute block averages.
+* **Archive (NASA CDAWeb HAPI, `https://cdaweb.gsfc.nasa.gov/hapi`):**
+
+  | Mission | Magnetic field | Plasma |
+  |---|---|---|
+  | WIND | `WI_H0_MFI@0` (1-min), then `WI_K0_MFI` | `WI_H1_SWE` (non-linear fits), then `WI_K0_SWE` |
+  | ACE | `AC_H0_MFI` (Level 2), then `AC_K1_MFI` | `AC_H0_SWE` (Level 2, ends 2024-07), then `AC_K0_SWE` |
+  | DSCOVR | `DSCOVR_H0_MAG` (1-s, GSE; rotated to GSM) | `DSCOVR_H1_FC` (2016-2019 only) |
+  | OMNI | `OMNI_HRO_1MIN` (time-shifted to the bow shock nose) | same |
+
+  Preliminary key-parameter datasets only extend the definitive ones past their last sample, and the provenance lists every dataset used with its level and coverage. Any interval of up to 31 days: `GET /api/archive/WIND?start=2024-05-10T00:00&end=2024-05-12T00:00` (add `&format=csv` for a file, `&cadence_minutes=5` for block averages). Data are cached per day as 1-minute means; a DSCOVR magnetometer day is about 7 MB to download the first time.
+* **Historical events:** events since 1995 load real OMNI data; March 1989 (no OMNI 1-min coverage), Carrington 1859 and the quiet baseline are synthetic profiles and labelled so.
 * **Gaps:** missing or fill values stay empty (null); derived quantities are empty when an input is missing. Rows with a non-zero RTSW quality flag are discarded.
 * **Indices:** NOAA G/R/S scales use the latest observed planetary Kp, GOES 0.1–0.8 nm X-ray flux and ≥10 MeV proton flux. When Kp cannot be fetched, a Bz-based estimate is used and labelled as such (`kp_source`).
 * **Time:** all time stamps are UTC, `YYYY-MM-DD HH:MM:SS`.

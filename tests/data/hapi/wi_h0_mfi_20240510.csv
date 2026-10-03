@@ -1,0 +1,41 @@
+#{
+#"HAPI": "2.0",
+#"status": {"code": 1200, "message": "OK"},
+#"format": "csv",
+#"parameters": [
+#{
+#"name": "Time",
+#"type": "isotime",
+#"units": "UTC",
+#"length":24,
+#"fill": null
+#},
+#{
+#"name": "BF1",
+#"type": "double",
+#"units": "nT (1min)",
+#"fill": "-1.0E31",
+#"description": "Magnetic field magnitude (1 min)"
+#},
+#{
+#"name": "BGSM",
+#"type": "double",
+#"units": "nT (1min)",
+#"fill": "-1.0E31",
+#"description": "Magnetic field vector in GSM cartesian coordinates (1 min)",
+#"size": [3]
+#},
+#{
+#"name": "BGSE",
+#"type": "double",
+#"units": "nT (1min)",
+#"fill": "-1.0E31",
+#"description": "Magnetic field vector in GSE cartesian coordinates (1 min)",
+#"size": [3]
+#}
+#]
+#}
+2024-05-10T17:00:30.000Z,2.025951e+01,-7.151930e+00,-1.470815e+01,-1.175159e+01,-7.152199e+00,-1.736314e+01,-7.276389e+00
+2024-05-10T17:01:30.000Z,2.288847e+01,-8.088856e+00,-1.467177e+01,-1.435602e+01,-8.089218e+00,-1.804911e+01,-9.776857e+00
+2024-05-10T17:02:30.000Z,2.476225e+01,-1.172495e+01,-1.970711e+01,-4.634900e+00,-1.172491e+01,-2.022108e+01,9.701636e-01
+2024-05-10T17:03:30.000Z,3.131751e+01,-1.513731e+01,-2.498603e+01,-9.989807e+00,-1.513741e+01,-2.677339e+01,-2.702491e+00
