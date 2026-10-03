@@ -40,4 +40,5 @@
 - The comparator panel shows a warning above the statistics when either spacecraft is simulated or synthetic, since r, RMSE, bias and lag then describe the model rather than two instruments.
 - Time labels convert UTC to the selected time zone correctly in WebKit-based windows (macOS, Linux).
 - Export endpoints reject unknown missions and spans outside 1–7 days.
+- CI and release workflows use the Node 24 versions of their actions (checkout v7, setup-python v7, upload-artifact v7, download-artifact v8, action-gh-release v3); the Node 20 runtime is deprecated on GitHub runners.
 - The test suite runs offline against a temporary `HELIOS_HOME` and no longer touches the user's cache folder.
