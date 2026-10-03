@@ -150,6 +150,32 @@ def regular_series(records: List[Dict[str, Any]], key: str, dt_seconds: float) -
     return [None if pd.isna(v) else float(v) for v in gridded.to_numpy()]
 
 
+_SSL_CONTEXT = None
+
+
+def _ssl_context():
+    """
+    One TLS context for every request. Building it loads the CA bundle (~0.35 s on
+    Windows); creating it per httpx client blocked the event loop for seconds when a
+    view started a dozen downloads at once.
+    """
+    global _SSL_CONTEXT
+    if _SSL_CONTEXT is None:
+        _SSL_CONTEXT = httpx.create_ssl_context()
+    return _SSL_CONTEXT
+
+
+def _decode_and_store(body: bytes, cache_path: str) -> Any:
+    """Parse a JSON body and write the original bytes to the cache (atomically). Runs in a thread."""
+    data = json.loads(body)
+    # Atomic replace so an interrupted write never leaves a truncated cache file.
+    tmp_path = cache_path + ".tmp"
+    with open(tmp_path, "wb") as f:
+        f.write(body)
+    os.replace(tmp_path, cache_path)
+    return data
+
+
 class DataDownloader:
     """Downloader and manager for space weather telemetry."""
 
@@ -183,32 +209,27 @@ class DataDownloader:
         however old, or None if there is none.
         """
         cache_path = self._get_cache_path(cache_key)
+        # Large products (7-day RTSW, several MB) are parsed and written off the event loop.
         if self._is_cache_valid(cache_path):
-            cached = self._read_cache(cache_path)
+            cached = await asyncio.to_thread(self._read_cache, cache_path)
             if cached is not None:
                 return cached
 
         try:
-            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, verify=_ssl_context()) as client:
                 resp = await client.get(url)
             if resp.status_code == 200:
-                data = resp.json()
-                # Atomic replace so an interrupted write never leaves a truncated cache file.
-                tmp_path = cache_path + ".tmp"
-                with open(tmp_path, "w", encoding="utf-8") as f:
-                    json.dump(data, f)
-                os.replace(tmp_path, cache_path)
-                return data
+                return await asyncio.to_thread(_decode_and_store, resp.content, cache_path)
         except Exception:
             pass
         if os.path.exists(cache_path):
-            return self._read_cache(cache_path)
+            return await asyncio.to_thread(self._read_cache, cache_path)
         return None
 
     async def fetch_text(self, url: str, timeout: float = 120.0) -> Optional[str]:
         """Body of a GET request, or None on a network error or non-200 status. Not cached here."""
         try:
-            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=_ssl_context()) as client:
                 resp = await client.get(url)
             if resp.status_code == 200:
                 return resp.text

@@ -327,3 +327,13 @@ def test_compare_baseline_uses_supplying_spacecraft_position(monkeypatch):
     # SOLAR1 is 172,689 km further sunward than ACE: dx < 0 and the plasma reaches it first.
     assert base["dx_km"] == pytest.approx(-(1582227 - 1409538), abs=1)
     assert base["theoretical_delay_min"] == pytest.approx((1582227 - 1409538) / 400.0 / 60.0, abs=0.2)
+
+
+def test_downloads_share_one_tls_context_and_cache_raw_bytes(tmp_path):
+    """Per-request TLS contexts (~0.35 s each) and re-encoding big JSON blocked the event loop."""
+    from helios.core import downloader as dl
+    assert dl._ssl_context() is dl._ssl_context()
+    body = b'[["time_tag","bz"],["2026-10-01 00:00:00.000","-3.1"]]'
+    path = str(tmp_path / "x.json")
+    assert dl._decode_and_store(body, path) == [["time_tag", "bz"], ["2026-10-01 00:00:00.000", "-3.1"]]
+    assert open(path, "rb").read() == body
