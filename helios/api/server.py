@@ -618,7 +618,8 @@ async def get_html_report(mission_id: str = "DSCOVR", download: bool = False):
     mission_key = mission_id.upper()
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
-    data = await downloader.get_satellite_telemetry(mission_key, span_days=1)
+    bundle = await downloader.get_telemetry_bundle(mission_key, span_days=1)
+    data = bundle["records"]
     latest = latest_valid_record(data)
     classification = await classify_current_conditions(latest)
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
@@ -629,7 +630,8 @@ async def get_html_report(mission_id: str = "DSCOVR", download: bool = False):
         telemetry=data,
         classification=classification,
         shocks=shocks,
-        auroral_data=auroral_data
+        auroral_data=auroral_data,
+        provenance=bundle["provenance"]
     )
     headers = {}
     if download:
@@ -641,7 +643,8 @@ async def get_markdown_report(mission_id: str = "DSCOVR", download: bool = False
     mission_key = mission_id.upper()
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
-    data = await downloader.get_satellite_telemetry(mission_key, span_days=1)
+    bundle = await downloader.get_telemetry_bundle(mission_key, span_days=1)
+    data = bundle["records"]
     latest = latest_valid_record(data)
     classification = await classify_current_conditions(latest)
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
@@ -652,7 +655,8 @@ async def get_markdown_report(mission_id: str = "DSCOVR", download: bool = False
         telemetry=data,
         classification=classification,
         shocks=shocks,
-        auroral_data=auroral_data
+        auroral_data=auroral_data,
+        provenance=bundle["provenance"]
     )
     headers = {}
     if download:

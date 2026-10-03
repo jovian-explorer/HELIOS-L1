@@ -3,8 +3,27 @@ Comprehensive scientific report generator and telemetry briefing studio for HELI
 Produces publication-grade HTML and Markdown reports summarizing space weather events,
 sensor calibrations, CME shocks, and auroral forecasts.
 """
+import html as html_lib
 from datetime import datetime, timezone
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+
+from helios import __version__
+
+
+def _latest_valid(telemetry: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Newest record with speed and Bz present (the newest row is often a partial gap)."""
+    for rec in reversed(telemetry or []):
+        if rec.get("speed") is not None and rec.get("bz_gsm") is not None:
+            return rec
+    return telemetry[-1] if telemetry else {}
+
+
+def _provenance_text(provenance: Optional[Dict[str, Any]]) -> str:
+    if not provenance:
+        return "not recorded"
+    kind = str(provenance.get("kind", "unknown")).upper()
+    return f"{kind} - {provenance.get('description', '')}".strip(" -")
+
 
 class ScientificReportGenerator:
     """Generates structured scientific bulletins and analysis summaries."""
@@ -16,11 +35,13 @@ class ScientificReportGenerator:
         telemetry: List[Dict[str, Any]],
         classification: Dict[str, Any],
         shocks: List[Dict[str, Any]],
-        auroral_data: Dict[str, Any]
+        auroral_data: Dict[str, Any],
+        provenance: Optional[Dict[str, Any]] = None
     ) -> str:
         """Produce a complete, self-contained scientific HTML briefing document."""
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        latest = telemetry[-1] if telemetry else {}
+        latest = _latest_valid(telemetry)
+        provenance_text = _provenance_text(provenance)
 
         shocks_html = ""
         if shocks:
@@ -71,6 +92,7 @@ class ScientificReportGenerator:
     <div>
       <h1>HELIOS-L1 Space Weather Scientific Bulletin</h1>
       <div style="color: #94a3b8; font-size: 12px;">Spacecraft: <strong>{mission_name}</strong> • Timestamp: {now_str}</div>
+      <div style="color: #94a3b8; font-size: 12px;">Data provenance: {html_lib.escape(provenance_text)}</div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
       <span class="badge" style="background: {classification.get('g_color', '#10b981')}22; color: {classification.get('g_color', '#10b981')}; border: 1px solid {classification.get('g_color', '#10b981')}66;">
@@ -140,7 +162,7 @@ class ScientificReportGenerator:
   </table>
 
   <div class="footer">
-    Generated autonomously by HELIOS-L1 (Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite) v1.0.
+    Generated autonomously by HELIOS-L1 (Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite) v{__version__}.
   </div>
 </div>
 </body>
@@ -154,11 +176,13 @@ class ScientificReportGenerator:
         telemetry: List[Dict[str, Any]],
         classification: Dict[str, Any],
         shocks: List[Dict[str, Any]],
-        auroral_data: Dict[str, Any]
+        auroral_data: Dict[str, Any],
+        provenance: Optional[Dict[str, Any]] = None
     ) -> str:
         """Produce a publication-grade Markdown Executive Summary suitable for command briefing and archiving."""
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        latest = telemetry[-1] if telemetry else {}
+        latest = _latest_valid(telemetry)
+        provenance_text = _provenance_text(provenance)
 
         def get_stats(field: str, decimals: int = 1):
             vals = [float(r[field]) for r in telemetry if field in r and isinstance(r[field], (int, float))]
@@ -185,8 +209,13 @@ class ScientificReportGenerator:
             proton_pfu = "n/a"
         flare_cls = classification.get("flare_class", "Quiet")
 
-        bz_val = latest.get("bz_gsm", 0.0)
-        reconn_status = "ACTIVE RECONNECTION (Southward IMF Bz < 0)" if bz_val < 0 else "CLOSED MAGNETOSPHERE (Northward IMF Bz >= 0)"
+        bz_val = latest.get("bz_gsm")
+        if bz_val is None:
+            reconn_status = "UNKNOWN (no IMF Bz in the latest records)"
+        elif bz_val < 0:
+            reconn_status = "ACTIVE RECONNECTION (Southward IMF Bz < 0)"
+        else:
+            reconn_status = "CLOSED MAGNETOSPHERE (Northward IMF Bz >= 0)"
 
         shocks_table = ""
         if shocks:
@@ -203,7 +232,7 @@ class ScientificReportGenerator:
         md = f"""# HELIOS-L1 SPACE WEATHER EXECUTIVE SUMMARY
 **Mission Platform:** {mission_name}  
 **Report Timestamp:** {now_str}  
-**Data Provenance:** NOAA SWPC / NASA OMNIWeb / ISRO Aditya-L1 / ESA SOHO  
+**Data Provenance:** {provenance_text}  
 **Standard License:** Open Scientific Data (NASA / NOAA Open Access & ISRO Open Science)
 
 ---

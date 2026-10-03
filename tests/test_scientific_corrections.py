@@ -228,3 +228,17 @@ def test_drap_haf_follows_swpc_formula():
     assert slant["highest_affected_frequency_mhz"] == pytest.approx(15.0 * 0.5 ** 0.75, abs=0.01)
     quiet = IonosphericModel.calculate_drap_absorption(1e-8, zenith_angle_deg=0.0)
     assert quiet["highest_affected_frequency_mhz"] == 0.0 and quiet["attenuation_at_10mhz_db"] == 0.0
+
+
+def test_reports_state_real_provenance_and_survive_gaps():
+    """The Markdown summary claimed NOAA/OMNI/ISRO/ESA provenance for any data and crashed on a trailing gap."""
+    from helios.core.report_generator import ScientificReportGenerator as R
+    recs = [{"time_tag": "a", "speed": 400.0, "bz_gsm": -3.0, "bt": 5.0, "density": 5.0},
+            {"time_tag": "b", "speed": None, "bz_gsm": None, "bt": None, "density": None}]
+    cls = SpaceWeatherPhysics.classify_noaa_scales(3.0, -3.0, 1e-6)
+    prov = {"kind": "synthetic", "description": "offline model"}
+    md = R.generate_markdown_executive_summary("DSCOVR", recs, cls, [], {"visible_regions": []}, provenance=prov)
+    assert "SYNTHETIC - offline model" in md and "ISRO Aditya-L1 / ESA SOHO" not in md
+    assert "ACTIVE RECONNECTION" in md
+    html = R.generate_html_bulletin("DSCOVR", recs, cls, [], {"visible_regions": []}, provenance=prov)
+    assert "SYNTHETIC - offline model" in html
