@@ -319,13 +319,16 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
 }
 
 # Real-time Public APIs (NOAA Space Weather Prediction Center)
+# The former /products/solar-wind/{plasma,mag}-{1,7}-day.json products were retired
+# (HTTP 404). Solar wind now comes from the Real-Time Solar Wind (RTSW) 1-minute feeds,
+# which carry every L1 monitor (DSCOVR, ACE, SOLAR-1, IMAP ...) tagged by "source",
+# with "active": true marking the spacecraft NOAA uses operationally. They cover ~24 h.
 NOAA_SWPC_ENDPOINTS = {
-    "plasma_7day": "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json",
-    "plasma_1day": "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json",
-    "mag_7day": "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json",
-    "mag_1day": "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json",
-    "xrays_7day": "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json",
+    "rtsw_mag_1m": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+    "rtsw_wind_1m": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
     "xrays_1day": "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
+    "xrays_7day": "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json",
+    "protons_1day": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json",
     "kp_7day": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
     "alerts": "https://services.swpc.noaa.gov/products/alerts.json"
 }

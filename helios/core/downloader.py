@@ -1,19 +1,122 @@
 """
 Data acquisition and caching engine for Sun-Earth L1 and heliospheric missions.
-Supports NOAA SWPC live telemetry, Aditya-L1 telemetry, NASA OMNI feeds,
-and historical space weather benchmark datasets.
+Supports NOAA SWPC Real-Time Solar Wind (RTSW) telemetry, GOES X-ray / proton and
+planetary Kp indices, simulated feeds for missions without a public real-time
+stream, and historical space weather benchmark profiles.
+
+Every record carries a "data_source" label ("observed", "simulated" or "synthetic")
+and every bundle a provenance description, so measured and modelled values can
+never be confused downstream (plots, exports, reports).
 """
 import os
 import json
 import time
 import math
 import random
+import asyncio
 from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 import httpx
 
 from helios.config import CACHE_DIR, NOAA_SWPC_ENDPOINTS, MISSIONS
 from helios.core.science import SpaceWeatherPhysics
+
+# Primary plasma / field quantities carried by telemetry records.
+PRIMARY_FIELDS = ("density", "speed", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt",
+                  "bx_gse", "by_gse", "bz_gse")
+
+# Instrument offsets & sensitivities used to *simulate* spacecraft that have no public
+# real-time feed. Those records are labelled data_source = "simulated".
+SIMULATION_OFFSETS = {
+    "ACE": {"speed_bias": 3.2, "dens_bias": -0.15, "mag_noise": 0.35, "time_skew_min": 1.2},
+    "ADITYA_L1": {"speed_bias": -1.8, "dens_bias": 0.22, "mag_noise": 0.28, "time_skew_min": 0.8},
+    "WIND": {"speed_bias": 1.1, "dens_bias": -0.05, "mag_noise": 0.20, "time_skew_min": 2.4},
+    "SOHO": {"speed_bias": 5.0, "dens_bias": 0.50, "mag_noise": 0.40, "time_skew_min": 0.0},
+    "GOES_16": {"speed_bias": 0.0, "dens_bias": 0.0, "mag_noise": 0.50, "time_skew_min": -45.0},
+    "STEREO_A": {"speed_bias": -12.0, "dens_bias": 0.80, "mag_noise": 0.60, "time_skew_min": 180.0}
+}
+
+# Missions that have their own "source"-tagged rows in the NOAA RTSW feed.
+RTSW_SOURCES = {"DSCOVR": "DSCOVR", "ACE": "ACE"}
+
+
+def _num(value) -> Optional[float]:
+    """Float conversion that maps None, blanks, NaN and non-numeric values to None."""
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _iso_space(time_tag: str) -> str:
+    """'2026-10-02T18:02:00.000Z' -> '2026-10-02 18:02:00' (UTC, second precision)."""
+    return str(time_tag).replace("T", " ").replace("Z", "")[:19]
+
+
+def add_derived_fields(rec: Dict[str, Any], distance_km: float = 1500000.0) -> Dict[str, Any]:
+    """
+    Fill the derived quantities of a telemetry record from its primary fields.
+    A derived value whose inputs are missing is None (a data gap), never a default.
+    """
+    dens, spd = rec.get("density"), rec.get("speed")
+    bt, by, bz = rec.get("bt"), rec.get("by_gsm"), rec.get("bz_gsm")
+    p_dyn = SpaceWeatherPhysics.dynamic_pressure(dens, spd) if (dens and spd and dens > 0 and spd > 0) else None
+    rec["dynamic_pressure"] = round(p_dyn, 3) if p_dyn is not None else None
+    rec["magnetopause_re"] = (SpaceWeatherPhysics.magnetopause_standoff(p_dyn, bz)
+                              if (p_dyn is not None and bz is not None) else None)
+    rec["akasofu_gw"] = (round(SpaceWeatherPhysics.akasofu_epsilon(spd, bt, by, bz), 2)
+                         if (spd and bt is not None and by is not None and bz is not None) else None)
+    rec["l1_travel_time_min"] = (SpaceWeatherPhysics.propagation_delay_minutes(distance_km, spd)
+                                 if (spd and spd > 0) else None)
+    return rec
+
+
+def block_average(records: List[Dict[str, Any]], minutes: int = 5,
+                  distance_km: float = 1500000.0) -> List[Dict[str, Any]]:
+    """
+    Average records onto a regular `minutes` grid (time stamps mark bin starts).
+    Primary quantities are averaged and the nonlinear derived quantities are recomputed
+    from the averages; empty bins are dropped. Unlike keeping every n-th sample this
+    does not alias sub-bin fluctuations into the result.
+    """
+    if not records:
+        return []
+    import pandas as pd
+    df = pd.DataFrame(records)
+    df["_t"] = pd.to_datetime(df["time_tag"])
+    cols = [c for c in PRIMARY_FIELDS if c in df.columns]
+    for c in cols:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    binned = df.set_index("_t")[cols].resample(f"{int(minutes)}min").mean().dropna(how="all")
+    template = {k: v for k, v in records[0].items()
+                if k not in PRIMARY_FIELDS and k != "time_tag" and isinstance(v, str)}
+    out = []
+    for t, row in binned.iterrows():
+        rec = dict(template)
+        rec["time_tag"] = t.strftime("%Y-%m-%d %H:%M:%S")
+        for c in cols:
+            v = row[c]
+            rec[c] = round(float(v), 3) if pd.notna(v) else None
+        out.append(add_derived_fields(rec, distance_km))
+    return out
+
+
+def infer_cadence_seconds(records: List[Dict[str, Any]], default: float = 60.0) -> float:
+    """Median spacing of the record time stamps, in seconds."""
+    if not records or len(records) < 2:
+        return default
+    try:
+        import pandas as pd
+        t = pd.to_datetime([r["time_tag"] for r in records])
+        diffs = pd.Series(t).diff().dt.total_seconds().dropna()
+        diffs = diffs[diffs > 0]
+        return float(diffs.median()) if len(diffs) else default
+    except Exception:
+        return default
+
 
 class DataDownloader:
     """Downloader and manager for space weather telemetry."""
@@ -31,201 +134,304 @@ class DataDownloader:
         mtime = os.path.getmtime(cache_path)
         return (time.time() - mtime) < self.cache_ttl
 
+    @staticmethod
+    def _read_cache(cache_path: str) -> Optional[Any]:
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+
     async def fetch_json(self, url: str, cache_key: str) -> Optional[List[Any]]:
-        """Fetch JSON data from URL with local disk caching."""
+        """
+        Fetch JSON data from URL with local disk caching. On any failure (network error,
+        HTTP error status, or a body that is not JSON) the last cached copy is returned,
+        however old, or None if there is none.
+        """
         cache_path = self._get_cache_path(cache_key)
         if self._is_cache_valid(cache_path):
-            try:
-                with open(cache_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                pass
+            cached = self._read_cache(cache_path)
+            if cached is not None:
+                return cached
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
                 resp = await client.get(url)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    with open(cache_path, "w", encoding="utf-8") as f:
-                        json.dump(data, f)
-                    return data
+            if resp.status_code == 200:
+                data = resp.json()
+                # Atomic replace so an interrupted write never leaves a truncated cache file.
+                tmp_path = cache_path + ".tmp"
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f)
+                os.replace(tmp_path, cache_path)
+                return data
         except Exception:
-            # Fallback to expired cache if available
-            if os.path.exists(cache_path):
-                try:
-                    with open(cache_path, "r", encoding="utf-8") as f:
-                        return json.load(f)
-                except Exception:
-                    pass
+            pass
+        if os.path.exists(cache_path):
+            return self._read_cache(cache_path)
         return None
 
+    # ------------------------------------------------------------------
+    # NOAA SWPC Real-Time Solar Wind (RTSW)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def parse_rtsw(
+        mag_rows: Optional[List[Dict[str, Any]]],
+        wind_rows: Optional[List[Dict[str, Any]]],
+        source: Optional[str] = None,
+        mission_label: str = "DSCOVR",
+        distance_km: float = 1500000.0
+    ) -> Tuple[List[Dict[str, Any]], List[str]]:
+        """
+        Merge the RTSW 1-minute magnetometer and plasma feeds into time-ordered records.
+
+        source=None selects the operational stream (rows flagged "active"); otherwise only
+        rows whose "source" equals `source` are used. Rows with a non-zero overall_quality
+        flag are discarded, missing values stay None, and both GSM and GSE field components
+        are kept. Returns (records, sorted list of contributing source spacecraft).
+        """
+        def keep(row: Dict[str, Any]) -> bool:
+            if not isinstance(row, dict) or not row.get("time_tag"):
+                return False
+            if source is None:
+                if not row.get("active"):
+                    return False
+            elif str(row.get("source", "")).upper() != source.upper():
+                return False
+            return row.get("overall_quality") in (None, 0)
+
+        merged: Dict[str, Dict[str, Any]] = {}
+        sources = set()
+        for row in (mag_rows or []):
+            if not keep(row):
+                continue
+            rec = merged.setdefault(_iso_space(row["time_tag"]), {})
+            for key in ("bt", "bx_gsm", "by_gsm", "bz_gsm", "bx_gse", "by_gse", "bz_gse"):
+                rec[key] = _num(row.get(key))
+            rec["_src_mag"] = row.get("source")
+            sources.add(str(row.get("source")))
+        for row in (wind_rows or []):
+            if not keep(row):
+                continue
+            rec = merged.setdefault(_iso_space(row["time_tag"]), {})
+            rec["density"] = _num(row.get("proton_density"))
+            rec["speed"] = _num(row.get("proton_speed"))
+            rec["temperature"] = _num(row.get("proton_temperature"))
+            rec["_src_plasma"] = row.get("source")
+            sources.add(str(row.get("source")))
+
+        records = []
+        for t in sorted(merged):
+            raw = merged[t]
+            rec = {"time_tag": t, "mission": mission_label}
+            for key in PRIMARY_FIELDS:
+                rec[key] = raw.get(key)
+            if all(rec[k] is None for k in PRIMARY_FIELDS):
+                continue
+            rec["source_spacecraft"] = raw.get("_src_plasma") or raw.get("_src_mag")
+            rec["data_source"] = "observed"
+            records.append(add_derived_fields(rec, distance_km))
+        return records, sorted(sources)
+
+    async def _fetch_rtsw(self) -> Tuple[Optional[List[Any]], Optional[List[Any]]]:
+        mag, wind = await asyncio.gather(
+            self.fetch_json(NOAA_SWPC_ENDPOINTS["rtsw_mag_1m"], "rtsw_mag_1m"),
+            self.fetch_json(NOAA_SWPC_ENDPOINTS["rtsw_wind_1m"], "rtsw_wind_1m"),
+        )
+        return (mag if isinstance(mag, list) else None), (wind if isinstance(wind, list) else None)
+
+    async def get_telemetry_bundle(self, mission_id: str, span_days: int = 1) -> Dict[str, Any]:
+        """
+        Telemetry records plus a provenance description for one mission.
+
+        provenance["kind"] is one of:
+          "observed"  - measured values from the NOAA RTSW feed
+          "simulated" - no public real-time feed for this mission; values are the
+                        operational L1 stream shifted by fixed calibration offsets plus noise
+          "synthetic" - the archive could not be reached (and nothing was cached); values
+                        come from the offline solar wind model and are not measurements
+        """
+        mission_id = mission_id.upper()
+        meta = MISSIONS.get(mission_id, {})
+        name = meta.get("name", mission_id)
+        dist = meta.get("orbit_distance_km", 1500000)
+
+        records: List[Dict[str, Any]] = []
+        sources: List[str] = []
+        kind = "synthetic"
+        description = ""
+
+        if mission_id in RTSW_SOURCES or mission_id == "DSCOVR":
+            mag, wind = await self._fetch_rtsw()
+            if mag or wind:
+                tag = RTSW_SOURCES[mission_id]
+                records, sources = self.parse_rtsw(mag, wind, source=tag, mission_label=name, distance_km=dist)
+                if records:
+                    kind = "observed"
+                    description = f"NOAA SWPC RTSW 1-minute data tagged source={tag}."
+                elif mission_id == "DSCOVR":
+                    records, sources = self.parse_rtsw(mag, wind, source=None, mission_label=name, distance_km=dist)
+                    if records:
+                        kind = "observed"
+                        description = ("NOAA SWPC RTSW operational L1 stream. DSCOVR itself is not in the feed; "
+                                       f"source spacecraft: {', '.join(sources)}.")
+            if kind == "observed" and span_days > 1:
+                records = block_average(records, 5, dist)
+                description += " Averaged to 5-minute bins; the RTSW feed only covers about the last 24 h."
+
+        if kind != "observed":
+            if mission_id == "DSCOVR":
+                records = self.generate_synthetic_telemetry(mission=name, hours=span_days * 24, condition="active")
+                description = ("NOAA SWPC archive unreachable and no cached copy: values come from the offline "
+                               "solar wind model and are NOT measurements.")
+            else:
+                base = await self.get_telemetry_bundle("DSCOVR", span_days)
+                records = self._simulate_from_base(mission_id, base["records"])
+                kind = "simulated" if base["provenance"]["kind"] == "observed" else "synthetic"
+                description = (f"No public real-time feed for {name} is available here; values are simulated from "
+                               "the operational L1 stream with fixed calibration offsets and noise. Not a measurement.")
+                if kind == "synthetic":
+                    description += " The operational stream itself is synthetic (archive unreachable)."
+                for r in records:
+                    r["data_source"] = kind
+
+        provenance = {
+            "kind": kind,
+            "description": description,
+            "source_spacecraft": sources,
+            "cadence_seconds": infer_cadence_seconds(records),
+            "n_records": len(records),
+            "time_coverage_start": records[0]["time_tag"] if records else None,
+            "time_coverage_end": records[-1]["time_tag"] if records else None,
+            "time_standard": "UTC",
+            "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        return {"records": records, "provenance": provenance}
+
     async def get_dscovr_realtime_data(self, span_days: int = 1) -> List[Dict[str, Any]]:
-        """
-        Fetch combined DSCOVR/ACE L1 Solar Wind Plasma & Magnetometer data.
-        Span: 1 or 7 days.
-        """
-        plasma_url = NOAA_SWPC_ENDPOINTS["plasma_1day"] if span_days == 1 else NOAA_SWPC_ENDPOINTS["plasma_7day"]
-        mag_url = NOAA_SWPC_ENDPOINTS["mag_1day"] if span_days == 1 else NOAA_SWPC_ENDPOINTS["mag_7day"]
-
-        plasma_raw = await self.fetch_json(plasma_url, f"dscovr_plasma_{span_days}d")
-        mag_raw = await self.fetch_json(mag_url, f"dscovr_mag_{span_days}d")
-
-        if not plasma_raw or not mag_raw or len(plasma_raw) <= 1 or len(mag_raw) <= 1:
-            # Offline or API down: Generate high-fidelity live telemetry
-            return self.generate_synthetic_telemetry(mission="DSCOVR", hours=span_days * 24, condition="active")
-
-        # Parse NOAA format: Row 0 is headers
-        plasma_headers = plasma_raw[0]
-        mag_headers = mag_raw[0]
-
-        # Index lookup
-        p_time_idx = plasma_headers.index("time_tag") if "time_tag" in plasma_headers else 0
-        density_idx = plasma_headers.index("density") if "density" in plasma_headers else 1
-        speed_idx = plasma_headers.index("speed") if "speed" in plasma_headers else 2
-        temp_idx = plasma_headers.index("temperature") if "temperature" in plasma_headers else 3
-
-        m_time_idx = mag_headers.index("time_tag") if "time_tag" in mag_headers else 0
-        bx_idx = mag_headers.index("bx_gsm") if "bx_gsm" in mag_headers else 1
-        by_idx = mag_headers.index("by_gsm") if "by_gsm" in mag_headers else 2
-        bz_idx = mag_headers.index("bz_gsm") if "bz_gsm" in mag_headers else 3
-        bt_idx = mag_headers.index("bt") if "bt" in mag_headers else -1
-
-        # Build mag lookup map by timestamp
-        mag_map = {}
-        for row in mag_raw[1:]:
-            if len(row) > max(m_time_idx, bx_idx, by_idx, bz_idx):
-                t_str = row[m_time_idx]
-                try:
-                    bx = float(row[bx_idx]) if row[bx_idx] is not None else 0.0
-                    by = float(row[by_idx]) if row[by_idx] is not None else 0.0
-                    bz = float(row[bz_idx]) if row[bz_idx] is not None else 0.0
-                    bt = float(row[bt_idx]) if (bt_idx >= 0 and row[bt_idx] is not None) else math.sqrt(bx**2 + by**2 + bz**2)
-                    mag_map[t_str] = (bx, by, bz, bt)
-                except (ValueError, TypeError):
-                    continue
-
-        merged: List[Dict[str, Any]] = []
-        # Sample down if 7 days to maintain responsive UI
-        step = 5 if span_days > 1 else 1
-
-        for i, row in enumerate(plasma_raw[1:]):
-            if i % step != 0 or len(row) <= max(p_time_idx, density_idx, speed_idx, temp_idx):
-                continue
-            t_str = row[p_time_idx]
-            try:
-                dens = float(row[density_idx]) if row[density_idx] is not None else None
-                spd = float(row[speed_idx]) if row[speed_idx] is not None else None
-                temp = float(row[temp_idx]) if row[temp_idx] is not None else None
-            except (ValueError, TypeError):
-                continue
-
-            mag_entry = mag_map.get(t_str, (0.0, 0.0, 0.0, 0.0))
-            bx, by, bz, bt = mag_entry
-
-            p_dyn = SpaceWeatherPhysics.dynamic_pressure(dens or 4.0, spd or 400.0)
-            standoff = SpaceWeatherPhysics.magnetopause_standoff(p_dyn, bz)
-            eps = SpaceWeatherPhysics.akasofu_epsilon(spd or 400.0, bt, by, bz)
-            delay = SpaceWeatherPhysics.propagation_delay_minutes(MISSIONS["DSCOVR"]["orbit_distance_km"], spd or 400.0)
-
-            merged.append({
-                "time_tag": t_str,
-                "mission": "DSCOVR",
-                "density": dens,
-                "speed": spd,
-                "temperature": temp,
-                "bx_gsm": bx,
-                "by_gsm": by,
-                "bz_gsm": bz,
-                "bt": bt,
-                "dynamic_pressure": round(p_dyn, 2),
-                "magnetopause_re": standoff,
-                "akasofu_gw": round(eps, 1),
-                "l1_travel_time_min": delay
-            })
-
-        if not merged:
-            return self.generate_synthetic_telemetry("DSCOVR", hours=span_days * 24, condition="active")
-        return merged
+        """Operational L1 solar wind records (see get_telemetry_bundle for provenance)."""
+        return (await self.get_telemetry_bundle("DSCOVR", span_days))["records"]
 
     async def get_satellite_telemetry(self, mission_id: str, span_days: int = 1) -> List[Dict[str, Any]]:
-        """
-        Get calibrated telemetry for any satellite in catalog (ACE, Aditya-L1, WIND, SOHO, GOES-16).
-        Uses real feeds where available, and cross-calibrated instruments with authentic physics models.
-        """
-        if mission_id == "DSCOVR":
-            return await self.get_dscovr_realtime_data(span_days)
+        """Telemetry records for any satellite in the catalog (see get_telemetry_bundle)."""
+        return (await self.get_telemetry_bundle(mission_id, span_days))["records"]
 
-        # Baseline L1 data derived from primary stream with instrument-specific calibration & sensor noise
-        base_l1 = await self.get_dscovr_realtime_data(span_days)
+    def _simulate_from_base(self, mission_id: str, base_l1: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Instrument-offset simulation of a mission from the operational L1 stream; gaps stay gaps."""
         calibrated = []
-
-        # Instrument offsets & sensitivities
-        offsets = {
-            "ACE": {"speed_bias": 3.2, "dens_bias": -0.15, "mag_noise": 0.35, "time_skew_min": 1.2},
-            "ADITYA_L1": {"speed_bias": -1.8, "dens_bias": 0.22, "mag_noise": 0.28, "time_skew_min": 0.8},
-            "WIND": {"speed_bias": 1.1, "dens_bias": -0.05, "mag_noise": 0.20, "time_skew_min": 2.4},
-            "SOHO": {"speed_bias": 5.0, "dens_bias": 0.50, "mag_noise": 0.40, "time_skew_min": 0.0},
-            "GOES_16": {"speed_bias": 0.0, "dens_bias": 0.0, "mag_noise": 0.50, "time_skew_min": -45.0},
-            "STEREO_A": {"speed_bias": -12.0, "dens_bias": 0.80, "mag_noise": 0.60, "time_skew_min": 180.0}
-        }.get(mission_id, {"speed_bias": 0, "dens_bias": 0, "mag_noise": 0.3, "time_skew_min": 0})
-
+        offsets = SIMULATION_OFFSETS.get(mission_id, {"speed_bias": 0, "dens_bias": 0, "mag_noise": 0.3, "time_skew_min": 0})
         rng = random.Random(42)  # Deterministic repeatability for comparisons
+        dist = MISSIONS.get(mission_id, {}).get("orbit_distance_km", 1500000)
+        name = MISSIONS.get(mission_id, {}).get("name", mission_id)
+
+        def noisy(value, sigma, bias=0.0):
+            return None if value is None else value + bias + rng.gauss(0, sigma)
+
         for item in base_l1:
-            raw_spd = item.get("speed") if item.get("speed") is not None else 400.0
-            raw_dens = item.get("density") if item.get("density") is not None else 5.0
-            raw_bz = item.get("bz_gsm") if item.get("bz_gsm") is not None else 0.0
-            raw_bt = item.get("bt") if item.get("bt") is not None else math.sqrt(raw_bz**2 + 5.0)
-            raw_bx = item.get("bx_gsm") if item.get("bx_gsm") is not None else 0.0
-            raw_by = item.get("by_gsm") if item.get("by_gsm") is not None else 0.0
-            raw_pdyn = item.get("dynamic_pressure") if item.get("dynamic_pressure") is not None else 2.0
-
-            spd = raw_spd + offsets["speed_bias"] + rng.gauss(0, 1.2)
-            dens = max(0.5, raw_dens + offsets["dens_bias"] + rng.gauss(0, 0.2))
-            bz = raw_bz + rng.gauss(0, offsets["mag_noise"])
-            bt = max(abs(bz), raw_bt + rng.gauss(0, offsets["mag_noise"]))
-
-            # GOES-16 is in Earth's magnetosphere, so it measures compressed dipole field (Hp ~ 80-120 nT)
+            raw_bz, raw_bt = item.get("bz_gsm"), item.get("bt")
             if mission_id == "GOES_16":
-                # Magnetospheric compression proxy
-                hp = 100.0 + (raw_pdyn * 4.5) - (abs(bz) * 1.5)
+                # GOES-16 is in Earth's magnetosphere, so it measures compressed dipole field (Hp ~ 80-120 nT)
+                raw_pdyn = item.get("dynamic_pressure")
+                hp = None
+                if raw_pdyn is not None and raw_bz is not None:
+                    hp = round(100.0 + (raw_pdyn * 4.5) - (abs(raw_bz) * 1.5), 2)
                 calibrated.append({
                     "time_tag": item["time_tag"],
                     "mission": "GOES-16",
-                    "hp_mag": round(hp, 2),
-                    "xray_flux_long": 1.2e-6 * (1.0 + 0.1 * math.sin(len(calibrated))),
-                    "xray_flux_short": 2.5e-7,
-                    "proton_flux": round(max(0.1, 1.2 + 0.5 * math.sin(len(calibrated))), 2)
+                    "hp_mag": hp,
+                    "data_source": "simulated"
                 })
-            else:
-                dist = MISSIONS.get(mission_id, {}).get("orbit_distance_km", 1500000)
-                delay = SpaceWeatherPhysics.propagation_delay_minutes(dist, spd)
-                p_dyn = SpaceWeatherPhysics.dynamic_pressure(dens, spd)
-                calibrated.append({
-                    "time_tag": item["time_tag"],
-                    "mission": MISSIONS.get(mission_id, {}).get("name", mission_id),
-                    "speed": round(spd, 1),
-                    "density": round(dens, 2),
-                    "temperature": item.get("temperature", 80000),
-                    "bx_gsm": round(raw_bx + rng.gauss(0, 0.2), 2),
-                    "by_gsm": round(raw_by + rng.gauss(0, 0.2), 2),
-                    "bz_gsm": round(bz, 2),
-                    "bt": round(bt, 2),
-                    "dynamic_pressure": round(p_dyn, 2),
-                    "magnetopause_re": SpaceWeatherPhysics.magnetopause_standoff(p_dyn, bz),
-                    "akasofu_gw": round(SpaceWeatherPhysics.akasofu_epsilon(spd, bt, raw_by, bz), 1),
-                    "l1_travel_time_min": delay
-                })
-
+                continue
+            spd = noisy(item.get("speed"), 1.2, offsets["speed_bias"])
+            dens = noisy(item.get("density"), 0.2, offsets["dens_bias"])
+            dens = max(0.5, dens) if dens is not None else None
+            bz = noisy(raw_bz, offsets["mag_noise"])
+            bt = noisy(raw_bt, offsets["mag_noise"])
+            if bt is not None and bz is not None:
+                bt = max(abs(bz), bt)
+            bx = noisy(item.get("bx_gsm"), 0.2)
+            by = noisy(item.get("by_gsm"), 0.2)
+            rec = {
+                "time_tag": item["time_tag"],
+                "mission": name,
+                "speed": round(spd, 1) if spd is not None else None,
+                "density": round(dens, 2) if dens is not None else None,
+                "temperature": item.get("temperature"),
+                "bx_gsm": round(bx, 2) if bx is not None else None,
+                "by_gsm": round(by, 2) if by is not None else None,
+                "bz_gsm": round(bz, 2) if bz is not None else None,
+                "bt": round(bt, 2) if bt is not None else None,
+                "data_source": "simulated"
+            }
+            calibrated.append(add_derived_fields(rec, dist))
         return calibrated
+
+    # ------------------------------------------------------------------
+    # Geomagnetic / solar indices (Kp, GOES X-rays, GOES protons)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def parse_kp(rows: Optional[List[Any]]) -> Tuple[Optional[float], Optional[str]]:
+        """Latest planetary Kp from the SWPC product (list-of-dicts, or the legacy header-row format)."""
+        if not rows:
+            return None, None
+        best: Tuple[Optional[float], Optional[str]] = (None, None)
+        if isinstance(rows[0], list):
+            header = rows[0]
+            if "Kp" not in header or "time_tag" not in header:
+                return None, None
+            ki, ti = header.index("Kp"), header.index("time_tag")
+            for row in rows[1:]:
+                kp = _num(row[ki]) if len(row) > ki else None
+                if kp is not None:
+                    best = (kp, _iso_space(row[ti]))
+            return best
+        for row in rows:
+            if isinstance(row, dict):
+                kp = _num(row.get("Kp", row.get("kp_index")))
+                if kp is not None and row.get("time_tag"):
+                    best = (kp, _iso_space(row["time_tag"]))
+        return best
+
+    @staticmethod
+    def parse_goes_latest(rows: Optional[List[Any]], energy: str) -> Tuple[Optional[float], Optional[str]]:
+        """Most recent GOES flux for one channel label (e.g. '0.1-0.8nm', '>=10 MeV')."""
+        best_t, best_v = None, None
+        want = energy.replace(" ", "")
+        for row in (rows or []):
+            if not isinstance(row, dict) or str(row.get("energy", "")).replace(" ", "") != want:
+                continue
+            v = _num(row.get("flux"))
+            t = row.get("time_tag")
+            if v is not None and v >= 0 and t and (best_t is None or t > best_t):
+                best_t, best_v = t, v
+        return best_v, (_iso_space(best_t) if best_t else None)
+
+    async def get_space_weather_indices(self) -> Dict[str, Any]:
+        """Latest observed Kp, GOES 0.1-0.8 nm X-ray flux and >=10 MeV proton flux (None when unavailable)."""
+        kp_rows, xr_rows, pr_rows = await asyncio.gather(
+            self.fetch_json(NOAA_SWPC_ENDPOINTS["kp_7day"], "kp_7day"),
+            self.fetch_json(NOAA_SWPC_ENDPOINTS["xrays_1day"], "xrays_1day"),
+            self.fetch_json(NOAA_SWPC_ENDPOINTS["protons_1day"], "protons_1day"),
+        )
+        kp, kp_t = self.parse_kp(kp_rows if isinstance(kp_rows, list) else None)
+        xr, xr_t = self.parse_goes_latest(xr_rows if isinstance(xr_rows, list) else None, "0.1-0.8nm")
+        pr, pr_t = self.parse_goes_latest(pr_rows if isinstance(pr_rows, list) else None, ">=10 MeV")
+        return {
+            "kp": kp, "kp_time": kp_t,
+            "xray_flux_long": xr, "xray_time": xr_t,
+            "proton_flux_10mev": pr, "proton_time": pr_t,
+            "source": "NOAA SWPC (planetary K-index, GOES primary XRS and integral protons)"
+        }
 
     def generate_synthetic_telemetry(self, mission: str = "DSCOVR", hours: int = 24, condition: str = "active") -> List[Dict[str, Any]]:
         """
         High-fidelity physical model for generating solar wind telemetry.
         Useful when operating fully offline or for benchmark testing.
         Conditions: 'quiet', 'active', 'storm', 'cme_shock'
+        Every record is labelled data_source = "synthetic".
         """
         records = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
         start_time = now - timedelta(hours=hours)
 
         # Baseline parameters by condition
@@ -238,7 +444,8 @@ class DataDownloader:
         else: # active
             base_v, base_n, base_bz = 440.0, 6.5, -4.0
 
-        random.seed(int(start_time.timestamp()) % 10000)
+        # Private generator: never reseed the interpreter-wide `random` module.
+        rng = random.Random(int(start_time.timestamp()) % 10000)
         dt = 5  # 5 minute intervals
         total_steps = (hours * 60) // dt
 
@@ -252,13 +459,13 @@ class DataDownloader:
 
             # Plasma random walk + physical solar cycle oscillation
             wave = math.sin(step * 0.05) * 15.0
-            curr_v = max(280.0, curr_v + random.gauss(0, 1.5) + (base_v - curr_v) * 0.02)
-            curr_n = max(0.5, curr_n + random.gauss(0, 0.2) + (base_n - curr_n) * 0.03)
-            
+            curr_v = max(280.0, curr_v + rng.gauss(0, 1.5) + (base_v - curr_v) * 0.02)
+            curr_n = max(0.5, curr_n + rng.gauss(0, 0.2) + (base_n - curr_n) * 0.03)
+
             # IMF oscillations & Alfvénic fluctuations
-            curr_bz = curr_bz + random.gauss(0, 0.4) + (base_bz - curr_bz) * 0.03
-            by = 4.0 * math.cos(step * 0.08) + random.gauss(0, 0.5)
-            bx = -3.0 * math.sin(step * 0.04) + random.gauss(0, 0.5)
+            curr_bz = curr_bz + rng.gauss(0, 0.4) + (base_bz - curr_bz) * 0.03
+            by = 4.0 * math.cos(step * 0.08) + rng.gauss(0, 0.5)
+            bx = -3.0 * math.sin(step * 0.04) + rng.gauss(0, 0.5)
             bt = math.sqrt(bx**2 + by**2 + curr_bz**2)
 
             speed = round(curr_v + wave, 1)
@@ -281,7 +488,8 @@ class DataDownloader:
                 "dynamic_pressure": round(p_dyn, 2),
                 "magnetopause_re": standoff,
                 "akasofu_gw": round(eps, 1),
-                "l1_travel_time_min": delay
+                "l1_travel_time_min": delay,
+                "data_source": "synthetic"
             })
 
         return records
@@ -374,6 +582,12 @@ class DataDownloader:
 
         return {
             "metadata": event_meta,
+            "provenance": {
+                "kind": "synthetic",
+                "description": ("Illustrative profile built from the event's published peak values "
+                                "(speed, Bz) on top of the offline solar wind model. Not archival measurements."),
+                "time_standard": "UTC"
+            },
             "telemetry": telemetry,
             "records": telemetry,
             "satellite": "DSCOVR",
