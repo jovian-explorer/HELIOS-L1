@@ -19,10 +19,12 @@ class SpaceWeatherForecaster:
         """
         Newell universal coupling function dPhi_MP / dt [Wb/s or proxy]:
         dPhi/dt = v^(4/3) * B_T^(2/3) * sin^(8/3)(theta_c / 2)
-        where theta_c is the IMF clock angle in GSM coordinates.
+        where theta_c is the IMF clock angle in GSM coordinates and B_T = sqrt(By^2 + Bz^2)
+        is the field transverse to the Sun-Earth line (Newell et al. 2007). Bx does not
+        enter; b_total_nt is kept for API compatibility and is not used.
         """
         v = max(100.0, speed_kms)
-        bt = max(0.1, b_total_nt)
+        bt = max(0.1, math.hypot(by_gsm_nt or 0.0, bz_gsm_nt or 0.0))
         
         # Clock angle theta_c = atan2(By, Bz)
         clock_angle = math.atan2(by_gsm_nt, bz_gsm_nt)
@@ -87,13 +89,20 @@ class SpaceWeatherForecaster:
         if not telemetry_records:
             return {"status": "error", "message": "No telemetry data provided"}
 
-        latest = telemetry_records[-1]
-        v_now = float(latest.get("speed", 420.0))
-        bz_now = float(latest.get("bz_gsm", -1.5))
-        bt_now = float(latest.get("bt", 6.0))
-        by_now = float(latest.get("by_gsm", 2.0))
-        pdyn_now = float(latest.get("dynamic_pressure", 2.2))
-        density_now = float(latest.get("density", 5.0))
+        # Newest record with the drivers present (the last row is often a partial gap).
+        latest = next((r for r in reversed(telemetry_records)
+                       if r.get("speed") is not None and r.get("bz_gsm") is not None), telemetry_records[-1])
+
+        def val(key, default):
+            v = latest.get(key)
+            return float(v) if v is not None else default
+
+        v_now = val("speed", 420.0)
+        bz_now = val("bz_gsm", -1.5)
+        bt_now = val("bt", 6.0)
+        by_now = val("by_gsm", 0.0)
+        pdyn_now = val("dynamic_pressure", 2.2)
+        density_now = val("density", 5.0)
 
         # Universal Newell Coupling
         newell_now = SpaceWeatherForecaster.calculate_newell_coupling(v_now, bt_now, bz_now, by_now)

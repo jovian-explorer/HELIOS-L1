@@ -50,3 +50,19 @@ def test_noaa_scales_report_actual_flare_class_and_no_invented_proton_flux():
     quiet = SpaceWeatherPhysics.classify_noaa_scales(kp=1.0, bz_gsm=1.0, xray_flux=4e-8, proton_flux=0.3)
     assert quiet["flare_class"].startswith("A4.0")
     assert quiet["proton_flux_pfu"] == 0.3
+
+
+def test_forecaster_newell_uses_transverse_field_and_tolerates_gaps():
+    """Newell et al. (2007) use B_T = sqrt(By^2 + Bz^2); a large Bx must not add coupling."""
+    from helios.core.ml_forecast import SpaceWeatherForecaster as F
+    # |B| = 10 nT but By = 0, Bz = -2 nT: B_T = 2 nT.
+    expected = 400.0 ** (4.0 / 3.0) * 2.0 ** (2.0 / 3.0)
+    assert F.calculate_newell_coupling(400.0, 10.0, -2.0, 0.0) == pytest.approx(expected, rel=1e-3)
+    assert F.calculate_newell_coupling(400.0, 10.0, -2.0, 0.0) == pytest.approx(
+        SpaceWeatherPhysics.newell_coupling(400.0, 0.0, -2.0), rel=1e-3)
+    # The newest record being a gap used to raise TypeError (float(None)).
+    recs = [{"time_tag": "a", "speed": 500.0, "bz_gsm": -8.0, "by_gsm": 1.0, "bt": 9.0, "dynamic_pressure": 3.0},
+            {"time_tag": "b", "speed": None, "bz_gsm": None, "by_gsm": None, "bt": None, "dynamic_pressure": None}]
+    out = F.forecast_geomagnetic_storm(recs)
+    assert len(out["predictions_timeline"]) == 12
+    assert out["current_coupling"]["newell_coupling_rate"] > 10000
