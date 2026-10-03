@@ -15,6 +15,7 @@ let chartCompResidual = null;
 let chartEventTelemetry = null;
 let chartSpectrum = null;
 let chartDst = null;
+let chartEventDst = null;
 let orbitViewer = null;
 let auroralRenderer = null;
 let parkerRenderer = null;
@@ -735,7 +736,8 @@ function initCharts() {
       data: {
         labels: [],
         datasets: [
-          { label: 'Predicted Dst [nT]', data: [], borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0.1 }
+          { label: 'Model Dst [nT]', data: [], borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+          { label: 'Observed Dst, Kyoto [nT]', data: [], borderColor: '#38bdf8', backgroundColor: '#38bdf8', showLine: true, spanGaps: true, borderWidth: 1.5, pointRadius: 2.5 }
         ]
       },
       options: {
@@ -1328,7 +1330,8 @@ function renderCompResidualChart(comp) {
 // AURORAL FORECAST & DUAL-HEMISPHERE OVAL
 async function loadAuroralForecast() {
   try {
-    const res = await fetch('/api/aurora');
+    const modelSel = document.getElementById('dst-model-select');
+    const res = await fetch(`/api/aurora?dst_model=${modelSel ? modelSel.value : 'obrien'}`);
     const data = await res.json();
     const b = data.boundaries;
 
@@ -1351,11 +1354,18 @@ async function loadAuroralForecast() {
       const dstVals = data.dst_evolution.map(d => d.dst_predicted_nt);
       chartDst.data.labels = times;
       chartDst.data.datasets[0].data = dstVals;
+      chartDst.data.datasets[0].label = `${data.dst_model || 'Model'} Dst [nT]`;
+      chartDst.data.datasets[1].data = alignHourlyToSeries(data.dst_evolution.map(d => d.time_tag), data.dst_observed || []);
       chartDst.update();
 
       const latestDst = dstVals[dstVals.length - 1];
+      const obsList = data.dst_observed || [];
+      const latestObs = obsList.length ? obsList[obsList.length - 1].dst : null;
       const curDstEl = document.getElementById('dst-current-val');
-      if (curDstEl) curDstEl.innerText = `Dst: ${latestDst} nT`;
+      if (curDstEl) curDstEl.innerText = latestObs !== null ? `Kyoto: ${latestObs} nT • model: ${latestDst} nT` : `Model: ${latestDst} nT`;
+      const skillEl = document.getElementById('dst-skill-text');
+      if (skillEl) skillEl.innerText = describeDstSkill(data.dst_skill, 'Kyoto Dst (hourly)') +
+        ' Drivers: L1 solar wind shifted to Earth by its travel time' + (data.dst_initial_observed_nt !== null && data.dst_initial_observed_nt !== undefined ? `; model started from observed ${data.dst_initial_observed_nt} nT.` : '; no observed start value, model starts quiet.');
     }
 
     // Feed real-time geomagnetic parameters to high-resolution Auroral Renderer
@@ -2050,7 +2060,7 @@ async function selectEvent(eventId) {
     const obs = meta.observed_5min;
     document.getElementById('event-desc').innerText = meta.summary +
       `\n\nData: ${evProv.kind === 'observed' ? 'OBSERVED' : 'SYNTHETIC'}. ${evProv.description || ''}` +
-      (obs ? ` Observed 5-min extremes: Bz ${obs.min_bz} nT, V ${obs.peak_speed} km/s, Pdyn ${obs.peak_dyn_pressure} nPa (the cards show published values).` : '');
+      (obs ? ` Observed 5-min extremes: Bz ${obs.min_bz} nT, V ${obs.peak_speed} km/s, Pdyn ${obs.peak_dyn_pressure} nPa${obs.min_sym_h !== null && obs.min_sym_h !== undefined ? `, SYM-H ${obs.min_sym_h} nT` : ''} (the cards show published values).` : '');
     document.getElementById('event-peak-kp').innerText = meta.peak_kp;
     document.getElementById('event-min-bz').innerText = `${meta.min_bz} nT`;
     document.getElementById('event-peak-v').innerText = `${meta.peak_speed} km/s`;
@@ -2102,9 +2112,53 @@ async function selectEvent(eventId) {
       }
     });
 
+    renderEventDst(ev);
   } catch (err) {
     console.error('Error selecting event:', err);
   }
+}
+
+// Hourly observations (time stamp = start of the hour) placed on a finer series' time axis.
+function alignHourlyToSeries(timeTags, hourly) {
+  const byHour = {};
+  hourly.forEach(o => { byHour[String(o.time_tag).slice(0, 13)] = o.dst; });
+  const seen = {};
+  return timeTags.map(t => {
+    const h = String(t).slice(0, 13);
+    if (h in byHour && !seen[h]) { seen[h] = true; return byHour[h]; }
+    return null;
+  });
+}
+
+function describeDstSkill(sk, against) {
+  if (!sk || sk.n === undefined) return '';
+  if (sk.r === null || sk.r === undefined) return `Not enough overlap with ${against} to score the model (n = ${sk.n}).`;
+  return `vs ${against}: n = ${sk.n}, r = ${sk.r}, RMSE = ${sk.rmse_nt} nT, bias = ${sk.bias_nt} nT, min model ${sk.min_predicted_nt} / observed ${sk.min_observed_nt} nT.`;
+}
+
+function renderEventDst(ev) {
+  const block = document.getElementById('event-dst-block');
+  const cmp = ev.dst_comparison;
+  if (!block) return;
+  if (!cmp) { block.classList.add('hidden'); return; }
+  block.classList.remove('hidden');
+  const ctx = document.getElementById('chart-event-dst')?.getContext('2d');
+  if (!ctx) return;
+  if (chartEventDst) chartEventDst.destroy();
+  chartEventDst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: cmp.time_tags.map(t => String(t).slice(5, 16)),
+      datasets: [
+        { label: 'SYM-H observed [nT]', data: cmp.observed, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 },
+        { label: cmp.models.obrien.name, data: cmp.models.obrien.series, borderColor: '#f43f5e', borderWidth: 1.2, pointRadius: 0 },
+        { label: cmp.models.burton.name, data: cmp.models.burton.series, borderColor: '#eab308', borderWidth: 1.2, pointRadius: 0, borderDash: [4, 3] }
+      ]
+    },
+    options: darkChartOptions
+  });
+  const sk = document.getElementById('event-dst-skill');
+  if (sk) sk.innerText = `${cmp.models.obrien.name}: ${describeDstSkill(cmp.models.obrien.skill, 'SYM-H')}  ${cmp.models.burton.name}: ${describeDstSkill(cmp.models.burton.skill, 'SYM-H')}`;
 }
 
 async function loadSpectralAnalysis() {

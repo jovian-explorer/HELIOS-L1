@@ -2,7 +2,7 @@
 HELIOS-L1 Machine Learning & Advanced Magnetospheric Coupling Forecasting Engine.
 Implements:
 1. Newell Solar Wind Magnetosphere Coupling Function (Newell et al., 2007)
-2. Burton-McPherron-Russell Ring Current Dynamic Dst Model (Burton et al., 1975)
+2. O'Brien & McPherron (2000) ring current Dst model (helios.core.aurora_model), started from observed Dst
 3. Borovsky Solar Wind Energy Coupling & Akasofu Epsilon Poynting Flux
 4. Multi-Horizon (1h, 3h, 6h, 12h) Kp and Geomagnetic Storm Probability Forecaster
 5. Critical Infrastructure Hazard Impact Evaluator (GIC, Aviation, Satellites, HF Radio)
@@ -10,6 +10,8 @@ Implements:
 import math
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone, timedelta
+
+from helios.core.aurora_model import AuroralModel
 
 class SpaceWeatherForecaster:
     """Advanced physical and empirical space weather forecasting model."""
@@ -42,49 +44,18 @@ class SpaceWeatherForecaster:
         return round(coupling, 1)
 
     @staticmethod
-    def calculate_burton_dst_step(
-        current_dst: float,
-        speed_kms: float,
-        bz_gsm_nt: float,
-        dyn_pressure_npa: float,
-        dt_seconds: float = 3600.0
-    ) -> float:
-        """
-        Burton-McPherron-Russell model step for ring current evolution:
-        dDst*/dt = Q(t) - Dst* / tau
-        Dst = Dst* + b * sqrt(P_dyn) - c
-        """
-        # Solar wind electric field Ey = -V * Bz [mV/m]
-        ey = max(0.0, -speed_kms * bz_gsm_nt * 1e-3)
-        
-        # Injection rate Q [nT/hr]
-        # Q = 0 when Ey < 0.5 mV/m, else -4.4 * (Ey - 0.5)
-        if ey > 0.5:
-            q_injection = -4.4 * (ey - 0.5) * (dt_seconds / 3600.0)
-        else:
-            q_injection = 0.0
-
-        # Decay time tau typically ~7.7 hours during main phase
-        tau_hours = 7.7
-        decay_factor = math.exp(-dt_seconds / (tau_hours * 3600.0))
-
-        # Update pressure-corrected Dst*
-        # Pressure correction: Dst = Dst* + 7.26 * sqrt(P) - 11.0
-        p_term = 7.26 * math.sqrt(max(0.5, dyn_pressure_npa)) - 11.0
-        dst_star = current_dst - p_term
-
-        new_dst_star = dst_star * decay_factor + q_injection
-        new_dst = new_dst_star + p_term
-        return round(new_dst, 1)
-
-    @staticmethod
     def forecast_geomagnetic_storm(
         telemetry_records: List[Dict[str, Any]],
-        prediction_horizons_hours: List[int] = [1, 3, 6, 12]
+        prediction_horizons_hours: List[int] = [1, 3, 6, 12],
+        observed_dst: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Generates forward-looking predictions for Kp, Dst, and auroral extent
         with probabilistic classification across NOAA geomagnetic storm scales.
+
+        The current Dst is the latest observed (Kyoto) value when given; otherwise the
+        O'Brien & McPherron (2000) model run over the records. The Dst trajectory steps
+        that model forward hourly.
         """
         if not telemetry_records:
             return {"status": "error", "message": "No telemetry data provided"}
@@ -107,10 +78,14 @@ class SpaceWeatherForecaster:
         # Universal Newell Coupling
         newell_now = SpaceWeatherForecaster.calculate_newell_coupling(v_now, bt_now, bz_now, by_now)
 
-        # Baseline current estimated Dst
-        # DPS relation: Dst roughly scales with -10 * |Bz_south| * (V/400)
-        bz_south = min(0.0, bz_now)
-        current_dst = round(bz_south * 6.5 * (v_now / 400.0) - (pdyn_now * 1.5), 1)
+        # Current Dst: observed when available, else the ring current model over the records
+        # (a previous ad hoc formula, 6.5 * Bz * V/400 - 1.5 * P_dyn, had no published basis).
+        if observed_dst is not None:
+            current_dst, dst_source = round(float(observed_dst), 1), "observed (WDC Kyoto real-time Dst)"
+        else:
+            sim = AuroralModel.simulate_dst_evolution(telemetry_records)
+            current_dst = sim[-1]["dst_predicted_nt"] if sim else 0.0
+            dst_source = "O'Brien & McPherron (2000) model over the last day of solar wind"
 
         # Compute forecasted Dst forward in time
         predictions = []
@@ -125,9 +100,7 @@ class SpaceWeatherForecaster:
             eff_bz = bz_now * decay_ratio - 1.0 * (1.0 - decay_ratio)
             eff_pdyn = pdyn_now * decay_ratio + 2.0 * (1.0 - decay_ratio)
 
-            sim_dst = SpaceWeatherForecaster.calculate_burton_dst_step(
-                sim_dst, eff_v, eff_bz, eff_pdyn, dt_seconds=3600.0
-            )
+            sim_dst = round(AuroralModel.dst_step(sim_dst, eff_v, eff_bz, eff_pdyn, dt_hours=1.0), 1)
 
             # Estimate Kp from Dst and Newell Coupling
             # Approximate relationship: Kp ~ 2.0 + 0.00015 * Newell + abs(min(0, Dst)) / 25
@@ -165,7 +138,8 @@ class SpaceWeatherForecaster:
             "current_coupling": {
                 "newell_coupling_rate": newell_now,
                 "coupling_state": "Intense Dayside Reconnection" if bz_now < -5.0 else "Shielded / Closed Magnetosphere",
-                "estimated_dst_nt": current_dst
+                "estimated_dst_nt": current_dst,
+                "dst_source": dst_source
             },
             "storm_probabilities": {
                 "minor_storm_g1_kp5_percent": prob_g1,

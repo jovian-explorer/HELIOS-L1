@@ -26,6 +26,7 @@ FIELD_UNITS: Dict[str, str] = {
     "magnetopause_re": "R_E",
     "akasofu_gw": "GW",
     "l1_travel_time_min": "min",
+    "sym_h": "nT", "asy_h": "nT", "ae": "nT", "al": "nT", "au": "nT",
 }
 
 

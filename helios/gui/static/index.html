@@ -1052,13 +1052,20 @@
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center space-x-2">
               <i class="fa-solid fa-wave-square text-rose-400"></i>
-              <h3 class="font-bold text-sm text-slate-200">Dst Ring Current Prediction (Burton Model)</h3>
+              <h3 class="font-bold text-sm text-slate-200">Dst Ring Current: Model vs Observed</h3>
             </div>
-            <span class="text-xs text-rose-400 font-bold" id="dst-current-val">Dst: --- nT</span>
+            <div class="flex items-center space-x-2">
+              <select id="dst-model-select" onchange="loadAuroralForecast()" class="bg-space-900 text-rose-300 text-[11px] border border-slate-700 rounded px-1.5 py-0.5">
+                <option value="obrien" selected>O'Brien &amp; McPherron (2000)</option>
+                <option value="burton">Burton et al. (1975)</option>
+              </select>
+              <span class="text-xs text-rose-400 font-bold" id="dst-current-val">Dst: --- nT</span>
+            </div>
           </div>
           <div class="h-60 w-full">
             <canvas id="chart-dst"></canvas>
           </div>
+          <p id="dst-skill-text" class="text-[10px] text-slate-400 mt-2 font-mono">Model driven by L1 solar wind shifted to Earth; observed: WDC Kyoto real-time Dst.</p>
         </div>
       </div>
     </section>
@@ -1627,6 +1634,13 @@
         <div class="h-72 w-full">
           <canvas id="chart-event-telemetry"></canvas>
         </div>
+        <div id="event-dst-block" class="hidden mt-4">
+          <div class="text-xs font-bold text-slate-300 mb-1">Ring current: observed SYM-H (OMNI) vs Burton (1975) and O'Brien-McPherron (2000) driven by OMNI</div>
+          <div class="h-56 w-full">
+            <canvas id="chart-event-dst"></canvas>
+          </div>
+          <p id="event-dst-skill" class="text-[10px] text-slate-400 mt-1 font-mono"></p>
+        </div>
       </div>
     </section>
 
@@ -1824,7 +1838,7 @@
             <i class="fa-solid fa-circle-dot text-sky-400"></i>
           </div>
           <div id="forecast-dst-val" class="text-2xl font-hud font-black text-sky-300">--- nT</div>
-          <div class="text-[10px] text-slate-400 mt-1">Burton DPS model</div>
+          <div id="forecast-dst-source" class="text-[10px] text-slate-400 mt-1">Observed Kyoto Dst, else O'Brien-McPherron model</div>
         </div>
 
         <div class="metric-card" style="border-left: 3px solid #eab308;">

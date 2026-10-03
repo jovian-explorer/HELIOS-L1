@@ -65,6 +65,28 @@ def latest_valid_record(records: List[Dict[str, Any]]) -> Dict[str, Any]:
     return records[-1] if records else {}
 
 
+def propagate_to_earth(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Copies of L1 records with time stamps moved forward by their L1-to-Earth travel time
+    (l1_travel_time_min), sorted by the new time. Records without a travel time (no speed,
+    or OMNI data that are already shifted) keep their time stamp.
+    """
+    out = []
+    for r in records:
+        lag = r.get("l1_travel_time_min")
+        if lag is None:
+            out.append(r)
+            continue
+        try:
+            t = datetime.fromisoformat(str(r["time_tag"]).replace("T", " ")[:19]) + timedelta(minutes=float(lag))
+        except (KeyError, TypeError, ValueError):
+            out.append(r)
+            continue
+        out.append(dict(r, time_tag=t.strftime("%Y-%m-%d %H:%M:%S")))
+    out.sort(key=lambda r: str(r.get("time_tag", "")))
+    return out
+
+
 def kp_proxy_from_bz(bz: Optional[float]) -> float:
     """Crude Kp estimate from IMF Bz, used only when no observed Kp can be fetched."""
     if bz is None:
@@ -412,8 +434,39 @@ async def get_ml_forecast(mission_id: str = Query("DSCOVR")):
     mission_key = mission_id.upper()
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
-    data = await downloader.get_satellite_telemetry(mission_key, span_days=1)
-    return SpaceWeatherForecaster.forecast_geomagnetic_storm(data)
+    data, kyoto = await asyncio.gather(downloader.get_satellite_telemetry(mission_key, span_days=1),
+                                       downloader.get_kyoto_dst())
+    obs = kyoto["records"]
+    return SpaceWeatherForecaster.forecast_geomagnetic_storm(
+        data, observed_dst=obs[-1]["dst"] if obs else None)
+
+
+@app.get("/api/storm/indices")
+async def get_storm_indices(
+    start: str = Query(..., description="UTC start, ISO 8601"),
+    end: str = Query(..., description="UTC end (exclusive), ISO 8601"),
+    cadence_minutes: int = Query(5, ge=1, le=60)
+):
+    """
+    Observed geomagnetic indices from OMNI (SYM-H, ASY-H, AE, AL, AU; WDC Kyoto) for an
+    interval of up to 31 days, with the O'Brien & McPherron (2000) and Burton et al.
+    (1975) ring current models driven by the OMNI solar wind and scored against SYM-H.
+    """
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    if t1 - t0 > timedelta(days=ARCHIVE_MAX_DAYS):
+        raise HTTPException(status_code=422, detail=f"Intervals are limited to {ARCHIVE_MAX_DAYS} days.")
+    bundle = await downloader.get_archive_bundle("OMNI", t0, t1, cadence_minutes=cadence_minutes)
+    recs = bundle["records"]
+    keys = ("sym_h", "asy_h", "ae", "al", "au")
+    return {
+        "provenance": bundle["provenance"],
+        "data_points": len(recs),
+        "indices": {k: [r.get(k) for r in recs] for k in keys},
+        "time_tags": [r["time_tag"] for r in recs],
+        "dst_comparison": AuroralModel.compare_dst_models(recs) if recs else None,
+    }
 
 @app.get("/api/events")
 async def get_events():
@@ -490,8 +543,15 @@ async def get_spice_status():
     }
 
 @app.get("/api/aurora")
-async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None):
-    data = await downloader.get_satellite_telemetry("DSCOVR", span_days=1)
+async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None,
+                     dst_model: str = Query("obrien", description="Ring current model: 'obrien' (O'Brien & McPherron 2000) or 'burton' (Burton et al. 1975)")):
+    try:
+        model_key = AuroralModel.dst_model_key(dst_model)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    bundle, kyoto = await asyncio.gather(downloader.get_telemetry_bundle("DSCOVR", span_days=1),
+                                         downloader.get_kyoto_dst())
+    data = bundle["records"]
     latest_rec = latest_valid_record(data)
 
     if bz_gsm is None:
@@ -515,14 +575,29 @@ async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None)
 
     boundaries = AuroralModel.calculate_auroral_boundaries(kp_val, bz_val)
     oval_polygon = AuroralModel.generate_auroral_oval_coordinates(kp_val, bz_val)
-    dst_sim = AuroralModel.simulate_dst_evolution(data)
+    # The L1 drivers reach Earth ~45-60 min later: time-shift them before comparing with
+    # observed Kyoto Dst over the same window. The model starts from the observed value.
+    drivers = propagate_to_earth(data)
+    obs = kyoto["records"]
+    t0 = drivers[0]["time_tag"] if drivers else None
+    t1 = drivers[-1]["time_tag"] if drivers else None
+    obs_window = [o for o in obs if t0 and t0[:13] <= o["time_tag"][:13] <= t1[:13]]
+    initial = AuroralModel.observed_at(obs, t0) if t0 else None
+    dst_sim = AuroralModel.simulate_dst_evolution(drivers, model=model_key, initial_dst=initial)
     return {
         "kp": kp_val,
         "kp_source": kp_source,
         "bz_gsm": bz_val,
         "boundaries": boundaries,
         "oval_polygon": oval_polygon,
-        "dst_evolution": dst_sim
+        "dst_model": AuroralModel.DST_MODELS[model_key]["name"],
+        "dst_initial_observed_nt": initial,
+        "dst_evolution": dst_sim,
+        "dst_observed": obs_window,
+        "dst_observed_source": kyoto["source"],
+        "dst_skill": AuroralModel.dst_skill(AuroralModel.hourly_pairs(dst_sim, obs_window)),
+        "drivers_provenance": bundle["provenance"],
+        "drivers_time_shift": "L1 records shifted by their L1-to-Earth travel time (distance / speed)"
     }
 
 @app.get("/api/magnetosphere/boundaries")

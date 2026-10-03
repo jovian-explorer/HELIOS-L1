@@ -18,6 +18,7 @@ shock nose) and the DSCOVR science archive (magnetometer from 2015, Faraday cup
   empty days are re-checked after six hours, because the archive fills in with a delay.
 """
 import asyncio
+import hashlib
 import io
 import json
 import math
@@ -43,6 +44,10 @@ PERMANENT_AFTER_DAYS = 2
 
 STANDARD_COLUMNS = ("density", "speed", "temperature", "bt",
                     "bx_gsm", "by_gsm", "bz_gsm", "bx_gse", "by_gse", "bz_gse")
+
+# Geomagnetic indices carried by OMNI_HRO_1MIN (WDC Kyoto, nT): SYM-H, ASY-H and the
+# auroral electrojet indices AE, AL, AU. Copied into records only when present.
+INDEX_COLUMNS = ("sym_h", "asy_h", "ae", "al", "au")
 
 
 class HapiError(Exception):
@@ -170,6 +175,8 @@ def _omni(df: pd.DataFrame) -> pd.DataFrame:
     out["speed"] = df["flow_speed"]
     out["density"] = df["proton_density"]
     out["temperature"] = df["T"]
+    for col, name in zip(INDEX_COLUMNS, ("SYM_H", "ASY_H", "AE_INDEX", "AL_INDEX", "AU_INDEX")):
+        out[col] = df[name]
     return out
 
 
@@ -217,8 +224,9 @@ ARCHIVE_SOURCES: Dict[str, Dict[str, Any]] = {
         "spacecraft": "OMNI",
         "groups": [
             [_dataset("OMNI_HRO_1MIN",
-                      ["F", "BX_GSE", "BY_GSE", "BZ_GSE", "BY_GSM", "BZ_GSM", "flow_speed", "proton_density", "T"],
-                      _omni, "definitive", "OMNI 1-min, time-shifted to the bow shock nose")],
+                      ["F", "BX_GSE", "BY_GSE", "BZ_GSE", "BY_GSM", "BZ_GSM", "flow_speed", "proton_density", "T",
+                       "AE_INDEX", "AL_INDEX", "AU_INDEX", "SYM_H", "ASY_H"],  # HAPI order
+                      _omni, "definitive", "OMNI 1-min, time-shifted to the bow shock nose, with SYM-H, ASY-H, AE, AL, AU")],
         ],
     },
 }
@@ -272,9 +280,12 @@ class ArchiveClient:
         self.cache_dir = os.path.join(str(cache_dir), "hapi")
         os.makedirs(self.cache_dir, exist_ok=True)
 
-    def _cache_path(self, ds_id: str, day: datetime) -> str:
-        safe = ds_id.replace("@", "_at")
-        return os.path.join(self.cache_dir, f"{safe}_{day:%Y%m%d}.json")
+    def _cache_path(self, spec: Dict[str, Any], day: datetime) -> str:
+        # The parameter list is part of the key: adding parameters to a dataset must not
+        # serve day files cached (and kept for good) without them.
+        safe = spec["id"].replace("@", "_at")
+        tag = hashlib.sha1(",".join(spec["parameters"]).encode("ascii")).hexdigest()[:8]
+        return os.path.join(self.cache_dir, f"{safe}_{tag}_{day:%Y%m%d}.json")
 
     @staticmethod
     def _cache_is_fresh(path: str, day: datetime, has_rows: bool) -> bool:
@@ -285,7 +296,7 @@ class ArchiveClient:
 
     async def fetch_day(self, spec: Dict[str, Any], day: datetime) -> Optional[pd.DataFrame]:
         """1-minute means of one dataset for one UTC day; None if it could not be retrieved."""
-        path = self._cache_path(spec["id"], day)
+        path = self._cache_path(spec, day)
         cached = None
         if os.path.exists(path):
             try:
@@ -408,11 +419,16 @@ def frame_to_records(frame: pd.DataFrame, mission_label: str, add_derived: Calla
     records = []
     times = df.index.strftime("%Y-%m-%d %H:%M:%S")
     values = {c: df[c].to_numpy(dtype=float) for c in STANDARD_COLUMNS}
+    index_cols = [c for c in INDEX_COLUMNS if c in df.columns]
+    index_values = {c: df[c].to_numpy(dtype=float) for c in index_cols}
     for i, t in enumerate(times):
         rec: Dict[str, Any] = {"time_tag": t, "mission": mission_label}
         for c in STANDARD_COLUMNS:
             v = values[c][i]
             rec[c] = None if not np.isfinite(v) else round(float(v), digits.get(c, 2))
         rec["data_source"] = "observed"
+        for c in index_cols:
+            v = index_values[c][i]
+            rec[c] = None if not np.isfinite(v) else round(float(v), 1)
         records.append(add_derived(rec, distance_km))
     return records

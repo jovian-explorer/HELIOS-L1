@@ -50,9 +50,10 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    $$\epsilon = \frac{4\pi}{\mu_0} v_{sw} B_t^2 \sin^4\left(\frac{\theta}{2}\right) l_0^2 \quad [\text{GW}]$$
    Measures power transfer into the magnetosphere driving substorms and auroral displays.
 
-4. **Auroral Oval Boundaries & Dst Ring Current (Burton Model):**
+4. **Auroral Oval Boundaries & Dst Ring Current (Burton / O'Brien-McPherron):**
    * **Starkov/Feldstein Model:** Evaluates midnight, flank, and noon equatorward auroral oval boundaries ($\Lambda_{eq}$) as a function of $Kp$ and $B_z$, determining geographic visibility regions worldwide.
-   * **Burton et al. (1975) Dst Simulation:** Differential ring current injection and decay model predicting geomagnetic storm intensity ($Dst^*$).
+   * **Ring current Dst:** $dDst^*/dt = Q(VB_s) - Dst^*/	au$, $Dst = Dst^* + b\sqrt{P_{dyn}} - c$, with either O'Brien & McPherron (2000) ($Q = -4.4(VB_s - 0.49)$ nT/h, $	au = 2.4\,e^{9.74/(4.69 + VB_s)}$ h, $b = 7.26$, $c = 11$ nT) or Burton et al. (1975) ($Q = -5.4(VB_s - 0.5)$ nT/h, $	au = 7.7$ h, $b = 15.8$, $c = 20$ nT).
+   * **Observed indices next to the model:** the live view plots WDC Kyoto real-time Dst (hourly, via NOAA SWPC) with the model, driven by L1 solar wind shifted to Earth and started from the observed value, and gives r, RMSE and bias. Historical events and `GET /api/storm/indices?start=&end=` use OMNI 1-min SYM-H, ASY-H, AE, AL and AU and compare both models with SYM-H.
 
 5. **Coronagraph Imagery & CME Kinematic Solver:**
    * Direct integration with real-time feeds from **SOHO LASCO C2**, **LASCO C3**, and **SDO AIA 195/304 Å**.

@@ -28,6 +28,8 @@ async function loadMLForecast() {
     if (newellEl) newellEl.innerText = `${c.newell_coupling_rate.toLocaleString()} Wb/s`;
     if (newellStateEl) newellStateEl.innerText = c.coupling_state;
     if (dstEstEl) dstEstEl.innerText = `${c.estimated_dst_nt} nT`;
+    const dstSrcEl = document.getElementById('forecast-dst-source');
+    if (dstSrcEl && c.dst_source) dstSrcEl.innerText = c.dst_source;
 
     // 2. Storm Scale Probabilities
     const probs = data.storm_probabilities;

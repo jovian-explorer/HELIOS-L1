@@ -21,7 +21,8 @@ import httpx
 
 from helios.config import CACHE_DIR, NOAA_SWPC_ENDPOINTS, MISSIONS
 from helios.core.science import SpaceWeatherPhysics
-from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER, ArchiveClient, frame_to_records
+from helios.core.aurora_model import AuroralModel
+from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER, INDEX_COLUMNS, ArchiveClient, frame_to_records
 
 # Primary plasma / field quantities carried by telemetry records.
 PRIMARY_FIELDS = ("density", "speed", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt",
@@ -99,7 +100,7 @@ def block_average(records: List[Dict[str, Any]], minutes: int = 5,
     import pandas as pd
     df = pd.DataFrame(records)
     df["_t"] = pd.to_datetime(df["time_tag"])
-    cols = [c for c in PRIMARY_FIELDS if c in df.columns]
+    cols = [c for c in PRIMARY_FIELDS + INDEX_COLUMNS if c in df.columns]
     for c in cols:
         df[c] = pd.to_numeric(df[c], errors="coerce")
     binned = df.set_index("_t")[cols].resample(f"{int(minutes)}min").mean().dropna(how="all")
@@ -586,6 +587,35 @@ class DataDownloader:
             "source": "NOAA SWPC (planetary K-index, GOES primary XRS and integral protons)"
         }
 
+    @staticmethod
+    def parse_kyoto_dst(rows: Optional[List[Any]]) -> List[Dict[str, Any]]:
+        """
+        Hourly Kyoto Dst from the SWPC product, oldest first. The time stamp marks the start
+        of the hour the value averages (T00:00 is Kyoto's hour 1, 00-01 UT).
+        """
+        out = []
+        if not rows:
+            return out
+        if isinstance(rows[0], list):  # legacy header-row format
+            header = rows[0]
+            if "time_tag" not in header or "dst" not in header:
+                return out
+            ti, di = header.index("time_tag"), header.index("dst")
+            rows = [{"time_tag": r[ti], "dst": r[di]} for r in rows[1:] if len(r) > max(ti, di)]
+        for row in rows:
+            if isinstance(row, dict) and row.get("time_tag"):
+                v = _num(row.get("dst"))
+                if v is not None and abs(v) < 9999:
+                    out.append({"time_tag": _iso_space(row["time_tag"]), "dst": v})
+        out.sort(key=lambda r: r["time_tag"])
+        return out
+
+    async def get_kyoto_dst(self) -> Dict[str, Any]:
+        """Real-time (quicklook) hourly Dst of the last ~7 days from WDC Kyoto via NOAA SWPC."""
+        rows = await self.fetch_json(NOAA_SWPC_ENDPOINTS["kyoto_dst"], "kyoto_dst")
+        return {"records": self.parse_kyoto_dst(rows if isinstance(rows, list) else None),
+                "source": "WDC for Geomagnetism, Kyoto real-time (quicklook) Dst via NOAA SWPC; hourly means, time stamp = start of hour"}
+
     def generate_synthetic_telemetry(self, mission: str = "DSCOVR", hours: int = 24, condition: str = "active") -> List[Dict[str, Any]]:
         """
         High-fidelity physical model for generating solar wind telemetry.
@@ -744,9 +774,12 @@ class DataDownloader:
                     field = {"min_bz": "bz_gsm", "peak_speed": "speed", "peak_dyn_pressure": "dynamic_pressure"}[key]
                     vals = [r[field] for r in telemetry if r.get(field) is not None]
                     observed[key] = round(fn(vals), 2) if vals else None
+                sym = [r["sym_h"] for r in telemetry if r.get("sym_h") is not None]
+                observed["min_sym_h"] = round(min(sym), 1) if sym else None
                 return {
                     "metadata": dict(event_meta, observed_5min=observed),
                     "provenance": arch["provenance"],
+                    "dst_comparison": AuroralModel.compare_dst_models(telemetry) if sym else None,
                     "telemetry": telemetry,
                     "records": telemetry,
                     "satellite": "OMNI",

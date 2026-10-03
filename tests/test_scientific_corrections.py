@@ -114,21 +114,66 @@ def _storm_records(step_min, hours=6):
 
 def test_dst_simulation_independent_of_cadence():
     """
-    Burton model with Ey = 9 mV/m: Q = -4.4 (9 - 0.5) = -37.4 nT/h, tau = 7.7 h.
-    After 6 h: Dst* = -5 e^(-6/7.7) + Q tau (1 - e^(-6/7.7)) ~ -158.8 nT, regardless
-    of whether the inputs are 1-minute or 5-minute samples (1-minute data used to be
-    integrated as if each step lasted 5 minutes).
+    O'Brien & McPherron (2000) with VBs = 600 km/s * 15 nT = 9 mV/m:
+    Q = -4.4 (9 - 0.49) nT/h, tau = 2.4 exp(9.74 / (4.69 + 9)) h. From Dst* = 0, after 6 h
+    Dst* = Q tau (1 - e^(-6/tau)), the same for 1-minute and 5-minute samples (1-minute
+    data used to be integrated as if each step lasted 5 minutes).
     """
     from helios.core.aurora_model import AuroralModel
-    tau, q = 7.7, -4.4 * (9.0 - 0.5)
-    decay = math.exp(-6.0 / tau)
-    expected_star = -5.0 * decay + q * tau * (1.0 - decay)
-    p_term = 7.26 * math.sqrt(5.0) - 11.0
+    q, tau = -4.4 * (9.0 - 0.49), 2.4 * math.exp(9.74 / (4.69 + 9.0))
+    expected = q * tau * (1.0 - math.exp(-6.0 / tau)) + 7.26 * math.sqrt(5.0) - 11.0
     one_min = AuroralModel.simulate_dst_evolution(_storm_records(1))[-1]["dst_predicted_nt"]
     five_min = AuroralModel.simulate_dst_evolution(_storm_records(5))[-1]["dst_predicted_nt"]
-    # The first record carries one default (5-min) step before the time stamps take over.
-    assert five_min == pytest.approx(expected_star + p_term, abs=3.0)
-    assert one_min == pytest.approx(five_min, abs=3.0)
+    assert five_min == pytest.approx(expected, abs=0.06)
+    assert one_min == pytest.approx(expected, abs=0.06)
+
+
+def test_burton_1975_dst_model_constants():
+    """
+    Burton et al. (1975): Q = -1.5e-3 nT/s per mV/m above 0.5 mV/m (-5.4 nT/h), decay
+    3.6e-5 1/s (7.7 h), b = 0.20 nT/(eV cm^-3)^1/2 = 15.8 nT/nPa^1/2, c = 20 nT.
+    """
+    from helios.core.aurora_model import AuroralModel
+    q, tau = -1.5e-3 * 3600.0 * (9.0 - 0.5), 1.0 / (3.6e-5 * 3600.0)
+    expected = q * tau * (1.0 - math.exp(-6.0 / tau)) + 15.8 * math.sqrt(5.0) - 20.0
+    out = AuroralModel.simulate_dst_evolution(_storm_records(5), model="burton")[-1]["dst_predicted_nt"]
+    assert out == pytest.approx(expected, abs=0.1)
+    # Starting from an observed Dst: a quiet interval relaxes towards b sqrt(P) - c
+    quiet = [dict(r, bz_gsm=2.0) for r in _storm_records(5, hours=1)]
+    start = AuroralModel.simulate_dst_evolution(quiet, model="burton", initial_dst=-100.0)
+    assert start[0]["dst_predicted_nt"] == -100.0
+    assert start[-1]["dst_predicted_nt"] > -100.0
+    with pytest.raises(ValueError):
+        AuroralModel.simulate_dst_evolution(quiet, model="temerin")
+
+
+def test_dst_skill_and_model_comparison_against_sym_h():
+    from helios.core.aurora_model import AuroralModel
+    sk = AuroralModel.dst_skill([(-10, -12), (-50, -40), (-90, -100), (None, 5)])
+    assert sk["n"] == 3 and sk["bias_nt"] == pytest.approx(0.67, abs=0.05)
+    assert sk["rmse_nt"] == pytest.approx(math.sqrt((4 + 100 + 100) / 3), abs=0.05)
+    assert sk["r"] == pytest.approx(0.979, abs=0.001) and sk["min_observed_nt"] == -100.0
+    recs = [dict(r, sym_h=-20.0 - i) for i, r in enumerate(_storm_records(5, hours=2))]
+    cmp = AuroralModel.compare_dst_models(recs)
+    assert cmp["observed_index"] == "SYM-H" and set(cmp["models"]) == {"obrien", "burton"}
+    # Both models start from the first observed SYM-H
+    assert cmp["models"]["obrien"]["series"][0] == -20.0 and cmp["models"]["burton"]["series"][0] == -20.0
+    assert cmp["models"]["obrien"]["skill"]["n"] == len(recs)
+
+
+def test_kyoto_dst_hourly_alignment():
+    """SWPC Kyoto Dst stamps mark the start of the hour; model hourly means pair with them."""
+    from helios.core.aurora_model import AuroralModel
+    from helios.core.downloader import DataDownloader
+    rows = [{"time_tag": "2026-10-02T00:00:00", "dst": 5}, {"time_tag": "2026-10-02T01:00:00", "dst": -3},
+            {"time_tag": "2026-10-02T02:00:00", "dst": 99999}]
+    obs = DataDownloader.parse_kyoto_dst(rows)
+    assert obs == [{"time_tag": "2026-10-02 00:00:00", "dst": 5.0}, {"time_tag": "2026-10-02 01:00:00", "dst": -3.0}]
+    sim = [{"time_tag": f"2026-10-02 00:{m:02d}:00", "dst_predicted_nt": 1.0} for m in range(60)]
+    sim += [{"time_tag": f"2026-10-02 01:{m:02d}:00", "dst_predicted_nt": -5.0} for m in range(10)]
+    # 01:xx has only 10 of 60 minutes: skipped
+    assert AuroralModel.hourly_pairs(sim, obs) == [(1.0, 5.0)]
+    assert AuroralModel.observed_at(obs, "2026-10-02 01:37:00") == -3.0
 
 
 def test_dst_simulation_handles_gaps():
@@ -298,3 +343,28 @@ def test_boundary_endpoint_models_and_inputs():
     fr = client.get("/api/magnetosphere/boundaries?dynamic_pressure=2.0&bz_gsm=0&mach_number=8&model=shue").json()
     assert fr["bow_shock"]["standoff_re"] == pytest.approx(10.2519 * 1.2924603, abs=0.01)
     assert client.get("/api/magnetosphere/boundaries?model=fairfield").status_code == 400
+
+
+def test_aurora_endpoint_shows_observed_dst_next_to_model(monkeypatch):
+    """L1 drivers are shifted to Earth, the model starts from Kyoto Dst and is scored hourly."""
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    recs = [dict(r, l1_travel_time_min=60.0) for r in _storm_records(1, hours=3)]
+
+    async def bundle(mission, span_days=1):
+        return {"records": recs, "provenance": {"kind": "observed"}}
+
+    async def kyoto():
+        return {"records": [{"time_tag": f"2026-10-02 0{h}:00:00", "dst": -10.0 * h} for h in range(5)],
+                "source": "test"}
+
+    monkeypatch.setattr(server.downloader, "get_telemetry_bundle", bundle)
+    monkeypatch.setattr(server.downloader, "get_kyoto_dst", kyoto)
+    body = TestClient(server.app).get("/api/aurora?kp=3&dst_model=burton").json()
+    assert body["dst_model"] == "Burton et al. (1975)"
+    # Shifted by 60 min the drivers start at 01:00, where Kyoto Dst is -10 nT
+    assert body["dst_evolution"][0]["time_tag"] == "2026-10-02 01:00:00"
+    assert body["dst_initial_observed_nt"] == -10.0 and body["dst_evolution"][0]["dst_predicted_nt"] == -10.0
+    assert [o["dst"] for o in body["dst_observed"]] == [-10.0, -20.0, -30.0, -40.0]
+    assert body["dst_skill"]["n"] == 3  # 01, 02, 03 h are complete; 04:00 has one sample
+    assert TestClient(server.app).get("/api/aurora?dst_model=xyz").status_code == 400

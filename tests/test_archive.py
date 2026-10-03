@@ -202,3 +202,30 @@ def test_processors_setting_sizes_the_worker_pool():
         assert config.get_worker_pool()._max_workers == 3
     finally:
         config.update_system_settings(processors=before)
+
+
+def test_omni_geomagnetic_indices_and_storm_endpoint(monkeypatch, tmp_path):
+    """OMNI_HRO_1MIN SYM-H, ASY-H, AE, AL, AU reach the records and /api/storm/indices."""
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.archive import ArchiveClient
+
+    dl = _downloader(tmp_path)
+    b = asyncio.run(dl.get_archive_bundle("OMNI", _utc("2024-05-10 17:00"), _utc("2024-05-10 17:06")))
+    first, last = b["records"][0], b["records"][5]
+    assert (first["ae"], first["al"], first["au"], first["sym_h"], first["asy_h"]) == (124.0, -65.0, 59.0, 15.0, 15.0)
+    assert (last["sym_h"], last["asy_h"]) == (10.0, 12.0)
+    # Adding parameters to a dataset changes its cache key, so day files cached without
+    # them are not served for good.
+    spec = ARCHIVE_SOURCES["OMNI"]["groups"][0][0]
+    client_a = ArchiveClient(lambda u: None, tmp_path)
+    p_full = client_a._cache_path(spec, _utc("2024-05-10"))
+    p_less = client_a._cache_path(dict(spec, parameters=spec["parameters"][:9]), _utc("2024-05-10"))
+    assert p_full != p_less
+
+    monkeypatch.setattr(server, "downloader", dl)
+    body = TestClient(server.app).get("/api/storm/indices?start=2024-05-10T17:00&end=2024-05-10T17:06&cadence_minutes=1").json()
+    assert body["indices"]["sym_h"] == [15.0, 13.0, 11.0, 12.0, 11.0, 10.0]
+    cmp = body["dst_comparison"]
+    assert cmp["observed_index"] == "SYM-H" and cmp["models"]["obrien"]["series"][0] == 15.0
+    assert cmp["models"]["burton"]["skill"]["n"] == 6
