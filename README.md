@@ -52,7 +52,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 
 4. **Auroral Oval Boundaries & Dst Ring Current (Burton / O'Brien-McPherron):**
    * **Starkov/Feldstein Model:** Evaluates midnight, flank, and noon equatorward auroral oval boundaries ($\Lambda_{eq}$) as a function of $Kp$ and $B_z$, determining geographic visibility regions worldwide.
-   * **Ring current Dst:** $dDst^*/dt = Q(VB_s) - Dst^*/	au$, $Dst = Dst^* + b\sqrt{P_{dyn}} - c$, with either O'Brien & McPherron (2000) ($Q = -4.4(VB_s - 0.49)$ nT/h, $	au = 2.4\,e^{9.74/(4.69 + VB_s)}$ h, $b = 7.26$, $c = 11$ nT) or Burton et al. (1975) ($Q = -5.4(VB_s - 0.5)$ nT/h, $	au = 7.7$ h, $b = 15.8$, $c = 20$ nT).
+   * **Ring current Dst:** $dDst^*/dt = Q(VB_s) - Dst^*/\tau$, $Dst = Dst^* + b\sqrt{P_{dyn}} - c$, with either O'Brien & McPherron (2000) ($Q = -4.4(VB_s - 0.49)$ nT/h, $\tau = 2.4\,e^{9.74/(4.69 + VB_s)}$ h, $b = 7.26$, $c = 11$ nT) or Burton et al. (1975) ($Q = -5.4(VB_s - 0.5)$ nT/h, $\tau = 7.7$ h, $b = 15.8$, $c = 20$ nT).
    * **Observed indices next to the model:** the live view plots WDC Kyoto real-time Dst (hourly, via NOAA SWPC) with the model, driven by L1 solar wind shifted to Earth and started from the observed value, and gives r, RMSE and bias. Historical events and `GET /api/storm/indices?start=&end=` use OMNI 1-min SYM-H, ASY-H, AE, AL and AU and compare both models with SYM-H.
 
 5. **Coronagraph Imagery & CME Kinematic Solver:**
