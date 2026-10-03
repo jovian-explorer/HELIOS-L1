@@ -67,16 +67,39 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 
 8. **Geomagnetically Induced Currents (GIC) & D-RAP Ionospheric Absorption:**
    * **Boteler (2012) 1D Induction Model:** Computes surface geoelectric field ($E = Z \cdot H$) and neutral transformer currents on resistive geological shields.
-   * **NOAA D-RAP Model:** Computes Highest Affected Frequency (HAF) and multi-MHz radio absorption on trans-polar airline corridors caused by solar X-ray flares and SPEs.
+   * **NOAA D-RAP Model:** Highest Affected Frequency $HAF = 10\log_{10}F_x + 65$ MHz (reduced by $\cos^{0.75}\chi$) and absorption $A(f) = (HAF/f)^{1.5}$ dB from solar X-ray flares.
 
 9. **Sensor Cross-Calibration & Turbulence Power Spectral Density:**
    * Cross-correlation time lag ($\tau \sim 30\text{--}60$ min early warning between L1 and Earth).
+     A positive lag means spacecraft B observes the same structure later than spacecraft A.
    * Pearson correlation ($r$), $R^2$, RMSE, MAE, and linear calibration between any two spacecraft.
    * Fast Fourier Transform (FFT) analysis of IMF magnetic fluctuations to identify Alfvénic turbulence and Kolmogorov $f^{-5/3}$ inertial subrange slopes.
 
 10. **Operator User Guide & Scientific Literature Handbook (Hotkeys 'U' & 'P'):**
     * Full 6-chapter interactive operator manual embedded with real-time keyword search.
     * Complete directory of peer-reviewed formulas with direct DOI cross-references, data provider provenance (NOAA, NASA, ISRO, ESA, GFZ, WDC), and open science licenses.
+
+---
+
+## 📡 Data Sources & Provenance
+
+Every telemetry record carries a `data_source` field and every API response a `provenance` block, so measured and modelled values are never mixed up in plots, exports or reports:
+
+| `data_source` | Meaning |
+|---|---|
+| `observed` | Measured values from the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`). |
+| `simulated` | No public real-time feed exists here for the mission (Aditya-L1, WIND, SOHO, GOES-16 Hp, STEREO-A); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. |
+| `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. Historical storm profiles are also synthetic (built from published peak values). |
+| `imported` | Rows from a user file in the Custom Ingestion tab. |
+
+* **DSCOVR view:** the RTSW operational stream (rows flagged active). The spacecraft actually supplying it (e.g. SOLAR1) is stored per record in `source_spacecraft`.
+* **ACE view:** the RTSW rows tagged `source = ACE` (real ACE data), so ACE vs. operational-monitor comparisons are genuine inter-spacecraft comparisons.
+* **Coverage:** the RTSW feeds hold about the last 24 h. The 7-day span shows that window as 5-minute block averages.
+* **Gaps:** missing or fill values stay empty (null); derived quantities are empty when an input is missing. Rows with a non-zero RTSW quality flag are discarded.
+* **Indices:** NOAA G/R/S scales use the latest observed planetary Kp, GOES 0.1–0.8 nm X-ray flux and ≥10 MeV proton flux. When Kp cannot be fetched, a Bz-based estimate is used and labelled as such (`kp_source`).
+* **Time:** all time stamps are UTC, `YYYY-MM-DD HH:MM:SS`.
+* **CSV export** (`/api/export/csv`) starts with `# key: value` lines (data kind, provenance, coverage, cadence, units). Read it with `pandas.read_csv(path, comment="#")`, or pass `metadata=false` for a bare table.
+* **Importing files:** OMNI/CDF fill values (99999.9 km/s, 999.99 cm⁻³, 9999.99 nT, 9999999 K, ±1e31) are treated as missing, time stamps with offsets are converted to UTC, and OMNI `YEAR DOY HR MN` columns are recognised. Field components are taken as GSM; columns labelled GSE are not used for Bz-based quantities.
 
 ---
 
