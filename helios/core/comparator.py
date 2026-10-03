@@ -32,15 +32,32 @@ class SatelliteComparator:
         if "time_tag" not in df_a.columns or "time_tag" not in df_b.columns:
             return pd.DataFrame()
 
-        df_a["time"] = pd.to_datetime(df_a["time_tag"])
-        df_b["time"] = pd.to_datetime(df_b["time_tag"])
+        # Parse as UTC so naive stamps ("2026-10-02 18:00:00") and ones carrying an offset
+        # ("...Z", "+05:30") can be aligned; mixing them used to raise a pandas TypeError.
+        df_a["time"] = pd.to_datetime(df_a["time_tag"], utc=True, errors="coerce")
+        df_b["time"] = pd.to_datetime(df_b["time_tag"], utc=True, errors="coerce")
+        df_a = df_a.dropna(subset=["time"])
+        df_b = df_b.dropna(subset=["time"])
 
         # Keep parameter and resample
         if parameter not in df_a.columns or parameter not in df_b.columns:
             return pd.DataFrame()
 
-        s_a = df_a.set_index("time")[parameter].resample(freq).mean().interpolate(method="time")
-        s_b = df_b.set_index("time")[parameter].resample(freq).mean().interpolate(method="time")
+        # Bridge only short interior gaps (up to 3 bins); longer gaps stay missing and are
+        # excluded, instead of being filled with straight lines that inflate correlations.
+        def to_grid(df, max_gap_bins: int = 3):
+            values = pd.to_numeric(df.set_index("time")[parameter], errors="coerce")
+            gridded = values.resample(freq).mean()
+            missing = gridded.isna()
+            run_id = (missing != missing.shift()).cumsum()
+            run_len = missing.groupby(run_id).transform("sum")
+            filled = gridded.interpolate(method="time", limit_area="inside")
+            # pandas' `limit` would still fill the first bins of a long gap; blank whole long gaps.
+            filled[missing & (run_len > max_gap_bins)] = np.nan
+            return filled
+
+        s_a = to_grid(df_a)
+        s_b = to_grid(df_b)
 
         combined = pd.DataFrame({
             "val_a": s_a,
@@ -107,6 +124,10 @@ class SatelliteComparator:
         Calculate cross-correlation as a function of time lag tau.
         Used to experimentally measure the solar wind transit delay
         between satellites at different L1 positions or between L1 and Earth.
+
+        Sign convention: a positive lag means spacecraft B observes the same structure
+        later than spacecraft A, i.e. b(t) ~ a(t - lag). This matches the sign of the
+        theoretical_delay_min returned by compute_spatial_baseline.
         """
         if len(series_a) < max_lags * 2 or len(series_b) < max_lags * 2:
             return {"lags_minutes": [], "correlation": [], "optimal_lag_minutes": 0.0, "max_correlation": 0.0}
@@ -114,7 +135,8 @@ class SatelliteComparator:
         a_norm = (series_a - np.mean(series_a)) / (np.std(series_a) if np.std(series_a) > 0 else 1.0)
         b_norm = (series_b - np.mean(series_b)) / (np.std(series_b) if np.std(series_b) > 0 else 1.0)
 
-        corr = np.correlate(a_norm, b_norm, mode="full") / len(series_a)
+        # corr[k] = sum_n b[n + L] a[n] with L = lags[k]: peaks at L > 0 when B lags A.
+        corr = np.correlate(b_norm, a_norm, mode="full") / len(series_a)
         lags = np.arange(-len(series_a) + 1, len(series_a))
 
         # Filter within [-max_lags, +max_lags]
@@ -130,7 +152,8 @@ class SatelliteComparator:
             "lags_minutes": [float(l * dt_minutes) for l in sub_lags],
             "correlation": [round(float(c), 4) for c in sub_corr],
             "optimal_lag_minutes": round(optimal_lag_min, 1),
-            "max_correlation": round(max_r, 4)
+            "max_correlation": round(max_r, 4),
+            "lag_convention": "positive = B observes later than A"
         }
 
     @classmethod

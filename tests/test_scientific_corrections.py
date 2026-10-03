@@ -138,3 +138,32 @@ def test_dst_simulation_handles_gaps():
     out = AuroralModel.simulate_dst_evolution(recs)
     assert out[3]["ey_electric_field_mvm"] is None
     assert len(out) == len(recs)
+
+
+def test_cross_correlation_lag_sign_matches_theoretical_delay():
+    """
+    B sees the same signal 15 minutes (3 bins of 5 min) after A. The empirical lag must be
+    +15 min, the same sign as compute_spatial_baseline's theoretical delay for a sunward A;
+    it used to come out as -15 min, doubling the reported lag discrepancy.
+    """
+    from helios.core.comparator import SatelliteComparator
+    rng = np.random.default_rng(3)
+    f = np.convolve(rng.normal(size=400), np.ones(5) / 5, mode="same")
+    a = f[10:310]
+    b = f[7:307]  # b[n] = f[n + 7] = a[n - 3]
+    res = SatelliteComparator.cross_correlation_lag(a, b, max_lags=24, dt_minutes=5.0)
+    assert res["optimal_lag_minutes"] == 15.0
+    assert res["max_correlation"] > 0.95
+
+
+def test_align_time_series_mixed_timezones_and_long_gaps():
+    from helios.core.comparator import SatelliteComparator
+    a, b = [], []
+    for i in range(48):
+        hh, mm = divmod(i * 5, 60)
+        a.append({"time_tag": f"2026-10-02 {hh:02d}:{mm:02d}:00", "bz_gsm": float(i)})
+        if not 10 <= i < 30:  # 100-minute gap in B
+            b.append({"time_tag": f"2026-10-02T{hh:02d}:{mm:02d}:00Z", "bz_gsm": float(i)})
+    df = SatelliteComparator.align_time_series(a, b, "bz_gsm")
+    # Naive and 'Z' stamps align; the long gap is not filled with interpolated values.
+    assert len(df) == 48 - 20
