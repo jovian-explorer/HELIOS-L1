@@ -407,3 +407,81 @@ def test_aditya_l1_states_why_it_is_simulated():
     m = MISSIONS["ADITYA_L1"]
     assert m["data_portal_url"] == "https://pradan.issdc.gov.in/al1/"
     assert "login" in m["data_access"]
+
+
+def test_starkov_1994_table_and_kp_conversion():
+    """Coefficients as printed in Sigernes et al. (2011) Tables 1-2 (signs included)."""
+    from helios.core.aurora_model import AuroralModel, STARKOV_COEFFS, STARKOV_KP_TO_AL
+    assert STARKOV_KP_TO_AL == (18.0, -12.3, 27.2, -2.0)
+    assert STARKOV_COEFFS["poleward"][0] == (-0.07, -10.06, -4.44, -3.77, -6.61, 6.37, -4.48)
+    assert STARKOV_COEFFS["equatorward"][2] == (-10.97, -7.20, -7.96, -6.73, -0.58, -26.96, -24.20)
+    assert STARKOV_COEFFS["diffuse"][3] == (3.35, 0.87, 0.72, 0.31, -0.28, -2.14, 0.76)
+    assert AuroralModel.kp_to_al(0) == 18.0
+    assert AuroralModel.kp_to_al(3) == pytest.approx(171.9)
+    assert AuroralModel.kp_to_al(9) == pytest.approx(652.5)
+
+
+def test_starkov_boundaries_match_published_ovals():
+    """
+    Boundaries read off the Feldstein-Starkov oval plots in Fig. 2.10 of the UNIS master's
+    thesis that implements Starkov (1994) with the Sigernes et al. (2011) table
+    (aurora.unis.no/doc/Master_thesis_Mikkel.pdf), to the ~1.5 deg the figure can be read.
+    A sign error in the table moves boundaries by several degrees.
+    """
+    from helios.core.aurora_model import AuroralModel
+    kp_al = AuroralModel.kp_to_al
+    lat = AuroralModel.starkov_latitude
+    # (Kp, MLT, boundary, latitude read from the figure)
+    for kp, mlt, name, expected in [(0, 12, "poleward", 77.0), (0, 12, "equatorward", 75.0), (0, 12, "diffuse", 69.0),
+                                    (0, 0, "poleward", 71.0), (0, 0, "diffuse", 66.0),
+                                    (3, 0, "equatorward", 63.0), (3, 12, "equatorward", 73.5), (3, 0, "diffuse", 60.5),
+                                    (9, 0, "poleward", 73.0), (9, 0, "diffuse", 53.5), (9, 12, "equatorward", 70.0)]:
+        assert float(lat(kp_al(kp), mlt, name)) == pytest.approx(expected, abs=1.5), (kp, mlt, name)
+    # Ordering at every MLT: poleward > equatorward > diffuse edge, for quiet to storm levels
+    import numpy as np
+    t = np.arange(0, 24, 0.5)
+    for al in (18, 100, 400, 652.5, 750):
+        assert np.all(lat(al, t, "poleward") > lat(al, t, "equatorward"))
+        assert np.all(lat(al, t, "equatorward") > lat(al, t, "diffuse"))
+
+
+def test_dipole_pole_and_magnetic_local_time():
+    """IGRF-14 geomagnetic north pole for 2025.0 is at 80.8 N, 72.8 W; Tromso magnetic midnight ~21:30 UT."""
+    import numpy as np
+    from helios.core import coordinates as c
+    p = c.dipole_axis_geo("2025-01-01")[0]
+    assert np.degrees(np.arcsin(p[2])) == pytest.approx(80.8, abs=0.05)
+    assert np.degrees(np.arctan2(p[1], p[0])) == pytest.approx(-72.8, abs=0.1)
+    mlt, mlat = c.geo_to_mlt_mlat("2025-12-21 21:30", 69.66, 18.94)
+    assert min(mlt, 24 - mlt) < 0.5 and mlat == pytest.approx(67.5, abs=0.3)
+    lat, lon = c.mlt_mlat_to_geo("2025-12-21 21:30", [3.0], [65.0])
+    back_mlt, back_mlat = c.geo_to_mlt_mlat("2025-12-21 21:30", lat, lon)
+    assert float(back_mlt[0]) == pytest.approx(3.0, abs=1e-6) and float(back_mlat[0]) == pytest.approx(65.0, abs=1e-6)
+
+
+def test_aurora_endpoint_uses_al_and_draws_starkov_oval(monkeypatch):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    client = TestClient(server.app)
+    body = client.get("/api/aurora?al=-450&kp=5&time=2024-05-10T22:00").json()
+    b = body["boundaries"]
+    assert b["model"] == "Starkov (1994)" and b["al_used_nt"] == 450.0 and b["al_source"] == "user input"
+    assert b["equatorward_midnight_lat"] == pytest.approx(float(server.AuroralModel.starkov_latitude(450, 0.0)), abs=0.05)
+    oval = body["oval_polygon"]
+    assert oval["time_utc"] == "2024-05-10 22:00:00"
+    north = oval["north"]["equatorward"]
+    assert north[0]["lon"] == -180.0 and north[-1]["lon"] == 180.0
+    assert all(a["lon"] <= b2["lon"] for a, b2 in zip(north, north[1:]))
+    assert all(p["lat"] < 0 for p in oval["south"]["poleward"])
+    # Past time with no OMNI AL and no Kp/AL given: explained 404 instead of today's Kp
+    r = client.get("/api/aurora?time=2024-05-10T22:00")
+    assert r.status_code == 404 and "OMNI AL" in r.json()["detail"]
+
+    # With OMNI AL in the archive the hourly mean drives the oval
+    async def omni(mission, start, end, cadence_minutes=1):
+        assert mission == "OMNI"
+        return {"records": [{"time_tag": "x", "al": -400.0 - i} for i in range(60)], "provenance": {"kind": "observed"}}
+    monkeypatch.setattr(server.downloader, "get_archive_bundle", omni)
+    b = client.get("/api/aurora?time=2024-05-10T22:00").json()["boundaries"]
+    assert b["al_used_nt"] == pytest.approx(429.5) and b["al_source"].startswith("OMNI 1-min AL")
+    assert b["hemispheric_power_gw"] is None

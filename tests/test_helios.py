@@ -109,7 +109,8 @@ def test_orbital_mechanics():
 
 def test_auroral_model():
     res = AuroralModel.calculate_auroral_boundaries(kp=7.0, bz_gsm=-12.0)
-    assert res["equatorward_midnight_lat"] < 52.0
+    # Starkov (1994): Kp 7 -> |AL| = 578.7 nT, equatorward midnight boundary 59.9 deg CGM
+    assert res["equatorward_midnight_lat"] == pytest.approx(59.9, abs=0.1)
     assert res["hemispheric_power_gw"] > 50.0
     assert len(res["visible_regions"]) > 0
 

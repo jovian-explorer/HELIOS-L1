@@ -1,40 +1,103 @@
 """
 Auroral oval dynamics and geomagnetic storm ring current (Dst) forecasting engine.
-Implements a linear Kp/Bz approximation of the auroral oval boundaries and
-Burton et al. (1975) and O'Brien & McPherron (2000) Dst ring current models.
+Implements the Starkov (1994) auroral boundary model and the Burton et al. (1975)
+and O'Brien & McPherron (2000) Dst ring current models.
 """
 import math
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
+
+import numpy as np
+
+from helios.core.coordinates import mlt_mlat_to_geo
+
+# Starkov, G. V. (1994), Mathematical model of the auroral boundaries, Geomagn. Aeron. 34(3),
+# 331-336, as tabulated by Sigernes et al. (2011, "Real time aurora oval forecasting -
+# SvalTrack II", aurora.unis.no/doc/Sigernes_Oval.pdf, Table 2, read from the page image).
+# Corrected geomagnetic colatitude of a boundary at magnetic local time t (hours):
+#   theta = A0 + A1 cos[15(t + a1)] + A2 cos[15(2t + a2)] + A3 cos[15(3t + a3)]  (deg)
+# and every A_i, a_i = b0 + b1 x + b2 x^2 + b3 x^3 with x = log10|AL| (AL in nT).
+# Rows b0..b3; columns A0, A1, A2, A3, a1, a2, a3. Checked against the copy of the table
+# in github.com/habtie-phys/auroraloval (data/starkov.mat): identical, signs included.
+STARKOV_COEFFS = {
+    "poleward": ((-0.07, -10.06, -4.44, -3.77, -6.61, 6.37, -4.48),
+                 (24.54, 19.83, 7.47, 7.90, 10.17, -1.10, 10.16),
+                 (-12.53, -9.33, -3.01, -4.73, -5.80, 0.34, -5.87),
+                 (2.15, 1.24, 0.25, 0.91, 1.19, -0.38, 0.98)),
+    "equatorward": ((1.61, -9.59, -12.07, -6.56, -2.22, -23.98, -20.07),
+                    (23.21, 17.78, 17.49, 11.44, 1.50, 42.79, 36.67),
+                    (-10.97, -7.20, -7.96, -6.73, -0.58, -26.96, -24.20),
+                    (2.03, 0.96, 1.15, 1.31, 0.08, 5.56, 5.11)),
+    "diffuse": ((3.44, -2.41, -0.74, -2.12, -1.68, 8.69, 8.61),
+                (29.77, 7.89, 3.94, 3.24, -2.48, -20.73, -5.34),
+                (-16.38, -4.32, -3.09, -1.67, 1.58, 13.03, -1.36),
+                (3.35, 0.87, 0.72, 0.31, -0.28, -2.14, 0.76)),
+}
+# Starkov (1994, Geomagn. Aeron. 34(1), 101-103): |AL| = c0 + c1 Kp + c2 Kp^2 + c3 Kp^3 nT
+# (Sigernes et al. 2011, Table 1).
+STARKOV_KP_TO_AL = (18.0, -12.3, 27.2, -2.0)
+# |AL| range used: 18 nT is Kp 0 and 652.5 nT is Kp 9 in the conversion above. Above
+# about 780 nT the fitted equatorward boundary crosses the poleward one near 08-09 MLT
+# (and the midnight equatorward boundary stops moving at ~60 deg), so the fits are not
+# used beyond 750 nT: larger observed values are capped and the response says so.
+STARKOV_AL_RANGE = (18.0, 750.0)
+
 
 class AuroralModel:
     """Predicts auroral oval equatorward and poleward boundaries and Dst evolution."""
 
     @staticmethod
-    def calculate_auroral_boundaries(kp: float, bz_gsm: float = 0.0) -> Dict[str, Any]:
+    def kp_to_al(kp: float) -> float:
+        """Starkov (1994) conversion of Kp to |AL| (nT)."""
+        k = max(0.0, min(9.0, float(kp)))
+        c0, c1, c2, c3 = STARKOV_KP_TO_AL
+        return c0 + c1 * k + c2 * k ** 2 + c3 * k ** 3
+
+    @staticmethod
+    def starkov_latitude(al_nt: float, mlt_hours, boundary: str = "equatorward"):
         """
-        Calculate equatorward and poleward auroral oval geomagnetic latitude boundaries
-        at midnight, dawn, dusk, and noon from a linear approximation in Kp and southward Bz.
-        This is not the Starkov (1994) model (whose coefficients are cubic in log10|AL|);
-        it reproduces the familiar Feldstein-oval behaviour (about 2 degrees equatorward
-        per Kp step at midnight) and is labelled as an approximation in the interface.
+        Corrected geomagnetic latitude (deg) of a Starkov (1994) boundary ('poleward' or
+        'equatorward' edge of the auroral oval, or 'diffuse' for the equatorward edge of
+        the diffuse aurora) for |AL| in nT at magnetic local time(s) in hours.
+        """
+        b = np.asarray(STARKOV_COEFFS[boundary])
+        lo, hi = STARKOV_AL_RANGE
+        x = math.log10(min(hi, max(lo, abs(float(al_nt)))))
+        a0, a1, a2, a3, p1, p2, p3 = np.array([1.0, x, x * x, x ** 3]) @ b
+        t = np.asarray(mlt_hours, dtype=float)
+        colat = (a0 + a1 * np.cos(np.radians(15.0 * (t + p1)))
+                 + a2 * np.cos(np.radians(15.0 * (2.0 * t + p2)))
+                 + a3 * np.cos(np.radians(15.0 * (3.0 * t + p3))))
+        return 90.0 - colat
+
+    @classmethod
+    def calculate_auroral_boundaries(cls, kp: float, bz_gsm: float = 0.0,
+                                     al_nt: Optional[float] = None,
+                                     al_source: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Starkov (1994) auroral boundaries in corrected geomagnetic latitude at midnight,
+        dawn, dusk and noon. Driven by |AL| when an observed value is given, otherwise by
+        Kp converted to AL with Starkov's polynomial. Bz is reported but not used: the
+        model depends on AL (or Kp) and magnetic local time only.
         """
         kp_eff = max(0.0, min(9.0, float(kp)))
         bz_eff = float(bz_gsm) if bz_gsm is not None else 0.0
+        if al_nt is not None:
+            al_raw, source = abs(float(al_nt)), al_source or "observed AL"
+        else:
+            al_raw, source = cls.kp_to_al(kp_eff), "Kp converted to AL (Starkov 1994)"
+        lo, hi = STARKOV_AL_RANGE
+        al_used = min(hi, max(lo, al_raw))
 
-        # Southward Bz exacerbates auroral oval expansion
-        bz_penalty = abs(min(0.0, bz_eff)) * 0.45
+        def lat(boundary, mlt):
+            return float(cls.starkov_latitude(al_used, mlt, boundary))
 
-        # Equatorward boundary at midnight (magnetic local time 00:00)
-        eq_midnight = max(38.0, 66.5 - (2.1 * kp_eff) - bz_penalty)
-        
-        # Dawn/Dusk (MLT 06:00 and 18:00)
-        eq_flanks = max(42.0, 68.5 - (1.9 * kp_eff) - (bz_penalty * 0.8))
-
-        # Noon (MLT 12:00)
-        eq_noon = max(55.0, 75.0 - (1.6 * kp_eff) - (bz_penalty * 0.6))
-
-        # Poleward boundary at midnight
-        pole_midnight = min(84.0, eq_midnight + 5.5 + 0.8 * kp_eff)
+        eq_midnight = lat("equatorward", 0.0)
+        eq_dawn, eq_dusk = lat("equatorward", 6.0), lat("equatorward", 18.0)
+        mlt_grid = np.arange(0.0, 24.0, 1.0)
+        profile = {"mlt_hours": mlt_grid.tolist()}
+        for name in STARKOV_COEFFS:
+            profile[f"{name}_lat"] = np.round(cls.starkov_latitude(al_used, mlt_grid, name), 2).tolist()
 
         # Visible Geographic Regions
         visible_regions = []
@@ -51,53 +114,63 @@ class AuroralModel:
         power_gw = round(float(10.0 ** (0.21 * kp_eff + 0.5)), 1)
 
         return {
+            "model": "Starkov (1994)",
             "kp_used": round(kp_eff, 1),
             "bz_used": round(bz_eff, 1),
+            "al_used_nt": round(al_used, 1),
+            "al_source": source,
+            "al_capped": al_used != al_raw,
             "equatorward_midnight_lat": round(eq_midnight, 1),
-            "equatorward_flanks_lat": round(eq_flanks, 1),
-            "equatorward_noon_lat": round(eq_noon, 1),
-            "poleward_midnight_lat": round(pole_midnight, 1),
+            "equatorward_flanks_lat": round((eq_dawn + eq_dusk) / 2.0, 1),
+            "equatorward_dawn_lat": round(eq_dawn, 1),
+            "equatorward_dusk_lat": round(eq_dusk, 1),
+            "equatorward_noon_lat": round(lat("equatorward", 12.0), 1),
+            "poleward_midnight_lat": round(lat("poleward", 0.0), 1),
+            "diffuse_equatorward_midnight_lat": round(lat("diffuse", 0.0), 1),
+            "latitude_system": "corrected geomagnetic latitude",
+            "mlt_profile": profile,
             "hemispheric_power_gw": power_gw,
             "visible_regions": visible_regions
         }
 
+    @staticmethod
+    def _boundary_by_longitude(lat: np.ndarray, lon: np.ndarray) -> List[Dict[str, float]]:
+        """Sort a boundary that encircles the geographic pole by longitude and close it at -180/180 deg."""
+        order = np.argsort(lon)
+        lon, lat = lon[order], lat[order]
+        # Latitude at the date line, interpolated between the last and the first point
+        span = lon[0] + 360.0 - lon[-1]
+        lat_dl = lat[-1] + (lat[0] - lat[-1]) * (180.0 - lon[-1]) / span if span > 0 else lat[0]
+        pts = [{"lat": round(float(lat_dl), 2), "lon": -180.0}]
+        pts += [{"lat": round(float(a), 2), "lon": round(float(o), 2)} for a, o in zip(lat, lon)]
+        pts.append({"lat": round(float(lat_dl), 2), "lon": 180.0})
+        return pts
+
     @classmethod
-    def generate_auroral_oval_coordinates(cls, kp: float = 3.0, bz_gsm: float = -3.0, num_points: int = 48) -> List[Dict[str, float]]:
+    def generate_auroral_oval_coordinates(cls, kp: float = 3.0, bz_gsm: float = -3.0, num_points: int = 96,
+                                          al_nt: Optional[float] = None,
+                                          when: Optional[datetime] = None) -> Dict[str, Any]:
         """
-        Generates geographic (lon, lat) polygon boundary points for the northern auroral oval ring.
-        Geomagnetic pole: ~80.5° N, -72.5° W.
+        Geographic (lat, lon) boundaries of the Starkov (1994) oval in both hemispheres at
+        the UTC time `when` (default now). Magnetic local time and latitude are mapped to
+        geographic coordinates with the IGRF centred dipole, which puts the boundaries
+        within a degree or two of their corrected geomagnetic positions. The southern oval
+        mirrors the northern boundaries in magnetic latitude. Each boundary is sorted by
+        longitude from -180 to 180 deg so it can be drawn on a cylindrical map.
         """
-        boundaries = cls.calculate_auroral_boundaries(kp, bz_gsm)
-        eq_lat = boundaries["equatorward_midnight_lat"]
-        
-        # Colatitude radius (in degrees)
-        colat_midnight = 90.0 - eq_lat
-        colat_noon = 90.0 - boundaries["equatorward_noon_lat"]
-
-        pole_lat = 80.5
-        pole_lon = -72.5
-
-        coords = []
-        for i in range(num_points):
-            angle_rad = (2.0 * math.pi * i) / num_points
-            
-            # Asymmetry between midnight (angle=0) and noon (angle=pi)
-            # Oval is expanded towards midnight (sunward is compressed)
-            colat = (colat_midnight + colat_noon) / 2.0 + ((colat_midnight - colat_noon) / 2.0) * math.cos(angle_rad)
-
-            # Approximate projection from geomagnetic to geographic coordinates
-            d_lat = colat * math.cos(angle_rad)
-            d_lon = (colat * math.sin(angle_rad)) / math.cos(math.radians(pole_lat))
-
-            geo_lat = max(-90.0, min(90.0, pole_lat - d_lat))
-            geo_lon = ((pole_lon + d_lon + 180.0) % 360.0) - 180.0
-
-            coords.append({
-                "lat": round(geo_lat, 2),
-                "lon": round(geo_lon, 2)
-            })
-
-        return coords
+        when = when or datetime.now(timezone.utc)
+        lo, hi = STARKOV_AL_RANGE
+        al = min(hi, max(lo, abs(float(al_nt)) if al_nt is not None else cls.kp_to_al(kp)))
+        mlt = np.linspace(0.0, 24.0, num_points, endpoint=False)
+        stamp = when.strftime("%Y-%m-%d %H:%M:%S")
+        out: Dict[str, Any] = {"time_utc": stamp, "model": "Starkov (1994)", "al_used_nt": round(al, 1),
+                               "mapping": "IGRF centred dipole; magnetic local time from the subsolar point"}
+        for hemi, sign in (("north", 1.0), ("south", -1.0)):
+            out[hemi] = {}
+            for name in STARKOV_COEFFS:
+                glat, glon = mlt_mlat_to_geo(stamp, mlt, sign * cls.starkov_latitude(al, mlt, name))
+                out[hemi][name] = cls._boundary_by_longitude(np.asarray(glat), np.asarray(glon))
+        return out
 
     # Ring current models: dDst*/dt = Q(VBs) - Dst*/tau, Dst = Dst* + b sqrt(P_dyn) - c,
     # VBs = V * max(0, -Bz) * 1e-3 in mV/m, Q in nT/h, tau in hours.

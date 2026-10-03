@@ -4,7 +4,7 @@
  * - High-detail global continent cartography in Equirectangular projection
  * - Real-time Astronomical Solar Day/Night Terminator & Twilight Shadow Mask
  * - Dual-Hemisphere Dancing Auroral Curtains (557.7 nm Green, 630.0 nm Red, 427.8 nm Violet)
- * - Animated Shimmering Luminescence around a Kp/Bz oval approximation
+ * - Starkov (1994) auroral oval boundaries from the server, mapped for the current UTC
  * - Global Space Weather Ground Observation Station Network with live MLT
  * - Interactive HUD Telemetry Tooltips & Geomagnetic Coordinate Mapping
  */
@@ -32,9 +32,11 @@ class AuroralMapRenderer {
     this.hoveredStation = null;
     this.mouseGeo = null;
 
-    // North & South Geomagnetic Poles (IGRF reference)
-    this.magPoleNorth = { lat: 80.5, lon: -72.5 };
-    this.magPoleSouth = { lat: -79.5, lon: 108.5 };
+    // North & South Geomagnetic (centred dipole) Poles, IGRF-14 for 2025
+    this.magPoleNorth = { lat: 80.8, lon: -72.8 };
+    this.magPoleSouth = { lat: -80.8, lon: 107.2 };
+    // Starkov (1994) boundaries in geographic coordinates from /api/aurora (null until loaded)
+    this.ovalBoundaries = null;
 
     // Ground Magnetometer & Auroral Observatories
     this.stations = [
@@ -107,12 +109,13 @@ class AuroralMapRenderer {
     });
   }
 
-  setConditions(kp, bz, power, eqMidnightLat) {
+  setConditions(kp, bz, power, eqMidnightLat, ovalBoundaries) {
     this.kpIndex = Math.max(0, Math.min(9, kp || 3.5));
     this.imfBz = bz || 0;
     this.hemisphericPower = power || 35;
     // Equatorward midnight boundary from the server model, so the map label matches the card
     this.eqMidnightLat = (eqMidnightLat !== undefined && eqMidnightLat !== null) ? Number(eqMidnightLat) : null;
+    this.ovalBoundaries = (ovalBoundaries && ovalBoundaries.north) ? ovalBoundaries : null;
   }
 
   // Converts geographic (lon, lat) to canvas (x, y)
@@ -160,17 +163,33 @@ class AuroralMapRenderer {
     return Math.acos(Math.max(-1, Math.min(1, cosZenith))) * (180 / Math.PI);
   }
 
-  // Compute Magnetic Local Time (MLT) for a given longitude and UTC
-  getMLT(lon) {
-    const now = new Date();
-    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60;
-    let mlt = (utcHours + (lon - this.magPoleNorth.lon) / 15) % 24;
+  // Magnetic Local Time (centred dipole) at a geographic point for the current UTC:
+  // MLT = 12 h + (magnetic longitude of the point - magnetic longitude of the Sun) / 15
+  getMLT(lon, lat = 65) {
+    const d = Math.PI / 180;
+    const unit = (la, lo) => [Math.cos(la * d) * Math.cos(lo * d), Math.cos(la * d) * Math.sin(lo * d), Math.sin(la * d)];
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const p = unit(this.magPoleNorth.lat, this.magPoleNorth.lon);
+    const yNorm = Math.hypot(p[0], p[1]);
+    const ym = [-p[1] / yNorm, p[0] / yNorm, 0];  // Z_geo x pole
+    const xm = [ym[1] * p[2] - ym[2] * p[1], ym[2] * p[0] - ym[0] * p[2], ym[0] * p[1] - ym[1] * p[0]];
+    const sun = this.getSubsolarPoint();
+    const mlon = (v) => Math.atan2(dot(v, ym), dot(v, xm)) / d;
+    let mlt = (12 + (mlon(unit(lat, lon)) - mlon(unit(sun.lat, sun.lon))) / 15) % 24;
     if (mlt < 0) mlt += 24;
     return mlt;
   }
 
-  // Auroral oval polygon (Kp/Bz approximation, drawn around the geomagnetic pole)
+  // Auroral oval band: Starkov (1994) equatorward boundary west to east, then the poleward
+  // boundary back east to west (both from the server). Before the first server answer a
+  // schematic Kp ring is drawn around the geomagnetic pole.
   generateAuroralOval(isNorth = true) {
+    if (this.ovalBoundaries) {
+      const hemi = this.ovalBoundaries[isNorth ? 'north' : 'south'];
+      if (hemi && hemi.equatorward && hemi.poleward) {
+        return hemi.equatorward.concat(hemi.poleward.slice().reverse());
+      }
+    }
     const pole = isNorth ? this.magPoleNorth : this.magPoleSouth;
     const kp = this.kpIndex;
     const bzTerm = this.imfBz < 0 ? Math.abs(this.imfBz) * 0.45 : 0;
@@ -455,6 +474,23 @@ class AuroralMapRenderer {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
+    // Equatorward edge of the diffuse aurora (Starkov 1994), dashed
+    const diffuse = this.ovalBoundaries && this.ovalBoundaries[isNorth ? 'north' : 'south']
+      ? this.ovalBoundaries[isNorth ? 'north' : 'south'].diffuse : null;
+    if (diffuse && diffuse.length > 1) {
+      ctx.beginPath();
+      diffuse.forEach((pt, i) => {
+        const { x, y } = this.geoToXY(pt.lon, pt.lat);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.6)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     // Pulsing auroral nodes / rays along the oval
     const pulseIndex = Math.floor((this.time * 0.05) % oval.length);
     const pulsePt = oval[pulseIndex];
@@ -556,19 +592,19 @@ class AuroralMapRenderer {
 
     ctx.fillStyle = '#38bdf8';
     ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('AURORAL OVAL (Kp/Bz APPROXIMATION)', 18, 26);
+    ctx.fillText(this.ovalBoundaries ? 'AURORAL OVAL (STARKOV 1994)' : 'AURORAL OVAL (SCHEMATIC, LOADING)', 18, 26);
 
     ctx.fillStyle = '#94a3b8';
     ctx.font = '9px "JetBrains Mono", monospace';
     const eqMid = this.eqMidnightLat !== null && this.eqMidnightLat !== undefined
       ? this.eqMidnightLat
       : Math.max(38.0, 66.5 - 2.1 * this.kpIndex - Math.abs(Math.min(0, this.imfBz)) * 0.45);
-    ctx.fillText(`EQUATORWARD MIDNIGHT: ${eqMid.toFixed(1)}° MLAT`, 18, 40);
+    ctx.fillText(`EQUATORWARD MIDNIGHT: ${eqMid.toFixed(1)}° CGM LAT`, 18, 40);
     ctx.fillText(`KP: ${this.kpIndex.toFixed(1)} • IMF BZ: ${this.imfBz.toFixed(1)} nT • HPI: ${this.hemisphericPower} GW`, 18, 54);
 
     // Bottom-Right Mouse Geo Readout
     if (this.mouseGeo) {
-      const mlt = this.getMLT(this.mouseGeo.lon);
+      const mlt = this.getMLT(this.mouseGeo.lon, this.mouseGeo.lat);
       const text = `GEO: ${Math.abs(this.mouseGeo.lat).toFixed(1)}°${this.mouseGeo.lat >= 0 ? 'N' : 'S'}, ${Math.abs(this.mouseGeo.lon).toFixed(1)}°${this.mouseGeo.lon >= 0 ? 'E' : 'W'} | MLT: ${mlt.toFixed(1)}h`;
       ctx.fillStyle = 'rgba(7, 14, 34, 0.85)';
       ctx.beginPath();
@@ -590,7 +626,7 @@ class AuroralMapRenderer {
       const st = this.hoveredStation;
       const sun = this.getSubsolarPoint();
       const zenith = this.getSolarZenith(st.lon, st.lat, sun);
-      const mlt = this.getMLT(st.lon);
+      const mlt = this.getMLT(st.lon, st.lat);
 
       let skyStatus = 'DAYLIGHT (No Optical Sightings)';
       let statusColor = 'text-slate-400';

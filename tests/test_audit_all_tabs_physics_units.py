@@ -376,22 +376,25 @@ class TestTab8AuroraAndDst:
 
     def test_starkov_auroral_boundaries_and_power(self):
         """
-        Starkov (1994) / Feldstein model:
-        Lambda_eq = 66.5 - 2.1*Kp - 0.45*|Bz|
+        Starkov (1994) oval driven by Kp converted to AL (|AL| = 18 - 12.3 Kp + 27.2 Kp^2 - 2 Kp^3);
         Power = 10^(0.21*Kp + 0.5) GW
         """
-        # Quiet: Kp = 1, Bz = 0 -> Lambda_eq = 66.5 - 2.1 = 64.4 deg
+        # Quiet: Kp = 1 -> |AL| = 30.9 nT, equatorward midnight boundary 67.5 deg CGM
         # Power = 10^(0.71) = 5.13 GW
         b_quiet = AuroralModel.calculate_auroral_boundaries(1.0, 0.0)
-        assert abs(b_quiet["equatorward_midnight_lat"] - 64.4) < 0.2
+        assert abs(b_quiet["equatorward_midnight_lat"] - 67.5) < 0.1
         assert abs(b_quiet["hemispheric_power_gw"] - 5.1) < 0.5
 
-        # Extreme storm: Kp = 9, Bz = -30 -> Lambda_eq = 66.5 - 18.9 - 13.5 = 34.1 -> clamped to 38.0
+        # Kp = 9 -> |AL| = 652.5 nT; Bz does not enter the model
         # Power = 10^(0.21*9 + 0.5) = 10^2.39 = 245.5 GW
         b_storm = AuroralModel.calculate_auroral_boundaries(9.0, -30.0)
-        assert b_storm["equatorward_midnight_lat"] <= 40.0
+        assert b_storm["equatorward_midnight_lat"] == AuroralModel.calculate_auroral_boundaries(9.0, 0.0)["equatorward_midnight_lat"]
+        assert abs(b_storm["diffuse_equatorward_midnight_lat"] - 53.0) < 0.1
         assert b_storm["hemispheric_power_gw"] > 200.0
-        assert "Hanle/Ladakh" in str(b_storm["visible_regions"])
+        # Observed |AL| beyond the range of the fits (750 nT) is capped and flagged
+        b_al = AuroralModel.calculate_auroral_boundaries(9.0, 0.0, al_nt=-1500.0)
+        assert b_al["al_used_nt"] == 750.0 and b_al["al_capped"]
+        assert abs(b_al["diffuse_equatorward_midnight_lat"] - 51.7) < 0.1
 
         # Dynamic endpoint
         res = client.get("/api/aurora")

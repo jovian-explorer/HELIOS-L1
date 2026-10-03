@@ -604,9 +604,9 @@ SCIENTIFIC_REFERENCES = [
         "doi": None,
         "doi_url": None,
         "category": "Auroral Oval & Ionosphere",
-        "formula": "theta = A0 + A1 cos[15(t + a1)] + A2 cos[15(2t + a2)] + A3 cos[15(3t + a3)], Ai and ai cubic in log10|AL| (reference only: HELIOS-L1 uses a linear Kp/Bz approximation of the oval, not these coefficients)",
-        "parameters": ["Lambda_eq (equatorward boundary of diffuse aurora)", "MLT (Magnetic Local Time)"],
-        "physical_meaning": "Empirical formulation relating planetary geomagnetic disturbance Kp to the latitudinal expansion and shape of the day/night auroral ovals."
+        "formula": "theta = A0 + A1 cos[15(t + a1)] + A2 cos[15(2t + a2)] + A3 cos[15(3t + a3)], Ai and ai cubic in log10|AL| (theta = corrected geomagnetic colatitude, t = MLT in hours; |AL| = 18 - 12.3 Kp + 27.2 Kp^2 - 2.0 Kp^3 when only Kp is known; coefficients as tabulated by Sigernes et al. 2011)",
+        "parameters": ["theta (corrected geomagnetic colatitude of the poleward and equatorward oval boundaries and of the equatorward edge of the diffuse aurora)", "AL (auroral electrojet index, nT)", "MLT (Magnetic Local Time)"],
+        "physical_meaning": "Empirical model of the auroral oval boundaries as functions of the AL index (or Kp converted to AL) and magnetic local time, fitted to the Feldstein-Starkov ovals."
     },
     {
         "id": "bruno_turbulence_2013",

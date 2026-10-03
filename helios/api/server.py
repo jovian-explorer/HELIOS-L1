@@ -2,7 +2,7 @@
 FastAPI REST API server for HELIOS-L1.
 Bridges scientific backend engines with interactive frontend dashboard.
 """
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel
 from fastapi import FastAPI, Query, HTTPException, Response, Body
 from fastapi.staticfiles import StaticFiles
@@ -542,13 +542,29 @@ async def get_spice_status():
         "earth_radii_km": [6378.1366, 6378.1366, 6356.7519]
     }
 
+async def observed_al(when: datetime) -> Tuple[Optional[float], Optional[str]]:
+    """Mean OMNI 1-min AL (nT) over the hour before `when`, if at least 30 minutes have data."""
+    try:
+        bundle = await downloader.get_archive_bundle("OMNI", when - timedelta(hours=1), when)
+    except Exception:  # archive unreachable: the oval falls back to Kp
+        return None, None
+    values = [r["al"] for r in bundle["records"] if r.get("al") is not None]
+    if len(values) < 30:
+        return None, None
+    return float(np.mean(values)), f"OMNI 1-min AL (WDC Kyoto), mean of {len(values)} min before {when:%Y-%m-%d %H:%M} UTC"
+
 @app.get("/api/aurora")
-async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None,
+async def get_aurora(kp: Optional[float] = Query(None, ge=0.0, le=9.0),
+                     bz_gsm: Optional[float] = None,
+                     al: Optional[float] = Query(None, ge=-5000.0, le=5000.0, description="AL index (nT) driving the Starkov oval; default: OMNI AL, else Kp converted to AL"),
+                     time: Optional[str] = Query(None, description="UTC time of the oval, ISO 8601 (default now)"),
                      dst_model: str = Query("obrien", description="Ring current model: 'obrien' (O'Brien & McPherron 2000) or 'burton' (Burton et al. 1975)")):
     try:
         model_key = AuroralModel.dst_model_key(dst_model)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    oval_time = _parse_utc(time, "time") if time else datetime.now(timezone.utc)
+    historical = time is not None and datetime.now(timezone.utc) - oval_time > timedelta(hours=3)
     bundle, kyoto = await asyncio.gather(downloader.get_telemetry_bundle("DSCOVR", span_days=1),
                                          downloader.get_kyoto_dst())
     data = bundle["records"]
@@ -560,8 +576,18 @@ async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None,
     else:
         bz_val = float(bz_gsm)
 
+    # Starkov (1994) is driven by AL: user value, else the OMNI 1-min AL averaged over the
+    # hour before the oval time (OMNI lags real time by days or more), else Kp -> AL.
+    al_val, al_source = (float(al), "user input") if al is not None else (None, None)
+    if al_val is None:
+        al_val, al_source = await observed_al(oval_time)
+    if historical and al_val is None and kp is None:
+        raise HTTPException(status_code=404, detail=f"No OMNI AL index for the hour before {oval_time:%Y-%m-%d %H:%M} UTC; pass kp or al to draw the oval for that time.")
+
     kp_source = "user input"
-    if kp is None:
+    if kp is None and historical:
+        kp_val, kp_source = 0.0, "not used (OMNI AL drives the oval)"
+    elif kp is None:
         indices = await downloader.get_space_weather_indices()
         if indices.get("kp") is not None:
             kp_val, kp_source = float(indices["kp"]), "observed planetary Kp (NOAA SWPC)"
@@ -573,8 +599,10 @@ async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None,
     else:
         kp_val = float(kp)
 
-    boundaries = AuroralModel.calculate_auroral_boundaries(kp_val, bz_val)
-    oval_polygon = AuroralModel.generate_auroral_oval_coordinates(kp_val, bz_val)
+    boundaries = AuroralModel.calculate_auroral_boundaries(kp_val, bz_val, al_nt=al_val, al_source=al_source)
+    oval_polygon = AuroralModel.generate_auroral_oval_coordinates(kp_val, bz_val, al_nt=al_val, when=oval_time)
+    if historical and kp is None:
+        boundaries["hemispheric_power_gw"] = None  # the Kp-based estimate has no Kp to use
     # The L1 drivers reach Earth ~45-60 min later: time-shift them before comparing with
     # observed Kyoto Dst over the same window. The model starts from the observed value.
     drivers = propagate_to_earth(data)
@@ -587,6 +615,9 @@ async def get_aurora(kp: Optional[float] = None, bz_gsm: Optional[float] = None,
     return {
         "kp": kp_val,
         "kp_source": kp_source,
+        "al_nt": boundaries["al_used_nt"],
+        "al_source": boundaries["al_source"],
+        "oval_time_utc": oval_time.strftime("%Y-%m-%d %H:%M:%S"),
         "bz_gsm": bz_val,
         "boundaries": boundaries,
         "oval_polygon": oval_polygon,

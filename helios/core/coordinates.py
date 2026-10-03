@@ -121,3 +121,69 @@ def gsm_to_gse(times: TimesLike, x, y, z) -> Tuple[np.ndarray, np.ndarray, np.nd
     x, y, z = (np.asarray(v, dtype=float) for v in (x, y, z))
     c, s = np.cos(psi), np.sin(psi)
     return x + 0.0 * psi, c * y + s * z, -s * y + c * z
+
+
+def dipole_axis_geo(times: TimesLike) -> np.ndarray:
+    """Unit vector of the northern geomagnetic (centred dipole) pole in GEO, shape (n, 3)."""
+    mjd = _mjd(times)
+    g10, g11, h11 = dipole_coefficients(2000.0 + (mjd - 51544.0) / 365.25)
+    norm = np.sqrt(g10 ** 2 + g11 ** 2 + h11 ** 2)
+    return np.column_stack([-g11 / norm, -h11 / norm, -g10 / norm])
+
+
+def sun_direction_geo(times: TimesLike) -> np.ndarray:
+    """
+    Unit vector towards the Sun in GEO, shape (n, 3), from the same low-precision solar
+    ephemeris as dipole_axis_gse (Hapgood 1992; about 0.01 deg).
+    """
+    mjd = _mjd(times)
+    mjd0 = np.floor(mjd)
+    hours = (mjd - mjd0) * 24.0
+    t0 = (mjd0 - 51544.5) / 36525.0
+    eps = np.radians(23.439 - 0.013 * t0)
+    m = np.radians(357.528 + 35999.050 * t0 + 0.04107 * hours)
+    lam = np.radians(280.460 + 36000.772 * t0 + 0.04107 * hours
+                     + (1.915 - 0.0048 * t0) * np.sin(m) + 0.020 * np.sin(2.0 * m))
+    xi, yi, zi = np.cos(lam), np.cos(eps) * np.sin(lam), np.sin(eps) * np.sin(lam)
+    # GEI -> GEO: rotate by +theta (Greenwich mean sidereal time) about Z.
+    theta = np.radians(100.461 + 36000.770 * t0 + 15.04107 * hours)
+    return np.column_stack([np.cos(theta) * xi + np.sin(theta) * yi,
+                            -np.sin(theta) * xi + np.cos(theta) * yi, zi])
+
+
+def _mag_frame(pole: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Centred dipole (MAG) frame axes in GEO: Y = Z_geo x pole (normalised), X = Y x pole."""
+    y = np.cross([0.0, 0.0, 1.0], pole)
+    y /= np.linalg.norm(y)
+    return np.cross(y, pole), y
+
+
+def mlt_mlat_to_geo(time, mlt_hours, mlat_deg) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Geographic latitude and longitude (deg) of points given in centred-dipole magnetic
+    latitude and magnetic local time at one UTC time. MLT is measured from the magnetic
+    longitude of the Sun: MLT = 12 + (mlon - mlon_sun) / 15 h.
+    """
+    pole = dipole_axis_geo(time)[0]
+    sun = sun_direction_geo(time)[0]
+    xm, ym = _mag_frame(pole)
+    mlon_sun = np.arctan2(sun @ ym, sun @ xm)
+    mlon = mlon_sun + np.radians((np.asarray(mlt_hours, dtype=float) - 12.0) * 15.0)
+    mlat = np.radians(np.asarray(mlat_deg, dtype=float))
+    v = (np.cos(mlat) * np.cos(mlon))[..., None] * xm + (np.cos(mlat) * np.sin(mlon))[..., None] * ym \
+        + np.sin(mlat)[..., None] * pole
+    lat = np.degrees(np.arcsin(np.clip(v[..., 2], -1.0, 1.0)))
+    lon = np.degrees(np.arctan2(v[..., 1], v[..., 0]))
+    return lat, lon
+
+
+def geo_to_mlt_mlat(time, lat_deg, lon_deg) -> Tuple[np.ndarray, np.ndarray]:
+    """Inverse of mlt_mlat_to_geo: (MLT in hours, centred-dipole magnetic latitude in deg)."""
+    pole = dipole_axis_geo(time)[0]
+    sun = sun_direction_geo(time)[0]
+    xm, ym = _mag_frame(pole)
+    lat, lon = np.radians(np.asarray(lat_deg, dtype=float)), np.radians(np.asarray(lon_deg, dtype=float))
+    v = np.stack([np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)], axis=-1)
+    mlon = np.arctan2(v @ ym, v @ xm)
+    mlt = (12.0 + np.degrees(mlon - np.arctan2(sun @ ym, sun @ xm)) / 15.0) % 24.0
+    return mlt, np.degrees(np.arcsin(np.clip(v @ pole, -1.0, 1.0)))

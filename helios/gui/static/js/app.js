@@ -1342,12 +1342,27 @@ function renderCompResidualChart(comp) {
 async function loadAuroralForecast() {
   try {
     const modelSel = document.getElementById('dst-model-select');
-    const res = await fetch(`/api/aurora?dst_model=${modelSel ? modelSel.value : 'obrien'}`);
+    const params = new URLSearchParams({ dst_model: modelSel ? modelSel.value : 'obrien' });
+    const timeEl = document.getElementById('aurora-time');
+    const alEl = document.getElementById('aurora-al');
+    if (timeEl && timeEl.value) params.set('time', timeEl.value + 'Z');
+    if (alEl && alEl.value !== '') params.set('al', alEl.value);
+    const res = await fetch(`/api/aurora?${params}`);
     const data = await res.json();
+    const noteEl = document.getElementById('aurora-oval-note');
+    if (!res.ok) {
+      if (noteEl) noteEl.innerText = data.detail ? String(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : `Request failed (HTTP ${res.status})`;
+      return;
+    }
     const b = data.boundaries;
+    if (noteEl) noteEl.innerText = `Oval for ${data.oval_time_utc} UTC` + (b.al_capped ? ' (|AL| capped to 18-750 nT, the range where the Starkov fits are valid)' : '');
+    const alSrc = document.getElementById('aurora-al-source');
+    if (alSrc) alSrc.innerText = `|AL| = ${b.al_used_nt} nT: ${b.al_source}`;
+    const flankDetail = document.getElementById('aurora-flank-detail');
+    if (flankDetail && b.equatorward_dawn_lat !== undefined) flankDetail.innerText = `Equatorward boundary, dawn (06 MLT) ${b.equatorward_dawn_lat}°, dusk (18 MLT) ${b.equatorward_dusk_lat}°`;
 
-    document.getElementById('aurora-midnight-lat').innerText = `${b.equatorward_midnight_lat}° N/S`;
-    document.getElementById('aurora-power-gw').innerText = `${b.hemispheric_power_gw} GW`;
+    document.getElementById('aurora-midnight-lat').innerText = `${b.equatorward_midnight_lat}° N/S`;  // CGM latitude
+    document.getElementById('aurora-power-gw').innerText = b.hemispheric_power_gw !== null && b.hemispheric_power_gw !== undefined ? `${b.hemispheric_power_gw} GW` : '--- GW';
     document.getElementById('aurora-flank-lat').innerText = `${b.equatorward_flanks_lat}°`;
 
     const regList = document.getElementById('aurora-regions-list');
@@ -1384,7 +1399,7 @@ async function loadAuroralForecast() {
       auroralRenderer.resize();
       const kpVal = data.kp !== undefined ? data.kp : (b.kp_used || 3.5);
       const bzVal = data.bz_gsm !== undefined ? data.bz_gsm : (b.bz_used !== undefined ? b.bz_used : -3.2);
-      auroralRenderer.setConditions(kpVal, bzVal, b.hemispheric_power_gw || 45, b.equatorward_midnight_lat);
+      auroralRenderer.setConditions(kpVal, bzVal, b.hemispheric_power_gw || 45, b.equatorward_midnight_lat, data.oval_polygon);
     }
   } catch (err) {
     console.error('Error loading auroral forecast:', err);
@@ -3215,7 +3230,7 @@ function renderUserGuideTab(container) {
       title: '6. Geospace Hazards, GIC Modeling & HF Ionospheric Absorption',
       icon: 'fa-bolt',
       color: 'text-rose-400',
-      summary: 'Auroral oval boundary (Kp/Bz approximation), Boteler GIC geoelectric fields on power grids, and NOAA D-RAP radio absorption.',
+      summary: 'Auroral oval boundaries (Starkov 1994), Boteler GIC geoelectric fields on power grids, and NOAA D-RAP radio absorption.',
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
@@ -3225,7 +3240,7 @@ function renderUserGuideTab(container) {
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
               <span class="font-bold text-emerald-300">Auroral Oval Visibility</span>
               <p class="text-slate-400 text-[11px]">
-                Computes poleward and equatorward boundaries from a linear Kp/Bz approximation of the Feldstein oval (not the Starkov 1994 coefficients). Projects luminescence curtains and ground observatory visibility on an interactive world map with day/night terminator.
+                Computes the poleward and equatorward oval boundaries and the equatorward edge of the diffuse aurora with the Starkov (1994) model, driven by OMNI AL when available (otherwise Kp converted to AL), for any UTC time. Projects luminescence curtains and ground observatory visibility on an interactive world map with day/night terminator.
               </p>
             </div>
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">

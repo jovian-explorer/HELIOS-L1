@@ -981,7 +981,8 @@
             <i class="fa-solid fa-moon text-emerald-400"></i>
           </div>
           <div id="aurora-midnight-lat" class="text-3xl font-hud font-black text-emerald-300">---°</div>
-          <div class="text-[11px] text-slate-400 mt-1">Geomagnetic Equatorward Reach (Magnetic Local Midnight)</div>
+          <div class="text-[11px] text-slate-400 mt-1">Starkov (1994), corrected geomagnetic latitude at magnetic midnight</div>
+          <div id="aurora-al-source" class="text-[10px] text-slate-500 mt-0.5"></div>
         </div>
         <div class="metric-card" style="border-left: 3px solid var(--accent-solar);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
@@ -989,7 +990,7 @@
             <i class="fa-solid fa-bolt text-amber-400"></i>
           </div>
           <div id="aurora-power-gw" class="text-3xl font-hud font-black text-amber-300">--- GW</div>
-          <div class="text-[11px] text-slate-400 mt-1">Total Auroral Particle Precipitation Energy</div>
+          <div class="text-[11px] text-slate-400 mt-1">Estimated from Kp: 10^(0.21 Kp + 0.5) GW</div>
         </div>
         <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
@@ -997,7 +998,7 @@
             <i class="fa-solid fa-sun-plant-wilt text-sky-400"></i>
           </div>
           <div id="aurora-flank-lat" class="text-3xl font-hud font-black text-sky-300">---°</div>
-          <div class="text-[11px] text-slate-400 mt-1">Magnetic Local Time 06:00 & 18:00 Boundaries</div>
+          <div id="aurora-flank-detail" class="text-[11px] text-slate-400 mt-1">Equatorward boundary, mean of MLT 06:00 and 18:00</div>
         </div>
       </div>
 
@@ -1009,7 +1010,7 @@
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <h3 class="font-tech font-bold text-base text-slate-100">Global Geographic Auroral Oval Visibility Map</h3>
             </div>
-            <p class="text-xs text-slate-400">Dynamic 557.7 nm atomic oxygen luminescence curtain with real-time astronomical day/night terminator and ground observatories.</p>
+            <p class="text-xs text-slate-400">Starkov (1994) auroral oval (green band) and equatorward edge of the diffuse aurora (dashed), mapped with the IGRF dipole for the oval time, with the day/night terminator and ground observatories.</p>
           </div>
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
@@ -1026,9 +1027,19 @@
             </label>
             <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold flex items-center space-x-1.5">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-beacon"></span>
-              <span>Kp/Bz Oval Approximation</span>
+              <span>Starkov (1994) Oval</span>
             </span>
           </div>
+        </div>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <label class="flex flex-col text-slate-400">Oval time (UTC, empty = now)
+            <input type="datetime-local" id="aurora-time" class="bg-space-900 text-slate-200 border border-slate-700 rounded px-2 py-1">
+          </label>
+          <label class="flex flex-col text-slate-400">AL index (nT, empty = OMNI AL or Kp)
+            <input type="number" id="aurora-al" step="10" min="-5000" max="5000" placeholder="e.g. -450" class="bg-space-900 text-slate-200 border border-slate-700 rounded px-2 py-1 w-36">
+          </label>
+          <button onclick="loadAuroralForecast()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30">Draw oval</button>
+          <span id="aurora-oval-note" class="text-slate-500"></span>
         </div>
         <div class="relative w-full h-[420px] bg-space-950 rounded-xl overflow-hidden border border-emerald-500/30 shadow-2xl">
           <canvas id="aurora-map-canvas" class="w-full h-full block"></canvas>
