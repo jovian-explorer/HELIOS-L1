@@ -3199,7 +3199,8 @@ function computeSandboxPhysics(p) {
   const dphi = Math.pow(vsw, 4.0 / 3.0) * Math.pow(Math.max(0.01, bt_trans), 2.0 / 3.0) * Math.pow(Math.sin(theta / 2.0), 8.0 / 3.0);
 
   // Boyle (1997) Polar Cap Potential Drop (kV)
-  let phi_pc = (1e-4 * Math.pow(vsw, 2)) + (11.7 * bt_trans * Math.pow(Math.sin(theta / 2.0), 3));
+  // Boyle et al. (1997) use the IMF magnitude |B|, not the transverse component.
+  let phi_pc = (1e-4 * Math.pow(vsw, 2)) + (11.7 * bt * Math.pow(Math.sin(theta / 2.0), 3));
   phi_pc = Math.max(15.0, Math.min(280.0, phi_pc));
 
   // Newell AE Index proxy (nT)

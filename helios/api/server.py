@@ -482,7 +482,8 @@ async def get_geospace_coupling(
         temp_k=temp_k
     )
     pdyn = SpaceWeatherPhysics.dynamic_pressure(density_cm3=density_cm3, speed_kms=speed_kms)
-    phi_pc = SpaceWeatherPhysics.polar_cap_potential(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
+    phi_pc = SpaceWeatherPhysics.polar_cap_potential(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt,
+                                                     b_total_nt=b_total_nt)
     ae = SpaceWeatherPhysics.auroral_electrojet_ae(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
     akasofu = SpaceWeatherPhysics.akasofu_epsilon(speed_kms=speed_kms, b_total_nt=b_total_nt, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
     newell = SpaceWeatherPhysics.newell_coupling(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)

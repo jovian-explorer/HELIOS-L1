@@ -736,8 +736,8 @@ SCIENTIFIC_REFERENCES = [
         "doi": "10.1029/96JA03058",
         "doi_url": "https://doi.org/10.1029/96JA03058",
         "category": "Cross Polar Cap Potential & Convection",
-        "formula": "Phi_PC = 1e-4 * v^2 + 11.7 * B_T * sin^3(theta / 2) [kV]",
-        "parameters": ["v (solar wind bulk speed in km/s)", "B_T (IMF transverse field magnitude in nT)", "theta (IMF clock angle)"],
+        "formula": "Phi_PC = 1e-4 * v^2 + 11.7 * B * sin^3(theta / 2) [kV]",
+        "parameters": ["v (solar wind bulk speed in km/s)", "B (IMF magnitude |B| in nT)", "theta (IMF clock angle)"],
         "physical_meaning": "Quantifies the electric potential drop across the northern/southern polar caps driving high-latitude ionospheric plasma convection and Joule heating."
     },
     {
@@ -935,7 +935,7 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "unit": "kV",
         "nominal_range": "25 - 60 kV (Quiet to Unsettled Convection)",
         "disturbed_range": "> 90 kV (Active Convection), > 140 kV (Severe Geomagnetic Storm)",
-        "formula": "Phi_PC = 1e-4 * v^2 + 11.7 * B_T * sin^3(theta / 2) [kV]",
+        "formula": "Phi_PC = 1e-4 * v^2 + 11.7 * |B| * sin^3(theta / 2) [kV]",
         "instrument": "SuperDARN HF Radars & DMSP SSIES Ion Drift Meters",
         "description": "Total transpolar electric potential difference established by solar wind-magnetosphere dynamo driving high-latitude F-region ionospheric plasma convection.",
         "doi": "10.1029/96JA03058"

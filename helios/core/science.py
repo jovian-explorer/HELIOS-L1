@@ -322,18 +322,22 @@ class SpaceWeatherPhysics:
         }
 
     @staticmethod
-    def polar_cap_potential(speed_kms: float, by_gsm_nt: float, bz_gsm_nt: float) -> Dict[str, Any]:
+    def polar_cap_potential(speed_kms: float, by_gsm_nt: float, bz_gsm_nt: float,
+                            b_total_nt: Optional[float] = None) -> Dict[str, Any]:
         """
         Empirical Cross Polar Cap Potential drop (Phi_PC in kV) via Boyle et al. (1997):
-        Phi_PC = 10^-4 * v^2 + 11.7 * B_T * sin^3(theta / 2)  [kV]
+        Phi_PC = 10^-4 * v^2 + 11.7 * B * sin^3(theta / 2)  [kV]
+        where B is the IMF magnitude |B| (including Bx). When b_total_nt is not given,
+        |B| is approximated by sqrt(By^2 + Bz^2).
         """
         v = max(100.0, float(speed_kms if speed_kms is not None else 400.0))
         by = float(by_gsm_nt if by_gsm_nt is not None else 0.0)
         bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
-        bt = math.sqrt(by**2 + bz**2)
-        theta = math.atan2(abs(by), bz) if bt > 0 else 0.0
+        b_trans = math.sqrt(by**2 + bz**2)
+        b_mag = float(b_total_nt) if b_total_nt is not None else b_trans
+        theta = math.atan2(abs(by), bz) if b_trans > 0 else 0.0
 
-        phi = (1e-4 * (v ** 2)) + (11.7 * bt * (math.sin(theta / 2.0) ** 3))
+        phi = (1e-4 * (v ** 2)) + (11.7 * b_mag * (math.sin(theta / 2.0) ** 3))
         phi = max(15.0, min(280.0, phi))
 
         if phi >= 140.0:
@@ -346,7 +350,7 @@ class SpaceWeatherPhysics:
         return {
             "polar_cap_potential_kv": round(float(phi), 1),
             "convection_state": level,
-            "formula": "Boyle et al. (1997) Phi_PC = 10^-4*v^2 + 11.7*Bt*sin^3(theta/2)"
+            "formula": "Boyle et al. (1997) Phi_PC = 10^-4*v^2 + 11.7*|B|*sin^3(theta/2)"
         }
 
     @staticmethod

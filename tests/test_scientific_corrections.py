@@ -242,3 +242,13 @@ def test_reports_state_real_provenance_and_survive_gaps():
     assert "ACTIVE RECONNECTION" in md
     html = R.generate_html_bulletin("DSCOVR", recs, cls, [], {"visible_regions": []}, provenance=prov)
     assert "SYNTHETIC - offline model" in html
+
+
+def test_boyle_polar_cap_potential_uses_imf_magnitude():
+    """Boyle et al. (1997): Phi = 1e-4 v^2 + 11.7 B sin^3(theta/2) with B = |B| (here 10 nT, Bz = -6 nT)."""
+    res = SpaceWeatherPhysics.polar_cap_potential(500.0, 0.0, -6.0, b_total_nt=10.0)
+    assert res["polar_cap_potential_kv"] == pytest.approx(1e-4 * 500.0 ** 2 + 11.7 * 10.0, abs=0.06)
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+    api = TestClient(app).get("/api/geospace/coupling?speed_kms=500&b_total_nt=10&by_gsm_nt=0&bz_gsm_nt=-6").json()
+    assert api["polar_cap_potential"]["polar_cap_potential_kv"] == pytest.approx(142.0, abs=0.06)
