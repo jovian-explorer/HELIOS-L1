@@ -25,6 +25,7 @@
 - D-RAP absorption follows the SWPC relation HAF = 10 log₁₀(Fx) + 65 MHz (reduced by cos^0.75 χ) and A(f) = (HAF/f)^1.5 dB.
 
 ### Import and export
+- Files with only GSE field components are no longer left without Bz-based quantities: By and Bz are rotated to GSM for the time of each row (Hapgood 1992, with the dipole axis from the IGRF-14 degree-1 coefficients), and Bx is shared by both systems. The rotation reproduces the GSM components published in OMNI to their 0.01 nT rounding. GSE columns are kept in the imported records; files with their own GSM columns are used as they are.
 - File import: OMNI/CDF fill values are treated as missing, missing columns are no longer filled with nominal values, time stamps are converted to UTC and sorted, OMNI YEAR/DOY/HR/MN columns are read, and the import is vectorised.
 - CSV export includes a metadata header (provenance, coverage, cadence, units) and handles records with differing fields; NetCDF-style schema units are correct.
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.

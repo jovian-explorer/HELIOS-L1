@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 from helios.core.science import SpaceWeatherPhysics
+from helios.core.coordinates import gse_to_gsm
 
 class TelemetryImporter:
     """Parses, validates, normalizes, and classifies space weather telemetry files."""
@@ -25,6 +26,9 @@ class TelemetryImporter:
         "by_gsm": ["by_gsm", "by", "b_y", "b_gsm_y"],
         "bz_gsm": ["bz_gsm", "bz", "b_z", "b_gsm_z"],
         "bt": ["bt", "b_total", "total_b", "b_mag", "magnitude"],
+        "bx_gse": ["bx_gse", "b_gse_x", "bgse_x", "bxgse"],
+        "by_gse": ["by_gse", "b_gse_y", "bgse_y", "bygse"],
+        "bz_gse": ["bz_gse", "b_gse_z", "bgse_z", "bzgse"],
         "time_tag": ["time_tag", "time", "timestamp", "datetime", "date_time", "epoch", "utc"]
     }
 
@@ -174,6 +178,9 @@ class TelemetryImporter:
         "by_gsm": 999.0,
         "bz_gsm": 999.0,
         "bt": 999.0,
+        "bx_gse": 999.0,
+        "by_gse": 999.0,
+        "bz_gse": 999.0,
     }
 
     @classmethod
@@ -217,8 +224,10 @@ class TelemetryImporter:
           is missing.
         * Time stamps are converted to UTC 'YYYY-MM-DD HH:MM:SS'; rows whose time
           cannot be parsed are dropped and the rest are sorted in time.
-        * IMF components are taken as GSM; columns explicitly labelled GSE are not
-          used as GSM (a warning is returned instead).
+        * IMF components named bx/by/bz are taken as GSM. GSE columns (bx_gse ...) are
+          kept, and when a file has no GSM components they are rotated to GSM for the
+          time of each row (Hapgood 1992 with the IGRF dipole; see core.coordinates).
+          Bx is the same in both systems.
         """
         try:
             df = pd.read_csv(io.StringIO(content), sep=None, engine="python")
@@ -240,15 +249,13 @@ class TelemetryImporter:
         if df.empty:
             return {"error": "No row has a readable time stamp."}
 
-        gse_cols = [c for c in df.columns if "gse" in c.lower()]
-        if gse_cols:
-            warnings.append("GSE field columns (" + ", ".join(map(str, gse_cols)) +
-                            ") were not used: HELIOS expects GSM components for Bz-based quantities.")
-
         columns: Dict[str, Any] = {}
+        found: Dict[str, bool] = {}
         n_fill = 0
-        for target in ("speed", "density", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt"):
+        for target in ("speed", "density", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt",
+                       "bx_gse", "by_gse", "bz_gse"):
             col = cls._find_column(df.columns, target)
+            found[target] = col is not None
             if col is None:
                 columns[target] = np.full(len(df), np.nan)
                 continue
@@ -261,6 +268,16 @@ class TelemetryImporter:
             columns[target] = vals
         if n_fill:
             warnings.append(f"{n_fill} fill / out-of-range value(s) were treated as missing.")
+
+        # GSE -> GSM where the file has no GSM components of its own.
+        has_gse = found["by_gse"] and found["bz_gse"]
+        if not found["bx_gsm"] and found["bx_gse"]:
+            columns["bx_gsm"] = columns["bx_gse"].copy()
+        if has_gse and not (found["by_gsm"] or found["bz_gsm"]):
+            _, columns["by_gsm"], columns["bz_gsm"] = gse_to_gsm(
+                df["_t"].to_numpy(), columns["bx_gse"], columns["by_gse"], columns["bz_gse"])
+            warnings.append("By/Bz were converted from GSE to GSM for each row's time "
+                            "(Hapgood 1992, IGRF-14 dipole axis).")
 
         spd, dens = columns["speed"], columns["density"]
         bx, by, bz, bt = columns["bx_gsm"], columns["by_gsm"], columns["bz_gsm"], columns["bt"]
@@ -293,6 +310,9 @@ class TelemetryImporter:
             "akasofu_gw": col_out(eps_gw, 2),
             "l1_travel_time_min": col_out(delay, 1),
         }
+        if has_gse:
+            for key in ("bx_gse", "by_gse", "bz_gse"):
+                out_cols[key] = col_out(columns[key], 2)
         records: List[Dict[str, Any]] = []
         for i, t in enumerate(time_tags):
             rec = {"time_tag": t, "mission": mission_name}
