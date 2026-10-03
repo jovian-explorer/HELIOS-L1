@@ -104,7 +104,7 @@ Every telemetry record carries a `data_source` field and every API response a `p
   | DSCOVR | `DSCOVR_H0_MAG` (1-s, GSE; rotated to GSM) | `DSCOVR_H1_FC` (2016-2019 only) |
   | OMNI | `OMNI_HRO_1MIN` (time-shifted to the bow shock nose) | same |
 
-  Preliminary key-parameter datasets only extend the definitive ones past their last sample, and the provenance lists every dataset used with its level and coverage. Any interval of up to 31 days: `GET /api/archive/WIND?start=2024-05-10T00:00&end=2024-05-12T00:00` (add `&format=csv` for a file, `&cadence_minutes=5` for block averages). Data are cached per day as 1-minute means; a DSCOVR magnetometer day is about 7 MB to download the first time.
+  Preliminary key-parameter datasets only extend the definitive ones past their last sample, and the provenance lists every dataset used with its level and coverage. Any interval of up to 31 days, from the dashboard (Observation Horizon, Archive Interval) or `GET /api/archive/WIND?start=2024-05-10T00:00&end=2024-05-12T00:00` (add `&format=csv` for a file, `&cadence_minutes=5` for block averages). Data are cached per day as 1-minute means; a DSCOVR magnetometer day is about 7 MB to download the first time.
 * **Historical events:** events since 1995 load real OMNI data; March 1989 (no OMNI 1-min coverage), Carrington 1859 and the quiet baseline are synthetic profiles and labelled so.
 * **Gaps:** missing or fill values stay empty (null); derived quantities are empty when an input is missing. Rows with a non-zero RTSW quality flag are discarded.
 * **Indices:** NOAA G/R/S scales use the latest observed planetary Kp, GOES 0.1–0.8 nm X-ray flux and ≥10 MeV proton flux. When Kp cannot be fetched, a Bz-based estimate is used and labelled as such (`kp_source`).

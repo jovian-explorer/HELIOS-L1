@@ -760,6 +760,7 @@ async function loadTelemetry() {
   const spanSelect = document.getElementById('telemetry-span-select');
   const sat = satSelect ? satSelect.value : 'DSCOVR';
   const span = spanSelect ? spanSelect.value : '1';
+  if (span === 'archive') return loadArchiveTelemetry();
 
   const t0 = performance.now();
   try {
@@ -773,6 +774,52 @@ async function loadTelemetry() {
   } catch (err) {
     console.error('Error fetching telemetry:', err);
     updateFeedStatus({ error: true });
+  }
+}
+
+function onTelemetrySpanChange() {
+  const span = document.getElementById('telemetry-span-select')?.value;
+  const panel = document.getElementById('archive-controls');
+  if (panel) panel.classList.toggle('hidden', span !== 'archive');
+  const satSelect = document.getElementById('telemetry-satellite-select');
+  if (satSelect) satSelect.disabled = span === 'archive';
+  if (span !== 'archive') loadTelemetry();
+}
+
+// Query string for the archive endpoint from the archive controls (times are UTC).
+function archiveQuery() {
+  const mission = document.getElementById('archive-mission-select')?.value || 'OMNI';
+  const start = document.getElementById('archive-start')?.value || '';
+  const end = document.getElementById('archive-end')?.value || '';
+  const cadence = document.getElementById('archive-cadence-select')?.value || '1';
+  return { mission, qs: `start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&cadence_minutes=${cadence}` };
+}
+
+async function loadArchiveTelemetry() {
+  const statusEl = document.getElementById('archive-status');
+  const { mission, qs } = archiveQuery();
+  if (statusEl) statusEl.innerText = `Retrieving ${mission} from NASA CDAWeb...`;
+  const t0 = performance.now();
+  try {
+    const res = await fetch(`/api/archive/${mission}?${qs}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `HTTP ${res.status}`);
+    const prov = data.provenance || {};
+    if (statusEl) statusEl.innerText = prov.description || '';
+    updateFeedStatus(data, Math.round(performance.now() - t0));
+    if (!(data.records || []).length) return;
+    // Archive intervals are historical: the live NOAA scale badges do not apply.
+    data.mission = {
+      full_name: `${(data.mission && data.mission.name) || mission} archive (${prov.time_coverage_start} to ${prov.time_coverage_end} UTC)`,
+      agency: (prov.datasets || []).map(d => d.id).join(' + ') || 'NASA CDAWeb',
+      location: 'NASA CDAWeb HAPI'
+    };
+    data.classification = { g_scale: 'Archive: n/a', s_scale: 'n/a', r_scale: 'n/a', r_level: 0 };
+    currentTelemetryData = data;
+    updateTelemetryUI(data);
+  } catch (err) {
+    console.error('Error fetching archive interval:', err);
+    if (statusEl) statusEl.innerText = `Archive request failed: ${err.message}`;
   }
 }
 
@@ -816,9 +863,18 @@ function updateFeedStatus(data, latency = 0) {
 
   if (kind === 'observed') {
     const src = (prov.source_spacecraft || []).join(', ');
-    badgeText.innerText = `Observed: NOAA RTSW${src ? ' ' + src : ''} (${recCount} pts • ${latency}ms)`;
+    const datasets = (prov.datasets || []).map(d => d.id);
+    let origin = 'NOAA RTSW';
+    if (datasets.length) {
+      origin = 'CDAWeb ' + datasets.join('+') + ((prov.description || '').includes('RTSW') ? ' + RTSW' : '');
+    }
+    badgeText.innerText = `Observed: ${origin}${src ? ' ' + src : ''} (${recCount} pts • ${latency}ms)`;
     badgeText.className = 'text-emerald-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-emerald-400 pulse-beacon';
+  } else if (kind === 'unavailable') {
+    badgeText.innerText = 'No archive data for this interval';
+    badgeText.className = 'text-amber-300 font-mono text-[11px]';
+    badgeDot.className = 'w-2 h-2 rounded-full bg-amber-400';
   } else if (kind === 'simulated') {
     badgeText.innerText = `SIMULATED from L1 stream (${recCount} pts • ${latency}ms)`;
     badgeText.className = 'text-amber-300 font-mono text-[11px]';
@@ -1966,7 +2022,11 @@ async function selectEvent(eventId) {
     const meta = ev.metadata;
 
     document.getElementById('event-title').innerText = meta.title;
-    document.getElementById('event-desc').innerText = meta.summary;
+    const evProv = ev.provenance || {};
+    const obs = meta.observed_5min;
+    document.getElementById('event-desc').innerText = meta.summary +
+      `\n\nData: ${evProv.kind === 'observed' ? 'OBSERVED' : 'SYNTHETIC'}. ${evProv.description || ''}` +
+      (obs ? ` Observed 5-min extremes: Bz ${obs.min_bz} nT, V ${obs.peak_speed} km/s, Pdyn ${obs.peak_dyn_pressure} nPa (the cards show published values).` : '');
     document.getElementById('event-peak-kp').innerText = meta.peak_kp;
     document.getElementById('event-min-bz').innerText = `${meta.min_bz} nT`;
     document.getElementById('event-peak-v').innerText = `${meta.peak_speed} km/s`;
@@ -2281,6 +2341,12 @@ function exportData(format) {
   const sat = satSelect ? satSelect.value : 'DSCOVR';
   const span = spanSelect ? spanSelect.value : '1';
 
+  if (span === 'archive') {
+    const { mission, qs } = archiveQuery();
+    if (format === 'csv') window.location.href = `/api/archive/${mission}?${qs}&format=csv`;
+    else alert('PNG export covers the live views. Use CSV for archive intervals.');
+    return;
+  }
   if (format === 'csv') {
     window.location.href = `/api/export/csv?mission_id=${sat}&span_days=${span}`;
   } else if (format === 'plot') {
