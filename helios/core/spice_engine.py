@@ -145,6 +145,11 @@ class SpiceEphemerisEngine:
             epoch = epoch.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
 
         epoch_str = str(epoch).replace("Z", "").strip()
+        try:
+            # A bare number is already an ET value (e.g. from a previous epoch_to_et call).
+            return float(epoch_str)
+        except ValueError:
+            pass
 
         if SPICE_AVAILABLE:
             try:
@@ -287,7 +292,7 @@ class SpiceEphemerisEngine:
     def get_spacecraft_state(
         self,
         spacecraft_id: str,
-        epoch_utc: Optional[str] = None,
+        epoch_utc: Optional[Union[str, float]] = None,
         frame: str = "ECLIPJ2000"
     ) -> Dict[str, Any]:
         """
@@ -547,7 +552,9 @@ class SpiceEphemerisEngine:
             r_earth_mag = np.linalg.norm(pos_earth)
             u_sun = -pos_earth / r_earth_mag
             u_orbit = vel_earth / np.linalg.norm(vel_earth)
-            u_norm = np.cross(u_sun, u_orbit)
+            # GSE: X to the Sun, Y = -(Earth's orbital direction) (towards dusk), Z = X x Y
+            # = ecliptic north. Note u_sun x u_orbit would point to ecliptic SOUTH.
+            u_norm = np.cross(u_orbit, u_sun)
 
             pos_km = pos_earth + x_gse * u_sun + y_gse * (-u_orbit) + z_gse * u_norm
             vel_km_l1 = vel_earth * (np.linalg.norm(pos_km) / r_earth_mag)
@@ -570,7 +577,7 @@ class SpiceEphemerisEngine:
             r_earth_mag = np.linalg.norm(pos_earth)
             u_sun = -pos_earth / r_earth_mag
             u_orbit = vel_earth / np.linalg.norm(vel_earth)
-            u_norm = np.cross(u_sun, u_orbit)
+            u_norm = np.cross(u_orbit, u_sun)  # ecliptic north (right-handed GSE)
 
             gse_pos_km = np.array([
                 np.dot(rel_earth, u_sun),
@@ -747,7 +754,7 @@ class SpiceEphemerisEngine:
         points = []
         for i in range(num_points):
             t_curr = t_start + (i / max(1, num_points - 1)) * t_span
-            st = self.get_spacecraft_state(spacecraft_id, epoch_utc=str(t_curr), frame="ECLIPJ2000")
+            st = self.get_spacecraft_state(spacecraft_id, epoch_utc=t_curr, frame="ECLIPJ2000")
             points.append({
                 "x_km": st["position"]["x_km"],
                 "y_km": st["position"]["y_km"],

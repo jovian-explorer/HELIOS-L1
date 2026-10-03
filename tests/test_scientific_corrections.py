@@ -184,3 +184,36 @@ def test_one_shock_is_reported_once():
                      "density": 18.0 if i < 4 else 40.0,
                      "bt": 16.0 if i < 4 else 30.0} for i in range(10)]
     assert len(SpaceWeatherPhysics.detect_interplanetary_shocks(recs2)) == 2
+
+
+@pytest.mark.parametrize("body", ["MARS", "VENUS", "SOLAR_ORBITER"])
+def test_gse_z_points_to_ecliptic_north(body):
+    """GSE Z is ecliptic north, so a body's GSE z equals its ecliptic z offset from Earth (Earth's z ~ 0)."""
+    from helios.core.spice_engine import get_spice_engine
+    eng = get_spice_engine()
+    epoch = "2026-06-01T00:00:00"
+    helio = eng.get_spacecraft_state(body, epoch_utc=epoch)
+    earth = eng.get_spacecraft_state("EARTH", epoch_utc=epoch)
+    gse = eng.get_spacecraft_state(body, epoch_utc=epoch, frame="GSE")
+    dz = helio["position"]["z_km"] - earth["position"]["z_km"]
+    assert abs(dz) > 1e5
+    assert gse["position"]["z_km"] == pytest.approx(dz, rel=1e-3)
+
+
+def test_l1_halo_gse_z_maps_to_ecliptic_north():
+    from helios.core.spice_engine import get_spice_engine
+    eng = get_spice_engine()
+    epoch = "2026-06-01T00:00:00"
+    st = eng.get_spacecraft_state("SOHO", epoch_utc=epoch)
+    earth = eng.get_spacecraft_state("EARTH", epoch_utc=epoch)
+    dz = st["position"]["z_km"] - earth["position"]["z_km"]
+    assert st["gse_coordinates"]["z_km"] == pytest.approx(dz, rel=1e-3, abs=50.0)
+
+
+def test_spice_trajectory_spans_the_orbit():
+    """Trajectory points used to be identical: the ET float was passed as a string and parsed to a fixed epoch."""
+    from helios.core.spice_engine import get_spice_engine
+    pts = get_spice_engine().get_orbit_trajectory("PARKER_SOLAR_PROBE", num_points=8, epoch_utc="2026-01-01T00:00:00")
+    radii = [p["r_au"] for p in pts]
+    assert len({(p["x_au"], p["y_au"]) for p in pts}) == 8
+    assert min(radii) < 0.2 and max(radii) > 0.6
