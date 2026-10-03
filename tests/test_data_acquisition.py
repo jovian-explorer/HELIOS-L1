@@ -272,3 +272,20 @@ def test_netcdf_schema_units():
         [{"time_tag": "a", "temperature": 1e5, "magnetopause_re": 10.0, "akasofu_gw": 50.0, "bz_gsm": -2.0}], "X")
     units = {k: v["units"] for k, v in schema["variables"].items()}
     assert units == {"temperature": "K", "magnetopause_re": "R_E", "akasofu_gw": "GW", "bz_gsm": "nT"}
+
+
+def test_compare_and_matrix_expose_provenance(monkeypatch):
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+
+    async def fake_fetch(self, url, cache_key):
+        return MAG if "rtsw_mag" in url else (WIND if "rtsw_wind" in url else None)
+
+    monkeypatch.setattr(DataDownloader, "fetch_json", fake_fetch)
+    client = TestClient(app)
+    comp = client.get("/api/compare?mission_a=ACE&mission_b=WIND&parameter=bz_gsm").json()
+    assert comp["provenance_a"]["kind"] == "observed"
+    assert comp["provenance_b"]["kind"] == "simulated"
+    matrix = client.get("/api/compare/matrix?parameter=bz_gsm").json()
+    assert matrix["provenance"] == {"DSCOVR": "observed", "ACE": "observed", "ADITYA_L1": "simulated",
+                                    "WIND": "simulated", "SOHO": "simulated"}

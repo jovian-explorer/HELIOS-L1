@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse
 import os
 import io
+import asyncio
 import csv
 import json
 import math
@@ -272,10 +273,12 @@ async def compare_missions(
             raise HTTPException(status_code=400, detail="No custom dataset imported for comparison.")
         data_a = latest_custom_dataset["records"]
         name_a = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
+        prov_a = {"kind": "imported", "description": f"User-imported file ({name_a})."}
     else:
         if key_a not in MISSIONS:
             raise HTTPException(status_code=400, detail=f"Invalid mission ID '{key_a}' for comparison.")
-        data_a = await downloader.get_satellite_telemetry(key_a, span_days=span_days)
+        bundle_a = await downloader.get_telemetry_bundle(key_a, span_days=span_days)
+        data_a, prov_a = bundle_a["records"], bundle_a["provenance"]
         name_a = MISSIONS[key_a]["name"]
 
     if key_b == "CUSTOM":
@@ -283,10 +286,12 @@ async def compare_missions(
             raise HTTPException(status_code=400, detail="No custom dataset imported for comparison.")
         data_b = latest_custom_dataset["records"]
         name_b = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
+        prov_b = {"kind": "imported", "description": f"User-imported file ({name_b})."}
     else:
         if key_b not in MISSIONS:
             raise HTTPException(status_code=400, detail=f"Invalid mission ID '{key_b}' for comparison.")
-        data_b = await downloader.get_satellite_telemetry(key_b, span_days=span_days)
+        bundle_b = await downloader.get_telemetry_bundle(key_b, span_days=span_days)
+        data_b, prov_b = bundle_b["records"], bundle_b["provenance"]
         name_b = MISSIONS[key_b]["name"]
 
     comparison = SatelliteComparator.compare_satellites(
@@ -296,6 +301,10 @@ async def compare_missions(
         mission_b_name=name_b,
         parameter=parameter
     )
+    # A correlation between a measured and a simulated series says nothing about the
+    # instruments; expose what each side actually is.
+    comparison["provenance_a"] = prov_a
+    comparison["provenance_b"] = prov_b
     return comparison
 
 @app.get("/api/compare/matrix")
@@ -304,10 +313,11 @@ async def get_comparison_matrix(
     span_days: int = Query(1, ge=1, le=7)
 ):
     fleet_keys = ["DSCOVR", "ACE", "ADITYA_L1", "WIND", "SOHO"]
-    telemetry_map = {}
-    for k in fleet_keys:
-        telemetry_map[k] = await downloader.get_satellite_telemetry(k, span_days=span_days)
-    return SatelliteComparator.compute_fleet_matrix(telemetry_map, parameter=parameter)
+    bundles = await asyncio.gather(*(downloader.get_telemetry_bundle(k, span_days=span_days) for k in fleet_keys))
+    telemetry_map = {k: b["records"] for k, b in zip(fleet_keys, bundles)}
+    result = SatelliteComparator.compute_fleet_matrix(telemetry_map, parameter=parameter)
+    result["provenance"] = {k: b["provenance"]["kind"] for k, b in zip(fleet_keys, bundles)}
+    return result
 
 @app.get("/api/forecast/ml")
 async def get_ml_forecast(mission_id: str = Query("DSCOVR")):
