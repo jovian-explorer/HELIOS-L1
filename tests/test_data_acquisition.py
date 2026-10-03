@@ -289,3 +289,41 @@ def test_compare_and_matrix_expose_provenance(monkeypatch):
     matrix = client.get("/api/compare/matrix?parameter=bz_gsm").json()
     assert matrix["provenance"] == {"DSCOVR": "observed", "ACE": "observed", "ADITYA_L1": "simulated",
                                     "WIND": "simulated", "SOHO": "simulated"}
+
+
+# Rows from the NOAA RTSW hourly ephemeris feed (json/rtsw/rtsw_ephemerides_1h.json), GSE km.
+EPHEMERIS = [
+    {"time_tag": "2026-10-03T09:00:00", "active": True, "source": "SOLAR1", "x_gse": 1582227, "y_gse": -23859, "z_gse": 128782},
+    {"time_tag": "2026-10-03T08:00:00", "active": True, "source": "SOLAR1", "x_gse": 1582205, "y_gse": -23406, "z_gse": 128943},
+    {"time_tag": "2026-10-03T09:00:00", "active": False, "source": "ACE", "x_gse": 1409538, "y_gse": -31890, "z_gse": 6378},
+]
+
+
+def test_rtsw_ephemeris_latest_position():
+    pos = DataDownloader.parse_rtsw_ephemeris(EPHEMERIS, "solar1")
+    assert (pos["x_km"], pos["z_km"], pos["time_tag"]) == (1582227, 128782, "2026-10-03 09:00:00")
+    assert DataDownloader.parse_rtsw_ephemeris(EPHEMERIS, "IMAP") is None
+
+
+def test_compare_baseline_uses_supplying_spacecraft_position(monkeypatch):
+    """The operational stream comes from SOLAR1: the baseline must use SOLAR1's position, not DSCOVR's model orbit."""
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+
+    # Enough overlapping 1-minute rows for a comparison.
+    mag = [_mag(f"2026-10-02T17:{m:02d}:00", s, s == "SOLAR1", -2.0 - 0.1 * m + 0.05 * (m % 3))
+           for m in range(30) for s in ("SOLAR1", "ACE")]
+    wind = [_wind(f"2026-10-02T17:{m:02d}:00", s, s == "SOLAR1", 400.0) for m in range(30) for s in ("SOLAR1", "ACE")]
+
+    async def fake_fetch(self, url, cache_key):
+        if "ephemerides" in url:
+            return EPHEMERIS
+        return mag if "rtsw_mag" in url else wind
+
+    monkeypatch.setattr(DataDownloader, "fetch_json", fake_fetch)
+    comp = TestClient(app).get("/api/compare?mission_a=DSCOVR&mission_b=ACE&parameter=bz_gsm").json()
+    base = comp["spatial_baseline"]
+    assert "SOLAR1" in base["position_source_a"] and "ACE" in base["position_source_b"]
+    # SOLAR1 is 172,689 km further sunward than ACE: dx < 0 and the plasma reaches it first.
+    assert base["dx_km"] == pytest.approx(-(1582227 - 1409538), abs=1)
+    assert base["theoretical_delay_min"] == pytest.approx((1582227 - 1409538) / 400.0 / 60.0, abs=0.2)

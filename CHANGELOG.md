@@ -22,6 +22,7 @@
 - Flare class is the real GOES class (e.g. X5.3); before, it was the R-scale threshold label ("X1" for an X5.3 flare, "B" for A-class). Without proton data the S-scale says so instead of using an invented 0.8 pfu.
 - Spectrum tab: the sample interval is taken from the time stamps (it was fixed at 60 s, so 5-minute data had all frequencies 5× too high); gaps are interpolated instead of spliced out; the PSD is one-sided and window-normalised in (unit)²/Hz.
 - Dst (Burton/O'Brien–McPherron) simulation used a fixed 5-minute step, so 1-minute data ran five times too fast. The step now comes from the time stamps and uses the exact solution over each step.
+- The comparator's spatial baseline and theoretical delay use the measured position (NOAA RTSW hourly ephemeris) of the spacecraft that actually supplied observed RTSW data, e.g. SOLAR1 for the operational "DSCOVR" stream, instead of the mission's model orbit. On live data for SOLAR1 vs ACE (173,000 km apart along X) the theoretical delay (10.0 min) and the cross-correlation lag (10 min) agree. The position source is reported for each side.
 - Cross-correlation lag had the opposite sign to the theoretical propagation delay it is compared with. Positive now means spacecraft B observes later than A.
 - Comparator no longer bridges long data gaps with interpolated values that were then counted as real samples; mixed time zone formats can be compared.
 - A single interplanetary shock was reported up to three times; it is now one event.

@@ -342,6 +342,30 @@ class DataDownloader:
             records.append(add_derived_fields(rec, distance_km))
         return records, sorted(sources)
 
+    @staticmethod
+    def parse_rtsw_ephemeris(rows: Optional[List[Any]], source: str) -> Optional[Dict[str, Any]]:
+        """Latest GSE position (km) of one RTSW spacecraft (e.g. 'SOLAR1', 'ACE') from the hourly ephemeris feed."""
+        best = None
+        for row in (rows or []):
+            if not isinstance(row, dict) or str(row.get("source", "")).upper() != source.upper():
+                continue
+            x, y, z = _num(row.get("x_gse")), _num(row.get("y_gse")), _num(row.get("z_gse"))
+            t = row.get("time_tag")
+            if None in (x, y, z) or not t:
+                continue
+            t = _iso_space(t)
+            if best is None or t > best["time_tag"]:
+                best = {"x_km": x, "y_km": y, "z_km": z, "time_tag": t,
+                        "source": f"NOAA SWPC RTSW ephemeris ({source})"}
+        return best
+
+    async def get_rtsw_position(self, source: Optional[str]) -> Optional[Dict[str, Any]]:
+        """GSE position of the spacecraft that supplied RTSW data, or None if unknown."""
+        if not source:
+            return None
+        rows = await self.fetch_json(NOAA_SWPC_ENDPOINTS["rtsw_ephemerides_1h"], "rtsw_ephemerides_1h")
+        return self.parse_rtsw_ephemeris(rows if isinstance(rows, list) else None, source)
+
     async def _fetch_rtsw(self) -> Tuple[Optional[List[Any]], Optional[List[Any]]]:
         mag, wind = await asyncio.gather(
             self.fetch_json(NOAA_SWPC_ENDPOINTS["rtsw_mag_1m"], "rtsw_mag_1m"),

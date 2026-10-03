@@ -369,12 +369,24 @@ async def compare_missions(
         data_b, prov_b = bundle_b["records"], bundle_b["provenance"]
         name_b = MISSIONS[key_b]["name"]
 
+    # Observed RTSW data: place each side at the spacecraft that actually supplied it
+    # (e.g. SOLAR1 for the operational "DSCOVR" stream) instead of the mission's model orbit.
+    def supplier(data, prov):
+        if prov.get("kind") != "observed" or not data:
+            return None
+        return data[-1].get("source_spacecraft") or (
+            prov["source_spacecraft"][0] if len(prov.get("source_spacecraft") or []) == 1 else None)
+
+    pos_a, pos_b = await asyncio.gather(downloader.get_rtsw_position(supplier(data_a, prov_a)),
+                                        downloader.get_rtsw_position(supplier(data_b, prov_b)))
     comparison = SatelliteComparator.compare_satellites(
         telemetry_a=data_a,
         telemetry_b=data_b,
         mission_a_name=name_a,
         mission_b_name=name_b,
-        parameter=parameter
+        parameter=parameter,
+        position_a=pos_a,
+        position_b=pos_b
     )
     # A correlation between a measured and a simulated series says nothing about the
     # instruments; expose what each side actually is.

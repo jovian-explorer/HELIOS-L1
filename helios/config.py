@@ -326,6 +326,7 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
 NOAA_SWPC_ENDPOINTS = {
     "rtsw_mag_1m": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
     "rtsw_wind_1m": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+    "rtsw_ephemerides_1h": "https://services.swpc.noaa.gov/json/rtsw/rtsw_ephemerides_1h.json",
     "xrays_1day": "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
     "xrays_7day": "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json",
     "protons_1day": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json",

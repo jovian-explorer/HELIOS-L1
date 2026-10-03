@@ -72,6 +72,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 9. **Sensor Cross-Calibration & Turbulence Power Spectral Density:**
    * Cross-correlation time lag ($\tau \sim 30\text{--}60$ min early warning between L1 and Earth).
      A positive lag means spacecraft B observes the same structure later than spacecraft A.
+     For observed RTSW data the baseline uses the NOAA ephemeris of the spacecraft that supplied the data (e.g. SOLAR1); other missions use model orbits.
    * Pearson correlation ($r$), $R^2$, RMSE, MAE, and linear calibration between any two spacecraft.
    * Fast Fourier Transform (FFT) analysis of IMF magnetic fluctuations to identify Alfvénic turbulence and Kolmogorov $f^{-5/3}$ inertial subrange slopes.
 

@@ -161,11 +161,17 @@ class SatelliteComparator:
         cls,
         mission_a_name: str,
         mission_b_name: str,
-        v_sw_mean: float = 450.0
+        v_sw_mean: float = 450.0,
+        position_a: Optional[Dict[str, Any]] = None,
+        position_b: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Compute inter-spacecraft separation vector (GSE coordinates)
         and theoretical solar wind propagation delay between two missions.
+
+        position_a / position_b ({"x_km", "y_km", "z_km", "source"}, GSE) override the model
+        orbit of a mission, e.g. with the NOAA ephemeris of the spacecraft that actually
+        supplied the data (SOLAR1 for the operational "DSCOVR" stream).
         """
         orbits = OrbitalMechanics.get_satellite_orbits()
 
@@ -176,8 +182,17 @@ class SatelliteComparator:
                     return orb["current_pos"]
             return {"x": -1496.0, "y": 0.0, "z": 0.0}
 
-        pos_a = find_pos(mission_a_name)
-        pos_b = find_pos(mission_b_name)
+        def resolve(name: str, override: Optional[Dict[str, Any]]):
+            if override and all(override.get(k) is not None for k in ("x_km", "y_km", "z_km")):
+                # True GSE has +X towards the Sun; the model orbits use the visualizer
+                # convention with the Sun at -X, so X changes sign (Y and Z are kept).
+                pos = {"x": -override["x_km"] / 1000.0, "y": override["y_km"] / 1000.0,
+                       "z": override["z_km"] / 1000.0}
+                return pos, override.get("source", "ephemeris")
+            return find_pos(name), "HELIOS model orbit"
+
+        pos_a, src_a = resolve(mission_a_name, position_a)
+        pos_b, src_b = resolve(mission_b_name, position_b)
 
         # Positions are in 1000s of km relative to Earth
         dx_km = (pos_a["x"] - pos_b["x"]) * 1000.0
@@ -202,7 +217,9 @@ class SatelliteComparator:
             "distance_km": round(dist_km, 1),
             "distance_re": round(dist_re, 2),
             "theoretical_delay_min": round(theoretical_delay_min, 1),
-            "v_sw_assumed_kms": round(v_sw, 1)
+            "v_sw_assumed_kms": round(v_sw, 1),
+            "position_source_a": src_a,
+            "position_source_b": src_b
         }
 
     @classmethod
@@ -212,9 +229,14 @@ class SatelliteComparator:
         telemetry_b: List[Dict[str, Any]],
         mission_a_name: str,
         mission_b_name: str,
-        parameter: str = "bz_gsm"
+        parameter: str = "bz_gsm",
+        position_a: Optional[Dict[str, Any]] = None,
+        position_b: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Full comparative analysis between two satellite telemetry sets."""
+        """
+        Full comparative analysis between two satellite telemetry sets.
+        position_a / position_b: optional measured GSE positions (see compute_spatial_baseline).
+        """
         aligned_df = cls.align_time_series(telemetry_a, telemetry_b, parameter=parameter)
         if aligned_df.empty or len(aligned_df) < 5:
             return {
@@ -234,7 +256,8 @@ class SatelliteComparator:
         # Estimate average solar wind speed in window for baseline delay
         speeds = [r["speed"] for r in telemetry_a if "speed" in r and isinstance(r["speed"], (int, float))]
         v_mean = float(np.mean(speeds)) if speeds else 450.0
-        spatial_baseline = cls.compute_spatial_baseline(mission_a_name, mission_b_name, v_sw_mean=v_mean)
+        spatial_baseline = cls.compute_spatial_baseline(mission_a_name, mission_b_name, v_sw_mean=v_mean,
+                                                        position_a=position_a, position_b=position_b)
 
         # Cross-calibration fidelity & coherence index (0 - 100%)
         r = metrics.get("correlation_r", 0.0)
