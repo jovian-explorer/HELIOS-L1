@@ -1,6 +1,6 @@
 """
 Coronagraph imagery pipeline and CME kinematic shock speed & transit analyzer.
-Integrates SOHO/LASCO C2/C3, SDO/AIA coronal feeds, Aditya-L1 VELC models,
+Integrates SOHO/LASCO C2/C3 and GOES/SUVI EUV image feeds (Aditya-L1 VELC has no public real-time feed),
 and empirical CME deceleration and shock arrival forecasting.
 """
 import math
@@ -36,22 +36,22 @@ class CoronagraphAnalyzer:
                 "url": "https://services.swpc.noaa.gov/images/animations/lasco-c3/latest.jpg",
                 "color_map": "Deep Blue Coronagraph"
             },
-            "SDO_AIA_193": {
-                "name": "SDO / AIA 193 Å",
-                "instrument": "Extreme Ultraviolet Telescope (Fe XII ~1.25 MK)",
-                "mission": "SDO (NASA)",
-                "location": "Geosynchronous",
+            "GOES_SUVI_195": {
+                "name": "GOES / SUVI 195 Å",
+                "instrument": "Solar Ultraviolet Imager (Fe XII ~1.5 MK)",
+                "mission": "GOES-R series (NOAA/NASA)",
+                "location": "Geostationary",
                 "purpose": "Coronal holes (high speed solar wind sources) and coronal dimmings",
-                "url": "https://services.swpc.noaa.gov/images/animations/suvi-primary-195/latest.png",
+                "url": "https://services.swpc.noaa.gov/images/animations/suvi/primary/195/latest.png",
                 "color_map": "Bronze EUV"
             },
-            "SDO_AIA_304": {
-                "name": "SDO / AIA 304 Å",
-                "instrument": "He II ~50,000 K Chromosphere & Transition Region",
-                "mission": "SDO (NASA)",
-                "location": "Geosynchronous",
+            "GOES_SUVI_304": {
+                "name": "GOES / SUVI 304 Å",
+                "instrument": "Solar Ultraviolet Imager (He II ~50,000 K chromosphere & transition region)",
+                "mission": "GOES-R series (NOAA/NASA)",
+                "location": "Geostationary",
                 "purpose": "Solar filament eruptions and prominence liftoffs",
-                "url": "https://services.swpc.noaa.gov/images/animations/suvi-primary-304/latest.png",
+                "url": "https://services.swpc.noaa.gov/images/animations/suvi/primary/304/latest.png",
                 "color_map": "Red/Orange EUV"
             },
             "ADITYA_VELC": {
@@ -60,7 +60,10 @@ class CoronagraphAnalyzer:
                 "mission": "Aditya-L1 (ISRO)",
                 "location": "Sun-Earth L1 Halo",
                 "purpose": "High-cadence inner coronal spectroscopy and CME inception dynamics",
-                "url": "https://services.swpc.noaa.gov/images/animations/lasco-c2/latest.jpg",
+                # ISSDC PRADAN serves VELC data only to registered users; there is no public
+                # real-time image (this entry used to show the LASCO C2 image under the VELC name).
+                "url": None,
+                "status": "No public real-time image feed (ISSDC PRADAN requires a registered login)",
                 "color_map": "Green Line 530.3 nm Coronal"
             }
         }
