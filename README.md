@@ -92,7 +92,7 @@ Every telemetry record carries a `data_source` field and every API response a `p
 | `data_source` | Meaning |
 |---|---|
 | `observed` | Measured values: the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`) or the NASA CDAWeb archive (HAPI). |
-| `simulated` | No data for the mission and window (Aditya-L1, SOHO, GOES-16 Hp, STEREO-A; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. |
+| `simulated` | No data for the mission and window (Aditya-L1, SOHO, GOES-16 Hp, STEREO-A; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. Aditya-L1 ASPEX/SWIS and MAG Level-2 data are on ISSDC PRADAN (https://pradan.issdc.gov.in/al1/) for registered users only; there is no public API, so they cannot be fetched without the user's own login. |
 | `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. Historical storm profiles are also synthetic (built from published peak values). |
 | `imported` | Rows from a user file in the Custom Ingestion tab. |
 

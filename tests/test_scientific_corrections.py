@@ -399,3 +399,11 @@ def test_coronagraph_feeds_are_labelled_by_the_instrument_that_made_them():
     assert feeds["GOES_SUVI_195"]["url"].endswith("/suvi/primary/195/latest.png")
     assert feeds["GOES_SUVI_304"]["url"].endswith("/suvi/primary/304/latest.png")
     assert feeds["ADITYA_VELC"]["url"] is None and "PRADAN" in feeds["ADITYA_VELC"]["status"]
+
+
+def test_aditya_l1_states_why_it_is_simulated():
+    """ISSDC PRADAN needs a registered login: Aditya-L1 stays simulated and says why."""
+    from helios.config import MISSIONS
+    m = MISSIONS["ADITYA_L1"]
+    assert m["data_portal_url"] == "https://pradan.issdc.gov.in/al1/"
+    assert "login" in m["data_access"]

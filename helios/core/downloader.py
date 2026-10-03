@@ -465,6 +465,9 @@ class DataDownloader:
                 description = (f"No public real-time feed for {name} is available here; values are simulated from "
                                "the operational L1 stream with fixed calibration offsets and noise. Not a measurement."
                                + archive_note)
+                access = MISSIONS.get(mission_id, {}).get("data_access")
+                if access:
+                    description += f" Data access: {access}."
                 if kind == "synthetic":
                     description += " The operational stream itself is synthetic (archive unreachable)."
                 for r in records:

@@ -164,7 +164,13 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
         "coordinate_system": "Sun-Earth L1 Halo Reference Frame / GSE",
         "cadence": "8-second vector MAG / 1-minute ASPEX ion distributions",
         "data_portal_name": "ISRO Indian Space Science Data Centre (ISSDC / PRADAN)",
-        "data_portal_url": "https://www.issdc.gov.in/",
+        "data_portal_url": "https://pradan.issdc.gov.in/al1/",
+        # Checked 2026-10-03: the PRADAN landing page is public, but every data page
+        # (/al1/protected/...) redirects to the ISSDC Keycloak sign-in (idp.issdc.gov.in,
+        # client al1-pradan) and the PRADAN FAQ states that data are accessible "after
+        # registering". There is no anonymous API and no CDAWeb/HAPI copy, so HELIOS-L1
+        # cannot fetch ASPEX-SWIS or MAG Level-2 data without the user's own account.
+        "data_access": "Registered ISSDC login required (no public API); HELIOS-L1 shows a labelled simulation",
         "data_license": "ISRO Open Science Data Policy (Academic & Research Fair Use)",
         "license_badge": "ISRO Open Science",
         "doi": "10.18520/cs/v113/i04/610-612",
