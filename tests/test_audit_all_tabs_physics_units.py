@@ -472,20 +472,19 @@ class TestTab10HazardsAndSolarCycle:
 
     def test_drap_radio_absorption_and_units(self):
         """
-        D-RAP: A_0(10 MHz) = 10 * sqrt(F_x / 1e-4) dB
+        SWPC D-RAP: HAF = 10 * log10(F_x) + 65 MHz, A(f) = (HAF / f)^1.5 dB.
         For X1.0 flare (F_x = 1e-4 W/m^2) at subsolar point (chi = 0):
-        A_0 = 10.0 dB.
-        HAF = 10 * A_0^(2/3) = 10 * 10^(0.6667) = 46.4 MHz (clamped to max 35 MHz HF band).
-        At 21 MHz: A(21) = A_10 * (10/21)^1.5 = 10 * (0.476)^1.5 = 3.28 dB.
+        HAF = 10 * (-4) + 65 = 25 MHz; A(10 MHz) = 2.5^1.5 = 3.95 dB.
+        At 21 MHz: A(21) = (25/21)^1.5 = 1.30 dB.
         """
         drap = IonosphericModel.calculate_drap_absorption(xray_flux_watts_m2=1.0e-4, zenith_angle_deg=0.0)
-        assert abs(drap["attenuation_at_10mhz_db"] - 10.0) < 0.1
-        assert drap["highest_affected_frequency_mhz"] >= 30.0
+        assert abs(drap["highest_affected_frequency_mhz"] - 25.0) < 0.01
+        assert abs(drap["attenuation_at_10mhz_db"] - 3.95) < 0.01
 
         # Frequency power-law check across spectrum
         spec = {item["frequency_mhz"]: item["attenuation_db"] for item in drap["absorption_spectrum"]}
         assert spec[10] > spec[21] > spec[30]
-        assert abs(spec[21] - 3.28) < 0.3
+        assert abs(spec[21] - 1.30) < 0.02
 
     def test_solar_cycle_25_trajectory(self):
         """Verify Solar Cycle 25 Hathaway trajectory and F10.7 radio flux proxy."""

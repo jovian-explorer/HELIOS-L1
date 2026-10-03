@@ -217,3 +217,14 @@ def test_spice_trajectory_spans_the_orbit():
     radii = [p["r_au"] for p in pts]
     assert len({(p["x_au"], p["y_au"]) for p in pts}) == 8
     assert min(radii) < 0.2 and max(radii) > 0.6
+
+
+def test_drap_haf_follows_swpc_formula():
+    """SWPC D-RAP: HAF = 10 log10(Fx) + 65 (M1 -> 15 MHz), reduced by cos(chi)^0.75, A(HAF) = 1 dB."""
+    from helios.core.ionosphere import IonosphericModel
+    m1 = IonosphericModel.calculate_drap_absorption(1e-5, zenith_angle_deg=0.0)
+    assert m1["highest_affected_frequency_mhz"] == pytest.approx(15.0, abs=0.01)
+    slant = IonosphericModel.calculate_drap_absorption(1e-5, zenith_angle_deg=60.0)
+    assert slant["highest_affected_frequency_mhz"] == pytest.approx(15.0 * 0.5 ** 0.75, abs=0.01)
+    quiet = IonosphericModel.calculate_drap_absorption(1e-8, zenith_angle_deg=0.0)
+    assert quiet["highest_affected_frequency_mhz"] == 0.0 and quiet["attenuation_at_10mhz_db"] == 0.0

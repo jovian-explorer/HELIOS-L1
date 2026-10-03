@@ -610,7 +610,7 @@ SCIENTIFIC_REFERENCES = [
         "doi": "10.1029/2008SW000396",
         "doi_url": "https://doi.org/10.1029/2008SW000396",
         "category": "Ionospheric D-Region & Radio Blackout",
-        "formula": "A(f, chi) = 10 * sqrt(F_x / 1e-4) * (10 / f)^1.5 * cos(chi)^0.75,  HAF = 10 * A_0^(2/3)",
+        "formula": "HAF = (10 * log10(F_x) + 65) * cos(chi)^0.75 [MHz],  A(f) = (HAF / f)^1.5 [dB]",
         "parameters": ["F_x (GOES soft X-ray flux in W/m^2)", "chi (solar zenith angle)", "f (frequency in MHz)", "HAF (Highest Affected Frequency)"],
         "physical_meaning": "Empirical model computing dayside HF radio signal attenuation (dB) and total blackout thresholds across polar and trans-oceanic aviation corridors."
     },
@@ -836,7 +836,7 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "unit": "MHz",
         "nominal_range": "0 MHz (No HF absorption)",
         "disturbed_range": "> 10 MHz (Moderate R2 Blackout), > 25 MHz (Severe R4/R5 Complete HF Blackout)",
-        "formula": "HAF = 10 * (10 * sqrt(F_x / 1e-4))^(2/3) [MHz]",
+        "formula": "HAF = 10 * log10(F_x [W/m^2]) + 65 [MHz] at the subsolar point, reduced by cos(chi)^0.75",
         "instrument": "GOES X-Ray Sensor (XRS) & Ground Riometer Arrays",
         "description": "The highest radio frequency in the High-Frequency (HF, 3-30 MHz) spectrum experiencing at least 1 dB of ionospheric D-region absorption during solar flares.",
         "doi": "10.1029/2008SW000396"

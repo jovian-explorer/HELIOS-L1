@@ -15,7 +15,12 @@ class IonosphericModel:
         zenith_angle_deg: float = 30.0
     ) -> Dict[str, Any]:
         """
-        Computes ionospheric absorption based on Sauer & Wilkinson (2008) D-RAP formulation.
+        Computes ionospheric absorption with the NOAA SWPC D-RAP X-ray formulation
+        (Sauer & Wilkinson, 2008):
+            HAF_0 = 10 * log10(F_x) + 65            [MHz, subsolar; F_x in W/m^2]
+            HAF   = HAF_0 * cos(chi)^0.75           [zenith-angle reduction]
+            A(f)  = (HAF / f)^1.5                   [dB]
+        so the attenuation is 1 dB at the HAF by definition (M1 -> 15 MHz, X1 -> 25 MHz).
         
         Parameters:
         - xray_flux_watts_m2: GOES 0.1-0.8 nm soft X-ray irradiance (e.g. M1.0 = 1e-5, X1.0 = 1e-4)
@@ -24,26 +29,23 @@ class IonosphericModel:
         f_x = max(1e-8, xray_flux_watts_m2)
         chi_rad = math.radians(min(89.0, max(0.0, zenith_angle_deg)))
 
-        # Subsolar 10 MHz baseline absorption in dB: A_0 = 10 * sqrt(F_x / 1e-4)
-        a_subsolar_10mhz = 10.0 * math.sqrt(f_x / 1.0e-4)
+        # Subsolar HAF (MHz); non-positive below ~A3 (3e-7 W/m^2), i.e. no absorption.
+        haf_subsolar = max(0.0, 10.0 * math.log10(f_x) + 65.0)
 
-        # Zenith correction: cos(chi)^0.75
+        # Zenith correction on the HAF: cos(chi)^0.75
         cos_chi = max(0.01, math.cos(chi_rad))
-        a_local_10mhz = a_subsolar_10mhz * (cos_chi ** 0.75)
+        haf_mhz = haf_subsolar * (cos_chi ** 0.75)
 
-        # Highest Affected Frequency (HAF) in MHz (where attenuation A >= 1.0 dB):
-        # A(f) = A_local * (10 / f)^1.5 >= 1.0  ==>  f <= 10 * (A_local)^(2/3)
-        if a_local_10mhz > 0.05:
-            haf_mhz = min(35.0, max(3.0, 10.0 * (a_local_10mhz ** (2.0 / 3.0))))
-        else:
-            haf_mhz = 0.0
+        # Attenuation at 10 MHz: A(10) = (HAF / 10)^1.5 dB
+        a_local_10mhz = (haf_mhz / 10.0) ** 1.5 if haf_mhz > 0 else 0.0
+        a_subsolar_10mhz = (haf_subsolar / 10.0) ** 1.5 if haf_subsolar > 0 else 0.0
 
         # Frequency profile across HF band (3 MHz to 30 MHz in 1 MHz steps)
         hf_frequencies = [3, 5, 7, 10, 14, 18, 21, 24, 28, 30]
         absorption_spectrum = []
         for freq in hf_frequencies:
-            # Power-law attenuation: A(f) = A_10 * (10 / f)^1.5
-            att_db = a_local_10mhz * ((10.0 / freq) ** 1.5)
+            # Power-law attenuation: A(f) = (HAF / f)^1.5
+            att_db = (haf_mhz / freq) ** 1.5 if haf_mhz > 0 else 0.0
             absorption_spectrum.append({
                 "frequency_mhz": freq,
                 "attenuation_db": round(att_db, 2),
