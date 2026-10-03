@@ -197,3 +197,49 @@ def test_export_rejects_unknown_mission():
     client = TestClient(app)
     assert client.get("/api/export/csv?mission_id=NOT_A_MISSION").status_code == 404
     assert client.get("/api/export/csv?mission_id=DSCOVR&span_days=99").status_code == 422
+
+
+def test_importer_treats_fill_values_and_missing_columns_as_gaps():
+    from helios.core.importer import TelemetryImporter
+    csv_text = ("time,speed,density,bz_gsm,by_gsm,bt,temperature\n"
+                "2024-05-10 12:00:00,412.3,4.8,-1.2,3.4,4.4,9999999.\n"
+                "2024-05-10 12:01:00,99999.9,999.99,9999.99,3.0,5.0,85000\n"
+                "2024-05-10 12:02:00,420.0,,-2.0,2.0,4.0,90000\n")
+    res = TelemetryImporter.parse_csv_or_text(csv_text, "OMNI")
+    r0, r1, r2 = res["records"]
+    assert r0["temperature"] is None and r1["temperature"] == 85000
+    # OMNI fill values used to enter as 99999.9 km/s, 999.99 cm^-3 and 9999.99 nT.
+    assert r1["speed"] is None and r1["density"] is None and r1["bz_gsm"] is None
+    assert r1["dynamic_pressure"] is None and r1["akasofu_gw"] is None
+    # A missing density used to be replaced with 5 cm^-3.
+    assert r2["density"] is None and r2["dynamic_pressure"] is None
+    assert res["summary"]["speed_max"] == 420.0
+    assert any("fill" in w for w in res["warnings"])
+
+
+def test_importer_without_speed_column_invents_nothing():
+    from helios.core.importer import TelemetryImporter
+    res = TelemetryImporter.parse_csv_or_text("time,bz\n2024-05-10 12:00:00,-5\n2024-05-10 12:05:00,-6", "MAG only")
+    assert all(r["speed"] is None and r["akasofu_gw"] is None for r in res["records"])
+    assert res["summary"]["speed_max"] is None
+
+
+def test_importer_normalises_time_to_utc_and_sorts():
+    from helios.core.importer import TelemetryImporter
+    csv_text = ("time,speed,density,bz_gsm\n"
+                "2024-05-10T18:00:00+05:30,410,5,-1\n"
+                "2024-05-10T12:00:00Z,400,5,-1\n"
+                "not a time,500,5,-1\n")
+    res = TelemetryImporter.parse_csv_or_text(csv_text, "TZ")
+    assert [r["time_tag"] for r in res["records"]] == ["2024-05-10 12:00:00", "2024-05-10 12:30:00"]
+    assert any("time stamp" in w for w in res["warnings"])
+
+
+def test_importer_reads_omni_year_doy_columns():
+    from helios.core.importer import TelemetryImporter
+    text = "YEAR DOY HR MN BZ_GSM flow_speed proton_density\n2024 131 17 5 -30.5 740.5 28.4\n2024 131 17 10 -32.0 760.0 30.1\n"
+    res = TelemetryImporter.parse_csv_or_text(text, "OMNI HRO")
+    assert res["status"] == "success"
+    # Day of year 131 of 2024 (leap year) is 10 May.
+    assert res["records"][0]["time_tag"] == "2024-05-10 17:05:00"
+    assert res["records"][0]["bz_gsm"] == -30.5 and res["records"][0]["speed"] == 740.5

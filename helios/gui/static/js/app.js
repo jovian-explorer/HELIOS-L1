@@ -1618,14 +1618,15 @@ function renderCustomIngestUI(data) {
 
   if (elRecords) elRecords.innerText = data.total_records.toLocaleString();
   if (elTimeSpan) elTimeSpan.innerText = summary.start_time && summary.end_time ? `${summary.start_time.slice(0, 10)} → ${summary.end_time.slice(0, 10)}` : 'Single epoch';
-  if (elSpdMax) elSpdMax.innerText = summary.speed_max;
-  if (elSpdMean) elSpdMean.innerText = summary.speed_mean;
-  if (elBzMin) elBzMin.innerText = summary.bz_min;
-  if (elBzMax) elBzMax.innerText = summary.bz_max;
-  if (elPdynMax) elPdynMax.innerText = summary.pdyn_max;
+  const orDash = (v) => (v === null || v === undefined ? '---' : v);
+  if (elSpdMax) elSpdMax.innerText = orDash(summary.speed_max);
+  if (elSpdMean) elSpdMean.innerText = orDash(summary.speed_mean);
+  if (elBzMin) elBzMin.innerText = orDash(summary.bz_min);
+  if (elBzMax) elBzMax.innerText = orDash(summary.bz_max);
+  if (elPdynMax) elPdynMax.innerText = orDash(summary.pdyn_max);
   if (elStandoff) {
-    elStandoff.innerText = summary.standoff_min;
-    if (summary.standoff_min < 6.6) {
+    elStandoff.innerText = orDash(summary.standoff_min);
+    if (typeof summary.standoff_min === 'number' && summary.standoff_min < 6.6) {
       elStandoff.className = "text-lg font-bold text-rose-500 font-mono mt-0.5";
       if (elGeoAlert) {
         elGeoAlert.innerText = "CRITICAL: Inward GEO (< 6.6 R_E)";

@@ -7,6 +7,7 @@ import io
 import re
 import csv
 import json
+import numpy as np
 import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Any, Optional
@@ -162,12 +163,62 @@ class TelemetryImporter:
                 return col_lower_map[candidate]
         return None
 
+    # Fill-value thresholds (values at or beyond these are archive fill flags, not data).
+    # OMNI uses 99999.9 km/s, 999.99 cm^-3, 9999.99 / 999.99 nT and 9999999. K; CDF
+    # products use +/-1e31. Physical solar wind values stay far below these limits.
+    FILL_LIMITS = {
+        "speed": 9999.0,
+        "density": 999.0,
+        "temperature": 9.0e6,
+        "bx_gsm": 999.0,
+        "by_gsm": 999.0,
+        "bz_gsm": 999.0,
+        "bt": 999.0,
+    }
+
+    @classmethod
+    def _parse_times(cls, df: pd.DataFrame, time_col: Optional[str]) -> pd.Series:
+        """
+        UTC time stamps for every row. Accepts one time column (ISO 8601, with or without
+        'Z'/offset; offsets are converted to UTC) or OMNI-style YEAR, DOY, HR, MN columns.
+        Unparseable rows become NaT.
+        """
+        lower = {c.lower().strip(): c for c in df.columns}
+        year_c = lower.get("year") or lower.get("yyyy") or lower.get("yr")
+        doy_c = lower.get("doy") or lower.get("day") or lower.get("ddd")
+        if year_c and doy_c and (time_col is None or time_col in (year_c, doy_c)):
+            hour_c = lower.get("hr") or lower.get("hour")
+            min_c = lower.get("mn") or lower.get("min") or lower.get("minute")
+            base = pd.to_datetime(pd.to_numeric(df[year_c], errors="coerce").astype("Int64").astype(str),
+                                  format="%Y", errors="coerce", utc=True)
+            offset = pd.to_timedelta(pd.to_numeric(df[doy_c], errors="coerce") - 1, unit="D")
+            if hour_c:
+                offset = offset + pd.to_timedelta(pd.to_numeric(df[hour_c], errors="coerce").fillna(0), unit="h")
+            if min_c:
+                offset = offset + pd.to_timedelta(pd.to_numeric(df[min_c], errors="coerce").fillna(0), unit="min")
+            return base + offset
+        if time_col is None:
+            time_col = df.columns[0]
+        raw = df[time_col].astype(str).str.strip()
+        try:
+            return pd.to_datetime(raw, utc=True, errors="coerce", format="mixed")
+        except (TypeError, ValueError):
+            return pd.to_datetime(raw, utc=True, errors="coerce")
+
     @classmethod
     def parse_csv_or_text(cls, content: str, mission_name: str = "Custom Spacecraft") -> Dict[str, Any]:
         """
         Parse CSV or delimited ASCII text telemetry.
         Auto-identifies NASA OMNI, NOAA, or custom header schemas.
         Computes physical state variables, shock detection, and summary statistics.
+
+        * Missing values and archive fill values (see FILL_LIMITS) become None; nothing
+          is replaced by a nominal value, and derived quantities are None when an input
+          is missing.
+        * Time stamps are converted to UTC 'YYYY-MM-DD HH:MM:SS'; rows whose time
+          cannot be parsed are dropped and the rest are sorted in time.
+        * IMF components are taken as GSM; columns explicitly labelled GSE are not
+          used as GSM (a warning is returned instead).
         """
         try:
             df = pd.read_csv(io.StringIO(content), sep=None, engine="python")
@@ -177,71 +228,100 @@ class TelemetryImporter:
         if df.empty or len(df.columns) < 2:
             return {"error": "Dataset must contain at least 2 columns (time and physical parameter)."}
 
-        # Resolve columns
+        warnings: List[str] = []
         time_col = cls._find_column(df.columns, "time_tag")
-        if not time_col:
-            time_col = df.columns[0]
+        times = cls._parse_times(df, time_col)
+        bad_time = int(times.isna().sum())
+        if bad_time:
+            warnings.append(f"{bad_time} row(s) with an unreadable time stamp were dropped.")
+        df = df.loc[times.notna()].copy()
+        df["_t"] = times[times.notna()]
+        df = df.sort_values("_t", kind="stable")
+        if df.empty:
+            return {"error": "No row has a readable time stamp."}
 
-        speed_col = cls._find_column(df.columns, "speed")
-        density_col = cls._find_column(df.columns, "density")
-        bz_col = cls._find_column(df.columns, "bz_gsm")
-        by_col = cls._find_column(df.columns, "by_gsm")
-        bx_col = cls._find_column(df.columns, "bx_gsm")
-        bt_col = cls._find_column(df.columns, "bt")
+        gse_cols = [c for c in df.columns if "gse" in c.lower()]
+        if gse_cols:
+            warnings.append("GSE field columns (" + ", ".join(map(str, gse_cols)) +
+                            ") were not used: HELIOS expects GSM components for Bz-based quantities.")
 
+        columns: Dict[str, Any] = {}
+        n_fill = 0
+        for target in ("speed", "density", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt"):
+            col = cls._find_column(df.columns, target)
+            if col is None:
+                columns[target] = np.full(len(df), np.nan)
+                continue
+            vals = pd.to_numeric(df[col], errors="coerce").to_numpy(dtype=float, copy=True)
+            fill = np.abs(vals) >= cls.FILL_LIMITS[target]
+            if target in ("speed", "density", "temperature", "bt"):
+                fill |= vals < 0
+            n_fill += int(np.sum(fill & np.isfinite(vals)))
+            vals[fill] = np.nan
+            columns[target] = vals
+        if n_fill:
+            warnings.append(f"{n_fill} fill / out-of-range value(s) were treated as missing.")
+
+        spd, dens = columns["speed"], columns["density"]
+        bx, by, bz, bt = columns["bx_gsm"], columns["by_gsm"], columns["bz_gsm"], columns["bt"]
+        # |B| from components only where no measured magnitude exists.
+        bt = np.where(np.isfinite(bt), bt, np.sqrt(bx ** 2 + by ** 2 + bz ** 2))
+
+        # Vectorised derived quantities (same formulas as SpaceWeatherPhysics).
+        with np.errstate(invalid="ignore", divide="ignore"):
+            pdyn = np.where((dens > 0) & (spd > 0), 1.6726e-6 * dens * spd ** 2, np.nan)
+            standoff = (10.22 + 1.29 * np.tanh(0.184 * (bz + 8.14))) * pdyn ** (-1.0 / 6.6)
+            theta = np.arctan2(np.abs(by), bz)
+            eps_gw = ((4.0 * np.pi / 1.25663706e-6) * (spd * 1e3) * (bt * 1e-9) ** 2
+                      * np.sin(theta / 2.0) ** 4 * (7.0 * 6371000.0) ** 2) / 1e9
+            delay = np.where(spd > 0, np.maximum(0.0, 1500000.0 - 90000.0) / spd / 60.0, np.nan)
+
+        def col_out(arr, nd):
+            return [None if not np.isfinite(v) else round(float(v), nd) for v in arr]
+
+        time_tags = df["_t"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
+        out_cols = {
+            "speed": col_out(spd, 1),
+            "density": col_out(dens, 2),
+            "temperature": col_out(columns["temperature"], 0),
+            "bx_gsm": col_out(bx, 2),
+            "by_gsm": col_out(by, 2),
+            "bz_gsm": col_out(bz, 2),
+            "bt": col_out(bt, 2),
+            "dynamic_pressure": col_out(pdyn, 3),
+            "magnetopause_re": col_out(standoff, 2),
+            "akasofu_gw": col_out(eps_gw, 2),
+            "l1_travel_time_min": col_out(delay, 1),
+        }
         records: List[Dict[str, Any]] = []
-        for _, row in df.iterrows():
-            t_raw = str(row[time_col]).strip()
-            spd = float(row[speed_col]) if (speed_col and pd.notna(row[speed_col])) else 400.0
-            dens = float(row[density_col]) if (density_col and pd.notna(row[density_col])) else 5.0
-            bz = float(row[bz_col]) if (bz_col and pd.notna(row[bz_col])) else 0.0
-            by = float(row[by_col]) if (by_col and pd.notna(row[by_col])) else 0.0
-            bx = float(row[bx_col]) if (bx_col and pd.notna(row[bx_col])) else 0.0
-            bt = float(row[bt_col]) if (bt_col and pd.notna(row[bt_col])) else (bx**2 + by**2 + bz**2)**0.5
-
-            pdyn = SpaceWeatherPhysics.dynamic_pressure(dens, spd)
-            standoff = SpaceWeatherPhysics.magnetopause_standoff(pdyn, bz)
-            eps = SpaceWeatherPhysics.akasofu_epsilon(spd, bt, by, bz)
-            delay = SpaceWeatherPhysics.propagation_delay_minutes(1500000.0, spd)
-
-            records.append({
-                "time_tag": t_raw,
-                "mission": mission_name,
-                "speed": round(spd, 1),
-                "density": round(dens, 2),
-                "bx_gsm": round(bx, 2),
-                "by_gsm": round(by, 2),
-                "bz_gsm": round(bz, 2),
-                "bt": round(bt, 2),
-                "dynamic_pressure": round(pdyn, 2),
-                "magnetopause_re": standoff,
-                "akasofu_gw": round(eps, 1),
-                "l1_travel_time_min": delay
-            })
+        for i, t in enumerate(time_tags):
+            rec = {"time_tag": t, "mission": mission_name}
+            for key, vals in out_cols.items():
+                rec[key] = vals[i]
+            rec["data_source"] = "imported"
+            records.append(rec)
 
         shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(records)
 
-        # Statistical Summary
-        speeds = [r["speed"] for r in records if r["speed"] is not None]
-        bzs = [r["bz_gsm"] for r in records if r["bz_gsm"] is not None]
-        pdyns = [r["dynamic_pressure"] for r in records if r["dynamic_pressure"] is not None]
-        standoffs = [r["magnetopause_re"] for r in records if r["magnetopause_re"] is not None]
-        epsilons = [r["akasofu_gw"] for r in records if r["akasofu_gw"] is not None]
+        def stat(key, fn, nd):
+            vals = [r[key] for r in records if r[key] is not None]
+            return round(fn(vals), nd) if vals else None
 
         summary = {
             "total_records": len(records),
             "start_time": records[0]["time_tag"] if records else None,
             "end_time": records[-1]["time_tag"] if records else None,
-            "speed_min": round(min(speeds), 1) if speeds else 0.0,
-            "speed_max": round(max(speeds), 1) if speeds else 0.0,
-            "speed_mean": round(sum(speeds) / len(speeds), 1) if speeds else 0.0,
-            "bz_min": round(min(bzs), 2) if bzs else 0.0,
-            "bz_max": round(max(bzs), 2) if bzs else 0.0,
-            "bz_mean": round(sum(bzs) / len(bzs), 2) if bzs else 0.0,
-            "pdyn_max": round(max(pdyns), 2) if pdyns else 0.0,
-            "standoff_min": round(min(standoffs), 2) if standoffs else 10.5,
-            "akasofu_max": round(max(epsilons), 1) if epsilons else 0.0,
-            "shocks_detected": len(shocks)
+            "speed_min": stat("speed", min, 1),
+            "speed_max": stat("speed", max, 1),
+            "speed_mean": stat("speed", lambda v: sum(v) / len(v), 1),
+            "bz_min": stat("bz_gsm", min, 2),
+            "bz_max": stat("bz_gsm", max, 2),
+            "bz_mean": stat("bz_gsm", lambda v: sum(v) / len(v), 2),
+            "pdyn_max": stat("dynamic_pressure", max, 2),
+            "standoff_min": stat("magnetopause_re", min, 2),
+            "akasofu_max": stat("akasofu_gw", max, 1),
+            "shocks_detected": len(shocks),
+            "time_standard": "UTC"
         }
 
         return {
@@ -250,5 +330,6 @@ class TelemetryImporter:
             "total_records": len(records),
             "records": records,
             "summary": summary,
-            "detected_shocks": shocks
+            "detected_shocks": shocks,
+            "warnings": warnings
         }
