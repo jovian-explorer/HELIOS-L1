@@ -3777,6 +3777,9 @@ function updateDrapReadouts(drap) {
 
   const att10El = document.getElementById('drap-att10');
   if (att10El) att10El.innerText = `${drap.attenuation_at_10mhz_db} dB`;
+  // Fraction of power lost for A dB of absorption: 1 - 10^(-A/10) (was a fixed "79.1%" text)
+  const lossEl = document.getElementById('drap-att10-loss');
+  if (lossEl) lossEl.innerText = `${(100 * (1 - Math.pow(10, -drap.attenuation_at_10mhz_db / 10))).toFixed(1)}% signal power lost`;
 
   const atcEl = document.getElementById('drap-atc-impact');
   if (atcEl) atcEl.innerText = drap.polar_aviation_impact;

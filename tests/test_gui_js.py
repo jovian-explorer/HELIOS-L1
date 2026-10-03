@@ -99,3 +99,10 @@ def test_aurora_map_label_uses_the_server_boundary():
     assert "68 - this.kpIndex * 1.8" not in src
     assert "this.eqMidnightLat" in src
     assert "b.equatorward_midnight_lat" in APP_JS.read_text(encoding="utf-8")
+
+
+def test_drap_power_loss_text_is_computed():
+    src = APP_JS.read_text(encoding="utf-8")
+    html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
+    assert "79.1% Signal Power Loss" not in html and 'id="drap-att10-loss"' in html
+    assert "Math.pow(10, -drap.attenuation_at_10mhz_db / 10)" in src
