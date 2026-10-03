@@ -521,8 +521,14 @@ class SpaceWeatherPhysics:
         - Sudden velocity jump Delta V >= 40 km/s within <= 15 minutes
         - Density compression ratio N2 / N1 >= 1.5
         - Magnetic field magnitude jump B2 / B1 >= 1.3
+
+        Each record is compared with the one three samples earlier, so a single jump
+        satisfies the criteria at up to three consecutive samples. Those detections are
+        merged into one event (the sample with the largest speed jump), so the number of
+        events is not tripled.
         """
         shocks = []
+        last_index = None
         if len(records) < 5:
             return shocks
 
@@ -547,7 +553,7 @@ class SpaceWeatherPhysics:
             if delta_v >= 45.0 and ratio_b >= 1.35 and ratio_n >= 1.5:
                 # Estimate Mach number: M_ms ~ delta_v / v_fast ~ delta_v / 60 km/s + 1
                 mach_proxy = round(1.0 + (delta_v / 70.0), 2)
-                shocks.append({
+                event = {
                     "time": curr.get("time_tag", ""),
                     "delta_speed_kms": round(delta_v, 1),
                     "density_ratio": round(ratio_n, 2),
@@ -556,7 +562,13 @@ class SpaceWeatherPhysics:
                     "upstream_speed": round(v1, 1),
                     "downstream_speed": round(v2, 1),
                     "classification": "Fast Forward CME Shock" if delta_v > 100 else "Interplanetary Shock / CIR"
-                })
+                }
+                if last_index is not None and i - last_index <= 3:
+                    if delta_v > shocks[-1]["delta_speed_kms"]:
+                        shocks[-1] = event
+                else:
+                    shocks.append(event)
+                last_index = i
 
         return shocks
 

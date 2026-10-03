@@ -167,3 +167,20 @@ def test_align_time_series_mixed_timezones_and_long_gaps():
     df = SatelliteComparator.align_time_series(a, b, "bz_gsm")
     # Naive and 'Z' stamps align; the long gap is not filled with interpolated values.
     assert len(df) == 48 - 20
+
+
+def test_one_shock_is_reported_once():
+    """A single step in V, N and B used to be reported as three shocks (i vs i-3 window)."""
+    recs = [{"time_tag": f"2026-09-20 12:{i * 5:02d}:00",
+             "speed": 350.0 if i < 5 else 620.0,
+             "density": 4.0 if i < 5 else 18.0,
+             "bt": 5.0 if i < 5 else 16.0} for i in range(12)]
+    shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(recs)
+    assert len(shocks) == 1
+    assert shocks[0]["delta_speed_kms"] == pytest.approx(270.0)
+    # Two well separated jumps are two events.
+    recs2 = recs + [{"time_tag": f"2026-09-20 13:{i * 5:02d}:00",
+                     "speed": 620.0 if i < 4 else 800.0,
+                     "density": 18.0 if i < 4 else 40.0,
+                     "bt": 16.0 if i < 4 else 30.0} for i in range(10)]
+    assert len(SpaceWeatherPhysics.detect_interplanetary_shocks(recs2)) == 2
