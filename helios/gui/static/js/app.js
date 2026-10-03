@@ -905,16 +905,25 @@ function updateTelemetryUI(data) {
   const allRecords = data.records || [];
 
   // Filter records if a physical regime filter is active
+  // Thresholds match the button labels (they were 480 km/s and 8 cm^-3). With a filter
+  // the MIN/AVG/MAX rows describe the matching samples only, while the large numbers stay
+  // the latest measurement; the note under the buttons says which.
   let records = allRecords;
-  if (currentTelemetryFilter === 'bz_south') {
-    const filtered = allRecords.filter(r => typeof r.bz_gsm === 'number' && r.bz_gsm < 0);
+  const filters = {
+    bz_south: [r => typeof r.bz_gsm === 'number' && r.bz_gsm < 0, 'Bz < 0'],
+    fast_wind: [r => typeof r.speed === 'number' && r.speed > 500, 'V > 500 km/s'],
+    dense_plasma: [r => typeof r.density === 'number' && r.density > 10, 'N > 10 cm⁻³'],
+  };
+  const noteEl = document.getElementById('telemetry-filter-note');
+  if (filters[currentTelemetryFilter]) {
+    const [test, label] = filters[currentTelemetryFilter];
+    const filtered = allRecords.filter(test);
     if (filtered.length > 0) records = filtered;
-  } else if (currentTelemetryFilter === 'fast_wind') {
-    const filtered = allRecords.filter(r => typeof r.speed === 'number' && r.speed >= 480);
-    if (filtered.length > 0) records = filtered;
-  } else if (currentTelemetryFilter === 'dense_plasma') {
-    const filtered = allRecords.filter(r => typeof r.density === 'number' && r.density >= 8);
-    if (filtered.length > 0) records = filtered;
+    if (noteEl) noteEl.innerText = filtered.length > 0
+      ? `Filter ${label}: ${filtered.length} of ${allRecords.length} samples. MIN/AVG/MAX and charts use these; large values are the latest sample.`
+      : `Filter ${label}: no sample in this window matches; showing all ${allRecords.length} samples.`;
+  } else if (noteEl) {
+    noteEl.innerText = '';
   }
 
   document.getElementById('sat-name-full').innerText = mission.full_name;

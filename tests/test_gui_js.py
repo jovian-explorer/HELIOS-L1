@@ -120,3 +120,9 @@ def test_psd_plot_frequency_axis_is_logarithmic():
     block = src[src.index("chartSpectrum = new Chart"):]
     block = block[:block.index("async function initOrbits")]
     assert block.count("type: 'logarithmic'") == 2 and "labels:" not in block
+
+
+def test_regime_filter_thresholds_match_labels():
+    src = APP_JS.read_text(encoding="utf-8")
+    assert "r.speed > 500" in src and "r.density > 10" in src
+    assert "r.speed >= 480" not in src and "r.density >= 8" not in src

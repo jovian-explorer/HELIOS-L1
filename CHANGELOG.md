@@ -41,6 +41,7 @@
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
 ### Interface and robustness
+- Dashboard regime filters: "Fast wind (> 500 km/s)" and "Sheath (N > 10 cm⁻³)" filtered at 480 km/s and 8 cm⁻³, and with a filter the MIN/AVG/MAX rows described a different set of samples than the large latest values without saying so (e.g. latest 275 km/s above a filtered minimum of 286). Thresholds now match the labels and a note states how many samples the filter keeps, or that none match and all are shown.
 - Spectrum tab: the "log-log" PSD plot had a linear (category) frequency axis, so the f^-5/3 and f^-3/2 references were curves and the spectrum crowded at low frequency; the frequency axis is logarithmic and tooltips give the frequency.
 - Comparator scatter plot: the regression and 1:1 lines turned the x axis into a category axis, so every pair was drawn at the left edge in one vertical stripe; the axis is numeric again.
 - Hazards tab text: the GIC formula was shown as raw LaTeX source, and the flare absorption panel credited Sauer & Wilkinson (2008), whose paper covers D-RAP's solar-proton (polar cap) absorption; the panel now states the SWPC flare relation it uses and that the proton part is not modelled.
