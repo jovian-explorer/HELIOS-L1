@@ -181,7 +181,7 @@ async function initSettingsAndPreferences() {
     if (res.ok) {
       const data = await res.json();
       if (data.system) {
-        totalCpuCores = data.system.total_cpu_cores || 8;
+        totalCpuCores = data.system.total_cpu_cores || navigator.hardwareConcurrency || 8;
         // The server keeps the saved preferences (the desktop window's storage can be private).
         // Use them when they exist; otherwise hand this browser's preferences to the server.
         if (data.system.saved) {
@@ -197,7 +197,7 @@ async function initSettingsAndPreferences() {
           }).catch(() => {});
         }
         const maxCoresEl = document.getElementById('detected-max-cores-label');
-        if (maxCoresEl) maxCoresEl.innerText = `Detected: ${totalCpuCores} Logic Cores`;
+        if (maxCoresEl) maxCoresEl.innerText = `Detected: ${totalCpuCores} logical cores`;
         const slider = document.getElementById('settings-cores-slider');
         if (slider) {
           slider.max = totalCpuCores;
@@ -968,7 +968,7 @@ function updateTelemetryUI(data) {
   const gBadge = document.getElementById('noaa-g-badge');
   const gText = document.getElementById('g-scale-text');
   if (gBadge && gText) {
-    gText.innerText = cls.g_scale || 'G0 Quiet';
+    gText.innerText = cls.g_scale || 'G scale n/a';
     gBadge.style.color = cls.g_color || '#10b981';
     gBadge.style.borderColor = (cls.g_color || '#10b981') + '66';
     gBadge.style.backgroundColor = (cls.g_color || '#10b981') + '1a';
@@ -977,7 +977,7 @@ function updateTelemetryUI(data) {
   const bzBadge = document.getElementById('bz-alert-badge');
   const bzText = document.getElementById('bz-alert-text');
   if (bzBadge && bzText) {
-    bzText.innerText = (latest.bz_gsm !== undefined ? `Bz: ${latest.bz_gsm} nT` : 'Bz Nominal');
+    bzText.innerText = (latest.bz_gsm != null ? `Bz: ${latest.bz_gsm} nT` : 'Bz n/a');
     bzBadge.style.color = cls.bz_color || '#10b981';
     bzBadge.style.borderColor = (cls.bz_color || '#10b981') + '66';
     bzBadge.style.backgroundColor = (cls.bz_color || '#10b981') + '1a';
@@ -986,35 +986,36 @@ function updateTelemetryUI(data) {
   // Update Top Space Weather Condition Ticker
   const tickG = document.getElementById('ticker-g-scale');
   if (tickG) {
-    tickG.innerText = cls.g_scale ? cls.g_scale.toUpperCase() : 'G0 QUIET';
+    tickG.innerText = cls.g_scale ? cls.g_scale.toUpperCase() : 'G N/A';
     tickG.style.color = cls.g_color || '#10b981';
   }
   const tickS = document.getElementById('ticker-s-scale');
   if (tickS) {
-    tickS.innerText = cls.s_scale ? cls.s_scale.toUpperCase() : 'S0 NOMINAL';
+    tickS.innerText = cls.s_scale ? cls.s_scale.toUpperCase() : 'S N/A';
     tickS.style.color = cls.s_color || '#10b981';
   }
   const tickR = document.getElementById('ticker-r-scale');
   if (tickR) {
-    tickR.innerText = cls.r_scale ? cls.r_scale.toUpperCase() : 'R0 NONE';
+    tickR.innerText = cls.r_scale ? cls.r_scale.toUpperCase() : 'R N/A';
     tickR.style.color = cls.r_level > 0 ? '#f59e0b' : '#10b981';
   }
   const tickRmp = document.getElementById('ticker-rmp');
-  if (tickRmp && latest.magnetopause_re !== undefined) tickRmp.innerText = `${latest.magnetopause_re} RE`;
+  if (tickRmp && latest.magnetopause_re != null) tickRmp.innerText = `${latest.magnetopause_re} RE`;
   const tickEps = document.getElementById('ticker-epsilon');
-  if (tickEps && latest.akasofu_gw !== undefined) tickEps.innerText = `${latest.akasofu_gw} GW`;
+  if (tickEps && latest.akasofu_gw != null) tickEps.innerText = `${latest.akasofu_gw} GW`;
 
   // Update KPI Gauge Numbers
-  document.getElementById('metric-speed').innerText = latest.speed !== undefined ? latest.speed : '---';
-  document.getElementById('metric-speed-status').innerText = (latest.speed > 600 ? 'Severe High-Speed Stream!' : (latest.speed > 480 ? 'Elevated solar wind' : 'Nominal slow wind'));
+  document.getElementById('metric-speed').innerText = latest.speed != null ? latest.speed : '---';
+  // Same 500 km/s fast-wind threshold as the regime filter and the exported chart
+  document.getElementById('metric-speed-status').innerText = latest.speed == null ? 'No speed in the latest record' : (latest.speed > 600 ? 'Severe High-Speed Stream!' : (latest.speed > 500 ? 'Fast solar wind' : 'Slow wind'));
 
-  document.getElementById('metric-bz').innerText = latest.bz_gsm !== undefined ? latest.bz_gsm : '---';
-  document.getElementById('metric-bz-status').innerText = (latest.bz_gsm < -10 ? 'Intense Southward (Storm Trigger)!' : (latest.bz_gsm < 0 ? 'Weak Southward' : 'Northward (Shielded)'));
+  document.getElementById('metric-bz').innerText = latest.bz_gsm != null ? latest.bz_gsm : '---';
+  document.getElementById('metric-bz-status').innerText = latest.bz_gsm == null ? 'No Bz in the latest record' : (latest.bz_gsm < -10 ? 'Intense Southward (Storm Trigger)!' : (latest.bz_gsm < 0 ? 'Weak Southward' : 'Northward (Shielded)'));
 
-  document.getElementById('metric-bt').innerText = latest.bt !== undefined ? latest.bt : '---';
-  document.getElementById('metric-density').innerText = latest.density !== undefined ? latest.density : '---';
-  document.getElementById('metric-pdyn').innerText = latest.dynamic_pressure !== undefined ? latest.dynamic_pressure : '---';
-  document.getElementById('metric-delay').innerText = latest.l1_travel_time_min !== undefined ? latest.l1_travel_time_min : '---';
+  document.getElementById('metric-bt').innerText = latest.bt != null ? latest.bt : '---';
+  document.getElementById('metric-density').innerText = latest.density != null ? latest.density : '---';
+  document.getElementById('metric-pdyn').innerText = latest.dynamic_pressure != null ? latest.dynamic_pressure : '---';
+  document.getElementById('metric-delay').innerText = latest.l1_travel_time_min != null ? latest.l1_travel_time_min : '---';
 
   // Calculate Min, Avg, Max for numeric telemetry fields across records
   function calcStats(arr, key) {
@@ -3777,14 +3778,18 @@ function loadSandboxFromLive() {
     return;
   }
   const lat = currentTelemetryData.latest;
-  sandboxParams = {
-    vsw: lat.speed || 450,
-    density: lat.density || 5.0,
-    bt: lat.bt || 6.0,
-    bz: lat.bz_gsm !== undefined ? lat.bz_gsm : -3.0,
-    by: lat.by_gsm !== undefined ? lat.by_gsm : 2.0,
-    temp: lat.temperature || 100000
-  };
+  // Missing (null) live values keep the sandbox's current value and are named, instead of
+  // being replaced by nominal numbers that then look like the live state.
+  const fields = { vsw: 'speed', density: 'density', bt: 'bt', bz: 'bz_gsm', by: 'by_gsm', temp: 'temperature' };
+  const missing = [];
+  const next = { ...sandboxParams };
+  for (const [key, src] of Object.entries(fields)) {
+    const v = lat[src];
+    if (v === null || v === undefined || !Number.isFinite(Number(v))) missing.push(src);
+    else next[key] = Number(v);
+  }
+  sandboxParams = next;
+  if (missing.length) alert(`Live record has no ${missing.join(', ')}; kept the sandbox value${missing.length > 1 ? 's' : ''} for ${missing.length > 1 ? 'them' : 'it'}.`);
   const body = document.getElementById('modal-references-body');
   if (body) renderSandboxTab(body);
   window.playBlip?.();

@@ -55,27 +55,27 @@
       </div>
       <div class="flex items-center space-x-1.5">
         <span class="text-slate-500">GEOMAGNETIC</span>
-        <span id="ticker-g-scale" class="font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">G0 QUIET</span>
+        <span id="ticker-g-scale" class="font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">G-</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
         <span class="text-slate-500">SOLAR RAD</span>
-        <span id="ticker-s-scale" class="font-bold text-emerald-400">S0 NOMINAL</span>
+        <span id="ticker-s-scale" class="font-bold text-emerald-400">S-</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
         <span class="text-slate-500">RADIO BLACKOUT</span>
-        <span id="ticker-r-scale" class="font-bold text-emerald-400">R0 NONE</span>
+        <span id="ticker-r-scale" class="font-bold text-emerald-400">R-</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
         <span class="text-slate-500">STANDOFF</span>
-        <span id="ticker-rmp" class="font-bold text-sky-400 font-hud">10.4 RE</span>
+        <span id="ticker-rmp" class="font-bold text-sky-400 font-hud">--- RE</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
         <span class="text-slate-500">COUPLING</span>
-        <span id="ticker-epsilon" class="font-bold text-amber-400 font-hud">14.2 GW</span>
+        <span id="ticker-epsilon" class="font-bold text-amber-400 font-hud">--- GW</span>
       </div>
     </div>
     <div class="flex items-center space-x-3 text-slate-400">
@@ -118,7 +118,7 @@
       </div>
       <div id="noaa-g-badge" class="flex items-center space-x-2 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700 text-emerald-400 text-xs font-medium">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-        <span id="g-scale-text">G0 Quiet</span>
+        <span id="g-scale-text">---</span>
       </div>
       <div id="bz-alert-badge" class="flex items-center space-x-2 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700 text-sky-400 text-xs font-medium">
         <i class="fa-solid fa-magnet text-[11px]"></i>
@@ -894,11 +894,11 @@
               <div class="flex justify-between"><span>MODEL:</span> <span id="hud-model-name" class="text-sky-300 font-bold">Chao 2002</span></div>
               <div class="flex justify-between"><span>L1 DISTANCE:</span> <span class="text-amber-400 font-bold">1,496,000 km</span></div>
               <div class="flex justify-between"><span>SOLAR DIST:</span> <span class="text-yellow-300 font-bold">0.99 AU (Sunward)</span></div>
-              <div class="flex justify-between"><span>SIM FLUX:</span> <span id="hud-flux-speed" class="text-cyan-400 font-bold">450 km/s</span></div>
-              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>BOW SHOCK (R_bs):</span> <span id="hud-bow-standoff" class="text-sky-400 font-bold">13.8 R_E</span></div>
-              <div class="flex justify-between"><span>MAGNETOPAUSE:</span> <span id="hud-mp-standoff" class="text-amber-400 font-bold">10.2 R_E</span></div>
-              <div class="flex justify-between"><span>SHEATH (ΔR):</span> <span id="hud-sheath-thick" class="text-cyan-300 font-bold">3.6 R_E</span></div>
-              <div class="flex justify-between"><span>GEO MARGIN:</span> <span id="hud-geo-margin" class="text-emerald-400 font-bold">+3.6 R_E</span></div>
+              <div class="flex justify-between"><span>SIM FLUX:</span> <span id="hud-flux-speed" class="text-cyan-400 font-bold">--- km/s</span></div>
+              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>BOW SHOCK (R_bs):</span> <span id="hud-bow-standoff" class="text-sky-400 font-bold">--- R_E</span></div>
+              <div class="flex justify-between"><span>MAGNETOPAUSE:</span> <span id="hud-mp-standoff" class="text-amber-400 font-bold">--- R_E</span></div>
+              <div class="flex justify-between"><span>SHEATH (ΔR):</span> <span id="hud-sheath-thick" class="text-cyan-300 font-bold">--- R_E</span></div>
+              <div class="flex justify-between"><span>GEO MARGIN:</span> <span id="hud-geo-margin" class="text-emerald-400 font-bold">--- R_E</span></div>
               <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>EPHEMERIS:</span> <span id="hud-spice-status" class="text-emerald-400 font-mono text-[10px] font-bold"><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE N0067</span></div>
             </div>
           </div>
@@ -925,8 +925,8 @@
               <i class="fa-solid fa-shield-halved text-sky-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
-              <span id="card-bow-standoff" class="text-2xl font-hud font-bold text-sky-300">13.8 RE</span>
-              <span id="card-bow-km" class="text-[11px] font-mono text-slate-400">~87,900 km</span>
+              <span id="card-bow-standoff" class="text-2xl font-hud font-bold text-sky-300">--- RE</span>
+              <span id="card-bow-km" class="text-[11px] font-mono text-slate-400">--- km</span>
             </div>
             <div class="text-[10px] text-slate-400 mt-1">Chao et al. (2002) or Farris &amp; Russell (1994): depends on P_dyn, Bz, magnetosonic Mach number and β</div>
           </div>
@@ -937,10 +937,10 @@
               <i class="fa-solid fa-magnet text-amber-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
-              <span id="card-mp-standoff" class="text-2xl font-hud font-bold text-amber-300">10.2 RE</span>
-              <span id="card-mp-km" class="text-[11px] font-mono text-slate-400">~65,000 km</span>
+              <span id="card-mp-standoff" class="text-2xl font-hud font-bold text-amber-300">--- RE</span>
+              <span id="card-mp-km" class="text-[11px] font-mono text-slate-400">--- km</span>
             </div>
-            <div id="card-mp-geo-status" class="text-[10px] text-emerald-400 mt-1">GEO Standoff Clear (+3.6 RE outside geostationary orbit)</div>
+            <div id="card-mp-geo-status" class="text-[10px] text-emerald-400 mt-1">---</div>
           </div>
 
           <div class="metric-card" style="border-left: 3px solid #a855f7;">
@@ -949,8 +949,8 @@
               <i class="fa-solid fa-arrows-left-right-to-line text-purple-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
-              <span id="card-sheath-thick" class="text-2xl font-hud font-bold text-purple-300">3.6 RE</span>
-              <span id="card-sheath-km" class="text-[11px] font-mono text-slate-400">~22,900 km</span>
+              <span id="card-sheath-thick" class="text-2xl font-hud font-bold text-purple-300">--- RE</span>
+              <span id="card-sheath-km" class="text-[11px] font-mono text-slate-400">--- km</span>
             </div>
             <div class="text-[10px] text-slate-400 mt-1">Turbulent plasma sheath barrier separating bow shock from magnetopause</div>
           </div>
@@ -961,7 +961,7 @@
               <i class="fa-solid fa-square-root-variable text-emerald-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
-              <span id="card-flaring-alpha" class="text-2xl font-hud font-bold text-emerald-300">0.58 / 0.61</span>
+              <span id="card-flaring-alpha" class="text-2xl font-hud font-bold text-emerald-300">--- / ---</span>
               <span class="text-[11px] font-mono text-slate-400">α_mp / α_bs</span>
             </div>
             <div class="text-[10px] text-slate-400 mt-1">α_mp: Shue et al. (1998); α_bs: Chao et al. (2002), doi:10.1016/S0964-2749(02)80212-8 (Farris &amp; Russell: conic, α = 1)</div>
@@ -1325,8 +1325,8 @@
 
         <div class="flex flex-wrap items-center justify-between gap-3 text-xs bg-space-900/60 p-2.5 rounded-xl border border-slate-800">
           <div class="flex items-center space-x-4">
-            <span class="text-slate-300">Spiral Pitch at 1 AU: <strong id="parker-pitch-val" class="text-cyan-400 font-hud">45.0°</strong></span>
-            <span class="text-slate-300">Earth Connected Footpoint: <strong id="parker-footpoint-val" class="text-amber-400 font-hud">~52.1° W</strong></span>
+            <span class="text-slate-300">Spiral Pitch at 1 AU: <strong id="parker-pitch-val" class="text-cyan-400 font-hud">---°</strong></span>
+            <span class="text-slate-300">Earth Connected Footpoint: <strong id="parker-footpoint-val" class="text-amber-400 font-hud">---° W</strong></span>
             <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] font-bold"><i class="fa-solid fa-satellite-dish text-[10px]"></i> NAIF SPICE N0067 Verified</span>
           </div>
 
@@ -1637,19 +1637,19 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
             <span class="text-slate-400 text-xs">Peak Kp Index</span>
-            <div id="event-peak-kp" class="text-xl font-black text-rose-400 mt-0.5">9.0</div>
+            <div id="event-peak-kp" class="text-xl font-black text-rose-400 mt-0.5">---</div>
           </div>
           <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
             <span class="text-slate-400 text-xs">Minimum IMF Bz</span>
-            <div id="event-min-bz" class="text-xl font-black text-rose-400 mt-0.5">-48.5 nT</div>
+            <div id="event-min-bz" class="text-xl font-black text-rose-400 mt-0.5">--- nT</div>
           </div>
           <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
             <span class="text-slate-400 text-xs">Peak Solar Wind Velocity</span>
-            <div id="event-peak-v" class="text-xl font-black text-sky-400 mt-0.5">985 km/s</div>
+            <div id="event-peak-v" class="text-xl font-black text-sky-400 mt-0.5">--- km/s</div>
           </div>
           <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
             <span class="text-slate-400 text-xs">Peak Dynamic Pressure</span>
-            <div id="event-peak-pdyn" class="text-xl font-black text-amber-400 mt-0.5">48.0 nPa</div>
+            <div id="event-peak-pdyn" class="text-xl font-black text-amber-400 mt-0.5">--- nPa</div>
           </div>
         </div>
 
@@ -2082,19 +2082,19 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">NOAA Radio Scale</div>
-            <div id="drap-r-scale" class="text-xl font-hud font-black text-rose-400">R3 - Strong</div>
+            <div id="drap-r-scale" class="text-xl font-hud font-black text-rose-400">---</div>
             <div id="drap-hazard-desc" class="text-[10px] text-slate-400 mt-0.5">Wide Area Loss of HF Radio</div>
           </div>
 
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">Highest Affected Freq (HAF)</div>
-            <div id="drap-haf" class="text-xl font-hud font-black text-amber-400">21.5 MHz</div>
+            <div id="drap-haf" class="text-xl font-hud font-black text-amber-400">--- MHz</div>
             <div class="text-[10px] text-slate-400 mt-0.5">Frequencies below suffer &gt;1 dB loss</div>
           </div>
 
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">10 MHz Signal Attenuation</div>
-            <div id="drap-att10" class="text-xl font-hud font-black text-sky-400">6.8 dB</div>
+            <div id="drap-att10" class="text-xl font-hud font-black text-sky-400">--- dB</div>
             <div id="drap-att10-loss" class="text-[10px] text-slate-400 mt-0.5">--- signal power lost</div>
           </div>
 
@@ -2593,7 +2593,7 @@
             <div class="w-full sm:w-2/3 space-y-2">
               <div class="flex items-center justify-between text-[11px] text-slate-300 font-mono">
                 <span>1 Core (Minimum)</span>
-                <span id="detected-max-cores-label">Detected: 8 Logic Cores</span>
+                <span id="detected-max-cores-label">Detected: --- logical cores</span>
               </div>
               <input type="range" id="settings-cores-slider" min="1" max="16" step="1" value="4" oninput="onSettingsCoresChange(this.value)" class="w-full accent-emerald-400 cursor-pointer">
             </div>
