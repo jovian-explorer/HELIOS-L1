@@ -802,8 +802,19 @@ async def export_custom_telemetry(export_format: str):
     mission_slug = latest_custom_dataset.get("mission_name", "custom").lower().replace(" ", "_")
 
     if export_format.lower() == "csv":
+        times = [r["time_tag"] for r in records if r.get("time_tag")]
+        meta = {
+            "title": f"HELIOS-L1 imported telemetry: {latest_custom_dataset.get('mission_name', 'custom')}",
+            "software": f"HELIOS-L1 {__version__}",
+            "data_kind": "imported",
+            "provenance": "User file imported into HELIOS-L1; derived quantities computed by HELIOS-L1.",
+            "import_warnings": " | ".join(latest_custom_dataset.get("warnings") or []) or "none",
+            "time_standard": "UTC",
+            "time_coverage": f"{times[0]} to {times[-1]}" if times else "n/a",
+            "missing_values": "empty cell",
+        }
         return Response(
-            content=DataExporter.to_csv(records),
+            content=DataExporter.to_csv(records, metadata=meta),
             media_type="text/csv",
             headers={"Content-Disposition": f"attachment; filename=helios_{mission_slug}_telemetry.csv"}
         )
@@ -940,9 +951,9 @@ async def export_plot(mission_id: str = "DSCOVR", span_days: int = Query(1, ge=1
     mission_key = mission_id.upper()
     if mission_key not in MISSIONS:
         raise HTTPException(status_code=404, detail=f"Mission '{mission_id}' not recognized.")
-    data = await downloader.get_satellite_telemetry(mission_key, span_days=span_days)
+    bundle = await downloader.get_telemetry_bundle(mission_key, span_days=span_days)
     name = MISSIONS.get(mission_key, {}).get("name", mission_id)
-    png_bytes = DataExporter.generate_overview_chart(data, name)
+    png_bytes = await run_in_workers(DataExporter.generate_overview_chart, bundle["records"], name, bundle["provenance"])
     return Response(content=png_bytes, media_type="image/png", headers={
         "Content-Disposition": f"attachment; filename=HELIOS_{mission_id}_chart.png"
     })

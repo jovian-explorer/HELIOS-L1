@@ -378,3 +378,22 @@ def test_import_presets_are_labelled_illustrative():
     for p in TelemetryImporter.get_presets_list():
         assert p["data_kind"] == "synthetic" and p["satellite"].startswith("Illustrative profile")
         assert "not measured" in p["note"] or "no in-situ" in p["note"]
+
+
+def test_custom_csv_export_has_metadata_and_plot_states_provenance(monkeypatch):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.exporter import DataExporter
+    client = TestClient(server.app)
+    csv_text = "time,speed,bz\n2024-05-10 00:00:00,400,-3\n2024-05-10 00:01:00,410,-4\n"
+    assert client.post("/api/custom/import", json={"content": csv_text, "mission_name": "Test"}).status_code == 200
+    out = client.get("/api/custom/export/csv").text
+    assert out.startswith("# title: HELIOS-L1 imported telemetry: Test") and "# data_kind: imported" in out
+    seen = {}
+
+    def chart(records, name, provenance=None):
+        seen["provenance"] = provenance
+        return b"png"
+    monkeypatch.setattr(DataExporter, "generate_overview_chart", staticmethod(chart))
+    assert client.get("/api/export/plot?mission_id=ADITYA_L1").status_code == 200
+    assert seen["provenance"]["kind"] in ("simulated", "synthetic")

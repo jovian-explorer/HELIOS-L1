@@ -5,6 +5,7 @@ Supports CSV, JSON, NetCDF-compatible schemas, and Matplotlib chart exports.
 import io
 import csv
 import json
+import threading
 from typing import Dict, List, Any
 import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend
@@ -28,6 +29,10 @@ FIELD_UNITS: Dict[str, str] = {
     "l1_travel_time_min": "min",
     "sym_h": "nT", "asy_h": "nT", "ae": "nT", "al": "nT", "au": "nT",
 }
+
+
+# pyplot keeps global state; charts are drawn in worker threads, one at a time.
+_PLOT_LOCK = threading.Lock()
 
 
 class DataExporter:
@@ -100,8 +105,13 @@ class DataExporter:
         }
 
     @staticmethod
-    def generate_overview_chart(records: List[Dict[str, Any]], mission_name: str) -> bytes:
-        """Generate a 4-panel publication-ready scientific plot."""
+    def generate_overview_chart(records: List[Dict[str, Any]], mission_name: str,
+                                provenance: Dict[str, Any] = None) -> bytes:
+        """
+        Generate a 4-panel publication-ready scientific plot. The provenance (observed,
+        simulated, synthetic, imported; source and coverage) is printed under the title, so
+        a saved PNG of model output cannot pass for measurements.
+        """
         if not records:
             fig, ax = plt.subplots(figsize=(10, 6))
             ax.text(0.5, 0.5, "No data available", ha="center", va="center")
@@ -113,9 +123,23 @@ class DataExporter:
         df = pd.DataFrame(records)
         df["dt"] = pd.to_datetime(df["time_tag"])
 
-        plt.style.use("dark_background")
+        # Style context instead of plt.style.use: the latter changed matplotlib's global
+        # defaults for every later figure in the process.
+        with _PLOT_LOCK, plt.style.context("dark_background"):
+            return DataExporter._overview_figure(df, mission_name, provenance)
+
+    @staticmethod
+    def _overview_figure(df: pd.DataFrame, mission_name: str, provenance: Dict[str, Any] = None) -> bytes:
         fig, axes = plt.subplots(4, 1, figsize=(12, 10), sharex=True)
         fig.suptitle(f"HELIOS-L1 Scientific Telemetry: {mission_name}", fontsize=14, color="#38bdf8", weight="bold")
+        if provenance:
+            kind = str(provenance.get("kind") or "unknown").upper()
+            desc = str(provenance.get("description") or "")
+            line = f"Data: {kind}. {desc}"
+            if len(line) > 150:
+                line = line[:147] + "..."
+            fig.text(0.5, 0.955, line, ha="center", fontsize=8,
+                     color="#fbbf24" if kind != "OBSERVED" else "#94a3b8")
 
         # Panel 1: IMF Bz and Total B
         ax1 = axes[0]
@@ -133,7 +157,7 @@ class DataExporter:
         ax2 = axes[1]
         if "speed" in df.columns:
             ax2.plot(df["dt"], df["speed"], label="Solar Wind Speed (Vsw)", color="#38bdf8", lw=1.2)
-            ax2.axhline(450, color="#eab308", ls=":", lw=0.9, label="Fast Wind Threshold")
+            ax2.axhline(500, color="#eab308", ls=":", lw=0.9, label="Fast wind (500 km/s)")
         ax2.set_ylabel("Speed [km/s]", fontsize=10)
         ax2.legend(loc="upper right", framealpha=0.3, fontsize=8)
         ax2.grid(True, alpha=0.2)
@@ -146,7 +170,7 @@ class DataExporter:
         ax3.legend(loc="upper right", framealpha=0.3, fontsize=8)
         ax3.grid(True, alpha=0.2)
 
-        # Panel 4: Dynamic Pressure & Akasofu Epsilon
+        # Panel 4: Dynamic Pressure
         ax4 = axes[3]
         if "dynamic_pressure" in df.columns:
             ax4.plot(df["dt"], df["dynamic_pressure"], label="Dynamic Pressure Pdyn", color="#a855f7", lw=1.2)
@@ -158,7 +182,7 @@ class DataExporter:
         # Format X-axis dates
         axes[3].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H:%M"))
         fig.autofmt_xdate()
-        plt.tight_layout()
+        plt.tight_layout(rect=(0, 0, 1, 0.95))
 
         buf = io.BytesIO()
         plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0f172a")
