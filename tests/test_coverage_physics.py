@@ -153,3 +153,56 @@ def test_gopalswamy_2001_arrival_matches_stepwise_integration():
         t += (C.AU_KM - r) / v
         assert out["transit_hours"] == pytest.approx(t / 3600.0, abs=0.1)
         assert out["arrival_speed_kms"] == pytest.approx(v, abs=0.5)
+
+
+def test_seven_day_view_joins_archive_and_rtsw_without_overlap(monkeypatch):
+    """
+    7-day DSCOVR view: CDAWeb archive (5-min bins) up to its last sample, then the RTSW feed
+    after it, averaged into 5-minute bins. RTSW rows at or before the last archive sample
+    are dropped, the bin means are the means of the 1-minute values, and the provenance
+    names both sources.
+    """
+    import asyncio
+    from datetime import datetime, timedelta, timezone
+    from helios.core.downloader import DataDownloader
+
+    now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    t_arch_end = (now - timedelta(hours=2)).replace(minute=0)
+    arch = [{"time_tag": (t_arch_end - timedelta(minutes=5 * k)).strftime("%Y-%m-%d %H:%M:%S"),
+             "speed": 380.0, "density": 4.0, "temperature": 9e4, "bz_gsm": 1.0, "by_gsm": 0.5, "bx_gsm": 2.0,
+             "bt": 3.0, "data_source": "observed"} for k in range(12)][::-1]
+
+    async def fake_archive(self, mission_id, start, end, cadence_minutes=1):
+        return {"records": arch, "provenance": {"description": "CDAWeb DSCOVR test archive.",
+                                                "source_spacecraft": ["DSCOVR"], "datasets": ["DSCOVR_H0_MAG"]}}
+
+    # RTSW from one hour before the archive end to now, speed = 500 + minute index
+    rows_t = [t_arch_end - timedelta(minutes=60) + timedelta(minutes=m) for m in range(int((now - t_arch_end).total_seconds() // 60) + 60)]
+    mag = [{"time_tag": t.strftime("%Y-%m-%dT%H:%M:%S"), "active": True, "source": "DSCOVR", "overall_quality": 0,
+            "bt": 6.0, "bx_gsm": 1.0, "by_gsm": 2.0, "bz_gsm": -5.0} for t in rows_t]
+    wind = [{"time_tag": t.strftime("%Y-%m-%dT%H:%M:%S"), "active": True, "source": "DSCOVR", "overall_quality": 0,
+             "proton_density": 5.0, "proton_speed": 500.0 + i, "proton_temperature": 1e5} for i, t in enumerate(rows_t)]
+
+    async def fake_rtsw(self):
+        return mag, wind
+
+    monkeypatch.setattr(DataDownloader, "get_archive_bundle", fake_archive)
+    monkeypatch.setattr(DataDownloader, "_fetch_rtsw", fake_rtsw)
+    out = asyncio.run(DataDownloader().get_telemetry_bundle("DSCOVR", span_days=7))
+    recs = out["records"]
+    times = [r["time_tag"] for r in recs]
+    assert times == sorted(times) and len(times) == len(set(times))
+    last_arch = arch[-1]["time_tag"]
+    head = [r for r in recs if r["time_tag"] <= last_arch]
+    assert [r["time_tag"] for r in head] == [a["time_tag"] for a in arch]
+    assert all(r["speed"] == 380.0 for r in head), [(r["time_tag"], r["speed"]) for r in head if r["speed"] != 380.0]
+    tail = [r for r in recs if r["time_tag"] > last_arch]
+    assert tail, "RTSW after the archive end is kept"
+    # First full RTSW bin after the archive: minutes 65..69 after the RTSW start (archive end + 5 min)
+    first = tail[0]
+    i0 = 60 + 5
+    assert first["time_tag"] == (t_arch_end + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    assert first["speed"] == pytest.approx(500.0 + i0 + 2.0)  # mean of 5 consecutive minutes
+    assert out["provenance"]["kind"] == "observed"
+    assert "CDAWeb DSCOVR test archive." in out["provenance"]["description"]
+    assert f"After {last_arch} UTC" in out["provenance"]["description"]

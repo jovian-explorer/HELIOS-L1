@@ -443,7 +443,11 @@ class DataDownloader:
                 arch_recs = arch["records"]
                 if arch_recs:
                     last = arch_recs[-1]["time_tag"]
-                    tail = [r for r in records if r["time_tag"] > last] if kind == "observed" else []
+                    # The last archive bin covers [last, last + 5 min): RTSW starts after it. RTSW
+                    # minutes inside it used to be averaged into the archive's last bin.
+                    tail_start = (datetime.strptime(last, "%Y-%m-%d %H:%M:%S")
+                                  + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+                    tail = [r for r in records if r["time_tag"] >= tail_start] if kind == "observed" else []
                     rt_description = description
                     records = arch_recs + tail
                     description = arch["provenance"]["description"]
