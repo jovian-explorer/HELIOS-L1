@@ -829,40 +829,42 @@ class DataDownloader:
         Events covered by OMNI (EVENT_WINDOWS) return 48 h of real OMNI data as 5-minute
         means, with the observed extremes in metadata["observed_5min"]. Otherwise (no
         OMNI data, archive unreachable, Carrington 1859, quiet baseline) an illustrative
-        synthetic profile built from the published peak values is returned, labelled so.
+        synthetic profile is returned, labelled so. For OMNI events the profile peaks below
+        are the OMNI 5-minute extremes (checked 2026-10-04); for March 1989, 1859 and the
+        quiet baseline they are illustrative inputs. peak_kp is the published maximum Kp.
         """
         descriptions = {
             "may_2024_g5": {
                 "title": "May 10-12, 2024 Extreme G5 Solar Superstorm",
-                "summary": "Strongest geomagnetic storm in over 20 years. Driven by multiple coronal mass ejections (CMEs) from Active Region 3664. Interplanetary magnetic field Bz plunged below -45 nT, speed reached ~980 km/s, and planetary Kp index pegged at 9. Aurora visible at tropical latitudes.",
+                "summary": "Strongest geomagnetic storm in over 20 years. Driven by multiple coronal mass ejections (CMEs) from Active Region 3664. In OMNI (5-min) Bz reached -44 nT and the speed about 1020 km/s; planetary Kp reached 9. Aurora visible at low latitudes.",
                 "peak_kp": 9.0,
-                "min_bz": -48.5,
-                "peak_speed": 985.0,
-                "peak_dyn_pressure": 48.0
+                "min_bz": -44.3,
+                "peak_speed": 1023.0,
+                "peak_dyn_pressure": 48.3
             },
             "st_patricks_2015": {
                 "title": "St. Patrick's Day Storm (March 17, 2015)",
-                "summary": "Classic two-step severe G4 geomagnetic storm. Sudden impulse occurred when interplanetary shock reached L1, followed by sustained southward Bz reaching -26 nT and peak solar wind speed near 720 km/s.",
-                "peak_kp": 8.0,
-                "min_bz": -26.2,
-                "peak_speed": 720.0,
-                "peak_dyn_pressure": 22.4
+                "summary": "Classic two-step severe G4 geomagnetic storm. Sudden impulse occurred when interplanetary shock reached L1, followed by sustained southward Bz (OMNI 5-min minimum -25 nT, speed up to about 630 km/s). Kp reached 8-.",
+                "peak_kp": 7.67,
+                "min_bz": -24.7,
+                "peak_speed": 631.0,
+                "peak_dyn_pressure": 24.3
             },
             "halloween_2003": {
                 "title": "Halloween Solar Storms (October 2003)",
                 "summary": "Extreme series of solar flares including an X17+ eruption from NOAA Region 486. Extreme radiation storm and multiple CMEs severely impacting satellites and power grids.",
                 "peak_kp": 9.0,
-                "min_bz": -52.0,
-                "peak_speed": 1100.0,
-                "peak_dyn_pressure": 55.0
+                "min_bz": -28.5,
+                "peak_speed": 1114.0,
+                "peak_dyn_pressure": 12.5
             },
             "bastille_2000": {
                 "title": "Bastille Day Superstorm (July 14, 2000)",
-                "summary": "Major solar eruptive event during Solar Cycle 23 maximum. An X5.7 flare accompanied a full-halo CME traveling at ~1,675 km/s. Triggered an S5 extreme solar radiation storm which blinded SOHO star trackers and degraded geostationary solar panels. Dst plunged to -301 nT.",
+                "summary": "Major solar eruptive event during Solar Cycle 23 maximum. An X5.7 flare accompanied a full-halo CME (1674 km/s in the SOHO/LASCO CDAW catalogue; about 1140 km/s at L1 in OMNI). Triggered an S5 extreme solar radiation storm which blinded SOHO star trackers and degraded geostationary solar panels. Dst plunged to -301 nT.",
                 "peak_kp": 9.0,
-                "min_bz": -58.0,
-                "peak_speed": 1675.0,
-                "peak_dyn_pressure": 62.0
+                "min_bz": -58.8,
+                "peak_speed": 1136.0,
+                "peak_dyn_pressure": 41.8
             },
             "quebec_1989": {
                 "title": "Hydro-Québec Blackout Superstorm (March 13, 1989)",

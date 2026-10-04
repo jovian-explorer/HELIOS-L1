@@ -2148,16 +2148,21 @@ async function selectEvent(eventId) {
     const obs = meta.observed_5min;
     document.getElementById('event-desc').innerText = meta.summary +
       `\n\nData: ${evProv.kind === 'observed' ? 'OBSERVED' : 'SYNTHETIC'}. ${evProv.description || ''}` +
-      (obs ? ` Observed 5-min extremes: Bz ${obs.min_bz} nT, V ${obs.peak_speed} km/s, Pdyn ${obs.peak_dyn_pressure} nPa${obs.min_sym_h !== null && obs.min_sym_h !== undefined ? `, SYM-H ${obs.min_sym_h} nT` : ''} (the cards show published values).` : '');
+      (obs ? ` The cards show the OMNI 5-min extremes of these 48 h${obs.min_sym_h !== null && obs.min_sym_h !== undefined ? ` (minimum SYM-H ${obs.min_sym_h} nT)` : ''} and the published peak Kp.`
+           : ' The cards show the values the illustrative profile was built from and the published peak Kp.');
+    // Observed OMNI extremes when the event is covered, otherwise the profile's input values
+    const ext = obs || meta;
+    const fmt = (v, unit) => (v === null || v === undefined ? `--- ${unit}` : `${v} ${unit}`);
     document.getElementById('event-peak-kp').innerText = meta.peak_kp;
-    document.getElementById('event-min-bz').innerText = `${meta.min_bz} nT`;
-    document.getElementById('event-peak-v').innerText = `${meta.peak_speed} km/s`;
-    document.getElementById('event-peak-pdyn').innerText = `${meta.peak_dyn_pressure} nPa`;
+    document.getElementById('event-min-bz').innerText = fmt(ext.min_bz, 'nT');
+    document.getElementById('event-peak-v').innerText = fmt(ext.peak_speed, 'km/s');
+    document.getElementById('event-peak-pdyn').innerText = fmt(ext.peak_dyn_pressure, 'nPa');
 
     const sevBadge = document.getElementById('event-severity-badge');
     if (sevBadge) {
-      const isExtreme = meta.peak_kp >= 9.0;
-      sevBadge.innerText = isExtreme ? `Extreme G5 (Kp=${meta.peak_kp})` : (meta.peak_kp >= 8.0 ? `Severe G4 (Kp=${meta.peak_kp})` : `Nominal (Kp=${meta.peak_kp})`);
+      // NOAA levels: G5 from Kp 9o, G4 from Kp 8- (7.67)
+      const isExtreme = meta.peak_kp >= 8.83;
+      sevBadge.innerText = isExtreme ? `Extreme G5 (Kp=${meta.peak_kp})` : (meta.peak_kp >= 7.5 ? `Severe G4 (Kp=${meta.peak_kp})` : `Nominal (Kp=${meta.peak_kp})`);
       sevBadge.className = `px-3 py-1 rounded-full text-xs font-bold ${isExtreme ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`;
     }
 
