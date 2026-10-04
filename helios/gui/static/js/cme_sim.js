@@ -20,9 +20,9 @@ class CMESimulator {
     // Physics & Kinematics State
     this.v0 = 1250; // Initial plane-of-sky velocity [km/s]
     this.vAmbient = 420; // Ambient solar wind velocity [km/s]
-    this.gamma = 1.8e-7; // Aerodynamic drag coefficient [km^-1]
+    this.gamma = 1.0e-7; // DBM drag parameter [km^-1], the server default until a result arrives
     this.rSunKm = 696340;
-    this.l1Km = 149597870.7 - 1500000;
+    this.l1Km = 149597870.7 - 1496000.0; // same L1 distance as coronagraph.py
     this.earthKm = 149597870.7;
 
     // Simulation Timeline (in hours)

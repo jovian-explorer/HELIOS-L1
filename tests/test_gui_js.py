@@ -193,3 +193,17 @@ def test_sandbox_calculator_matches_python_physics(p):
     }
     for key, (want, tol) in expected.items():
         assert js[key] == pytest.approx(want, abs=tol, rel=1e-9), key
+
+
+def test_js_constants_match_python_models():
+    """Parker spiral rotation rate and the DBM L1 distance/drag default are the same in JS and Python."""
+    from helios.core.parker_spiral import ParkerSpiralModel
+    from helios.core.coronagraph import CoronagraphAnalyzer
+    parker = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
+    cme = (APP_JS.parent / "cme_sim.js").read_text(encoding="utf-8")
+    omega = float(re.search(r"this\.omegaSun = ([\d.e+-]+);", parker).group(1))
+    assert omega == ParkerSpiralModel.OMEGA_SUN_RAD_S
+    l1 = re.search(r"this\.l1Km = ([\d.]+) - ([\d.]+);", cme)
+    assert float(l1.group(1)) - float(l1.group(2)) == pytest.approx(CoronagraphAnalyzer.L1_DIST_KM)
+    gamma = float(re.search(r"this\.gamma = ([\d.e+-]+);", cme).group(1))
+    assert gamma == 1.0e-7  # calculate_cme_kinematics default

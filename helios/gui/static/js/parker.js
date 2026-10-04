@@ -22,7 +22,7 @@ class ParkerSpiralRenderer {
 
     // Simulation Parameters
     this.speedKms = 440; // Solar wind speed [km/s]
-    this.omegaSun = 2.87e-6; // Solar sidereal rotation rate [rad/s]
+    this.omegaSun = 2.865e-6; // Solar sidereal rotation rate [rad/s], 25.38 d (same as parker_spiral.py)
     this.auKm = 149597870.7; // 1 AU in km
     this.rSunKm = 696340; // Solar radius in km
 
