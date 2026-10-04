@@ -503,3 +503,24 @@ def test_gopalswamy_2001_empirical_arrival():
     assert kin["initial_speed_kms"] == pytest.approx(1675, abs=2)  # Bastille Day preset
     assert kin["ambient_wind_kms"] == 500.0 and kin["drag_parameter_gamma"] == 0.5e-7
     assert kin["gopalswamy_2001_transit_hours"] == C.gopalswamy_2001_arrival(kin["initial_speed_kms"], 7.5 * C.R_SUN_KM)["transit_hours"]
+
+
+def test_importer_reads_its_own_exports_json_and_headers_with_units():
+    """HELIOS CSV exports ('#' metadata lines) and JSON could not be imported; 'Bz GSM (nT)' was silently ignored."""
+    import json
+    from helios.core.importer import TelemetryImporter as T
+    from helios.core.exporter import DataExporter as E
+    first = T.parse_csv_or_text(T.PRESETS["quiet_wind"]["csv_content"], "x")
+    csv_text = E.to_csv(first["records"], metadata={"title": "t", "data_kind": "imported"})
+    again = T.parse_csv_or_text(csv_text, "x")
+    assert again["total_records"] == 9 and again["summary"]["speed_mean"] == first["summary"]["speed_mean"]
+    assert again["warnings"] == []
+    assert T.parse_csv_or_text(json.dumps(first), "x")["total_records"] == 9
+    assert T.parse_csv_or_text(json.dumps(first["records"]), "x")["total_records"] == 9
+    swpc = [["time_tag", "bz_gsm", "speed"], ["2024-01-01 00:00:00", "-3", "400"]]
+    assert T.parse_csv_or_text(json.dumps(swpc), "x")["records"][0]["bz_gsm"] == -3.0
+    units = T.parse_csv_or_text("Time (UTC),Bz GSM (nT),Speed [km/s],Foo\n2024-05-10T00:00:00Z,-3,400,1\n", "x")
+    assert units["records"][0]["bz_gsm"] == -3.0 and units["records"][0]["speed"] == 400.0
+    assert any("Foo" in w for w in units["warnings"])
+    err = T.parse_csv_or_text("time,foo,bar\n2024-01-01,1,2\n", "x")["error"]
+    assert "No recognised solar wind column" in err and "bar, _t" not in err

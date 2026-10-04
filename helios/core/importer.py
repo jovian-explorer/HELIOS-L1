@@ -1,7 +1,8 @@
 """
 Custom telemetry ingestion and file import engine for HELIOS-L1.
-Supports NASA CDAWeb / OMNI ASCII formats, ISRO Aditya-L1 formats,
-historical superstorm benchmarks, and arbitrary user-uploaded CSV / JSON space weather time-series.
+Reads CSV / delimited ASCII (including OMNI YEAR DOY HR MN listings and HELIOS-L1's own
+CSV exports with their '#' metadata lines) and JSON (record lists, NOAA SWPC header-row
+products, HELIOS-L1 JSON exports), plus the bundled storm benchmark profiles.
 """
 import io
 import re
@@ -158,14 +159,41 @@ class TelemetryImporter:
         """Fetch preset by ID including raw CSV text."""
         return cls.PRESETS.get(preset_id)
 
+    @staticmethod
+    def _normalise_header(name: Any) -> str:
+        """'Bz GSM (nT)' -> 'bz_gsm', 'Speed [km/s]' -> 'speed': units in brackets dropped, separators to '_'."""
+        s = re.sub(r"[\(\[\{].*?[\)\]\}]", "", str(name)).strip().lower()
+        return re.sub(r"[^0-9a-z]+", "_", s).strip("_")
+
     @classmethod
     def _find_column(cls, df_columns: List[str], target: str) -> Optional[str]:
         target_candidates = cls.COLUMN_MAPPINGS.get(target, [target])
         col_lower_map = {c.lower().strip(): c for c in df_columns}
+        for c in df_columns:
+            col_lower_map.setdefault(cls._normalise_header(c), c)
         for candidate in target_candidates:
             if candidate in col_lower_map:
                 return col_lower_map[candidate]
         return None
+
+    @staticmethod
+    def _read_table(content: str) -> pd.DataFrame:
+        """
+        DataFrame from the uploaded text: JSON (a list of records, a list of rows with a
+        header row as in the NOAA SWPC products, or a HELIOS-L1 JSON export with 'records'),
+        or delimited text (comma, tab, semicolon or spaces). Lines starting with '#' are
+        comments, so HELIOS-L1 CSV exports with their metadata header import again.
+        """
+        text = content.lstrip("\ufeff").strip()
+        if text[:1] in ("[", "{"):
+            obj = json.loads(text)
+            if isinstance(obj, dict):
+                obj = obj.get("records", obj.get("data", []))
+            if isinstance(obj, list) and obj and isinstance(obj[0], list):
+                return pd.DataFrame(obj[1:], columns=[str(c) for c in obj[0]])
+            return pd.DataFrame(obj)
+        lines = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+        return pd.read_csv(io.StringIO("\n".join(lines)), sep=None, engine="python")
 
     # Fill-value thresholds (values at or beyond these are archive fill flags, not data).
     # OMNI uses 99999.9 km/s, 999.99 cm^-3, 9999.99 / 999.99 nT and 9999999. K; CDF
@@ -230,9 +258,9 @@ class TelemetryImporter:
           Bx is the same in both systems.
         """
         try:
-            df = pd.read_csv(io.StringIO(content), sep=None, engine="python")
+            df = cls._read_table(content)
         except Exception as e:
-            return {"error": f"Failed to parse text format: {str(e)}"}
+            return {"error": f"Could not read the file as CSV, delimited text or JSON: {str(e)}"}
 
         if df.empty or len(df.columns) < 2:
             return {"error": "Dataset must contain at least 2 columns (time and physical parameter)."}
@@ -268,6 +296,18 @@ class TelemetryImporter:
             columns[target] = vals
         if n_fill:
             warnings.append(f"{n_fill} fill / out-of-range value(s) were treated as missing.")
+        if not any(found.values()):
+            accepted = ", ".join(f"{k} ({'/'.join(v[:3])})" for k, v in cls.COLUMN_MAPPINGS.items() if k != "time_tag")
+            return {"error": f"No recognised solar wind column among: {', '.join(str(c) for c in df.columns[:12] if c != '_t')}. "
+                             f"Accepted names (case, spaces and units in brackets are ignored): {accepted}."}
+        used = {cls._find_column(df.columns, t) for t in found if found[t]} | {time_col}
+        ignored = [str(c) for c in df.columns if c not in used and c != "_t"
+                   and cls._normalise_header(c) not in ("year", "yyyy", "yr", "doy", "day", "ddd", "hr", "hour", "mn", "min", "minute",
+                                                        "mission", "data_source",
+                                                        # derived quantities, recomputed from the inputs
+                                                        "dynamic_pressure", "magnetopause_re", "akasofu_gw", "l1_travel_time_min")]
+        if ignored:
+            warnings.append(f"Column(s) not used: {', '.join(ignored[:10])}" + (" ..." if len(ignored) > 10 else "") + ".")
 
         # GSE -> GSM where the file has no GSM components of its own.
         has_gse = found["by_gse"] and found["bz_gse"]

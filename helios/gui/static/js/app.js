@@ -1696,6 +1696,11 @@ function loadSampleCSV() {
 function handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
+  if (/\.(cdf|nc|nc4|h5|hdf|hdf5|fits|fts|zip|gz)$/i.test(file.name)) {
+    alert(`${file.name} is a binary file. The importer reads CSV, delimited text and JSON: list the variables as text first (for CDAWeb data, choose the CSV or ASCII listing).`);
+    event.target.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = (e) => {
     document.getElementById('import-content').value = e.target.result;
@@ -1739,6 +1744,12 @@ async function submitCustomImport() {
     if (dash) dash.classList.remove('hidden');
 
     renderCustomIngestUI(data);
+    const warnEl = document.getElementById('import-warnings');
+    if (warnEl) {
+      const w = data.warnings || [];
+      warnEl.innerHTML = w.map(x => `<li>${escapeHtmlReport(x)}</li>`).join('');
+      warnEl.classList.toggle('hidden', w.length === 0);
+    }
     loadMissions(); // Refresh fleet list so CUSTOM shows up if active
   } catch (err) {
     alert("Ingestion error: " + err.message);
