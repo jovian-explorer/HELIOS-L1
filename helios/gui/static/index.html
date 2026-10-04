@@ -1092,8 +1092,8 @@
             <div class="font-bold text-xs text-rose-400">SOHO / LASCO C2 (L1)</div>
             <span class="text-[10px] text-slate-400">2.0 - 6.0 R☉</span>
           </div>
-          <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
-            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c2/latest.jpg" onerror="this.onerror=null; this.src='/static/img/lasco_c2_fallback.png';" alt="SOHO LASCO C2" class="w-full h-full object-cover">
+          <div class="relative aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c2/latest.jpg" onerror="this.onerror=null; this.src='/static/img/lasco_c2_fallback.png'; this.title='Placeholder drawing: the live image could not be loaded'; this.parentElement.insertAdjacentHTML('beforeend', '<span class=&quot;absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/80 text-amber-300&quot;>Placeholder drawing, live image unavailable</span>');" alt="SOHO LASCO C2" class="w-full h-full object-cover">
           </div>
           <p class="text-[11px] text-slate-400 mt-2">Inner coronagraph tracking CME inception.</p>
         </div>
@@ -1103,8 +1103,8 @@
             <div class="font-bold text-xs text-sky-400">SOHO / LASCO C3 (L1)</div>
             <span class="text-[10px] text-slate-400">3.7 - 32.0 R☉</span>
           </div>
-          <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
-            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c3/latest.jpg" onerror="this.onerror=null; this.src='/static/img/lasco_c3_fallback.png';" alt="SOHO LASCO C3" class="w-full h-full object-cover">
+          <div class="relative aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+            <img src="https://services.swpc.noaa.gov/images/animations/lasco-c3/latest.jpg" onerror="this.onerror=null; this.src='/static/img/lasco_c3_fallback.png'; this.title='Placeholder drawing: the live image could not be loaded'; this.parentElement.insertAdjacentHTML('beforeend', '<span class=&quot;absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/80 text-amber-300&quot;>Placeholder drawing, live image unavailable</span>');" alt="SOHO LASCO C3" class="w-full h-full object-cover">
           </div>
           <p class="text-[11px] text-slate-400 mt-2">Wide-angle coronagraph tracking halo CMEs towards Earth.</p>
         </div>
@@ -1114,8 +1114,8 @@
             <div class="font-bold text-xs text-amber-400">GOES / SUVI 195 Å (EUV)</div>
             <span class="text-[10px] text-slate-400">1.25 Million K Corona</span>
           </div>
-          <div class="aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
-            <img src="https://services.swpc.noaa.gov/images/animations/suvi/primary/195/latest.png" onerror="this.onerror=null; this.src='/static/img/suvi_195_fallback.png';" alt="GOES SUVI 195" class="w-full h-full object-cover">
+          <div class="relative aspect-square bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+            <img src="https://services.swpc.noaa.gov/images/animations/suvi/primary/195/latest.png" onerror="this.onerror=null; this.src='/static/img/suvi_195_fallback.png'; this.title='Placeholder drawing: the live image could not be loaded'; this.parentElement.insertAdjacentHTML('beforeend', '<span class=&quot;absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/80 text-amber-300&quot;>Placeholder drawing, live image unavailable</span>');" alt="GOES SUVI 195" class="w-full h-full object-cover">
           </div>
           <p class="text-[11px] text-slate-400 mt-2">Coronal holes & flaring active regions.</p>
         </div>
@@ -1127,17 +1127,17 @@
           <div>
             <div class="flex items-center space-x-2">
               <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-              <h3 class="font-tech font-bold text-base text-slate-100">Solar Disk EUV Spectrum & Active Region Flare Scanner</h3>
+              <h3 class="font-tech font-bold text-base text-slate-100">Active Region Map (NOAA SWPC) on a Schematic Solar Disk</h3>
             </div>
-            <p class="text-xs text-slate-400">Multi-wavelength solar corona diagnostics, coronal loops, and magnetic shear active region flare tracking.</p>
+            <p class="text-xs text-slate-400">Numbered active regions, their Mount Wilson class and SWPC flare probabilities from the latest solar region summary. The disk and corona are drawn, not imaged: the colour buttons change the drawing style only. Real images are in the panels above.</p>
           </div>
           
           <div class="flex flex-wrap items-center gap-1.5 bg-space-950/80 p-1 rounded-xl border border-slate-700/60 text-xs">
-            <button id="btn-wl-193" onclick="setSolarWavelength('193')" class="px-2.5 py-1 rounded bg-amber-600 text-white font-bold transition">AIA 193 Å</button>
-            <button id="btn-wl-304" onclick="setSolarWavelength('304')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">AIA 304 Å</button>
-            <button id="btn-wl-171" onclick="setSolarWavelength('171')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">AIA 171 Å</button>
-            <button id="btn-wl-131" onclick="setSolarWavelength('131')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">AIA 131 Å</button>
-            <button id="btn-wl-c2" onclick="setSolarWavelength('C2')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">LASCO C2</button>
+            <button id="btn-wl-193" onclick="setSolarWavelength('193')" class="px-2.5 py-1 rounded bg-amber-600 text-white font-bold transition">193 Å style</button>
+            <button id="btn-wl-304" onclick="setSolarWavelength('304')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">304 Å style</button>
+            <button id="btn-wl-171" onclick="setSolarWavelength('171')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">171 Å style</button>
+            <button id="btn-wl-131" onclick="setSolarWavelength('131')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">131 Å style</button>
+            <button id="btn-wl-c2" onclick="setSolarWavelength('C2')" class="px-2.5 py-1 rounded text-slate-300 hover:text-white transition">C2 style</button>
           </div>
         </div>
 
@@ -1153,29 +1153,29 @@
               <div class="flex items-center justify-between border-b border-slate-700/70 pb-2 mb-2">
                 <div>
                   <div id="solar-ar-id" class="font-tech font-bold text-base text-amber-400">AR 3664</div>
-                  <div id="solar-ar-name" class="text-xs text-slate-400">Carrington-Class Complex</div>
+                  <div id="solar-ar-name" class="text-xs text-slate-400">Historical example (May 2024)</div>
                 </div>
                 <span id="solar-ar-class" class="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">β-γ-δ</span>
               </div>
               
               <div class="space-y-2 text-xs">
                 <div>
-                  <span class="text-slate-400 text-[11px] block">Recent High-Energy Flare:</span>
-                  <span id="solar-ar-flare" class="font-hud font-bold text-rose-400">X8.7 (May 14, 2024)</span>
+                  <span class="text-slate-400 text-[11px] block">Flares (X-ray events):</span>
+                  <span id="solar-ar-flare" class="font-hud font-bold text-rose-400">X8.7 (14 May 2024)</span>
                 </div>
                 <div>
-                  <span class="text-slate-400 text-[11px] block">24h Flare Probability:</span>
-                  <span id="solar-ar-prob" class="font-hud text-amber-300">C: 99% • M: 85% • X: 45%</span>
+                  <span class="text-slate-400 text-[11px] block">SWPC 24 h Flare Probability:</span>
+                  <span id="solar-ar-prob" class="font-hud text-amber-300">n/a (historical example)</span>
                 </div>
                 <div>
-                  <span class="text-slate-400 text-[11px] block">Magnetic Topology:</span>
-                  <p id="solar-ar-desc" class="text-slate-300 text-[11px] leading-relaxed mt-0.5">Massive complex sunspot cluster responsible for G5 geomagnetic superstorm. Extreme magnetic shear along neutral inversion line.</p>
+                  <span class="text-slate-400 text-[11px] block">Details:</span>
+                  <p id="solar-ar-desc" class="text-slate-300 text-[11px] leading-relaxed mt-0.5">Source of the flares and CMEs behind the G5 storm of 10-11 May 2024. Position on this disk is schematic.</p>
                 </div>
               </div>
             </div>
 
             <div class="text-[10px] text-slate-500 italic pt-2 border-t border-slate-800">
-              Click any active region on the solar disk to load detailed magnetic shear telemetry.
+              <span id="solar-ar-source">Loading the NOAA SWPC solar region summary; until then historical example regions are shown at schematic positions.</span> Click a region for details.
             </div>
           </div>
         </div>

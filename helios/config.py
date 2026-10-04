@@ -370,6 +370,7 @@ NOAA_SWPC_ENDPOINTS = {
     "protons_1day": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json",
     "kp_7day": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
     "kyoto_dst": "https://services.swpc.noaa.gov/products/kyoto-dst.json",
+    "solar_regions": "https://services.swpc.noaa.gov/json/solar_regions.json",
     "alerts": "https://services.swpc.noaa.gov/products/alerts.json"
 }
 

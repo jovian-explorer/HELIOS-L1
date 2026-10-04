@@ -337,3 +337,36 @@ def test_downloads_share_one_tls_context_and_cache_raw_bytes(tmp_path):
     path = str(tmp_path / "x.json")
     assert dl._decode_and_store(body, path) == [["time_tag", "bz"], ["2026-10-01 00:00:00.000", "-3.1"]]
     assert open(path, "rb").read() == body
+
+
+def test_solar_regions_use_latest_noaa_summary(monkeypatch):
+    """The active region scanner showed a fixed 2024 catalogue with invented flare probabilities."""
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    rows = [
+        {"observed_date": "2026-10-02", "region": 4547, "latitude": 15, "longitude": -10, "location": "N15W10",
+         "area": 20, "spot_class": "Cro", "mag_class": "B", "number_spots": 3, "c_xray_events": 1,
+         "m_xray_events": 0, "x_xray_events": 0, "c_flare_probability": 10, "m_flare_probability": 1,
+         "x_flare_probability": 1, "proton_probability": 1, "carrington_longitude": 100, "first_date": "2026-09-28T00:00:00"},
+        {"observed_date": "2026-10-03", "region": 4548, "latitude": -11, "longitude": 64, "location": "S11E64",
+         "area": 30, "spot_class": "Hsx", "mag_class": "A", "number_spots": 1, "c_xray_events": 0,
+         "m_xray_events": 0, "x_xray_events": 0, "c_flare_probability": 5, "m_flare_probability": 1,
+         "x_flare_probability": 1, "proton_probability": 1, "carrington_longitude": 60, "first_date": "2026-10-02T00:00:00"},
+    ]
+
+    async def fake(self, url, cache_key):
+        return rows if cache_key == "solar_regions" else None
+    from helios.core.downloader import DataDownloader
+    monkeypatch.setattr(DataDownloader, "fetch_json", fake)
+    body = TestClient(server.app).get("/api/solar/regions").json()
+    assert body["observed_date"] == "2026-10-03" and body["kind"] == "observed"
+    assert [r["region"] for r in body["regions"]] == [4548]
+    r = body["regions"][0]
+    assert r["longitude_east"] == 64.0 and r["flare_probability_pct"] == {"C": 5, "M": 1, "X": 1}
+
+
+def test_solar_regions_offline_is_unavailable():
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    body = TestClient(server.app).get("/api/solar/regions").json()
+    assert body["kind"] == "unavailable" and body["regions"] == []

@@ -56,7 +56,8 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    * **Observed indices next to the model:** the live view plots WDC Kyoto real-time Dst (hourly, via NOAA SWPC) with the model, driven by L1 solar wind shifted to Earth and started from the observed value, and gives r, RMSE and bias. Historical events and `GET /api/storm/indices?start=&end=` use OMNI 1-min SYM-H, ASY-H, AE, AL and AU and compare both models with SYM-H.
 
 5. **Coronagraph Imagery & CME Kinematic Solver:**
-   * Direct integration with real-time feeds from **SOHO LASCO C2**, **LASCO C3**, and **SDO AIA 195/304 Å**.
+   * Direct integration with real-time feeds from **SOHO LASCO C2**, **LASCO C3**, and **GOES SUVI 195/304 Å**. If an image cannot be loaded, the panel shows a placeholder drawing and says so.
+   * Active region map: the numbered regions of the latest NOAA SWPC solar region summary (location, Mount Wilson and McIntosh class, area, flares of the day, SWPC 24 h C/M/X flare probabilities; `GET /api/solar/regions`), drawn on a schematic solar disk. The disk is a drawing in EUV or white-light colours, not an image.
    * Plane-of-sky expansion velocity calculator ($V_{cme} = \Delta r / \Delta t$) with **Gopalswamy et al. (2001)** aerodynamic drag deceleration, predicting arrival timestamps at L1 and Earth.
 
 6. **Heliospheric Parker Spiral Field Modeling:**

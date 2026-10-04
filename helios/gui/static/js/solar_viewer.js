@@ -1,11 +1,11 @@
 /**
  * HELIOS-L1: HIGH-RESOLUTION SOLAR DISK & ACTIVE REGION ANALYZER
  * Features:
- * - Multi-wavelength EUV & White-Light Coronagraph Simulation (AIA 193, 304, 171, 131, LASCO C2/C3)
+ * - Schematic disk drawn in EUV / white-light colour scales (not images; real images are in the feed panels)
  * - True Solar Limb Darkening & Coronal Loop Arcs
  * - Real-time Stonyhurst / Carrington Heliographic Coordinate Grid
- * - Active Region (AR) Scanning with Hale Magnetic Complexity (beta, beta-gamma, beta-gamma-delta)
- * - Flare Probability Predictor (C, M, X-class) and Coronal Mass Ejection Eruption Tracing
+ * - Observed active regions (NOAA SWPC solar region summary): position, Mount Wilson class, area
+ * - SWPC 24 h C/M/X flare probabilities per region
  */
 
 class SolarDiskViewer {
@@ -27,57 +27,35 @@ class SolarDiskViewer {
     this.selectedRegion = null;
     this.hoveredRegion = null;
 
-    // Benchmark Active Regions (Solar Cycle 25 Superstorm Reference Catalog)
-    this.activeRegions = [
+    // Observed active regions from the NOAA SWPC solar region summary (/api/solar/regions).
+    // Until it loads, or when it is unavailable, a few historical regions are shown and
+    // labelled as such: their disk positions are schematic, not observations.
+    this.regionSource = 'historical';
+    this.regionDate = null;
+    this.historicalRegions = [
       {
-        id: 'AR 3664',
-        name: 'Carrington-Class Complex',
-        lat: -18.5,
-        lon: -15.0, // central meridian offset
-        area: 2450,
-        hale: 'β-γ-δ (Extreme Multi-Polar)',
-        flareProb: { c: 99, m: 85, x: 45 },
-        recentFlare: 'X8.7 (May 14, 2024)',
-        cmeType: 'Fast Full Halo CME (V > 1800 km/s)',
-        summary: 'Massive complex sunspot cluster responsible for G5 geomagnetic superstorm. Extreme magnetic shear along neutral inversion line.'
+        id: 'AR 3664', name: 'Historical example (May 2024)', lat: -18.5, lon: -15.0, area: null,
+        hale: 'β-γ-δ', flareProb: null, recentFlare: 'X8.7 (14 May 2024)',
+        summary: 'Source of the flares and CMEs behind the G5 storm of 10-11 May 2024. Position on this disk is schematic.'
       },
       {
-        id: 'AR 3697',
-        name: 'Recurrent Monster Region',
-        lat: -19.2,
-        lon: 32.0,
-        area: 1850,
-        hale: 'β-γ-δ',
-        flareProb: { c: 95, m: 70, x: 30 },
-        recentFlare: 'X2.9 (May 27, 2024)',
-        cmeType: 'Partial Halo CME (V = 1450 km/s)',
-        summary: 'Return of AR 3664 after full solar rotation. Maintained strong delta spots and produced high-energy proton flux storm.'
+        id: 'AR 3697', name: 'Historical example (May-June 2024)', lat: -19.2, lon: 32.0, area: null,
+        hale: 'β-γ-δ', flareProb: null, recentFlare: null,
+        summary: 'AR 3664 returning after one solar rotation. Position on this disk is schematic.'
       },
       {
-        id: 'AR 3842',
-        name: 'Fast-Growing Dipole',
-        lat: 14.5,
-        lon: -42.0,
-        area: 980,
-        hale: 'β-γ',
-        flareProb: { c: 85, m: 50, x: 15 },
-        recentFlare: 'X7.1 (Oct 1, 2024)',
-        cmeType: 'Earth-Directed Halo CME',
-        summary: 'Northern hemisphere active region with rapid flux emergence. Strong magnetic gradient driving eruptive prominence liftoff.'
+        id: 'AR 3842', name: 'Historical example (October 2024)', lat: 14.5, lon: -42.0, area: null,
+        hale: 'β-γ', flareProb: null, recentFlare: 'X9.0 (3 Oct 2024)',
+        summary: 'Produced the X7.1 flare of 1 October and the X9.0 flare of 3 October 2024. Position on this disk is schematic.'
       },
       {
-        id: 'AR 3848',
-        name: 'Trans-Equatorial Loop Cluster',
-        lat: -12.0,
-        lon: 10.0,
-        area: 1200,
-        hale: 'β-γ-δ',
-        flareProb: { c: 90, m: 65, x: 25 },
-        recentFlare: 'X1.8 (Oct 9, 2024)',
-        cmeType: 'Direct Earth Impact Shock',
-        summary: 'Central meridian alignment with direct Earth-facing connectivity. Generated G4 severe geomagnetic storm.'
+        id: 'AR 3848', name: 'Historical example (October 2024)', lat: -12.0, lon: 10.0, area: null,
+        hale: 'β-γ-δ', flareProb: null, recentFlare: 'X1.8 (9 Oct 2024)',
+        summary: 'Its X1.8 flare and CME of 9 October 2024 drove the G4 storm of 10 October. Position on this disk is schematic.'
       }
     ];
+    this.activeRegions = this.historicalRegions;
+    this.loadObservedRegions();
 
     this.initEventListeners();
     this.resize();
@@ -96,6 +74,41 @@ class SolarDiskViewer {
     this.ctx.scale(dpr, dpr);
     this.width = rect.width;
     this.height = rect.height;
+  }
+
+  // NOAA SRS regions: longitude east of the central meridian is positive in the product,
+  // this viewer draws west (positive lon) to the right as seen from Earth.
+  async loadObservedRegions() {
+    try {
+      const res = await fetch('/api/solar/regions');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.regions || !data.regions.length) return;
+      this.regionSource = 'observed';
+      this.regionDate = data.observed_date;
+      this.activeRegions = data.regions.filter(r => Math.abs(r.longitude_east) <= 90).map(r => {
+        const p = r.flare_probability_pct || {};
+        const f = r.flares_today || {};
+        const flares = ['X', 'M', 'C'].filter(k => f[k]).map(k => `${f[k]} ${k}`).join(', ');
+        return {
+          id: `AR ${r.region}`,
+          name: `${r.location} • ${r.spot_class || 'no spot class'}`,
+          lat: r.latitude,
+          lon: -r.longitude_east,
+          area: r.area_msh,
+          hale: r.mag_class || 'n/a',
+          flareProb: (p.C !== null && p.C !== undefined) ? { c: p.C, m: p.M, x: p.X } : null,
+          recentFlare: flares ? `${flares} flare(s) on ${data.observed_date}` : `No C/M/X flares on ${data.observed_date}`,
+          summary: `NOAA SWPC region summary for ${data.observed_date}: ${r.number_spots ?? '?'} spots, area ${r.area_msh ?? '?'} μHem, Mount Wilson class ${r.mag_class || 'n/a'}, McIntosh class ${r.spot_class || 'n/a'}.` +
+            (r.proton_probability_pct !== null && r.proton_probability_pct !== undefined ? ` Proton event probability ${r.proton_probability_pct}%.` : '')
+        };
+      });
+      const note = document.getElementById('solar-ar-source');
+      if (note) note.innerText = `Regions: NOAA SWPC solar region summary for ${data.observed_date} (positions valid for that date). The disk itself is a schematic drawing, not an image.`;
+      if (this.activeRegions.length) this.updateSelectedRegionUI(this.activeRegions[0]);
+    } catch (err) {
+      // Network or server unavailable: the historical examples stay, labelled.
+    }
   }
 
   setWavelength(wl) {
@@ -158,13 +171,13 @@ class SolarDiskViewer {
     this.tooltip.innerHTML = `
       <div class="border-b border-sky-500/30 pb-1 mb-1.5 flex items-center justify-between">
         <strong class="text-amber-300 font-bold text-xs">${ar.id}: ${ar.name}</strong>
-        <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-bold">${ar.recentFlare}</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-bold">${ar.recentFlare || ''}</span>
       </div>
       <div class="text-[11px] font-mono space-y-0.5 text-slate-200">
         <div>Heliographic: <span class="text-cyan-300">${Math.abs(ar.lat)}°${ar.lat >= 0 ? 'N' : 'S'}, ${Math.abs(ar.lon)}°${ar.lon >= 0 ? 'W' : 'E'}</span></div>
         <div>Magnetic Class: <span class="text-rose-400 font-bold">${ar.hale}</span></div>
-        <div>Spot Area: <span class="text-slate-300">${ar.area} μHem</span></div>
-        <div class="text-amber-400 font-bold pt-1">Flare Risk: C: ${ar.flareProb.c}% | M: ${ar.flareProb.m}% | X: ${ar.flareProb.x}%</div>
+        <div>Spot Area: <span class="text-slate-300">${ar.area !== null && ar.area !== undefined ? ar.area + ' μHem' : 'n/a'}</span></div>
+        <div class="text-amber-400 font-bold pt-1">${ar.flareProb ? `SWPC 24 h flare probability: C ${ar.flareProb.c}% | M ${ar.flareProb.m}% | X ${ar.flareProb.x}%` : 'Historical example: no current forecast'}</div>
       </div>
     `;
 
@@ -186,8 +199,8 @@ class SolarDiskViewer {
     if (elId) elId.innerText = ar.id;
     if (elName) elName.innerText = ar.name;
     if (elClass) elClass.innerText = ar.hale;
-    if (elFlare) elFlare.innerText = ar.recentFlare;
-    if (elProb) elProb.innerText = `C: ${ar.flareProb.c}% • M: ${ar.flareProb.m}% • X: ${ar.flareProb.x}%`;
+    if (elFlare) elFlare.innerText = ar.recentFlare || 'n/a';
+    if (elProb) elProb.innerText = ar.flareProb ? `C: ${ar.flareProb.c}% • M: ${ar.flareProb.m}% • X: ${ar.flareProb.x}%` : 'n/a (historical example)';
     if (elDesc) elDesc.innerText = ar.summary;
   }
 
@@ -245,7 +258,7 @@ class SolarDiskViewer {
           mid: '#f97316',
           edge: '#dc2626',
           corona: 'rgba(220, 38, 38, 0.25)',
-          name: 'SDO / AIA 304 Å (He II 50,000 K - Chromosphere & Filaments)'
+          name: 'Schematic disk, 304 Å colours (He II ~50,000 K: chromosphere, filaments)'
         };
       case '171': // Quiet Corona (Gold / Yellow)
         return {
@@ -253,7 +266,7 @@ class SolarDiskViewer {
           mid: '#fde047',
           edge: '#eab308',
           corona: 'rgba(234, 179, 8, 0.28)',
-          name: 'SDO / AIA 171 Å (Fe IX 1,000,000 K - Coronal Loops)'
+          name: 'Schematic disk, 171 Å colours (Fe IX ~0.6 MK: quiet corona, loops)'
         };
       case '131': // Hot Flare Plasma (Teal / Cyan)
         return {
@@ -261,7 +274,7 @@ class SolarDiskViewer {
           mid: '#2dd4bf',
           edge: '#0f766e',
           corona: 'rgba(45, 212, 191, 0.25)',
-          name: 'SDO / AIA 131 Å (Fe XXI 10,000,000 K - Flaring Plasma)'
+          name: 'Schematic disk, 131 Å colours (Fe XXI ~10 MK: flaring plasma)'
         };
       case 'C2': // SOHO LASCO C2 Coronagraph (Red White-Light)
         return {
@@ -270,7 +283,7 @@ class SolarDiskViewer {
           edge: '#881337',
           corona: 'rgba(244, 63, 94, 0.35)',
           isCoronagraph: true,
-          name: 'SOHO / LASCO C2 (White Light 2.0 - 6.0 R☉)'
+          name: 'Schematic corona, LASCO C2 style (white light 2-6 R☉)'
         };
       case '193': // Coronal Holes (Bronze / Gold)
       default:
@@ -279,7 +292,7 @@ class SolarDiskViewer {
           mid: '#d97706',
           edge: '#78350f',
           corona: 'rgba(217, 119, 6, 0.28)',
-          name: 'SDO / AIA 193 Å (Fe XII 1.5M K - Coronal Holes & Solar Wind)'
+          name: 'Schematic disk, 193 Å colours (Fe XII ~1.5 MK: coronal holes)'
         };
     }
   }
@@ -471,7 +484,7 @@ class SolarDiskViewer {
 
     ctx.fillStyle = '#38bdf8';
     ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('HELIOPHYSICAL SOLAR DISK & CORONA ANALYZER', 24, 30);
+    ctx.fillText(this.regionSource === 'observed' ? `NOAA ACTIVE REGIONS ${this.regionDate} (SCHEMATIC DISK)` : 'HISTORICAL REGIONS (SCHEMATIC DISK)', 24, 30);
 
     ctx.fillStyle = '#e2e8f0';
     ctx.font = '9px "JetBrains Mono", monospace';

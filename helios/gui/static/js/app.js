@@ -3196,7 +3196,7 @@ function renderUserGuideTab(container) {
       title: '5. Solar EUV Corona, CME Kinematics & Parker Spiral Dynamics',
       icon: 'fa-sun',
       color: 'text-yellow-400',
-      summary: 'SDO AIA multi-wavelength diagnostics, interactive CME expansion ruler, and Parker spiral magnetic field connectivity.',
+      summary: 'GOES SUVI and SOHO LASCO images, NOAA active regions, CME drag-based and empirical arrival models, and Parker spiral magnetic field connectivity.',
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
@@ -3209,7 +3209,7 @@ function renderUserGuideTab(container) {
                 <li><strong class="text-amber-200">193 Å (Fe XII, 1.2 MK):</strong> Coronal holes, high-speed wind source regions.</li>
                 <li><strong class="text-red-300">304 Å (He II, 50,000 K):</strong> Chromosphere, prominences, eruptive filaments.</li>
                 <li><strong class="text-yellow-200">171 Å (Fe IX, 0.6 MK):</strong> Quiet corona, quiescent coronal magnetic loops.</li>
-                <li><strong class="text-teal-200">131 Å (Fe XX/XXIII, 10 MK):</strong> Extremely hot flaring plasma, flare arcades.</li>
+                <li><strong class="text-teal-200">131 Å (Fe VIII 0.4 MK and Fe XXI 10 MK):</strong> Extremely hot flaring plasma, flare arcades.</li>
                 <li><strong class="text-sky-300">LASCO C2:</strong> White-light occulted coronagraph (2.0 to 6.0 R_Sun).</li>
               </ul>
             </div>

@@ -717,6 +717,11 @@ async def get_geospace_coupling(
         "newell_coupling_dphi": round(newell, 1)
     }
 
+@app.get("/api/solar/regions")
+async def get_solar_regions():
+    """Observed numbered active regions (NOAA SWPC solar region summary, latest day)."""
+    return await downloader.get_solar_regions()
+
 @app.get("/api/coronagraph/feeds")
 async def get_coronagraph_feeds():
     return CoronagraphAnalyzer.get_coronagraph_feeds()

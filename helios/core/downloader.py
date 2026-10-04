@@ -612,6 +612,49 @@ class DataDownloader:
         }
 
     @staticmethod
+    def parse_solar_regions(rows: Optional[List[Any]]) -> Dict[str, Any]:
+        """
+        Numbered active regions of the latest day in the NOAA SWPC solar region summary
+        (SRS) product. Positions are heliographic and valid for the report date; NOAA
+        longitudes are positive to the east of the central meridian. Flare probabilities
+        are SWPC's 24-hour forecasts for each region.
+        """
+        rows = [r for r in (rows or []) if isinstance(r, dict) and r.get("observed_date") and r.get("region")]
+        if not rows:
+            return {"observed_date": None, "regions": []}
+        day = max(r["observed_date"] for r in rows)
+        regions = []
+        for r in rows:
+            if r["observed_date"] != day or r.get("latitude") is None or r.get("longitude") is None:
+                continue
+            regions.append({
+                "region": int(r["region"]),
+                "location": r.get("location"),
+                "latitude": float(r["latitude"]),
+                "longitude_east": float(r["longitude"]),
+                "carrington_longitude": r.get("carrington_longitude"),
+                "area_msh": r.get("area"),
+                "spot_class": r.get("spot_class"),
+                "mag_class": r.get("mag_class"),
+                "number_spots": r.get("number_spots"),
+                "flares_today": {"C": r.get("c_xray_events"), "M": r.get("m_xray_events"), "X": r.get("x_xray_events")},
+                "flare_probability_pct": {"C": r.get("c_flare_probability"), "M": r.get("m_flare_probability"),
+                                          "X": r.get("x_flare_probability")},
+                "proton_probability_pct": r.get("proton_probability"),
+                "first_date": r.get("first_date"),
+            })
+        regions.sort(key=lambda r: r["region"])
+        return {"observed_date": day, "regions": regions}
+
+    async def get_solar_regions(self) -> Dict[str, Any]:
+        """Latest NOAA SWPC solar region summary (observed active regions)."""
+        rows = await self.fetch_json(NOAA_SWPC_ENDPOINTS["solar_regions"], "solar_regions")
+        out = self.parse_solar_regions(rows if isinstance(rows, list) else None)
+        out["source"] = "NOAA SWPC solar region summary (json/solar_regions.json)"
+        out["kind"] = "observed" if out["regions"] else "unavailable"
+        return out
+
+    @staticmethod
     def parse_kyoto_dst(rows: Optional[List[Any]]) -> List[Dict[str, Any]]:
         """
         Hourly Kyoto Dst from the SWPC product, oldest first. The time stamp marks the start
