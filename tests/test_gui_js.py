@@ -141,3 +141,55 @@ console.log(JSON.stringify([
     res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
     assert res.returncode == 0, res.stderr
     assert json.loads(res.stdout) == ["Unknown theme", "kp: Input should be less than or equal to 9", "Request failed (HTTP 500)"]
+
+
+def _orbits_models() -> str:
+    """Top-level boundary functions of orbits.js (everything before the renderer class)."""
+    src = (APP_JS.parent / "orbits.js").read_text(encoding="utf-8")
+    return src[:src.index("class OrbitRenderer")]
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+@pytest.mark.parametrize("p", [
+    {"vsw": 450.0, "density": 5.0, "bt": 6.0, "bz": -4.0, "by": 2.0, "temp": 100000.0},
+    {"vsw": 380.0, "density": 4.5, "bt": 5.0, "bz": 2.5, "by": 1.0, "temp": 80000.0},
+    {"vsw": 980.0, "density": 45.0, "bt": 42.0, "bz": -28.0, "by": 16.0, "temp": 450000.0},
+    {"vsw": 750.0, "density": 2.0, "bt": 3.0, "bz": -2.0, "by": 1.0, "temp": 40000.0},
+])
+def test_sandbox_calculator_matches_python_physics(p):
+    """
+    The in-browser physics calculator (app.js computeSandboxPhysics with the orbits.js
+    boundary models) and helios/core/science.py implement the same equations twice; the
+    numbers must agree. Before, the sandbox fed the proton-only Mach number to the bow
+    shock models while the orbit view (and the panel text) used the OMNI definition.
+    """
+    from helios.core.science import SpaceWeatherPhysics as S
+    script = _orbits_models() + _extract("computeSandboxPhysics") + \
+        f"\nconsole.log(JSON.stringify(computeSandboxPhysics({json.dumps(p)})));"
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    js = json.loads(res.stdout)
+
+    v, n, b, bz, by, t = p["vsw"], p["density"], p["bt"], p["bz"], p["by"], p["temp"]
+    pdyn = S.dynamic_pressure(n, v)
+    mach = S.mach_numbers(v, b, n, t)
+    beta = S.plasma_beta(n, t, b)
+    mms_omni = S.omni_magnetosonic_mach(v, b, n, t)
+    mp_r0, mp_alpha = S.shue1998_magnetopause(pdyn, bz)
+    bs = S.chao_bow_shock(pdyn, bz, mach_number=mms_omni, plasma_beta=beta)
+    fr = S.farris_russell_bow_shock(mp_r0, mms_omni)
+    expected = {
+        "pdyn": (pdyn, 1e-9), "va": (mach["alfven_speed_kms"], 0.06), "cs": (mach["sound_speed_kms"], 0.06),
+        "ma": (mach["alfven_mach"], 0.006), "mms": (mach["magnetosonic_mach"], 0.006),
+        "beta": (beta, 1e-9), "mms_omni": (mms_omni, 1e-9),
+        "mp_r0": (mp_r0, 1e-9), "mp_alpha": (mp_alpha, 1e-9),
+        "bs_r0": (bs["standoff_r0_re"], 0.006), "bs_alpha": (bs["flaring_alpha"], 0.0006),
+        "shue97_r0": (S.shue1997_standoff(pdyn, bz), 1e-9), "fr_bs_r0": (fr["standoff_r0_re"], 0.006),
+        "akasofu_gw": (S.akasofu_epsilon(v, b, by, bz), 1e-6),
+        "dphi": (S.newell_coupling(v, by, bz), 1e-6),
+        "phi_pc": (S.polar_cap_potential(v, by, bz, b_total_nt=b)["polar_cap_potential_kv"], 0.06),
+        "ae": (S.auroral_electrojet_ae(v, by, bz)["ae_index_nt"], 0.06),
+        "ey": (S.convective_electric_field(v, bz), 0.006),
+    }
+    for key, (want, tol) in expected.items():
+        assert js[key] == pytest.approx(want, abs=tol, rel=1e-9), key

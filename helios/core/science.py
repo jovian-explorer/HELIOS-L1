@@ -343,19 +343,39 @@ class SpaceWeatherPhysics:
         M_ms = V_sw / V_ms
         """
         vsw = max(50.0, float(speed_kms if speed_kms is not None else 400.0))
-        va = SpaceWeatherPhysics.alfven_speed(b_total_nt, density_cm3)
-        cs = SpaceWeatherPhysics.sound_speed(temp_k)
+        # Unrounded wave speeds (the rounded public helpers made M_A and M_ms differ from
+        # the in-browser calculator in the second decimal)
+        b = max(0.01, float(b_total_nt if b_total_nt is not None else 5.0))
+        n = max(0.01, float(density_cm3 if density_cm3 is not None else 5.0))
+        t = max(1000.0, float(temp_k if temp_k is not None else 100000.0))
+        va = 21.812 * b / math.sqrt(n)
+        cs = 0.1174 * math.sqrt(t)
         vms = max(1.0, math.sqrt(va**2 + cs**2))
 
         ma = vsw / max(1.0, va)
         mms = vsw / vms
         return {
-            "alfven_speed_kms": va,
-            "sound_speed_kms": cs,
+            "alfven_speed_kms": round(va, 1),
+            "sound_speed_kms": round(cs, 1),
             "magnetosonic_speed_kms": round(vms, 1),
             "alfven_mach": round(float(ma), 2),
             "magnetosonic_mach": round(float(mms), 2)
         }
+
+    @staticmethod
+    def omni_magnetosonic_mach(speed_kms: Optional[float], b_total_nt: Optional[float],
+                               density_cm3: Optional[float], temp_k: Optional[float]) -> Optional[float]:
+        """
+        Magnetosonic Mach number with the OMNI definitions (alphas and electrons included):
+        V_A = 20 B / sqrt(N), C_s = 0.12 sqrt(T + 1.28e5) km/s, M_ms = V / sqrt(V_A^2 + C_s^2).
+        This is the M_ms the bow shock models use (orbits.js solarWindMachBeta). None when an
+        input is missing.
+        """
+        if not speed_kms or not b_total_nt or not density_cm3 or not temp_k or min(speed_kms, b_total_nt, density_cm3, temp_k) <= 0:
+            return None
+        va = 20.0 * b_total_nt / math.sqrt(density_cm3)
+        cs = 0.12 * math.sqrt(temp_k + 1.28e5)
+        return float(speed_kms / math.sqrt(va * va + cs * cs))
 
     @staticmethod
     def polar_cap_potential(speed_kms: float, by_gsm_nt: float, bz_gsm_nt: float,
@@ -392,8 +412,10 @@ class SpaceWeatherPhysics:
     @staticmethod
     def auroral_electrojet_ae(speed_kms: float, by_gsm_nt: float, bz_gsm_nt: float) -> Dict[str, Any]:
         """
-        Empirical Auroral Electrojet (AE in nT) proxy based on Newell universal coupling:
+        Rough auroral electrojet (AE in nT) proxy from the Newell universal coupling:
         AE ≈ 0.048 * (dPhi/dt)^0.85 + 25  [nT]
+        This scaling is HELIOS-L1's own, not a published fit (no source was found for it);
+        observed AE comes from OMNI (archive and storm indices).
         """
         dphi = SpaceWeatherPhysics.newell_coupling(speed_kms, by_gsm_nt, bz_gsm_nt)
         if dphi > 0:

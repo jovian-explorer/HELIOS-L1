@@ -3393,24 +3393,28 @@ function computeSandboxPhysics(p) {
   const cs = 0.1174 * Math.sqrt(temp);
   const vms = Math.sqrt(va * va + cs * cs);
 
-  // 3. Mach numbers
+  // 3. Mach numbers (proton wave speeds above, as /api/physics)
   const ma = vsw / Math.max(1.0, va);
   const mms = vsw / Math.max(1.0, vms);
 
-  // 4. Plasma beta (OMNI definition)
-  const beta = (temp * 4.16e-5 + 5.34) * n / (bt * bt);
+  // 4. Plasma beta and the magnetosonic Mach number with the OMNI definitions (alphas and
+  // electrons included), which the bow shock models and the orbit view use. The proton-only
+  // M_ms above is about 10-15% higher and was fed to the bow shocks before.
+  const omni = solarWindMachBeta({ speed: vsw, density: n, temperature: temp, bt: bt });
+  const beta = omni.beta;
+  const mms_omni = omni.mms;
 
   // 5. Shue et al. (1998) magnetopause and Chao et al. (2002) bow shock (orbits.js)
   const mp = shue1998Magnetopause(pdyn, bz);
   const mp_r0 = mp.r0;
   const mp_alpha = mp.alpha;
-  const bs = chaoBowShock(pdyn, bz, mms, beta);
+  const bs = chaoBowShock(pdyn, bz, mms_omni, beta);
   const bs_r0 = bs.r0;
   const bs_alpha = bs.alpha;
 
   // Shue et al. (1997) standoff (the one OMNI uses) and Farris & Russell (1994) bow shock for comparison
   const shue97_r0 = shue1997Standoff(pdyn, bz);
-  const fr_bs_r0 = mms > 1.0 ? farrisRussellBowShock(mp_r0, mms).r0 : null;
+  const fr_bs_r0 = mms_omni > 1.0 ? farrisRussellBowShock(mp_r0, mms_omni).r0 : null;
 
   // Sheath thickness
   const sheath_re = bs_r0 - mp_r0;
@@ -3436,7 +3440,7 @@ function computeSandboxPhysics(p) {
   let phi_pc = (1e-4 * Math.pow(vsw, 2)) + (11.7 * bt * Math.pow(Math.sin(theta / 2.0), 3));
   phi_pc = Math.max(15.0, Math.min(280.0, phi_pc));
 
-  // Newell AE Index proxy (nT)
+  // AE proxy (nT): rough HELIOS-L1 scaling of the Newell coupling, not a published fit
   const ae = Math.max(20.0, Math.min(2500.0, 0.048 * Math.pow(dphi, 0.85) + 25.0));
 
   // Convective electric field Ey (mV/m)
@@ -3446,7 +3450,7 @@ function computeSandboxPhysics(p) {
     vsw, n, bt, bz, by, temp,
     pdyn,
     va, cs, vms,
-    ma, mms,
+    ma, mms, mms_omni,
     beta,
     mp_r0, mp_alpha,
     bs_r0, bs_alpha,
@@ -3580,7 +3584,7 @@ function renderSandboxTab(container) {
             <div class="bg-space-950 p-3.5 rounded-xl border border-sky-500/30 space-y-1">
               <div class="text-[10px] uppercase font-bold text-cyan-400 flex items-center justify-between">
                 <span>Chao et al. (2002) Bow Shock</span>
-                <span class="text-[9px] text-slate-400 font-mono">M_ms: <strong id="sbx-mach-badge" class="text-cyan-300">${res.mms.toFixed(1)}</strong> β: <strong id="sbx-beta-badge" class="text-cyan-300">${res.beta.toFixed(2)}</strong></span>
+                <span class="text-[9px] text-slate-400 font-mono">M_ms (OMNI): <strong id="sbx-mach-badge" class="text-cyan-300">${res.mms_omni.toFixed(1)}</strong> β: <strong id="sbx-beta-badge" class="text-cyan-300">${res.beta.toFixed(2)}</strong></span>
               </div>
               <div class="flex items-baseline space-x-2">
                 <span id="sbx-chao-bs-re" class="text-xl font-bold font-hud text-cyan-300">${res.bs_r0.toFixed(2)} R_E</span>
@@ -3643,7 +3647,7 @@ function renderSandboxTab(container) {
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
               <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Auroral Electrojet &amp; E_y Field</div>
               <div class="space-y-0.5 text-[11px] font-mono text-slate-300">
-                <div>AE Proxy: <strong id="sbx-ae" class="${res.ae >= 500 ? 'text-amber-400 font-bold' : 'text-slate-200'}">${res.ae.toFixed(0)} nT</strong></div>
+                <div title="Rough HELIOS-L1 scaling of the Newell coupling, not a published fit; observed AE is in the OMNI archive data">AE Proxy (rough): <strong id="sbx-ae" class="${res.ae >= 500 ? 'text-amber-400 font-bold' : 'text-slate-200'}">${res.ae.toFixed(0)} nT</strong></div>
                 <div>E_y Convective: <strong id="sbx-ey" class="${res.ey > 0 ? 'text-rose-400' : 'text-emerald-400'}">${res.ey > 0 ? '+' : ''}${res.ey.toFixed(2)} mV/m</strong></div>
               </div>
             </div>
@@ -3701,7 +3705,7 @@ function onSandboxParamChange(param, val) {
   if (elSheath) elSheath.innerText = `${res.sheath_re.toFixed(1)} R_E`;
 
   const elMach = document.getElementById('sbx-mach-badge');
-  if (elMach) elMach.innerText = res.mms.toFixed(1);
+  if (elMach) elMach.innerText = res.mms_omni.toFixed(1);
   const elBeta = document.getElementById('sbx-beta-badge');
   if (elBeta) elBeta.innerText = res.beta.toFixed(2);
 
@@ -3798,7 +3802,7 @@ function loadSandboxFromLive() {
 function injectSandboxToOrbit() {
   if (orbitViewer) {
     const res = computeSandboxPhysics(sandboxParams);
-    orbitViewer.setSolarWindConditions(res.vsw, res.pdyn, res.bz, res.mms, res.beta);
+    orbitViewer.setSolarWindConditions(res.vsw, res.pdyn, res.bz, res.mms_omni, res.beta);
     orbitViewer.draw();
     if (orbitViewer.lastComputedBoundaries) {
       updateBoundaryCards(orbitViewer.lastComputedBoundaries);
