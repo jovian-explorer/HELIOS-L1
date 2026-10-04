@@ -127,7 +127,13 @@ def launch_desktop(
                 height=880,
                 min_size=(960, 600)
             )
-            webview.start()
+            # Keep the window's browser storage between runs (pywebview defaults to a
+            # private session, which forgot every preference and the incident log).
+            from helios.config import WEBVIEW_STORAGE_DIR
+            try:
+                webview.start(private_mode=False, storage_path=str(WEBVIEW_STORAGE_DIR))
+            except TypeError:  # pywebview without these options
+                webview.start()
             logging.info("Desktop window closed normally.")
             return
         except (Exception, BaseException) as e:

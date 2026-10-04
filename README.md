@@ -150,15 +150,15 @@ helios [--host 127.0.0.1] [--port 8765] [--headless] [--browser] [--version]
 * If the port is busy, HELIOS picks the next free one automatically.
 
 ### Where HELIOS keeps its files
-Downloaded telemetry cache and logs go in the per-user app folders:
+Downloaded telemetry cache and logs go in the per-user app folders, and your settings (`settings.json`) and the desktop window's browser storage in the config folder:
 
-| System | Cache | Logs |
-|---|---|---|
-| Windows | `%LOCALAPPDATA%\HELIOS-L1\Cache` | `%LOCALAPPDATA%\HELIOS-L1\Logs` |
-| macOS | `~/Library/Caches/HELIOS-L1` | `~/Library/Logs/HELIOS-L1` |
-| Linux | `~/.cache/HELIOS-L1` | `~/.local/state/HELIOS-L1/log` |
+| System | Cache | Logs | Settings |
+|---|---|---|---|
+| Windows | `%LOCALAPPDATA%\HELIOS-L1\Cache` | `%LOCALAPPDATA%\HELIOS-L1\Logs` | `%LOCALAPPDATA%\HELIOS-L1` |
+| macOS | `~/Library/Caches/HELIOS-L1` | `~/Library/Logs/HELIOS-L1` | `~/Library/Application Support/HELIOS-L1` |
+| Linux | `~/.cache/HELIOS-L1` | `~/.local/state/HELIOS-L1/log` | `~/.config/HELIOS-L1` |
 
-Set `HELIOS_HOME=/some/folder` to keep everything in one place instead (portable installs, tests).
+Set `HELIOS_HOME=/some/folder` to keep everything in one place instead (`cache/`, `logs/`, `config/`; portable installs, tests).
 
 ### Platform notes
 * **Windows:** the desktop window uses Microsoft Edge WebView2 (preinstalled on Windows 10/11).

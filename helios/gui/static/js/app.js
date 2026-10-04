@@ -166,6 +166,20 @@ async function initSettingsAndPreferences() {
       const data = await res.json();
       if (data.system) {
         totalCpuCores = data.system.total_cpu_cores || 8;
+        // The server keeps the saved preferences (the desktop window's storage can be private).
+        // Use them when they exist; otherwise hand this browser's preferences to the server.
+        if (data.system.saved) {
+          if (data.system.theme) setTheme(data.system.theme);
+          if (data.system.font_size) setFontSize(data.system.font_size);
+          if (data.system.timezone) setTimezone(data.system.timezone);
+          if (data.system.active_processors) onSettingsCoresChange(data.system.active_processors);
+        } else if (localStorage.getItem('helios_theme') || localStorage.getItem('helios_timezone')) {
+          fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ processors: Math.min(currentProcessors, totalCpuCores), theme: currentTheme, font_size: currentFontSize, timezone: selectedTimezone })
+          }).catch(() => {});
+        }
         const maxCoresEl = document.getElementById('detected-max-cores-label');
         if (maxCoresEl) maxCoresEl.innerText = `Detected: ${totalCpuCores} Logic Cores`;
         const slider = document.getElementById('settings-cores-slider');
@@ -452,7 +466,7 @@ async function saveAndApplySettings() {
   localStorage.setItem('helios_timezone', selectedTimezone);
 
   try {
-    await fetch('/api/settings', {
+    const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -462,6 +476,11 @@ async function saveAndApplySettings() {
         timezone: selectedTimezone
       })
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Settings not saved: ${typeof body.detail === 'string' ? body.detail : 'HTTP ' + res.status}`);
+      return;
+    }
   } catch (err) {
     console.warn('Backend settings persist error:', err);
   }

@@ -735,3 +735,33 @@ def test_spice_rest_api_endpoints():
     assert "ADITYA_L1" in orbits
     assert "PARKER_SOLAR_PROBE" in orbits
     assert orbits["ADITYA_L1"].get("spice_telemetry") is not None
+
+
+def test_settings_are_validated_and_saved(monkeypatch, tmp_path):
+    """Invalid values were stored (theme, time zone) or silently ignored (cores); nothing survived a restart."""
+    import json as _json
+    from helios import config
+    monkeypatch.setattr(config, "SETTINGS_FILE", tmp_path / "settings.json")
+    before = config.get_system_settings()
+    try:
+        assert client.post("/api/settings", json={"timezone": "Mars/Olympus"}).status_code == 422
+        assert client.post("/api/settings", json={"theme": "neon"}).status_code == 422
+        r = client.post("/api/settings", json={"processors": 10_000})
+        assert r.status_code == 422 and "logical cores" in r.json()["detail"]
+        assert config.get_system_settings()["timezone"] == before["timezone"]
+        ok = client.post("/api/settings", json={"timezone": "Europe/Oslo", "theme": "solar-amber"}).json()
+        assert ok["saved"] and _json.loads((tmp_path / "settings.json").read_text())["timezone"] == "Europe/Oslo"
+        # A restart restores them; a hand-edited invalid entry is skipped
+        (tmp_path / "settings.json").write_text(_json.dumps({"timezone": "Asia/Kolkata", "theme": "bogus"}))
+        config._apply_settings(timezone="UTC", theme="mission-slate")
+        config._load_saved_settings()
+        assert config.ACTIVE_TIMEZONE == "Asia/Kolkata" and config.ACTIVE_THEME == "mission-slate"
+    finally:
+        config._apply_settings(processors=before["active_processors"], theme=before["theme"],
+                               font_size=before["font_size"], timezone=before["timezone"])
+
+
+def test_desktop_window_keeps_its_browser_storage():
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[1] / "helios" / "gui" / "app.py").read_text(encoding="utf-8")
+    assert "private_mode=False" in src and "storage_path=" in src

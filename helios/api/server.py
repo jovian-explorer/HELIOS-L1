@@ -159,12 +159,15 @@ async def get_settings():
 
 @app.post("/api/settings")
 async def save_settings(req: SettingsUpdateRequest):
-    return update_system_settings(
-        processors=req.processors,
-        theme=req.theme,
-        font_size=req.font_size,
-        timezone=req.timezone
-    )
+    try:
+        return update_system_settings(
+            processors=req.processors,
+            theme=req.theme,
+            font_size=req.font_size,
+            timezone=req.timezone
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 @app.get("/api/missions")
 async def get_missions():

@@ -3,6 +3,7 @@ Configuration and mission catalog for HELIOS-L1.
 """
 import sys
 import os
+import json
 import tempfile
 import asyncio
 import functools
@@ -11,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, Any
 
-from platformdirs import user_cache_path, user_log_path
+from platformdirs import user_cache_path, user_config_path, user_log_path
 
 # Package resources (GUI static files, SPICE kernels). Works from a source checkout,
 # a pip install, and PyInstaller bundles (where the package is unpacked under sys._MEIPASS).
@@ -36,9 +37,16 @@ def _writable_dir(preferred: Path, fallback_name: str) -> Path:
 if os.environ.get("HELIOS_HOME"):
     CACHE_DIR = _writable_dir(Path(os.environ["HELIOS_HOME"]) / "cache", "cache")
     LOG_DIR = _writable_dir(Path(os.environ["HELIOS_HOME"]) / "logs", "logs")
+    CONFIG_DIR = _writable_dir(Path(os.environ["HELIOS_HOME"]) / "config", "config")
 else:
     CACHE_DIR = _writable_dir(user_cache_path("HELIOS-L1", appauthor=False), "cache")
     LOG_DIR = _writable_dir(user_log_path("HELIOS-L1", appauthor=False), "logs")
+    CONFIG_DIR = _writable_dir(user_config_path("HELIOS-L1", appauthor=False), "config")
+# User preferences saved by the settings dialog (the desktop window's browser storage may be
+# private, so the server keeps its own copy and restores it at start-up).
+SETTINGS_FILE = CONFIG_DIR / "settings.json"
+# Browser storage of the native window (pywebview), so preferences and the incident log persist.
+WEBVIEW_STORAGE_DIR = CONFIG_DIR / "webview"
 
 # Network & Server Settings
 DEFAULT_HOST = "127.0.0.1"
@@ -50,6 +58,8 @@ ACTIVE_PROCESSOR_CORES = max(1, min(TOTAL_CPU_CORES, 4))
 ACTIVE_THEME = "mission-slate"
 ACTIVE_FONT_SIZE = "normal"
 ACTIVE_TIMEZONE = "UTC"
+THEMES = ("mission-slate", "deep-space", "solar-amber", "high-contrast")
+FONT_SIZES = ("compact", "normal", "large")
 
 # Worker threads for CPU-heavy work (archive decoding, spectra, comparisons), sized by the
 # "processors" setting. Running it off the event loop keeps the server responsive, and
@@ -78,6 +88,68 @@ async def run_in_workers(fn, *args, **kwargs):
     return await loop.run_in_executor(get_worker_pool(), functools.partial(fn, *args, **kwargs))
 
 
+def _valid_timezone(tz: str) -> bool:
+    """IANA time zone name known to the tz database ('UTC' always). Without a tz database, accept any name."""
+    if tz == "UTC":
+        return True
+    try:
+        import zoneinfo
+        if not zoneinfo.available_timezones():
+            return True
+        zoneinfo.ZoneInfo(tz)
+        return True
+    except (ValueError, KeyError, OSError, ImportError):
+        return False
+    except Exception:  # zoneinfo.ZoneInfoNotFoundError and malformed keys
+        return False
+
+
+def _validate_settings(processors=None, theme=None, font_size=None, timezone=None) -> None:
+    """Raise ValueError naming the first invalid setting."""
+    if processors is not None and not (1 <= int(processors) <= max(1, TOTAL_CPU_CORES * 2)):
+        raise ValueError(f"processors must be between 1 and {max(1, TOTAL_CPU_CORES * 2)} (this machine has {TOTAL_CPU_CORES} logical cores).")
+    if theme is not None and theme not in THEMES:
+        raise ValueError(f"Unknown theme '{theme}'. Choose one of: {', '.join(THEMES)}.")
+    if font_size is not None and font_size not in FONT_SIZES:
+        raise ValueError(f"Unknown font size '{font_size}'. Choose one of: {', '.join(FONT_SIZES)}.")
+    if timezone is not None and not _valid_timezone(str(timezone)):
+        raise ValueError(f"Unknown time zone '{timezone}'. Use an IANA name such as 'Europe/Oslo' or 'UTC'.")
+
+
+def _apply_settings(processors=None, theme=None, font_size=None, timezone=None) -> None:
+    global ACTIVE_PROCESSOR_CORES, ACTIVE_THEME, ACTIVE_FONT_SIZE, ACTIVE_TIMEZONE
+    if processors is not None:
+        ACTIVE_PROCESSOR_CORES = int(processors)
+    if theme is not None:
+        ACTIVE_THEME = str(theme)
+    if font_size is not None:
+        ACTIVE_FONT_SIZE = str(font_size)
+    if timezone is not None:
+        ACTIVE_TIMEZONE = str(timezone)
+
+
+def _load_saved_settings() -> None:
+    """Restore saved preferences at start-up; unreadable files or invalid entries are ignored one by one."""
+    try:
+        saved = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(saved, dict):
+        return
+    for key in ("processors", "theme", "font_size", "timezone"):
+        value = saved.get(key)
+        if value is None:
+            continue
+        try:
+            _validate_settings(**{key: value})
+            _apply_settings(**{key: value})
+        except (ValueError, TypeError):
+            pass
+
+
+_load_saved_settings()
+
+
 def get_system_settings() -> Dict[str, Any]:
     """Returns current system execution and user preference configuration."""
     return {
@@ -88,20 +160,26 @@ def get_system_settings() -> Dict[str, Any]:
         "font_size": ACTIVE_FONT_SIZE,
         "timezone": ACTIVE_TIMEZONE,
         "python_version": sys.version.split()[0],
-        "platform": sys.platform
+        "platform": sys.platform,
+        "saved": SETTINGS_FILE.exists(),
+        "settings_file": str(SETTINGS_FILE)
     }
 
 def update_system_settings(processors: int = None, theme: str = None, font_size: str = None, timezone: str = None) -> Dict[str, Any]:
-    """Updates runtime system settings."""
-    global ACTIVE_PROCESSOR_CORES, ACTIVE_THEME, ACTIVE_FONT_SIZE, ACTIVE_TIMEZONE
-    if processors is not None and 1 <= processors <= max(1, TOTAL_CPU_CORES * 2):
-        ACTIVE_PROCESSOR_CORES = int(processors)
-    if theme is not None:
-        ACTIVE_THEME = str(theme)
-    if font_size is not None:
-        ACTIVE_FONT_SIZE = str(font_size)
-    if timezone is not None:
-        ACTIVE_TIMEZONE = str(timezone)
+    """
+    Validate, apply and save settings. Raises ValueError for an invalid value (nothing is
+    changed then); an out-of-range core count used to be ignored silently.
+    """
+    _validate_settings(processors, theme, font_size, timezone)
+    _apply_settings(processors, theme, font_size, timezone)
+    data = {"processors": ACTIVE_PROCESSOR_CORES, "theme": ACTIVE_THEME,
+            "font_size": ACTIVE_FONT_SIZE, "timezone": ACTIVE_TIMEZONE}
+    try:
+        tmp = SETTINGS_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        os.replace(tmp, SETTINGS_FILE)
+    except OSError:
+        pass  # read-only profile: the settings still apply for this session
     return get_system_settings()
 
 # Comprehensive Space Weather Missions Metadata
