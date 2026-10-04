@@ -73,7 +73,8 @@ class GICHazardModel:
         r_loop = max(0.2, transformer_neutral_resistance_ohms + 1.2)
         neutral_gic_amperes = induced_voltage_volts / r_loop
 
-        # Risk classification (NERC Space Weather Reliability Standard TPL-007)
+        # Risk categories (HELIOS-L1's own bands, not from a standard; NERC TPL-007 uses an
+        # 8 V/km benchmark event at 60 deg geomagnetic latitude)
         if e_field_v_per_km >= 5.0:
             hazard_level = "CRITICAL (Carrington / Quebec 1989 Scale)"
             grid_impact = "Widespread transformer half-cycle saturation, voltage collapse, and relay tripping imminent."
@@ -102,9 +103,15 @@ class GICHazardModel:
             "hazard_classification": hazard_level,
             "grid_impact_assessment": grid_impact,
             "status_color": color,
+            "assumptions": [
+                f"Uniform half-space of {rho:g} ohm m and a single geomagnetic period of {t_period_s:g} s (plane wave).",
+                "Loop resistance = neutral resistance + 1.2 ohm (assumed line and winding resistance).",
+                "Hazard bands (0.5 / 2 / 5 V/km) are HELIOS-L1 categories, not a standard.",
+            ],
             "benchmarks": {
-                "hydro_quebec_1989": "4.8 V/km (Caused 9-hour province-wide blackout)",
-                "halloween_2003_malmo": "3.5 V/km (Tripped Malmo Sweden 130 kV grid)",
-                "carrington_1859_proxy": "> 10.0 V/km (Historical baseline superstorm)"
+                "hydro_quebec_1989": "No single measured field value; 9-hour province-wide blackout",
+                "halloween_2003_malmo": "About 2 V/km at 20:04 UT on 30 October 2003 (Wik et al. 2009, Ann. Geophys. 27, 1775); 130 kV line tripped",
+                "sweden_july_1982": "4-5 V/km near Stockholm (Wik et al. 2009); railway signals disturbed",
+                "nerc_tpl_007": "8 V/km benchmark event at 60 deg geomagnetic latitude"
             }
         }
