@@ -524,3 +524,26 @@ def test_importer_reads_its_own_exports_json_and_headers_with_units():
     assert any("Foo" in w for w in units["warnings"])
     err = T.parse_csv_or_text("time,foo,bar\n2024-01-01,1,2\n", "x")["error"]
     assert "No recognised solar wind column" in err and "bar, _t" not in err
+
+
+def test_cme_presets_match_cdaw_catalogue_speeds():
+    """
+    The CME presets give the SOHO/LASCO linear speeds of the CDAW CME catalogue
+    (cdaw.gsfc.nasa.gov/CME_list): 2024-05-09 09:24 halo 1280 km/s, 2003-10-28 11:30
+    halo 2459 km/s, 2000-07-14 10:54 halo 1674 km/s. The May 2024 and Halloween buttons
+    said ~1800 and ~2150 km/s. Each button's heights and dt must give its label.
+    """
+    import re
+    from pathlib import Path
+    from helios.core.coronagraph import CoronagraphAnalyzer
+    html = (Path(__file__).parent.parent / "helios" / "gui" / "static" / "index.html").read_text(encoding="utf-8")
+    presets = re.findall(r"setCMEPreset\(([\d.]+), ([\d.]+), ([\d.]+), '[^']*'\)[^>]*>\s*([^<]+?)\s*</button>", html)
+    labels = {}
+    for r1, r2, dt, label in presets:
+        v = CoronagraphAnalyzer.calculate_cme_kinematics(float(r1), float(r2), float(dt))["initial_speed_kms"]
+        labels[label.split(" (")[0]] = v
+        stated = float(re.search(r"\(~?(\d+) km/s", label).group(1))
+        assert v == pytest.approx(stated, abs=1.0 if "~" not in label else 30.0), label
+    assert labels["May 2024"] == pytest.approx(1280.0, abs=1.0)
+    assert labels["Halloween 2003"] == pytest.approx(2459.0, abs=1.0)
+    assert labels["Bastille Day"] == pytest.approx(1674.0, abs=1.0)

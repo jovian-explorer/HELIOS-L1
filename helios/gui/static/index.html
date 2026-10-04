@@ -1185,23 +1185,23 @@
         <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
           <div>
             <h3 class="font-bold text-sm text-slate-200">CME Plane-of-Sky Kinematic Solver &amp; Aerodynamic Shock Simulator</h3>
-            <p class="text-xs text-slate-400">Plane-of-sky speed from two heights, then transit to L1 and Earth with the Vršnak et al. (2013) drag-based model, compared with the Gopalswamy et al. (2001) empirical arrival model. Presets set heights and Δt that give the approximate speed on the button.</p>
+            <p class="text-xs text-slate-400">Plane-of-sky speed from two heights, then transit to L1 and Earth with the Vršnak et al. (2013) drag-based model, compared with the Gopalswamy et al. (2001) empirical arrival model. Presets set heights and Δt that give the speed on the button: the SOHO/LASCO linear speed from the CDAW CME catalogue for the 2000, 2003 and 2024 events; Carrington and Nominal are illustrative.</p>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
             <span class="text-[10px] uppercase font-bold text-slate-400 font-mono mr-1">CME Benchmark Presets:</span>
-            <button onclick="setCMEPreset(2.5, 9.8, 47.1, 'May 2024 Extreme Superstorm (AR 3664)')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition shadow-sm">
-              May 2024 (~1800 km/s)
+            <button onclick="setCMEPreset(2.5, 9.8, 66.19, 'May 2024 Extreme Superstorm (AR 3664)')" title="CDAW catalogue: halo CME 2024-05-09 09:24 UT, linear speed 1280 km/s, the fastest of the 8-9 May CMEs that merged before reaching Earth on 10 May" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition shadow-sm">
+              May 2024 (1280 km/s)
             </button>
-            <button onclick="setCMEPreset(2.2, 8.5, 34.0, 'Halloween 2003 Storms (AR 10486)')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition shadow-sm">
-              Halloween 2003 (~2150 km/s)
+            <button onclick="setCMEPreset(2.2, 8.5, 29.734, 'Halloween 2003 Storms (AR 10486)')" title="CDAW catalogue: halo CME 2003-10-28 11:30 UT, linear speed 2459 km/s (the 2003-10-29 20:54 UT halo had 2029 km/s)" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition shadow-sm">
+              Halloween 2003 (2459 km/s)
             </button>
-            <button onclick="setCMEPreset(2.0, 7.5, 38.1, 'Bastille Day 2000 CME')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition shadow-sm">
-              Bastille Day (~1675 km/s)
+            <button onclick="setCMEPreset(2.0, 7.5, 38.13, 'Bastille Day 2000 CME')" title="CDAW catalogue: halo CME 2000-07-14 10:54 UT, linear speed 1674 km/s" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition shadow-sm">
+              Bastille Day (1674 km/s)
             </button>
-            <button onclick="setCMEPreset(2.0, 11.5, 47.9, 'Carrington 1859 Event')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-purple-300 border border-purple-500/40 text-[11px] font-semibold transition shadow-sm">
-              Carrington 1859 (~2300 km/s)
+            <button onclick="setCMEPreset(2.0, 11.5, 47.9, 'Carrington 1859 Event')" title="Illustrative: there are no coronagraph data for 1859; the CME took about 17.6 h to reach Earth, a mean speed near 2360 km/s" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-purple-300 border border-purple-500/40 text-[11px] font-semibold transition shadow-sm">
+              Carrington 1859 (~2300 km/s, illustrative)
             </button>
-            <button onclick="setCMEPreset(2.0, 4.2, 39.3, 'Nominal Coronal Transient')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.0, 4.2, 39.3, 'Nominal Coronal Transient')" title="Illustrative moderate CME" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px] font-semibold transition shadow-sm">
               Nominal (~650 km/s)
             </button>
           </div>
