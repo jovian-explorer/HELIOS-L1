@@ -109,10 +109,14 @@ class AuroralMapRenderer {
     });
   }
 
-  setConditions(kp, bz, power, eqMidnightLat, ovalBoundaries) {
-    this.kpIndex = Math.max(0, Math.min(9, kp || 3.5));
+  setConditions(kp, bz, power, eqMidnightLat, ovalBoundaries, alUsed, mapTimeUtc) {
+    // kp / power are null when the oval comes from OMNI AL for a past time (no Kp used)
+    this.kpIndex = (kp === null || kp === undefined) ? null : Math.max(0, Math.min(9, kp));
     this.imfBz = bz || 0;
-    this.hemisphericPower = power || 35;
+    this.hemisphericPower = (power === null || power === undefined) ? null : power;
+    this.alUsed = (alUsed === null || alUsed === undefined) ? null : Number(alUsed);
+    // Terminator, subsolar point and MLT follow the oval time when a past time was chosen
+    this.mapTime = mapTimeUtc ? new Date(String(mapTimeUtc).replace(' ', 'T') + 'Z') : null;
     // Equatorward midnight boundary from the server model, so the map label matches the card
     this.eqMidnightLat = (eqMidnightLat !== undefined && eqMidnightLat !== null) ? Number(eqMidnightLat) : null;
     this.ovalBoundaries = (ovalBoundaries && ovalBoundaries.north) ? ovalBoundaries : null;
@@ -134,7 +138,7 @@ class AuroralMapRenderer {
 
   // Calculate Sun subsolar coordinates for current UTC time
   getSubsolarPoint() {
-    const now = new Date();
+    const now = this.mapTime || new Date();
     const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
     
     // Subsolar longitude: noon (12:00 UTC) corresponds to 0° longitude
@@ -191,7 +195,7 @@ class AuroralMapRenderer {
       }
     }
     const pole = isNorth ? this.magPoleNorth : this.magPoleSouth;
-    const kp = this.kpIndex;
+    const kp = this.kpIndex ?? 3.5;
     const bzTerm = this.imfBz < 0 ? Math.abs(this.imfBz) * 0.45 : 0;
     
     // Equatorward expansion driven by Kp and southward Bz
@@ -598,9 +602,12 @@ class AuroralMapRenderer {
     ctx.font = '9px "JetBrains Mono", monospace';
     const eqMid = this.eqMidnightLat !== null && this.eqMidnightLat !== undefined
       ? this.eqMidnightLat
-      : Math.max(38.0, 66.5 - 2.1 * this.kpIndex - Math.abs(Math.min(0, this.imfBz)) * 0.45);
+      : Math.max(38.0, 66.5 - 2.1 * (this.kpIndex ?? 3.5) - Math.abs(Math.min(0, this.imfBz)) * 0.45);
     ctx.fillText(`EQUATORWARD MIDNIGHT: ${eqMid.toFixed(1)}° CGM LAT`, 18, 40);
-    ctx.fillText(`KP: ${this.kpIndex.toFixed(1)} • IMF BZ: ${this.imfBz.toFixed(1)} nT • HPI: ${this.hemisphericPower} GW`, 18, 54);
+    const kpText = this.kpIndex === null ? 'n/a' : this.kpIndex.toFixed(1);
+    const alText = this.alUsed === null || this.alUsed === undefined ? '' : `|AL| ${this.alUsed.toFixed(0)} nT • `;
+    ctx.fillText(`${alText}KP: ${kpText} • HPI: ${this.hemisphericPower === null ? 'n/a' : this.hemisphericPower + ' GW'}` +
+      (this.mapTime ? ` • ${this.mapTime.toISOString().slice(0, 16).replace('T', ' ')} UTC` : ` • IMF BZ: ${this.imfBz.toFixed(1)} nT`), 18, 54);
 
     // Bottom-Right Mouse Geo Readout
     if (this.mouseGeo) {
