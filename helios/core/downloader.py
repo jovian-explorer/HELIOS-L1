@@ -501,10 +501,6 @@ class DataDownloader:
 
         return {"records": records, "provenance": self._provenance(kind, description, sources, records, **extra)}
 
-    async def get_dscovr_realtime_data(self, span_days: int = 1) -> List[Dict[str, Any]]:
-        """Operational L1 solar wind records (see get_telemetry_bundle for provenance)."""
-        return (await self.get_telemetry_bundle("DSCOVR", span_days))["records"]
-
     async def get_satellite_telemetry(self, mission_id: str, span_days: int = 1) -> List[Dict[str, Any]]:
         """Telemetry records for any satellite in the catalog (see get_telemetry_bundle)."""
         return (await self.get_telemetry_bundle(mission_id, span_days))["records"]

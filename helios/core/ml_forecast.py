@@ -80,7 +80,6 @@ class SpaceWeatherForecaster:
     @staticmethod
     def forecast_geomagnetic_storm(
         telemetry_records: List[Dict[str, Any]],
-        prediction_horizons_hours: List[int] = [1, 3, 6, 12],
         observed_dst: Optional[float] = None,
         noaa_forecast: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:

@@ -81,4 +81,5 @@
 - Export endpoints reject unknown missions and spans outside 1–7 days.
 - CI and release workflows use the Node 24 versions of their actions (checkout v7, setup-python v7, upload-artifact v7, download-artifact v8, action-gh-release v3); the Node 20 runtime is deprecated on GitHub runners.
 - Tests: the drag-based CME model's closed-form transit times and arrival speeds are checked against an RK4 integration of the same equation (fast, very fast and accelerating slow CMEs), and the Gopalswamy et al. (2001) arrival against a stepwise integration.
+- Dead code removed: unused imports in the API server, an unused `CONSTANTS` table in the configuration (its values duplicated the physics modules), unused orbit constants, an unused archive mission tuple, a DSCOVR wrapper nothing called, and a forecast parameter (`prediction_horizons_hours`) that was accepted but ignored.
 - The test suite runs offline against a temporary `HELIOS_HOME` and no longer touches the user's cache folder.

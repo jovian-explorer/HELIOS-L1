@@ -77,8 +77,7 @@ class ParkerSpiralModel:
                     "y_au": round(y, 4)
                 })
 
-            # Check if this line is connected near Earth (at x=1.0, y=0.0)
-            end_pt = points[-1]
+            # Line 0 starts at phi_0 = 0 (the reference streamline drawn through Earth)
             connected_to_earth = (stream_idx == 0)
 
             streamlines.append({

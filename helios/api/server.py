@@ -4,10 +4,10 @@ Bridges scientific backend engines with interactive frontend dashboard.
 """
 from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel
-from fastapi import FastAPI, Query, HTTPException, Response, Body
+from fastapi import FastAPI, Query, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 import logging
 import os
 import io

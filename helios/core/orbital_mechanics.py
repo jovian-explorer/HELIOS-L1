@@ -16,8 +16,6 @@ class OrbitalMechanics:
     """Computes coordinates and halo orbit paths in GSE/rotating reference frame."""
 
     AU_KM = 149597870.7
-    L1_OFFSET_KM = 1496000.0  # ~1.5 million km from Earth towards Sun
-    EARTH_GEO_KM = 42164.0
 
     @classmethod
     def get_lagrange_points(cls) -> Dict[str, Dict[str, Any]]:

@@ -231,8 +231,6 @@ ARCHIVE_SOURCES: Dict[str, Dict[str, Any]] = {
     },
 }
 
-ARCHIVE_MISSIONS = tuple(ARCHIVE_SOURCES)
-
 
 def hapi_data_url(ds_id: str, parameters: List[str], start: datetime, stop: datetime) -> str:
     query = urlencode({

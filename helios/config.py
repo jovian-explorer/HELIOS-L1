@@ -456,16 +456,6 @@ NOAA_SWPC_ENDPOINTS = {
     "alerts": "https://services.swpc.noaa.gov/products/alerts.json"
 }
 
-# Physical Constants for Space Weather
-CONSTANTS = {
-    "AU_KM": 149597870.7,
-    "L1_DISTANCE_KM": 1496000.0,
-    "PROTON_MASS_KG": 1.67262192369e-27,
-    "BOLTZMANN_K": 1.380649e-23,
-    "MU_0": 1.25663706212e-6,
-    "EARTH_RADIUS_KM": 6371.0
-}
-
 # Global Data Repositories, Observatories & Open Data Licenses
 DATA_PROVIDERS: Dict[str, Dict[str, Any]] = {
     "NOAA_SWPC": {
