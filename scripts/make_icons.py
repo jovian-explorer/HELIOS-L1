@@ -7,7 +7,7 @@ Pure geometric elegance:
 - Emerald/cyan 3D Halo Orbit ellipse centered at Lagrange Point L1
 - High-precision geometric space observatory satellite with dual solar wings & magnetometer
 - Clean outer bezel ring in aerospace gold and cyan
-- Completely free of AI noise, clutter, or messy lines.
+- Drawn entirely from geometric primitives: no noise, clutter or stray lines.
 """
 import math
 from pathlib import Path
