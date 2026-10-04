@@ -1632,7 +1632,7 @@ async function loadCustomPresets() {
     const grid = document.getElementById('import-presets-grid');
     if (grid && presets.length > 0) {
       grid.innerHTML = presets.map(p => `
-        <button onclick="loadCustomPreset('${p.id}')" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-slate-700/60 hover:border-sky-500/60 text-left transition group">
+        <button onclick="loadCustomPreset('${p.id}')" title="${p.note || ''}" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-slate-700/60 hover:border-sky-500/60 text-left transition group">
           <div class="flex items-center justify-between text-[10px] font-mono mb-1">
             <span class="font-bold text-sky-400">${p.tag || 'DATASET'}</span>
             <span class="text-slate-500">${p.records_count || ''} pts</span>
@@ -1671,7 +1671,7 @@ async function loadCustomPreset(presetId) {
     const data = await res.json();
     const preset = data.preset;
     if (preset) {
-      document.getElementById('import-mission-name').value = preset.name;
+      document.getElementById('import-mission-name').value = `${preset.name} (illustrative profile)`;
       document.getElementById('import-content').value = preset.csv_content;
       await submitCustomImport();
     }

@@ -370,3 +370,11 @@ def test_solar_regions_offline_is_unavailable():
     from helios.api import server
     body = TestClient(server.app).get("/api/solar/regions").json()
     assert body["kind"] == "unavailable" and body["regions"] == []
+
+
+def test_import_presets_are_labelled_illustrative():
+    """The preset tables are hand-written, but were labelled 'DSCOVR / NASA OMNI-HRO', 'ACE SWEPAM / MAG'..."""
+    from helios.core.importer import TelemetryImporter
+    for p in TelemetryImporter.get_presets_list():
+        assert p["data_kind"] == "synthetic" and p["satellite"].startswith("Illustrative profile")
+        assert "not measured" in p["note"] or "no in-situ" in p["note"]

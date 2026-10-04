@@ -39,7 +39,7 @@ class TelemetryImporter:
             "name": "May 10-11, 2024 G5 Superstorm",
             "tag": "G5 EXTREME",
             "badge_color": "rose",
-            "satellite": "DSCOVR / NASA OMNI-HRO",
+            "satellite": "Illustrative profile (hourly values written for this preset, not DSCOVR or OMNI measurements)",
             "description": "Historic G5 extreme storm. Fast interplanetary shock arrival jumping bulk velocity from 420 to 860 km/s, prolonged southward Bz reaching -48 nT, dynamic pressure spike above 45 nPa.",
             "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
 2024-05-10 12:00:00,412.3,4.8,2.1,3.4,-1.2,4.4
@@ -64,7 +64,7 @@ class TelemetryImporter:
             "name": "July 14-15, 2000 Bastille Day CME",
             "tag": "G5 SUPERSTORM",
             "badge_color": "amber",
-            "satellite": "ACE SWEPAM / MAG",
+            "satellite": "Illustrative profile (not ACE SWEPAM / MAG measurements)",
             "description": "Halo CME driven by X5.7 flare. Interplanetary shock front exceeding 1050 km/s with density peak over 50 cm^-3 and sustained southward Bz driving Dst to -301 nT.",
             "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
 2000-07-15 12:00:00,480.0,6.5,2.0,3.0,-2.0,4.2
@@ -85,7 +85,7 @@ class TelemetryImporter:
             "name": "September 1859 Carrington Event",
             "tag": "EXTREME BENCHMARK",
             "badge_color": "purple",
-            "satellite": "Synthetic Benchmark Model (Cliver 2013)",
+            "satellite": "Illustrative profile (no in-situ data exist for 1859)",
             "description": "The archetypal benchmark space weather catastrophe. Extreme velocity ~2300 km/s, transiting Sun to Earth in 17.6 hours, Bz ~ -65 nT, compressing the dayside magnetopause inside 4.5 Earth radii.",
             "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
 1859-09-02 00:00:00,430.0,5.0,2.0,3.0,1.0,3.7
@@ -105,7 +105,7 @@ class TelemetryImporter:
             "name": "October 2003 Halloween Storm",
             "tag": "G5 FAST CME",
             "badge_color": "sky",
-            "satellite": "ACE SWEPAM / SOHO CELIAS",
+            "satellite": "Illustrative profile (not ACE SWEPAM or SOHO CELIAS measurements)",
             "description": "Fast CME originating from Active Region 10486. Interplanetary shock speed exceeded 1700 km/s, driving intense auroras visible in Florida and Australia, causing polar airline reroutes.",
             "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
 2003-10-29 02:00:00,520.0,8.2,3.1,4.5,-2.0,5.7
@@ -124,7 +124,7 @@ class TelemetryImporter:
             "name": "Quiet Solar Wind Baseline",
             "tag": "G0 NOMINAL",
             "badge_color": "emerald",
-            "satellite": "DSCOVR Nominal Stream",
+            "satellite": "Illustrative profile (not DSCOVR measurements)",
             "description": "Nominal quiet heliospheric conditions. Bulk solar wind speed ~350-365 km/s, positive (northward) Bz, dynamic pressure ~1.2 nPa, magnetopause extended beyond 11 Earth radii.",
             "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
 2026-09-21 00:00:00,352.1,4.2,2.5,1.8,2.1,3.7
@@ -139,6 +139,13 @@ class TelemetryImporter:
         }
     }
 
+    # The preset tables are hand-written illustrative profiles of famous storms (shapes and
+    # peak values in the published range), not measured data. Measured OMNI data for the
+    # 2000, 2003 and 2024 events are available from the Archive Interval loader and the
+    # historical event viewer.
+    PRESET_NOTE = ("Illustrative profile for testing the import pipeline, not measured data. "
+                   "Measured OMNI data for this interval can be loaded with the dashboard's Archive Interval (NASA CDAWeb) option.")
+
     @classmethod
     def get_presets_list(cls) -> List[Dict[str, Any]]:
         """Returns metadata list of all available telemetry presets."""
@@ -150,7 +157,9 @@ class TelemetryImporter:
                 "tag": p["tag"],
                 "badge_color": p["badge_color"],
                 "satellite": p["satellite"],
-                "description": p["description"]
+                "description": p["description"],
+                "data_kind": "synthetic",
+                "note": cls.PRESET_NOTE if p["id"] != "carrington_1859" else "Illustrative profile; no in-situ data exist for 1859."
             })
         return presets
 
