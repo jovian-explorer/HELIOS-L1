@@ -27,7 +27,8 @@ from helios.config import (
 )
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
-from helios.core.event_analysis import EVENT_SOURCES, MAX_EVENT_HOURS, analyze_shock, minimum_variance
+from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SHOCK_METHODS, analyze_shock,
+                                        minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
@@ -548,23 +549,9 @@ def _analysis_answer(body: Dict[str, Any], download: bool, name: str):
         "Content-Disposition": f"attachment; filename={name}.json"})
 
 
-@app.get("/api/analysis/shock")
-async def analyse_shock(
-    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
-    time: str = Query(..., description="Approximate UTC shock time, ISO 8601"),
-    upstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
-    downstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
-    exclude_minutes: float = Query(1.0, ge=0.0, le=15.0, description="Gap left out on each side of the shock"),
-    refine: bool = Query(True, description="Move the shock time to the largest |B| jump within 10 minutes"),
-    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
-):
-    """
-    Shock normal (MC, VC, MX1-3), theta_Bn, shock speed, jumps and Mach numbers from WIND,
-    ACE or DSCOVR data at the instruments' cadence (Schwartz 1998; CfA shock database
-    conventions).
-    """
-    key = _event_mission(mission)
-    tc = _parse_utc(time, "time")
+async def _run_shock(key: str, tc: datetime, upstream_minutes: float, downstream_minutes: float,
+                     exclude_minutes: float, refine: bool):
+    """Fetch native-cadence data around tc and analyse the shock: (data, result, t0, t1)."""
     margin = 12.0  # minutes of context, and room for the refined shock time
     t0 = tc - timedelta(minutes=upstream_minutes + exclude_minutes + margin)
     t1 = tc + timedelta(minutes=downstream_minutes + exclude_minutes + margin)
@@ -579,12 +566,103 @@ async def analyse_shock(
                                       downstream_minutes, exclude_minutes, refine)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+    return data, result, t0, t1
+
+
+SHOCK_METHOD_TEXT = "Interplanetary shock normals (MC, VC, MX1-3) and mass flux shock speed, Schwartz (1998)"
+
+
+@app.get("/api/analysis/shock")
+async def analyse_shock(
+    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    time: str = Query(..., description="Approximate UTC shock time, ISO 8601"),
+    upstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
+    downstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
+    exclude_minutes: float = Query(1.0, ge=0.0, le=15.0, description="Gap left out on each side of the shock"),
+    refine: bool = Query(True, description="Move the shock time to the |B| ramp within 10 minutes"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Shock normal (MC, VC, MX1-3), theta_Bn, shock speed, jumps and Mach numbers from WIND,
+    ACE or DSCOVR data at the instruments' cadence (Schwartz 1998; CfA shock database
+    conventions).
+    """
+    key = _event_mission(mission)
+    tc = _parse_utc(time, "time")
+    data, result, t0, t1 = await _run_shock(key, tc, upstream_minutes, downstream_minutes, exclude_minutes, refine)
     params = {"time": tc.strftime("%Y-%m-%d %H:%M:%S"), "upstream_minutes": upstream_minutes,
               "downstream_minutes": downstream_minutes, "exclude_minutes": exclude_minutes, "refine": refine}
-    prov = _analysis_provenance(key, data, t0, t1, "Interplanetary shock normals (MC, VC, MX1-3) and mass flux "
-                                "shock speed, Schwartz (1998)", params)
+    prov = _analysis_provenance(key, data, t0, t1, SHOCK_METHOD_TEXT, params)
     body = {"provenance": prov, "result": result, "series": _event_series(data["field"], data["plasma"])}
     return _analysis_answer(body, download, f"HELIOS_shock_{key}_{tc:%Y%m%dT%H%M}")
+
+
+@app.get("/api/analysis/timing")
+async def analyse_timing(
+    reference: str = Query("WIND", description="Spacecraft whose shock normal and speed are used"),
+    time: str = Query(..., description="Approximate UTC shock time at the reference spacecraft"),
+    targets: str = Query("ACE,DSCOVR,WIND", description="Comma-separated spacecraft to check"),
+    method: str = Query("MX3", description="Normal used for the prediction (MC, VC, MX1, MX2, MX3)"),
+    upstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
+    downstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
+    exclude_minutes: float = Query(1.0, ge=0.0, le=15.0),
+    search_minutes: float = Query(20.0, ge=2.0, le=60.0, description="Search for the observed jump around the prediction"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Multi-spacecraft timing: the shock normal and speed at the reference spacecraft predict
+    the arrival at the others from their measured positions (t = t_ref + n . dr / V_sh); the
+    observed arrival (|B| ramp near the prediction), the residual and the implied speed along
+    n test whether the shock is planar over the baseline.
+    """
+    key = _event_mission(reference)
+    method = method.upper()
+    if method not in SHOCK_METHODS:
+        raise HTTPException(status_code=422, detail=f"'method' must be one of {', '.join(SHOCK_METHODS)}.")
+    tc = _parse_utc(time, "time")
+    data, result, t0, t1 = await _run_shock(key, tc, upstream_minutes, downstream_minutes, exclude_minutes, True)
+    if method not in result["methods"]:
+        raise HTTPException(status_code=422, detail=f"The {method} normal is undefined for this shock.")
+    t_ref = pd.Timestamp(result["shock_time"], tz="UTC")
+    r_ref = position_at(data["position"], t_ref)
+    if r_ref is None:
+        raise HTTPException(status_code=422, detail=f"No {key} position near the shock time.")
+    m = result["methods"][method]
+
+    names = [s.strip().upper() for s in targets.split(",") if s.strip()]
+    names = [n for n in dict.fromkeys(names) if n in EVENT_SOURCES and n != key]
+    span = timedelta(minutes=90)
+
+    async def one(name):
+        tdata = await downloader.events.fetch(name, (t_ref - span).to_pydatetime(), (t_ref + span).to_pydatetime())
+        entry = {"spacecraft": name, "datasets": tdata["datasets"]}
+        r = position_at(tdata["position"], t_ref)
+        if r is None or tdata["field"] is None:
+            entry["status"] = "no position" if r is None else "no magnetic field data"
+            return entry
+        cmp = await run_in_workers(timing_comparison, m["normal_gse"], m["shock_speed_kms"], t_ref, r_ref,
+                                   tdata["field"], r, search_minutes)
+        entry.update(cmp, status="ok", position_gse_km=r.tolist())
+        return entry
+
+    checks = await asyncio.gather(*(one(n) for n in names))
+    params = {"time": tc.strftime("%Y-%m-%d %H:%M:%S"), "method": method, "targets": names,
+              "upstream_minutes": upstream_minutes, "downstream_minutes": downstream_minutes,
+              "exclude_minutes": exclude_minutes, "search_minutes": search_minutes}
+    prov = _analysis_provenance(key, data, t0, t1, SHOCK_METHOD_TEXT + "; planar-shock timing t = t_ref + n.dr/V_sh",
+                                params)
+    prov["datasets"] = prov["datasets"] + [dict(d, spacecraft=c["spacecraft"]) for c in checks for d in c["datasets"]]
+    body = {
+        "provenance": prov,
+        "reference": {"spacecraft": key, "shock_time": result["shock_time"], "position_gse_km": r_ref.tolist(),
+                      "method": method, "normal_gse": m["normal_gse"], "shock_speed_kms": m["shock_speed_kms"],
+                      "shock_type": result["shock_type"], "warnings": result["warnings"]},
+        "targets": [{k: v for k, v in c.items() if k != "datasets"} for c in checks],
+        "note": ("Residual = observed - predicted delay. Residuals of a minute or two over baselines of several "
+                 "hundred thousand km are common: interplanetary shocks are not planar on these scales and the "
+                 "single-spacecraft normal has an uncertainty of several degrees."),
+    }
+    return _analysis_answer(body, download, f"HELIOS_timing_{key}_{tc:%Y%m%dT%H%M}")
 
 
 @app.get("/api/analysis/mva")

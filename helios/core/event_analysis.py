@@ -80,8 +80,11 @@ def _wind_swe(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _wind_pos(df: pd.DataFrame) -> pd.DataFrame:
-    return pd.DataFrame({"x": df["xgse"] * EARTH_RADIUS_KM, "y": df["ygse"] * EARTH_RADIUS_KM,
-                         "z": df["zgse"] * EARTH_RADIUS_KM}, index=df.index)
+    # PGSE of the MFI 1-min file (R_E, definitive orbit, 7 digits). The SWE file's xgse is
+    # served with 3 significant digits (1 R_E), and the predicted orbit file WI_OR_PRE
+    # differed by up to 2 R_E from it in 2014.
+    return pd.DataFrame({"x": df["PGSE_0"] * EARTH_RADIUS_KM, "y": df["PGSE_1"] * EARTH_RADIUS_KM,
+                         "z": df["PGSE_2"] * EARTH_RADIUS_KM}, index=df.index)
 
 
 def _vec_plasma(n: str, t: str, flag: Optional[str] = None) -> Callable:
@@ -107,9 +110,9 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
     "WIND": {
         "field": _ds("WI_H0_MFI@1", ["B3GSE"], _field("B3GSE"), "WIND MFI 3-s"),
         "plasma": _ds("WI_H1_SWE", ["fit_flag", "Proton_VX_nonlin", "Proton_VY_nonlin", "Proton_VZ_nonlin",
-                                    "Proton_W_nonlin", "Proton_Np_nonlin", "xgse", "ygse", "zgse"],
+                                    "Proton_W_nonlin", "Proton_Np_nonlin"],
                       _wind_swe, "WIND SWE non-linear proton fits (92 s)"),
-        "position": "plasma", "position_reduce": _wind_pos,
+        "position": _ds("WI_H0_MFI@0", ["PGSE"], _wind_pos, "WIND position (MFI 1-min file, definitive orbit)"),
     },
     "ACE": {
         "field": _ds("AC_H0_MFI", ["BGSEc", "SC_pos_GSE"], _field("BGSEc"), "ACE MAG 16-s Level 2"),
@@ -494,3 +497,52 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
         ],
     }
 
+
+# ----------------------------------------------------------------------------
+# Multi-spacecraft timing
+# ----------------------------------------------------------------------------
+def position_at(position: Optional[pd.DataFrame], t: pd.Timestamp) -> Optional[np.ndarray]:
+    """GSE position (km) at time t, linearly interpolated; None without position data."""
+    if position is None or position.empty:
+        return None
+    secs = (position.index - t).total_seconds().to_numpy()
+    if secs[0] > 3600 or secs[-1] < -3600:
+        return None  # no sample within an hour of t
+    return np.array([float(np.interp(0.0, secs, position[c].to_numpy(dtype=float))) for c in ("x", "y", "z")])
+
+
+def predict_arrival(normal, speed_kms: float, t_ref: pd.Timestamp, r_ref_km, r_km) -> Dict[str, Any]:
+    """
+    Arrival time of a planar shock with unit normal n moving at V_sh along n (spacecraft
+    frame) at a spacecraft at r, given its arrival at r_ref: t = t_ref + n . (r - r_ref) / V_sh.
+    """
+    n = np.asarray(normal, dtype=float)
+    dr = np.asarray(r_km, dtype=float) - np.asarray(r_ref_km, dtype=float)
+    dt = float(np.dot(n, dr)) / speed_kms
+    return {"delay_s": dt, "predicted_time": t_ref + pd.Timedelta(seconds=dt),
+            "baseline_km": dr.tolist(), "baseline_along_normal_km": float(np.dot(n, dr))}
+
+
+def timing_comparison(normal, speed_kms: float, t_ref: pd.Timestamp, r_ref_km,
+                      target_field: Optional[pd.DataFrame], r_target_km,
+                      search_minutes: float = 20.0) -> Dict[str, Any]:
+    """
+    Predicted arrival at a second spacecraft and the observed one (largest |B| jump within
+    `search_minutes` of the prediction), with the residual and the speed along n that the
+    observed delay implies, V = n . dr / dt.
+    """
+    pred = predict_arrival(normal, speed_kms, t_ref, r_ref_km, r_target_km)
+    observed = refine_shock_time(target_field, pred["predicted_time"], search_minutes=search_minutes)
+    out = {
+        "predicted_time": pred["predicted_time"].strftime("%Y-%m-%d %H:%M:%S"),
+        "predicted_delay_s": pred["delay_s"],
+        "baseline_gse_km": pred["baseline_km"],
+        "baseline_along_normal_km": pred["baseline_along_normal_km"],
+        "observed_time": None, "observed_delay_s": None, "residual_s": None, "implied_speed_kms": None,
+    }
+    if observed is not None:
+        dt_obs = (observed - t_ref).total_seconds()
+        out.update({"observed_time": observed.strftime("%Y-%m-%d %H:%M:%S"), "observed_delay_s": dt_obs,
+                    "residual_s": dt_obs - pred["delay_s"],
+                    "implied_speed_kms": (pred["baseline_along_normal_km"] / dt_obs) if abs(dt_obs) >= 30 else None})
+    return out

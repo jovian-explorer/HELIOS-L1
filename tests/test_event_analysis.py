@@ -179,7 +179,8 @@ def test_minimum_variance_recovers_known_frame_and_errors():
 
 
 def test_event_data_client_fetches_native_cadence_and_caches(tmp_path):
-    served = {"WI_H0_MFI@1": "wi_h0_mfi3s_20150317", "WI_H1_SWE": "wi_h1_swe_20150317"}
+    served = {"WI_H0_MFI@1": "wi_h0_mfi3s_20150317", "WI_H1_SWE": "wi_h1_swe_20150317",
+              "WI_H0_MFI@0": "wi_h0_pgse_20150317"}
     calls = []
 
     async def fake(url):
@@ -193,8 +194,11 @@ def test_event_data_client_fetches_native_cadence_and_caches(tmp_path):
     out = asyncio.run(client.fetch("WIND", t0, t1))
     assert len(out["field"]) > 1300  # 3-s samples (fill values dropped), not 1-minute means
     assert {"vx", "vy", "vz", "n", "t"} <= set(out["plasma"].columns)
-    assert out["position"]["x"].iloc[0] == pytest.approx(252.85 * 6371.2, rel=1e-3)
-    assert [d["id"] for d in out["datasets"]] == ["WI_H0_MFI@1", "WI_H1_SWE"]
+    # Position from the MFI file's definitive orbit; the CfA lists 252.852, 54.339, 12.569 R_E at the shock.
+    from helios.core.event_analysis import position_at
+    pos = position_at(out["position"], pd.Timestamp("2015-03-17 04:00:01", tz="UTC")) / 6371.2
+    assert np.allclose(pos, [252.852, 54.339, 12.569], atol=0.02)
+    assert [d["id"] for d in out["datasets"]] == ["WI_H0_MFI@1", "WI_H1_SWE", "WI_H0_MFI@0"]
     assert out["datasets"][0]["hapi_url"].startswith("https://cdaweb.gsfc.nasa.gov/hapi/data?id=WI_H0_MFI%401")
 
     async def offline(url):
@@ -247,3 +251,67 @@ def test_shock_and_mva_api_with_provenance(monkeypatch, tmp_path):
     assert client.get("/api/analysis/shock?mission=SOHO&time=2015-03-17T04:00").status_code == 404
     assert client.get("/api/analysis/mva?mission=WIND&start=2015-03-17&end=2015-03-21").status_code == 422
     assert client.get("/api/analysis/shock?mission=ACE&time=2015-03-17T04:00").status_code == 404  # nothing served
+
+
+def test_timing_wind_to_ace_20140227_against_cfa_arrivals():
+    """
+    27 Feb 2014: WIND (CfA event 00658, at 219.166, 99.616, -0.544 R_E) and ACE (CfA ACE event
+    00262, https://www.cfa.harvard.edu/shocks/ac_master_data/00262/ac_master_00262.html, arrival
+    58060 +- 80 s of day at 228.977, -39.744, -15.955 R_E). ACE is 10 R_E further upstream but
+    sees the shock 17 min after WIND: the normal is tilted towards -Y and the spacecraft are
+    140 R_E apart in Y.
+    """
+    from helios.core.event_analysis import position_at, predict_arrival, timing_comparison
+    re_km = 6371.2
+    field, plasma = _wind("20140227")
+    res = analyze_shock(field, plasma, "2014-02-27 15:50", upstream_minutes=13, downstream_minutes=5)
+    t_ref = pd.Timestamp(res["shock_time"], tz="UTC")
+    wind_pos = position_at(EVENT_SOURCES["WIND"]["position"]["reduce"](parse_hapi_csv(_text("wi_h0_pgse_20140227"))), t_ref)
+    ace_raw = parse_hapi_csv(_text("ac_h0_mfi_20140227"))
+    ace_pos = position_at(EVENT_SOURCES["ACE"]["position_reduce"](ace_raw), t_ref)
+    # The MFI file puts WIND at X = 220.91 R_E here, 1.7 R_E further out than the CfA page (which
+    # agrees with the MFI file to 0.01 R_E for 17 March 2015); along the normal that is ~20 s.
+    assert np.allclose(wind_pos / re_km, [220.91, 99.05, -0.66], atol=0.02)
+    assert np.allclose(ace_pos / re_km, [228.977, -39.744, -15.955], atol=0.05)
+
+    # The delay predicted from the CfA's own MX3 normal, speed and positions.
+    cfa = predict_arrival([-0.820, -0.543, -0.178], 436.2, t_ref, np.array([219.166, 99.616, -0.544]) * re_km,
+                          np.array([228.977, -39.744, -15.955]) * re_km)
+    mx3 = res["methods"]["MX3"]
+    out = timing_comparison(mx3["normal_gse"], mx3["shock_speed_kms"], t_ref, wind_pos,
+                            EVENT_SOURCES["ACE"]["field"]["reduce"](ace_raw), ace_pos)
+    assert abs(out["predicted_delay_s"] - cfa["delay_s"]) / cfa["delay_s"] < 0.05
+    cfa_ace = pd.Timestamp("2014-02-27", tz="UTC") + pd.Timedelta(seconds=58060)
+    assert abs((pd.Timestamp(out["observed_time"], tz="UTC") - cfa_ace).total_seconds()) <= 80 + 16  # 16-s ACE data
+    assert abs(out["residual_s"]) < 150
+    assert 350 < out["implied_speed_kms"] < 480
+    assert out["baseline_along_normal_km"] > 4e5
+
+
+def test_timing_api(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+
+    served = {"WI_H0_MFI@1": "wi_h0_mfi3s_20140227", "WI_H1_SWE": "wi_h1_swe_20140227",
+              "WI_H0_MFI@0": "wi_h0_pgse_20140227", "AC_H0_MFI": "ac_h0_mfi_20140227"}
+
+    async def fake(url, timeout=120.0):
+        ds = parse_qs(urlparse(url).query)["id"][0]
+        return _text(served[ds]) if ds in served else None
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
+    monkeypatch.setattr(server, "downloader", dl)
+    client = TestClient(server.app)
+    r = client.get("/api/analysis/timing?reference=WIND&time=2014-02-27T15:50&upstream_minutes=13&downstream_minutes=5")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["reference"]["method"] == "MX3" and body["reference"]["shock_type"] == "FF"
+    by = {t["spacecraft"]: t for t in body["targets"]}
+    assert set(by) == {"ACE", "DSCOVR"}
+    assert by["ACE"]["status"] == "ok" and by["ACE"]["observed_time"].startswith("2014-02-27 16:08")
+    assert by["DSCOVR"]["status"] in ("no position", "no magnetic field data")
+    assert any(d["id"] == "AC_H0_MFI" and d["spacecraft"] == "ACE" for d in body["provenance"]["datasets"])
+    assert client.get("/api/analysis/timing?reference=WIND&time=2014-02-27T15:50&method=XYZ").status_code == 422

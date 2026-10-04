@@ -83,6 +83,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 
 10. **Event analysis on archive data (WIND, ACE, DSCOVR at native cadence):**
     * **Interplanetary shocks:** normals from magnetic coplanarity, velocity coplanarity and the mixed-mode methods MX1-3 (Schwartz 1998), shock speed $V_{sh} = \hat n \cdot (N_2\mathbf V_2 - N_1\mathbf V_1)/(N_2 - N_1)$, $\theta_{Bn}$, jumps, Alfvén and fast Mach numbers with Monte Carlo uncertainties. The normal points into the upstream plasma, as in the Harvard-Smithsonian CfA shock database, against which it was checked (17 March 2015 and 27 February 2014: MX3 normal within 1°, speed within 1%). `GET /api/analysis/shock?mission=WIND&time=2015-03-17T04:00`.
+    * **Multi-spacecraft timing:** the normal and speed from one spacecraft predict the shock arrival at the others from their measured positions ($t = t_{ref} + \hat n\cdot\Delta\mathbf r/V_{sh}$); the observed arrival, residual and implied speed show how planar the shock is (27 February 2014 WIND to ACE: 1016 s predicted, 1103 s observed over 900,000 km). `GET /api/analysis/timing?reference=WIND&time=2014-02-27T15:50&targets=ACE,DSCOVR`.
     * **Minimum variance analysis** with eigenvalue ratios and Sonnerup & Scheible (1998) angular errors: `GET /api/analysis/mva?mission=WIND&start=...&end=...`.
     * Every result lists the CDAWeb datasets and HAPI requests behind it, the parameters and the software version; add `&download=true` for a JSON file.
 
