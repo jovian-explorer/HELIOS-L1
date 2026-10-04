@@ -736,7 +736,7 @@ SCIENTIFIC_REFERENCES = [
     },
     {
         "id": "gopalswamy_cme_acceleration_2001",
-        "title": "Predicting the arrival times of coronal mass ejections",
+        "title": "Predicting the 1-AU arrival times of coronal mass ejections",
         "authors": "Gopalswamy, N., Lara, A., Yashiro, S., Kaiser, M. L., & Howard, R. A.",
         "journal": "Journal of Geophysical Research: Space Physics",
         "year": 2001,
@@ -746,8 +746,8 @@ SCIENTIFIC_REFERENCES = [
         "doi": "10.1029/2001JA000177",
         "doi_url": "https://doi.org/10.1029/2001JA000177",
         "category": "Coronal Mass Ejection Kinematics",
-        "formula": "a_cme = 2.19 - 0.0054 * v_cme [m/s^2],  T_transit = (-v_0 + sqrt(v_0^2 + 2 * a * d)) / a",
-        "parameters": ["v_cme (initial coronagraph plane-of-sky CME velocity in km/s)", "a_cme (interplanetary acceleration / deceleration)", "d (1 AU distance)"],
+        "formula": "a = 2.193 - 0.0054 u [m/s^2, u in km/s] until d1 = 0.76 AU: t1 = (-u + sqrt(u^2 + 2 a d1)) / a, v1 = u + a t1; then constant speed: T = t1 + 0.24 AU / v1",
+        "parameters": ["u (initial coronagraph plane-of-sky CME speed in km/s)", "a (effective interplanetary acceleration)", "d1 (acceleration cessation distance, 0.76 AU)"],
         "physical_meaning": "Empirical heliospheric aerodynamic interaction formula establishing that fast CMEs (>405 km/s) decelerate while slow CMEs accelerate toward background solar wind."
     },
     {

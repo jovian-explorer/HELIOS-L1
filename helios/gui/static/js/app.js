@@ -1423,11 +1423,15 @@ async function calculateCMEKinematics() {
     const res = await fetch('/api/coronagraph/kinematics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ r1_rsun: r1, r2_rsun: r2, dt_minutes: dt })
+      body: JSON.stringify({
+        r1_rsun: r1, r2_rsun: r2, dt_minutes: dt,
+        ambient_wind_kms: parseFloat(document.getElementById('cme-w')?.value) || 420,
+        gamma_drag: (parseFloat(document.getElementById('cme-gamma')?.value) || 1.0) * 1e-7
+      })
     });
     const cme = await res.json();
-    if (cme.error) {
-      alert(cme.error);
+    if (!res.ok || cme.error) {
+      alert(cme.error || (typeof cme.detail === 'string' ? cme.detail : 'Enter numbers for both heights and the time step.'));
       return;
     }
 
@@ -1440,6 +1444,14 @@ async function calculateCMEKinematics() {
     document.getElementById('cme-transit-earth').innerText = `${cme.transit_to_earth_hours} hrs`;
     document.getElementById('cme-arrival-earth').innerText = cme.predicted_earth_arrival;
     document.getElementById('cme-lead-time').innerText = `+${cme.l1_to_earth_lead_time_minutes} min`;
+    const notes = document.getElementById('cme-model-notes');
+    if (notes) {
+      const g = cme.gopalswamy_2001_transit_hours !== null && cme.gopalswamy_2001_transit_hours !== undefined
+        ? `Gopalswamy et al. (2001) empirical arrival at 1 AU: ${cme.gopalswamy_2001_transit_hours} h (${cme.gopalswamy_2001_earth_arrival}), ${cme.gopalswamy_2001_arrival_speed_kms} km/s, effective acceleration ${cme.gopalswamy_2001_acceleration_ms2} m/s² until 0.76 AU.`
+        : 'Gopalswamy et al. (2001): outside the model for this speed.';
+      notes.innerHTML = `<div>DBM (w = ${cme.ambient_solar_wind_kms} km/s, Γ = ${(cme.drag_parameter_gamma * 1e7).toFixed(2)}×10⁻⁷ km⁻¹): Earth arrival speed ${cme.v_arrival_earth_kms} km/s.</div><div>${g}</div>` +
+        (cme.assumptions || []).map(a => `<div class="text-slate-500">• ${a}</div>`).join('');
+    }
 
     // Initialize 2D Interplanetary Propagation Radar Simulation
     if (cmeSimulator) {

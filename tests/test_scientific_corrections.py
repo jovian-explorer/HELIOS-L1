@@ -485,3 +485,21 @@ def test_aurora_endpoint_uses_al_and_draws_starkov_oval(monkeypatch):
     b = client.get("/api/aurora?time=2024-05-10T22:00").json()["boundaries"]
     assert b["al_used_nt"] == pytest.approx(429.5) and b["al_source"].startswith("OMNI 1-min AL")
     assert b["hemispheric_power_gw"] is None
+
+
+def test_gopalswamy_2001_empirical_arrival():
+    """
+    a = 2.193 - 0.0054 u m/s^2 until 0.76 AU (Gopalswamy et al. 2001, JGR 106, 29207; abstract
+    and Ravishankar & Michalek 2019, arXiv:1910.02797). The abstract notes a flat arrival time
+    of ~4.3 days for slow CMEs.
+    """
+    from helios.core.coronagraph import CoronagraphAnalyzer as C
+    for u in (150, 200, 300):
+        assert C.gopalswamy_2001_arrival(u)["transit_hours"] / 24.0 == pytest.approx(4.3, abs=0.05)
+    fast = C.gopalswamy_2001_arrival(2000.0)
+    assert fast["acceleration_ms2"] == pytest.approx(2.193 - 10.8, abs=1e-3)
+    assert fast["transit_hours"] < 30.0 and fast["arrival_speed_kms"] < 2000.0
+    kin = C.calculate_cme_kinematics(2.0, 7.5, 38.1, ambient_wind_kms=500.0, gamma_drag=0.5e-7)
+    assert kin["initial_speed_kms"] == pytest.approx(1675, abs=2)  # Bastille Day preset
+    assert kin["ambient_wind_kms"] == 500.0 and kin["drag_parameter_gamma"] == 0.5e-7
+    assert kin["gopalswamy_2001_transit_hours"] == C.gopalswamy_2001_arrival(kin["initial_speed_kms"], 7.5 * C.R_SUN_KM)["transit_hours"]

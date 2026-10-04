@@ -1185,23 +1185,23 @@
         <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
           <div>
             <h3 class="font-bold text-sm text-slate-200">CME Plane-of-Sky Kinematic Solver &amp; Aerodynamic Shock Simulator</h3>
-            <p class="text-xs text-slate-400">Computes CME expansion velocity, Gopalswamy aerodynamic drag deceleration, and transit time to L1 &amp; Earth.</p>
+            <p class="text-xs text-slate-400">Plane-of-sky speed from two heights, then transit to L1 and Earth with the Vršnak et al. (2013) drag-based model, compared with the Gopalswamy et al. (2001) empirical arrival model. Presets set heights and Δt that give the approximate speed on the button.</p>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
             <span class="text-[10px] uppercase font-bold text-slate-400 font-mono mr-1">CME Benchmark Presets:</span>
-            <button onclick="setCMEPreset(2.5, 9.8, 30, 'May 2024 Extreme Superstorm (AR 3664)')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.5, 9.8, 47.1, 'May 2024 Extreme Superstorm (AR 3664)')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition shadow-sm">
               May 2024 (~1800 km/s)
             </button>
-            <button onclick="setCMEPreset(2.2, 8.5, 32, 'Halloween 2003 Storms (AR 10486)')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.2, 8.5, 34.0, 'Halloween 2003 Storms (AR 10486)')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition shadow-sm">
               Halloween 2003 (~2150 km/s)
             </button>
-            <button onclick="setCMEPreset(2.0, 7.5, 30, 'Bastille Day 2000 CME')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.0, 7.5, 38.1, 'Bastille Day 2000 CME')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition shadow-sm">
               Bastille Day (~1675 km/s)
             </button>
-            <button onclick="setCMEPreset(2.0, 11.5, 34, 'Carrington 1859 Event')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-purple-300 border border-purple-500/40 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.0, 11.5, 47.9, 'Carrington 1859 Event')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-purple-300 border border-purple-500/40 text-[11px] font-semibold transition shadow-sm">
               Carrington 1859 (~2300 km/s)
             </button>
-            <button onclick="setCMEPreset(2.0, 4.2, 45, 'Nominal Coronal Transient')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.0, 4.2, 39.3, 'Nominal Coronal Transient')" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px] font-semibold transition shadow-sm">
               Nominal (~650 km/s)
             </button>
           </div>
@@ -1219,6 +1219,14 @@
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Time Elapsed (Δt in minutes)</label>
             <input type="number" id="cme-dt" value="35" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Ambient wind w (km/s, DBM)</label>
+            <input type="number" id="cme-w" value="420" min="250" max="900" step="10" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Drag Γ (10⁻⁷ km⁻¹, DBM)</label>
+            <input type="number" id="cme-gamma" value="1.0" min="0.1" max="3.0" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div class="flex items-end">
             <button onclick="calculateCMEKinematics()" class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-md shadow-amber-600/30 flex items-center justify-center space-x-2">
@@ -1251,6 +1259,7 @@
               <div class="text-[10px] text-slate-400 mt-0.5">Actionable mitigation window</div>
             </div>
           </div>
+          <div id="cme-model-notes" class="text-[11px] text-slate-400 space-y-1"></div>
 
           <!-- Interactive 2D CME Interplanetary Shock Propagation Radar Canvas -->
           <div class="space-y-2 border-t border-slate-800 pt-3">

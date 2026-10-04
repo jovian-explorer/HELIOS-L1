@@ -128,6 +128,8 @@ class CMEKinematicsRequest(BaseModel):
     r2_rsun: float = 6.0
     dt_minutes: float = 30.0
     launch_time_iso: Optional[str] = None
+    ambient_wind_kms: float = 420.0
+    gamma_drag: float = 1.0e-7
 
 class CustomImportRequest(BaseModel):
     content: str
@@ -732,7 +734,9 @@ async def calculate_cme_kinematics(req: CMEKinematicsRequest):
         r1_rsun=req.r1_rsun,
         r2_rsun=req.r2_rsun,
         dt_minutes=req.dt_minutes,
-        launch_time_iso=req.launch_time_iso
+        launch_time_iso=req.launch_time_iso,
+        ambient_wind_kms=req.ambient_wind_kms,
+        gamma_drag=req.gamma_drag
     )
 
 @app.get("/api/parker_spiral")

@@ -78,6 +78,7 @@ class CMESimulator {
     if (cme.transit_to_l1_hours) this.transitL1Hrs = Number(cme.transit_to_l1_hours);
     if (cme.transit_to_earth_hours) this.transitEarthHrs = Number(cme.transit_to_earth_hours);
     if (cme.ambient_wind_kms) this.vAmbient = Number(cme.ambient_wind_kms);
+    if (cme.drag_parameter_gamma) this.gamma = Number(cme.drag_parameter_gamma);  // same DBM drag as the server
     this.maxHrs = Math.max(48, Math.ceil(this.transitEarthHrs * 1.25));
     this.timeHrs = 0;
     this.isPlaying = true;

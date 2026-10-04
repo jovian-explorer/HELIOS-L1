@@ -58,7 +58,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 5. **Coronagraph Imagery & CME Kinematic Solver:**
    * Direct integration with real-time feeds from **SOHO LASCO C2**, **LASCO C3**, and **GOES SUVI 195/304 Å**. If an image cannot be loaded, the panel shows a placeholder drawing and says so.
    * Active region map: the numbered regions of the latest NOAA SWPC solar region summary (location, Mount Wilson and McIntosh class, area, flares of the day, SWPC 24 h C/M/X flare probabilities; `GET /api/solar/regions`), drawn on a schematic solar disk. The disk is a drawing in EUV or white-light colours, not an image.
-   * Plane-of-sky expansion velocity calculator ($V_{cme} = \Delta r / \Delta t$) with **Gopalswamy et al. (2001)** aerodynamic drag deceleration, predicting arrival timestamps at L1 and Earth.
+   * Plane-of-sky expansion velocity calculator ($V_{cme} = \Delta r / \Delta t$) and the **Vršnak et al. (2013)** drag-based model (ambient wind and drag parameter adjustable) for arrival times and speeds at L1 and Earth, compared with the **Gopalswamy et al. (2001)** empirical arrival model ($a = 2.193 - 0.0054u$ m/s² until 0.76 AU, then constant speed). The response lists its assumptions (no projection correction; rough shock Mach number; Kp category from speed only).
 
 6. **Heliospheric Parker Spiral Field Modeling:**
    * Evaluates Archimedean magnetic spiral geometry ($r - r_0 = -\frac{V_{sw}}{\Omega_\odot} (\phi - \phi_0)$) and pitch angles ($\psi$).
