@@ -21,9 +21,10 @@ class AuroralMapRenderer {
 
     // Simulation & Visual State
     this.time = 0;
-    this.kpIndex = 3.5;
-    this.imfBz = -2.5;
-    this.hemisphericPower = 42; // GW
+    // No conditions until the first server answer (the overlay shows n/a, not example values)
+    this.kpIndex = null;
+    this.imfBz = 0;
+    this.hemisphericPower = null; // GW
     this.showNightShadow = true;
     this.showSouthernOval = true;
     this.showStations = true;
@@ -600,10 +601,8 @@ class AuroralMapRenderer {
 
     ctx.fillStyle = '#94a3b8';
     ctx.font = '9px "JetBrains Mono", monospace';
-    const eqMid = this.eqMidnightLat !== null && this.eqMidnightLat !== undefined
-      ? this.eqMidnightLat
-      : Math.max(38.0, 66.5 - 2.1 * (this.kpIndex ?? 3.5) - Math.abs(Math.min(0, this.imfBz)) * 0.45);
-    ctx.fillText(`EQUATORWARD MIDNIGHT: ${eqMid.toFixed(1)}° CGM LAT`, 18, 40);
+    const eqMid = this.eqMidnightLat !== null && this.eqMidnightLat !== undefined ? this.eqMidnightLat : null;
+    ctx.fillText(`EQUATORWARD MIDNIGHT: ${eqMid === null ? 'n/a' : eqMid.toFixed(1) + '° CGM LAT'}`, 18, 40);
     const kpText = this.kpIndex === null ? 'n/a' : this.kpIndex.toFixed(1);
     const alText = this.alUsed === null || this.alUsed === undefined ? '' : `|AL| ${this.alUsed.toFixed(0)} nT • `;
     ctx.fillText(`${alText}KP: ${kpText} • HPI: ${this.hemisphericPower === null ? 'n/a' : this.hemisphericPower + ' GW'}` +

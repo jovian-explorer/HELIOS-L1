@@ -690,6 +690,22 @@ SCIENTIFIC_REFERENCES = [
         "physical_meaning": "Empirical model of the auroral oval boundaries as functions of the AL index (or Kp converted to AL) and magnetic local time, fitted to the Feldstein-Starkov ovals."
     },
     {
+        "id": "zhang_paxton_hp_2008",
+        "title": "An empirical Kp-dependent global auroral model based on TIMED/GUVI FUV data",
+        "authors": "Zhang, Y., & Paxton, L. J.",
+        "journal": "Journal of Atmospheric and Solar-Terrestrial Physics",
+        "year": 2008,
+        "volume": "70",
+        "issue": "8-9",
+        "pages": "1231-1242",
+        "doi": "10.1016/j.jastp.2008.03.008",
+        "doi_url": "https://doi.org/10.1016/j.jastp.2008.03.008",
+        "category": "Auroral Oval & Ionosphere",
+        "formula": "HP = 16.82 exp(0.32 Kp) - 4.86 [GW] for Kp <= 7; above Kp 7, linear from 153.13 GW to 300 GW at Kp 9 (TIE-GCM/WACCM extension; relation as quoted by Smith-Johnsen et al. 2018, JGR, doi:10.1029/2018JA025418, eq. 1-2)",
+        "parameters": ["HP (hemispheric power of auroral electron precipitation, GW)", "Kp (planetary geomagnetic index)"],
+        "physical_meaning": "Kp dependence of the hemispheric auroral electron energy flux derived from TIMED/GUVI far-ultraviolet images; used here as the hemispheric power estimate when only Kp is known."
+    },
+    {
         "id": "bruno_turbulence_2013",
         "title": "The solar wind as a turbulence laboratory",
         "authors": "Bruno, R., & Carbone, V.",

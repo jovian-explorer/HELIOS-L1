@@ -42,6 +42,11 @@ STARKOV_KP_TO_AL = (18.0, -12.3, 27.2, -2.0)
 # used beyond 750 nT: larger observed values are capped and the response says so.
 STARKOV_AL_RANGE = (18.0, 750.0)
 
+# Hemispheric power from Kp: Zhang & Paxton (2008, JASTP 70, 1231, doi:10.1016/j.jastp.2008.03.008)
+# up to Kp 7, then the TIE-GCM/WACCM linear ramp to 300 GW at Kp 9.
+HEMISPHERIC_POWER_SOURCE = ("Kp estimate: Zhang & Paxton (2008) HP = 16.82 exp(0.32 Kp) - 4.86 GW (Kp <= 7), "
+                            "linear to 300 GW at Kp 9 above (TIE-GCM)")
+
 
 class AuroralModel:
     """Predicts auroral oval equatorward and poleward boundaries and Dst evolution."""
@@ -69,6 +74,19 @@ class AuroralModel:
                  + a2 * np.cos(np.radians(15.0 * (2.0 * t + p2)))
                  + a3 * np.cos(np.radians(15.0 * (3.0 * t + p3))))
         return 90.0 - colat
+
+    @staticmethod
+    def hemispheric_power_from_kp(kp: float) -> float:
+        """
+        Hemispheric power (GW) from Kp: Zhang & Paxton (2008) TIMED/GUVI relation
+        HP = 16.82 exp(0.32 Kp) - 4.86 for Kp <= 7 (as quoted by Smith-Johnsen et al. 2018,
+        eq. 1, and in TIE-GCM util.F hp_from_kp); above Kp 7 the TIE-GCM/WACCM linear
+        ramp from 153.13 GW to 300 GW at Kp 9 (NOAA POES value) is used.
+        """
+        kp = max(0.0, min(9.0, float(kp)))
+        if kp <= 7.0:
+            return 16.82 * math.exp(0.32 * kp) - 4.86
+        return 153.13 + (kp - 7.0) / 2.0 * (300.0 - 153.13)
 
     @classmethod
     def calculate_auroral_boundaries(cls, kp: float, bz_gsm: float = 0.0,
@@ -110,8 +128,7 @@ class AuroralModel:
         else:
             visible_regions.extend(["Traditional Auroral Oval", "Alaska", "Northern Canada", "Norway, Sweden, Finland (Tromsø)", "Iceland", "Antarctica"])
 
-        # Auroral Power Index (in GigaWatts)
-        power_gw = round(float(10.0 ** (0.21 * kp_eff + 0.5)), 1)
+        power_gw = round(cls.hemispheric_power_from_kp(kp_eff), 1)
 
         return {
             "model": "Starkov (1994)",
@@ -130,6 +147,7 @@ class AuroralModel:
             "latitude_system": "corrected geomagnetic latitude",
             "mlt_profile": profile,
             "hemispheric_power_gw": power_gw,
+            "hemispheric_power_source": HEMISPHERIC_POWER_SOURCE,
             "visible_regions": visible_regions
         }
 

@@ -377,20 +377,26 @@ class TestTab8AuroraAndDst:
     def test_starkov_auroral_boundaries_and_power(self):
         """
         Starkov (1994) oval driven by Kp converted to AL (|AL| = 18 - 12.3 Kp + 27.2 Kp^2 - 2 Kp^3);
-        Power = 10^(0.21*Kp + 0.5) GW
+        Hemispheric power: Zhang & Paxton (2008) HP = 16.82 exp(0.32 Kp) - 4.86 GW (Kp <= 7),
+        linear to 300 GW at Kp 9 (TIE-GCM util.F hp_from_kp)
         """
         # Quiet: Kp = 1 -> |AL| = 30.9 nT, equatorward midnight boundary 67.5 deg CGM
-        # Power = 10^(0.71) = 5.13 GW
+        # HP = 16.82 e^0.32 - 4.86 = 18.30 GW
         b_quiet = AuroralModel.calculate_auroral_boundaries(1.0, 0.0)
         assert abs(b_quiet["equatorward_midnight_lat"] - 67.5) < 0.1
-        assert abs(b_quiet["hemispheric_power_gw"] - 5.1) < 0.5
+        assert b_quiet["hemispheric_power_gw"] == pytest.approx(18.3, abs=0.05)
+        assert "Zhang & Paxton" in b_quiet["hemispheric_power_source"]
 
         # Kp = 9 -> |AL| = 652.5 nT; Bz does not enter the model
-        # Power = 10^(0.21*9 + 0.5) = 10^2.39 = 245.5 GW
+        # HP(Kp 9) = 300 GW (end of the TIE-GCM ramp)
         b_storm = AuroralModel.calculate_auroral_boundaries(9.0, -30.0)
         assert b_storm["equatorward_midnight_lat"] == AuroralModel.calculate_auroral_boundaries(9.0, 0.0)["equatorward_midnight_lat"]
         assert abs(b_storm["diffuse_equatorward_midnight_lat"] - 53.0) < 0.1
-        assert b_storm["hemispheric_power_gw"] > 200.0
+        assert b_storm["hemispheric_power_gw"] == pytest.approx(300.0)
+        # Continuous at Kp 7: 16.82 e^2.24 - 4.86 = 153.13 GW on both branches; Kp 8 halfway
+        assert AuroralModel.hemispheric_power_from_kp(7.0) == pytest.approx(153.13, abs=0.01)
+        assert AuroralModel.hemispheric_power_from_kp(8.0) == pytest.approx(226.565, abs=1e-3)
+        assert AuroralModel.hemispheric_power_from_kp(0.0) == pytest.approx(11.96, abs=1e-9)
         # Observed |AL| beyond the range of the fits (750 nT) is capped and flagged
         b_al = AuroralModel.calculate_auroral_boundaries(9.0, 0.0, al_nt=-1500.0)
         assert b_al["al_used_nt"] == 750.0 and b_al["al_capped"]
