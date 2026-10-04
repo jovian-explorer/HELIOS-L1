@@ -479,6 +479,21 @@ class SpaceWeatherPhysics:
         return None
 
     @staticmethod
+    def noaa_g_level(kp: Optional[float]) -> int:
+        """
+        NOAA geomagnetic storm level 0-5 for a Kp value. Kp comes in thirds; the scale counts
+        a "minus" value with its integer (G1 = Kp 5-, 5o, 5+; G4 = Kp 8- to 9-; G5 = 9o, 9+),
+        as in the noaa_scale field of SWPC's Kp products (Kp 4.67 -> G1). The thresholds sit
+        between the thirds so that model estimates with other decimals classify sensibly.
+        """
+        if kp is None:
+            return 0
+        for level, threshold in ((5, 8.83), (4, 7.5), (3, 6.5), (2, 5.5), (1, 4.5)):
+            if kp >= threshold:
+                return level
+        return 0
+
+    @staticmethod
     def classify_noaa_scales(
         kp: Optional[float],
         bz_gsm: Optional[float],
@@ -494,17 +509,13 @@ class SpaceWeatherPhysics:
         g_scale = "G0 (Quiet)"
         g_level = 0
         g_color = "#10b981"
-        if kp is not None:
-            if kp >= 9.0:
-                g_scale, g_level, g_color = "G5 (Extreme)", 5, "#dc2626"
-            elif kp >= 8.0:
-                g_scale, g_level, g_color = "G4 (Severe)", 4, "#ea580c"
-            elif kp >= 7.0:
-                g_scale, g_level, g_color = "G3 (Strong)", 3, "#f59e0b"
-            elif kp >= 6.0:
-                g_scale, g_level, g_color = "G2 (Moderate)", 2, "#eab308"
-            elif kp >= 5.0:
-                g_scale, g_level, g_color = "G1 (Minor)", 1, "#3b82f6"
+        # Kp 5- (4.67) is already G1: the scale used to start at Kp 5.0, one third too high.
+        level = SpaceWeatherPhysics.noaa_g_level(kp)
+        if level:
+            g_scale, g_level, g_color = {
+                5: ("G5 (Extreme)", 5, "#dc2626"), 4: ("G4 (Severe)", 4, "#ea580c"),
+                3: ("G3 (Strong)", 3, "#f59e0b"), 2: ("G2 (Moderate)", 2, "#eab308"),
+                1: ("G1 (Minor)", 1, "#3b82f6")}[level]
 
         # 2. Southward Bz Alert Level
         bz_alert = "Northward (Shielded)"

@@ -604,3 +604,17 @@ NOAA Kp index forecast 04 Oct - 06 Oct
             {"time_tag": "2026-10-04T00:00:00", "kp": 2.33, "observed": "estimated"},
             {"time_tag": "2026-10-04T03:00:00", "kp": 4.67, "observed": "predicted"}]
     assert D.parse_kp_forecast(rows) == [{"time_tag": "2026-10-04 03:00:00", "kp": 4.67}]
+
+
+@pytest.mark.parametrize("kp, level", [
+    (4.33, 0), (4.67, 1), (5.0, 1), (5.33, 1), (5.67, 2), (6.33, 2), (6.67, 3), (7.33, 3),
+    (7.67, 4), (8.0, 4), (8.67, 4), (9.0, 5), (None, 0),
+])
+def test_noaa_g_scale_counts_minus_kp_with_its_integer(kp, level):
+    """
+    NOAA G scale: G1 = Kp 5 (5-, 5o, 5+) ... G4 = Kp 8 including 9-, G5 = Kp 9 (9o, 9+).
+    SWPC's planetary K-index forecast product tags Kp 4.67 as "G1" (checked 2026-10-04).
+    The classifier started G1 at Kp 5.0, so 5- was G0, 6- G1 and so on.
+    """
+    assert SpaceWeatherPhysics.noaa_g_level(kp) == level
+    assert SpaceWeatherPhysics.classify_noaa_scales(kp, 0.0, None)["g_level"] == level

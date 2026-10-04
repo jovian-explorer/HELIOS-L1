@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone, timedelta
 
 from helios.core.aurora_model import AuroralModel
+from helios.core.science import SpaceWeatherPhysics
 
 # Newell et al. (2008) Kp fit: Kp = a + b dPhi/dt + c n^(1/2) v^2
 NEWELL_2008_KP = (0.05, 2.244e-4, 2.844e-6)
@@ -225,13 +226,14 @@ class SpaceWeatherForecaster:
 
     @staticmethod
     def assess_hazards(speed: float, bz: float, pdyn: float, max_kp: float) -> Dict[str, Any]:
-        """Evaluates operational risk levels for critical infrastructure."""
+        """Evaluates operational risk levels for critical infrastructure from the NOAA G level of max_kp."""
+        g = SpaceWeatherPhysics.noaa_g_level(max_kp)
         # 1. Power Grids & Geomagnetically Induced Currents (GIC)
-        if max_kp >= 8.0:
+        if g >= 4:
             gic_risk = "CRITICAL / SEVERE"
             gic_color = "#ff2a6d"
             gic_advice = "Widespread voltage regulation alarms and protective transformer trip risks. GIC monitoring active."
-        elif max_kp >= 6.0:
+        elif g >= 2:
             gic_risk = "MODERATE / ELEVATED"
             gic_color = "#ffb703"
             gic_advice = "Weak power grid fluctuations possible in high-latitude systems (>55° geomag)."
@@ -241,11 +243,11 @@ class SpaceWeatherForecaster:
             gic_advice = "No transmission network mitigation required."
 
         # 2. Polar Aviation & High-Frequency (HF) Communications
-        if max_kp >= 7.0 or bz < -10.0:
+        if g >= 3 or bz < -10.0:
             aviation_risk = "HIGH / SEVERE ABSORPTION"
             aviation_color = "#ff2a6d"
             aviation_advice = "HF fading and absorption at high latitudes and GNSS scintillation likely. (Polar cap absorption needs a solar proton event: see the S scale.)"
-        elif max_kp >= 5.0:
+        elif g >= 1:
             aviation_risk = "MODERATE"
             aviation_color = "#ffb703"
             aviation_advice = "HF radio fadeouts on sub-auroral routes; GNSS scintillation degradation expected."
@@ -257,11 +259,11 @@ class SpaceWeatherForecaster:
         # 3. Satellite Operations (Surface Charging & Atmospheric Drag)
         # Categories follow the NOAA G scale; the drag increase itself is not modelled (it was
         # given as an invented 1 + 0.45 (Kp - 3) multiplier).
-        if max_kp >= 7.0:
+        if g >= 3:
             sat_risk = "CRITICAL / DRAG ACCELERATION"
             sat_color = "#ff2a6d"
             sat_advice = "Thermospheric heating raises LEO drag strongly (NOAA G3+: surface charging, orientation and tracking problems possible)."
-        elif max_kp >= 5.0:
+        elif g >= 1:
             sat_risk = "ELEVATED"
             sat_color = "#ffb703"
             sat_advice = "Increased LEO drag and orbit prediction errors possible (NOAA G1-G2)."
