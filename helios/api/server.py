@@ -16,6 +16,7 @@ import csv
 import json
 import math
 import numpy as np
+import pandas as pd
 from datetime import datetime, timezone, timedelta
 
 from helios import __version__
@@ -26,6 +27,7 @@ from helios.config import (
 )
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
+from helios.core.event_analysis import EVENT_SOURCES, MAX_EVENT_HOURS, analyze_shock, minimum_variance
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
@@ -487,6 +489,135 @@ async def get_storm_indices(
         "time_tags": [r["time_tag"] for r in recs],
         "dst_comparison": AuroralModel.compare_dst_models(recs) if recs else None,
     }
+
+# ----------------------------------------------------------------------------
+# Event analysis on native-cadence archive data (helios.core.event_analysis)
+# ----------------------------------------------------------------------------
+def _event_mission(mission: str) -> str:
+    key = mission.upper()
+    if key not in EVENT_SOURCES:
+        raise HTTPException(status_code=404, detail=f"No event analysis source for '{mission}'. "
+                            f"Available: {', '.join(EVENT_SOURCES)}.")
+    return key
+
+
+def _event_series(field, plasma, max_points: int = 2500) -> Dict[str, Any]:
+    """Field and plasma time series for plotting, block-averaged to at most `max_points` samples each."""
+    def thin(df, cols):
+        if df is None or df.empty:
+            return {"time_tags": [], **{c: [] for c in cols}}
+        df = df[cols]
+        span = (df.index[-1] - df.index[0]).total_seconds()
+        if len(df) > max_points and span > 0:
+            df = df.resample(f"{max(1, int(math.ceil(span / max_points)))}s").mean().dropna(how="all")
+        out = {"time_tags": [t.strftime("%Y-%m-%d %H:%M:%S") for t in df.index]}
+        for c in cols:
+            out[c] = [None if not np.isfinite(v) else round(float(v), 3) for v in df[c].to_numpy(dtype=float)]
+        return out
+
+    f = thin(field, ["bx", "by", "bz"])
+    f["bt"] = [None if None in (x, y, z) else round(math.sqrt(x * x + y * y + z * z), 3)
+               for x, y, z in zip(f["bx"], f["by"], f["bz"])]
+    return {"field_gse": f, "plasma_gse": thin(plasma, ["vx", "vy", "vz", "n", "t"])}
+
+
+def _analysis_provenance(key: str, data: Dict[str, Any], t0: datetime, t1: datetime, method: str,
+                         parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """Everything needed to reproduce an analysis: data sets and requests, method, parameters, software."""
+    return {
+        "kind": "observed" if data.get("field") is not None else "unavailable",
+        "spacecraft": key,
+        "archive": HAPI_SERVER,
+        "datasets": data.get("datasets", []),
+        "requested_start": t0.strftime("%Y-%m-%d %H:%M:%S"),
+        "requested_end": t1.strftime("%Y-%m-%d %H:%M:%S"),
+        "coordinates": "GSE",
+        "time_standard": "UTC",
+        "method": method,
+        "parameters": parameters,
+        "software": f"HELIOS-L1 {__version__}",
+        "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+def _analysis_answer(body: Dict[str, Any], download: bool, name: str):
+    """The analysis as JSON, or as a JSON file (results, inputs and provenance) when `download` is set."""
+    if not download:
+        return body
+    return Response(content=json.dumps(body, indent=1, default=str), media_type="application/json", headers={
+        "Content-Disposition": f"attachment; filename={name}.json"})
+
+
+@app.get("/api/analysis/shock")
+async def analyse_shock(
+    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    time: str = Query(..., description="Approximate UTC shock time, ISO 8601"),
+    upstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
+    downstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
+    exclude_minutes: float = Query(1.0, ge=0.0, le=15.0, description="Gap left out on each side of the shock"),
+    refine: bool = Query(True, description="Move the shock time to the largest |B| jump within 10 minutes"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Shock normal (MC, VC, MX1-3), theta_Bn, shock speed, jumps and Mach numbers from WIND,
+    ACE or DSCOVR data at the instruments' cadence (Schwartz 1998; CfA shock database
+    conventions).
+    """
+    key = _event_mission(mission)
+    tc = _parse_utc(time, "time")
+    margin = 12.0  # minutes of context, and room for the refined shock time
+    t0 = tc - timedelta(minutes=upstream_minutes + exclude_minutes + margin)
+    t1 = tc + timedelta(minutes=downstream_minutes + exclude_minutes + margin)
+    data = await downloader.events.fetch(key, t0, t1)
+    if data["field"] is None or data["plasma"] is None:
+        missing = "magnetic field" if data["field"] is None else "plasma"
+        msg = ("The CDAWeb HAPI server could not be reached and nothing is cached for this interval."
+               if data["offline"] else f"CDAWeb has no {key} {missing} data for this interval.")
+        raise HTTPException(status_code=404, detail=msg)
+    try:
+        result = await run_in_workers(analyze_shock, data["field"], data["plasma"], tc, upstream_minutes,
+                                      downstream_minutes, exclude_minutes, refine)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    params = {"time": tc.strftime("%Y-%m-%d %H:%M:%S"), "upstream_minutes": upstream_minutes,
+              "downstream_minutes": downstream_minutes, "exclude_minutes": exclude_minutes, "refine": refine}
+    prov = _analysis_provenance(key, data, t0, t1, "Interplanetary shock normals (MC, VC, MX1-3) and mass flux "
+                                "shock speed, Schwartz (1998)", params)
+    body = {"provenance": prov, "result": result, "series": _event_series(data["field"], data["plasma"])}
+    return _analysis_answer(body, download, f"HELIOS_shock_{key}_{tc:%Y%m%dT%H%M}")
+
+
+@app.get("/api/analysis/mva")
+async def analyse_mva(
+    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    start: str = Query(..., description="UTC start, ISO 8601"),
+    end: str = Query(..., description="UTC end (exclusive), ISO 8601"),
+    average_seconds: int = Query(0, ge=0, le=3600, description="0 = native cadence; otherwise block averages"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """Minimum variance analysis of the magnetic field (Sonnerup & Scheible 1998) for an interval of up to 72 h."""
+    key = _event_mission(mission)
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    if t1 - t0 > timedelta(hours=MAX_EVENT_HOURS):
+        raise HTTPException(status_code=422, detail=f"Intervals are limited to {MAX_EVENT_HOURS} hours.")
+    data = await downloader.events.fetch(key, t0, t1)
+    field = data["field"]
+    if field is None:
+        raise HTTPException(status_code=404, detail="No magnetic field data for this interval"
+                            + (" (CDAWeb could not be reached)." if data["offline"] else "."))
+    field = field[(field.index >= pd.Timestamp(t0)) & (field.index < pd.Timestamp(t1))]
+    if average_seconds:
+        field = field.resample(f"{average_seconds}s").mean().dropna()
+    try:
+        result = await run_in_workers(minimum_variance, field[["bx", "by", "bz"]].to_numpy())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    prov = _analysis_provenance(key, data, t0, t1, result["method"], {"average_seconds": average_seconds})
+    body = {"provenance": prov, "result": result, "series": _event_series(field, None)}
+    return _analysis_answer(body, download, f"HELIOS_mva_{key}_{t0:%Y%m%dT%H%M}")
+
 
 @app.get("/api/events")
 async def get_events():
