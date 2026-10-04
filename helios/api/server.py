@@ -28,7 +28,7 @@ from helios.config import (
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
 from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SHOCK_METHODS, analyze_shock,
-                                        minimum_variance, position_at, timing_comparison)
+                                        fit_flux_rope, minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
@@ -663,6 +663,39 @@ async def analyse_timing(
                  "single-spacecraft normal has an uncertainty of several degrees."),
     }
     return _analysis_answer(body, download, f"HELIOS_timing_{key}_{tc:%Y%m%dT%H%M}")
+
+
+@app.get("/api/analysis/fluxrope")
+async def analyse_flux_rope(
+    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    start: str = Query(..., description="UTC start of the magnetic cloud, ISO 8601"),
+    end: str = Query(..., description="UTC end of the magnetic cloud, ISO 8601"),
+    average_minutes: int = Query(30, ge=5, le=120, description="Field averages used in the fit"),
+    speed_kms: Optional[float] = Query(None, gt=100, lt=3000, description="Cloud speed; default: mean measured speed"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Force-free (Lundquist) flux rope fit to a magnetic cloud (Lepping et al. 1990): axis
+    direction, B0, handedness, closest approach, diameter, axial flux and chi_R, as listed
+    in the WIND MFI magnetic cloud table.
+    """
+    key = _event_mission(mission)
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 - t0 < timedelta(hours=3):
+        raise HTTPException(status_code=422, detail="A magnetic cloud interval must be at least 3 hours long.")
+    if t1 - t0 > timedelta(hours=MAX_EVENT_HOURS):
+        raise HTTPException(status_code=422, detail=f"Intervals are limited to {MAX_EVENT_HOURS} hours.")
+    data = await downloader.events.fetch(key, t0, t1, coarse=True)
+    if data["field"] is None:
+        raise HTTPException(status_code=404, detail="No magnetic field data for this interval"
+                            + (" (CDAWeb could not be reached)." if data["offline"] else "."))
+    try:
+        result = await run_in_workers(fit_flux_rope, data["field"], data["plasma"], t0, t1, average_minutes, speed_kms)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    params = {"average_minutes": average_minutes, "speed_kms": speed_kms}
+    prov = _analysis_provenance(key, data, t0, t1, "Lundquist force-free flux rope fit, Lepping et al. (1990)", params)
+    return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_fluxrope_{key}_{t0:%Y%m%dT%H%M}")
 
 
 @app.get("/api/analysis/mva")

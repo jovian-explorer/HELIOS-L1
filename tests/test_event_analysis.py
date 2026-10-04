@@ -315,3 +315,72 @@ def test_timing_api(monkeypatch, tmp_path):
     assert by["DSCOVR"]["status"] in ("no position", "no magnetic field data")
     assert any(d["id"] == "AC_H0_MFI" and d["spacecraft"] == "ACE" for d in body["provenance"]["datasets"])
     assert client.get("/api/analysis/timing?reference=WIND&time=2014-02-27T15:50&method=XYZ").status_code == 422
+
+
+# WIND MFI magnetic cloud table (Lepping et al. fits, https://wind.nasa.gov/mfi/mag_cloud_S1.html),
+# quality 1 clouds: (file day, start, end, axis longitude, latitude, B0 nT, H, CA %, 2R0 AU, flux 1e20 Mx, chi_R)
+LEPPING_CLOUDS = [
+    ("19951018", "1995-10-18 19:48", "1995-10-20 01:18", 287, -8, 25.9, "R", 12, 0.257, 13.1, 0.143),
+    ("19970110", "1997-01-10 05:18", "1997-01-11 02:18", 247, 1, 17.7, "R", -11, 0.190, None, 0.103),
+    ("19980304", "1998-03-04 14:18", "1998-03-06 06:18", 121, 21, 12.4, "L", -6, 0.327, None, 0.152),
+]
+
+
+@pytest.mark.parametrize("cloud", LEPPING_CLOUDS, ids=[c[0] for c in LEPPING_CLOUDS])
+def test_lundquist_fit_matches_wind_mfi_cloud_table(cloud):
+    from helios.core.event_analysis import _field, fit_flux_rope, _axis
+    day, start, end, lon, lat, b0, hand, ca, diam, flux, chi = cloud
+    field = _field("BGSE")(parse_hapi_csv(_text(f"wi_h0_mfi1m_{day}")))
+    plasma = EVENT_SOURCES["WIND"]["plasma"]["reduce"](parse_hapi_csv(_text(f"wi_h1_swe_{day}")))
+    res = fit_flux_rope(field, plasma, start, end, average_minutes=30)
+    # Our boundaries are the table's (to 0.1 h), the averages and speed our own: axis within
+    # 20 deg (9, 13 and 18 deg for the three clouds), B0 within 10 %, same handedness.
+    assert _angle(res["axis_gse"], _axis(lon, lat)) < 20
+    assert np.dot(res["axis_gse"], _axis(lon, lat)) > 0  # axis along the axial field, as in the table
+    assert abs(res["b0_nT"] - b0) / b0 < 0.10
+    assert res["handedness"] == hand
+    assert np.sign(res["closest_approach_percent"]) == np.sign(ca) and abs(res["closest_approach_percent"] - ca) < 20
+    assert abs(res["diameter_au"] - diam) / diam < 0.30
+    assert abs(res["chi_r"] - chi) < 0.03
+    if flux is not None:
+        assert abs(res["axial_flux_1e20_Mx"] - flux) / flux < 0.10
+    assert len(res["model"]["model_gse_nT"]) == res["n_averages"]
+
+
+def test_lundquist_model_geometry():
+    from helios.core.event_analysis import _bessel_j, lundquist_field
+    # J0, J1 series against tabulated values (Abramowitz & Stegun table 9.1).
+    assert _bessel_j(0, np.array([1.0]))[0] == pytest.approx(0.7651976866, abs=1e-9)
+    assert _bessel_j(1, np.array([1.0]))[0] == pytest.approx(0.4400505857, abs=1e-9)
+    assert abs(_bessel_j(0, np.array([2.404825557695773]))[0]) < 1e-12
+    # Axis along +Z, crossing through the centre: field is purely axial at closest approach,
+    # azimuthal (|B| = B0 J1(2.405) = 0.519 B0) at the boundaries, and rotates in sense H.
+    t = np.linspace(0, 20, 201)
+    b = lundquist_field(t, 0.0, 90.0, 0.0, 10.0, 1, 20.0, 400.0, b0=10.0)
+    assert b[100] == pytest.approx([0, 0, 10.0], abs=1e-9)
+    assert np.linalg.norm(b[0]) == pytest.approx(10 * 0.5191474973, rel=1e-6) and abs(b[0][2]) < 1e-9
+    assert np.sign(b[0][1]) == -np.sign(lundquist_field(t, 0.0, 90.0, 0.0, 10.0, -1, 20.0, 400.0, b0=10.0)[0][1])
+
+
+def test_flux_rope_api(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+
+    served = {"WI_H0_MFI@0": "wi_h0_mfi1m_19951018", "WI_H1_SWE": "wi_h1_swe_19951018"}
+
+    async def fake(url, timeout=120.0):
+        ds = parse_qs(urlparse(url).query)["id"][0]
+        return _text(served[ds]) if ds in served else None
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
+    monkeypatch.setattr(server, "downloader", dl)
+    client = TestClient(server.app)
+    r = client.get("/api/analysis/fluxrope?mission=WIND&start=1995-10-18T19:48&end=1995-10-20T01:18")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["result"]["handedness"] == "R"
+    assert body["provenance"]["datasets"][0]["id"] == "WI_H0_MFI@0"  # 1-min file for day-long fits
+    assert client.get("/api/analysis/fluxrope?mission=WIND&start=1995-10-18T19:48&end=1995-10-18T20:48").status_code == 422

@@ -109,6 +109,7 @@ def _ds(ds_id: str, params: List[str], reduce: Callable, label: str) -> Dict[str
 EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
     "WIND": {
         "field": _ds("WI_H0_MFI@1", ["B3GSE"], _field("B3GSE"), "WIND MFI 3-s"),
+        "field_coarse": _ds("WI_H0_MFI@0", ["BGSE"], _field("BGSE"), "WIND MFI 1-min"),
         "plasma": _ds("WI_H1_SWE", ["fit_flag", "Proton_VX_nonlin", "Proton_VY_nonlin", "Proton_VZ_nonlin",
                                     "Proton_W_nonlin", "Proton_Np_nonlin"],
                       _wind_swe, "WIND SWE non-linear proton fits (92 s)"),
@@ -159,12 +160,17 @@ class EventDataClient:
         os.replace(tmp, path)
         return text
 
-    async def fetch(self, mission: str, start: datetime, end: datetime) -> Dict[str, Any]:
-        """{"field", "plasma", "position": DataFrame or None, "datasets": [...], "offline": bool}"""
+    async def fetch(self, mission: str, start: datetime, end: datetime, coarse: bool = False) -> Dict[str, Any]:
+        """
+        {"field", "plasma", "position": DataFrame or None, "datasets": [...], "offline": bool}.
+        `coarse` uses a lower-cadence field dataset where one exists (WIND 1-min), for fits
+        to day-long structures that average the field anyway.
+        """
         src = EVENT_SOURCES[mission]
         out: Dict[str, Any] = {"field": None, "plasma": None, "position": None, "datasets": [], "offline": True}
         raw: Dict[str, pd.DataFrame] = {}
-        specs = [(k, src[k]) for k in ("field", "plasma")]
+        specs = [("field", src["field_coarse"] if coarse and "field_coarse" in src else src["field"]),
+                 ("plasma", src["plasma"])]
         if isinstance(src["position"], dict):
             specs.append(("position", src["position"]))
         for kind, spec in specs:
@@ -546,3 +552,175 @@ def timing_comparison(normal, speed_kms: float, t_ref: pd.Timestamp, r_ref_km,
                     "residual_s": dt_obs - pred["delay_s"],
                     "implied_speed_kms": (pred["baseline_along_normal_km"] / dt_obs) if abs(dt_obs) >= 30 else None})
     return out
+
+
+# ----------------------------------------------------------------------------
+# Magnetic cloud: force-free (Lundquist) flux rope fit
+# ----------------------------------------------------------------------------
+BESSEL_J0_ZERO = 2.404825557695773
+AU_KM = 1.495978707e8
+
+
+def _bessel_j(order: int, x: np.ndarray) -> np.ndarray:
+    """J0 or J1 from their power series; accurate to 1e-12 for 0 <= x <= 2.41 (inside the rope)."""
+    x = np.asarray(x, dtype=float)
+    term = np.ones_like(x) if order == 0 else x / 2.0
+    total = term.copy()
+    q = -(x / 2.0) ** 2
+    for k in range(1, 30):
+        term = term * q / (k * (k + order))
+        total = total + term
+    return total
+
+
+def _axis(phi_deg: float, theta_deg: float) -> np.ndarray:
+    p, t = math.radians(phi_deg), math.radians(theta_deg)
+    return np.array([math.cos(t) * math.cos(p), math.cos(t) * math.sin(p), math.sin(t)])
+
+
+def lundquist_field(t_hours: np.ndarray, phi_deg: float, theta_deg: float, y0: float, t0_hours: float,
+                    handedness: int, duration_hours: float, speed_kms: float, b0: float = 1.0) -> np.ndarray:
+    """
+    Field (N x 3, GSE) seen by a spacecraft crossing a Lundquist flux rope that moves
+    radially (along -X_GSE) at `speed_kms`: B = B0 [J0(a r) e_axis + H J1(a r) e_phi], with
+    a R0 = 2.4048, so the field is azimuthal at the boundary (Lepping et al. 1990). The axis
+    has GSE longitude phi and latitude theta; y0 is the closest approach in units of R0
+    (signed), t0 the time of closest approach, and R0 follows from the crossing duration.
+    """
+    a = _axis(phi_deg, theta_deg)
+    xp = np.array([1.0, 0.0, 0.0]) - a[0] * a  # path direction projected perpendicular to the axis
+    s = float(np.linalg.norm(xp))
+    if s < 1e-6 or abs(y0) >= 1.0:
+        return np.full((len(t_hours), 3), np.nan)
+    xp /= s
+    c = np.cross(xp, a)  # closest-approach direction; sign as Y0 in the WIND MFI cloud table
+    r0 = speed_kms * duration_hours * 3600.0 * s / (2.0 * math.sqrt(1.0 - y0 * y0))
+    d = speed_kms * (np.asarray(t_hours) - t0_hours) * 3600.0 * s  # distance along the projected path (km)
+    rvec = y0 * r0 * c[None, :] + d[:, None] * xp[None, :]
+    rho = np.linalg.norm(rvec, axis=1)
+    arg = np.clip(BESSEL_J0_ZERO * rho / r0, 0.0, BESSEL_J0_ZERO)
+    ephi = np.cross(a[None, :], rvec / np.where(rho > 0, rho, 1.0)[:, None])
+    return b0 * (_bessel_j(0, arg)[:, None] * a[None, :] + handedness * _bessel_j(1, arg)[:, None] * ephi)
+
+
+def _nelder_mead(f: Callable, x0: np.ndarray, steps: np.ndarray, iters: int = 400) -> Tuple[np.ndarray, float]:
+    """Minimal Nelder-Mead simplex minimiser (numpy only)."""
+    x0 = np.asarray(x0, dtype=float)
+    pts = [x0] + [x0 + np.eye(len(x0))[i] * steps[i] for i in range(len(x0))]
+    vals = [f(p) for p in pts]
+    for _ in range(iters):
+        order = np.argsort(vals)
+        pts, vals = [pts[i] for i in order], [vals[i] for i in order]
+        centroid = np.mean(pts[:-1], axis=0)
+        xr = centroid + (centroid - pts[-1])
+        fr = f(xr)
+        if fr < vals[0]:
+            xe = centroid + 2.0 * (centroid - pts[-1])
+            fe = f(xe)
+            pts[-1], vals[-1] = (xe, fe) if fe < fr else (xr, fr)
+        elif fr < vals[-2]:
+            pts[-1], vals[-1] = xr, fr
+        else:
+            xc = centroid + 0.5 * (pts[-1] - centroid)
+            fc = f(xc)
+            if fc < vals[-1]:
+                pts[-1], vals[-1] = xc, fc
+            else:
+                pts = [pts[0]] + [pts[0] + 0.5 * (p - pts[0]) for p in pts[1:]]
+                vals = [vals[0]] + [f(p) for p in pts[1:]]
+        if abs(vals[-1] - vals[0]) < 1e-10:
+            break
+    i = int(np.argmin(vals))
+    return pts[i], float(vals[i])
+
+
+def fit_flux_rope(field: pd.DataFrame, plasma: Optional[pd.DataFrame], start, end,
+                  average_minutes: int = 30, speed_kms: Optional[float] = None) -> Dict[str, Any]:
+    """
+    Least-squares fit of the Lundquist flux rope to a magnetic cloud between `start` and
+    `end` (the cloud boundaries), as in Lepping et al. (1990): the model is fitted to the
+    field directions (unit vectors of `average_minutes` means) for the axis longitude and
+    latitude, the closest approach and its time, for both signs of the handedness; B0 then
+    follows from the full vectors. R0 comes from the duration and the mean solar wind speed
+    in the cloud. chi_R = sqrt(sum |b_obs - b_model|^2 / (3N - 5)) on the unit vectors and
+    the axial flux 1.36 B0 R0^2 are defined as in the WIND MFI magnetic cloud table.
+    """
+    t_start, t_end = (pd.Timestamp(x) for x in (start, end))
+    t_start = t_start.tz_localize("UTC") if t_start.tzinfo is None else t_start.tz_convert("UTC")
+    t_end = t_end.tz_localize("UTC") if t_end.tzinfo is None else t_end.tz_convert("UTC")
+    duration = (t_end - t_start).total_seconds() / 3600.0
+    if duration <= 1.0:
+        raise ValueError("The cloud interval must be longer than one hour.")
+    sub = field[(field.index >= t_start) & (field.index < t_end)][["bx", "by", "bz"]]
+    avg = sub.resample(f"{average_minutes}min", origin=t_start).mean().dropna()
+    if len(avg) < 6:
+        raise ValueError(f"Only {len(avg)} field averages in the interval; at least 6 are needed.")
+    if speed_kms is None:
+        p = plasma[(plasma.index >= t_start) & (plasma.index < t_end)] if plasma is not None else pd.DataFrame()
+        speed_kms = float(np.sqrt(p["vx"] ** 2 + p["vy"] ** 2 + p["vz"] ** 2).mean()) if not p.empty else float("nan")
+        if not np.isfinite(speed_kms):
+            raise ValueError("No solar wind speed for the cloud interval: give speed_kms.")
+    th = ((avg.index - t_start).total_seconds().to_numpy() + average_minutes * 30.0) / 3600.0  # bin centres (h)
+    bobs = avg.to_numpy(dtype=float)
+    bhat = bobs / np.linalg.norm(bobs, axis=1)[:, None]
+    n = len(bhat)
+
+    def cost(x, h):
+        phi, theta, y0, t0 = x
+        if abs(theta) > 90 or abs(y0) >= 0.99 or not (0.25 * duration <= t0 <= 0.75 * duration):
+            return 1e9
+        m = lundquist_field(th, phi, theta, y0, t0, h, duration, speed_kms)
+        mh = m / np.linalg.norm(m, axis=1)[:, None]
+        val = float(np.sum((bhat - mh) ** 2))
+        return val if np.isfinite(val) else 1e9
+
+    best = None
+    for h in (1, -1):
+        seeds = []
+        for phi in range(0, 360, 15):
+            for theta in range(-75, 90, 15):
+                for y0 in (-0.6, -0.2, 0.2, 0.6):
+                    x0 = (phi, theta, y0, duration / 2)
+                    seeds.append((cost(x0, h), x0))
+        seeds.sort(key=lambda s: s[0])
+        for _, x0 in seeds[:4]:
+            x, v = _nelder_mead(lambda x: cost(x, h), np.array(x0, dtype=float),
+                                np.array([10.0, 10.0, 0.2, 0.05 * duration]))
+            if best is None or v < best[2]:
+                best = (h, x, v)
+    h, (phi, theta, y0, t0), chi2 = best
+    unit = lundquist_field(th, phi, theta, y0, t0, h, duration, speed_kms)
+    b0 = float(np.sum(bobs * unit) / np.sum(unit * unit))
+    if b0 < 0:  # reverse the axis so that it points along the axial field (B0 > 0)
+        b0, phi, theta, y0 = -b0, phi + 180.0, -theta, -y0
+    phi = phi % 360.0
+    a = _axis(phi, theta)
+    s = float(np.linalg.norm(np.array([1.0, 0.0, 0.0]) - a[0] * a))
+    r0_km = speed_kms * duration * 3600.0 * s / (2.0 * math.sqrt(1.0 - y0 * y0))
+    flux_wb = 1.36 * b0 * 1e-9 * (r0_km * 1e3) ** 2  # 2 pi B0 R0^2 J1(x0)/x0
+    return {
+        "start": t_start.strftime("%Y-%m-%d %H:%M"),
+        "end": t_end.strftime("%Y-%m-%d %H:%M"),
+        "duration_hours": duration,
+        "average_minutes": average_minutes,
+        "n_averages": n,
+        "speed_kms": speed_kms,
+        "axis_longitude_deg": float(phi),
+        "axis_latitude_deg": float(theta),
+        "axis_gse": a.tolist(),
+        "b0_nT": b0,
+        "handedness": "R" if h > 0 else "L",
+        "closest_approach_percent": float(100.0 * y0),
+        "closest_approach_time": (t_start + pd.Timedelta(hours=float(t0))).strftime("%Y-%m-%d %H:%M"),
+        "diameter_au": 2.0 * r0_km / AU_KM,
+        "axial_flux_1e20_Mx": flux_wb * 1e8 / 1e20,
+        "chi_r": math.sqrt(chi2 / max(1, 3 * n - 5)),
+        "model": {"time_tags": [(t_start + pd.Timedelta(hours=float(x))).strftime("%Y-%m-%d %H:%M") for x in th],
+                  "observed_gse_nT": bobs.round(3).tolist(), "model_gse_nT": (b0 * unit).round(3).tolist()},
+        "conventions": ("GSE. The axis points along the axial (core) field, so B0 > 0; closest approach in % of the "
+                        "radius; R0 from duration and speed, the cloud moving radially along -X."),
+        "references": ["Lepping, R. P., Jones, J. A. & Burlaga, L. F. (1990), J. Geophys. Res. 95, 11957, "
+                       "doi:10.1029/JA095iA08p11957",
+                       "Burlaga, L. F. (1988), J. Geophys. Res. 93, 7217, doi:10.1029/JA093iA07p07217",
+                       "WIND MFI magnetic cloud table, https://wind.nasa.gov/mfi/mag_cloud_S1.html"],
+    }
