@@ -102,3 +102,54 @@ def test_overview_png_export_and_global_style_untouched():
     assert matplotlib.rcParams["axes.facecolor"] == before
     from helios.core.exporter import DataExporter
     assert DataExporter.generate_overview_chart([], "X")[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def _rk4_transit(v0, w, gamma, r0, target):
+    """Integrate the DBM dv/dt = -gamma (v - w)|v - w| (km, s) with RK4 until r = target."""
+    r, v, t, h = r0, v0, 0.0, 60.0
+    while r < target:
+        def f(vv):
+            return -gamma * (vv - w) * abs(vv - w)
+        k1 = f(v); k2 = f(v + 0.5 * h * k1); k3 = f(v + 0.5 * h * k2); k4 = f(v + h * k3)
+        dv = h * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0
+        dr = h * (v + (v + dv)) / 2.0
+        if r + dr >= target:  # interpolate the last step
+            t += h * (target - r) / dr
+            v += dv * (target - r) / dr
+            return t, v
+        r, v, t = r + dr, v + dv, t + h
+    return t, v
+
+
+@pytest.mark.parametrize("v0, w, gamma", [(1500.0, 420.0, 1e-7), (2459.0, 450.0, 0.5e-7), (300.0, 500.0, 2e-7)])
+def test_drag_based_model_matches_numerical_integration(v0, w, gamma):
+    """
+    Vrsnak et al. (2013) DBM closed form in CoronagraphAnalyzer against an RK4 integration
+    of the same equation: Earth transit within 0.05 h and arrival speed within 1 km/s,
+    for fast, very fast and slow (accelerating) CMEs.
+    """
+    from helios.core.coronagraph import CoronagraphAnalyzer as C
+    r1, r2 = 5.0, 10.0
+    dt_min = (r2 - r1) * C.R_SUN_KM / v0 / 60.0
+    out = C.calculate_cme_kinematics(r1, r2, dt_min, ambient_wind_kms=w, gamma_drag=gamma)
+    t, v = _rk4_transit(v0, w, gamma, r2 * C.R_SUN_KM, C.AU_KM)
+    assert out["transit_to_earth_hours"] == pytest.approx(t / 3600.0, abs=0.05)
+    assert out["v_arrival_earth_kms"] == pytest.approx(v, abs=1.0)
+    t1, v1 = _rk4_transit(v0, w, gamma, r2 * C.R_SUN_KM, C.L1_DIST_KM)
+    assert out["transit_to_l1_hours"] == pytest.approx(t1 / 3600.0, abs=0.05)
+
+
+def test_gopalswamy_2001_arrival_matches_stepwise_integration():
+    """Constant acceleration a = 2.193 - 0.0054 u m/s^2 to 0.76 AU, then coasting (numerical check)."""
+    from helios.core.coronagraph import CoronagraphAnalyzer as C
+    for u in (500.0, 1000.0, 2000.0):
+        out = C.gopalswamy_2001_arrival(u)
+        a = (2.193 - 0.0054 * u) / 1000.0
+        r, v, t, h = 0.0, u, 0.0, 10.0
+        while r < 0.76 * C.AU_KM:
+            r += v * h + 0.5 * a * h * h
+            v += a * h
+            t += h
+        t += (C.AU_KM - r) / v
+        assert out["transit_hours"] == pytest.approx(t / 3600.0, abs=0.1)
+        assert out["arrival_speed_kms"] == pytest.approx(v, abs=0.5)
