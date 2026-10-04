@@ -397,3 +397,15 @@ def test_custom_csv_export_has_metadata_and_plot_states_provenance(monkeypatch):
     monkeypatch.setattr(DataExporter, "generate_overview_chart", staticmethod(chart))
     assert client.get("/api/export/plot?mission_id=ADITYA_L1").status_code == 200
     assert seen["provenance"]["kind"] in ("simulated", "synthetic")
+
+
+def test_unexpected_errors_answer_json(monkeypatch):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+
+    def boom(*a, **k):
+        raise RuntimeError("solver diverged")
+    monkeypatch.setattr(server.SolarCycleEngine, "calculate_cycle_25_progression", boom)
+    r = TestClient(server.app, raise_server_exceptions=False).get("/api/solar_cycle")
+    assert r.status_code == 500
+    assert r.json()["detail"] == "Internal error in /api/solar_cycle: RuntimeError: solver diverged"

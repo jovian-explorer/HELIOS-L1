@@ -146,6 +146,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// Readable text for an API error: FastAPI answers {"detail": "..."} for our own errors and
+// {"detail": [{"loc": [...], "msg": "..."}]} for invalid parameters, which used to reach the
+// user as "[object Object]" or as raw JSON.
+function apiErrorText(body, res) {
+  const d = body && body.detail;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d) && d.length) {
+    return d.map(e => {
+      const field = Array.isArray(e.loc) ? e.loc.filter(x => x !== 'body' && x !== 'query').join('.') : '';
+      return field ? `${field}: ${e.msg}` : String(e.msg || '');
+    }).join('; ');
+  }
+  if (body && typeof body.error === 'string') return body.error;
+  return res ? `Request failed (HTTP ${res.status})` : 'Request failed';
+}
+
 async function initSettingsAndPreferences() {
   // Apply initial theme and font scaling attributes
   document.documentElement.setAttribute('data-theme', currentTheme);
@@ -478,7 +494,7 @@ async function saveAndApplySettings() {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      alert(`Settings not saved: ${typeof body.detail === 'string' ? body.detail : 'HTTP ' + res.status}`);
+      alert(`Settings not saved: ${apiErrorText(body, res)}`);
       return;
     }
   } catch (err) {
@@ -824,7 +840,7 @@ async function loadArchiveTelemetry() {
   try {
     const res = await fetch(`/api/archive/${mission}?${qs}`);
     const data = await res.json();
-    if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `HTTP ${res.status}`);
+    if (!res.ok) throw new Error(apiErrorText(data, res));
     const prov = data.provenance || {};
     if (statusEl) statusEl.innerText = prov.description || '';
     updateFeedStatus(data, Math.round(performance.now() - t0));
@@ -1370,7 +1386,7 @@ async function loadAuroralForecast() {
     const data = await res.json();
     const noteEl = document.getElementById('aurora-oval-note');
     if (!res.ok) {
-      if (noteEl) noteEl.innerText = data.detail ? String(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : `Request failed (HTTP ${res.status})`;
+      if (noteEl) noteEl.innerText = apiErrorText(data, res);
       return;
     }
     const b = data.boundaries;
@@ -1450,7 +1466,7 @@ async function calculateCMEKinematics() {
     });
     const cme = await res.json();
     if (!res.ok || cme.error) {
-      alert(cme.error || (typeof cme.detail === 'string' ? cme.detail : 'Enter numbers for both heights and the time step.'));
+      alert(res.ok ? cme.error : `${apiErrorText(cme, res)} (enter numbers for both heights and the time step)`);
       return;
     }
 
@@ -1734,7 +1750,7 @@ async function submitCustomImport() {
       body: JSON.stringify({ content: content, mission_name: missionName })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Import failed');
+    if (!res.ok) throw new Error(apiErrorText(data, res));
 
     currentCustomDataset = data;
     window.playBlip?.();

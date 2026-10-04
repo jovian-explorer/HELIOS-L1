@@ -126,3 +126,18 @@ def test_regime_filter_thresholds_match_labels():
     src = APP_JS.read_text(encoding="utf-8")
     assert "r.speed > 500" in src and "r.density > 10" in src
     assert "r.speed >= 480" not in src and "r.density >= 8" not in src
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_api_error_text_reads_validation_errors():
+    """FastAPI parameter errors are lists; they reached the user as '[object Object]'."""
+    script = _extract("apiErrorText") + """
+console.log(JSON.stringify([
+  apiErrorText({detail: 'Unknown theme'}, {status: 422}),
+  apiErrorText({detail: [{loc: ['query', 'kp'], msg: 'Input should be less than or equal to 9'}]}, {status: 422}),
+  apiErrorText({}, {status: 500}),
+]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout) == ["Unknown theme", "kp: Input should be less than or equal to 9", "Request failed (HTTP 500)"]

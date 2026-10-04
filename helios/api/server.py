@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Query, HTTPException, Response, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
+import logging
 import os
 import io
 import asyncio
@@ -45,6 +46,17 @@ app = FastAPI(
     description="Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite",
     version=__version__
 )
+
+@app.exception_handler(Exception)
+async def unexpected_error(request, exc: Exception):
+    """
+    Unexpected failures answer JSON like every other error, naming the endpoint and the
+    exception (the plain-text 'Internal Server Error' page made the interface fail with a
+    JSON parse error instead of a message). The traceback goes to the log file.
+    """
+    logging.getLogger("helios.api").exception("Unhandled error in %s", request.url.path)
+    return JSONResponse(status_code=500, content={
+        "detail": f"Internal error in {request.url.path}: {type(exc).__name__}: {exc}"[:500]})
 
 app.add_middleware(
     CORSMiddleware,
