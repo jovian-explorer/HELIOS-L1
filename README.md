@@ -82,7 +82,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    * Fast Fourier Transform (FFT) analysis of IMF magnetic fluctuations to identify Alfvénic turbulence and Kolmogorov $f^{-5/3}$ inertial subrange slopes.
 
 10. **Event analysis on archive data (WIND, ACE, DSCOVR at native cadence):**
-    * **Interplanetary shocks:** normals from magnetic coplanarity, velocity coplanarity and the mixed-mode methods MX1-3 (Schwartz 1998), shock speed $V_{sh} = \hat n \cdot (N_2\mathbf V_2 - N_1\mathbf V_1)/(N_2 - N_1)$, $\theta_{Bn}$, jumps, Alfvén and fast Mach numbers with Monte Carlo uncertainties. The normal points into the upstream plasma, as in the Harvard-Smithsonian CfA shock database, against which it was checked (17 March 2015: MX3 normal within 0.5°, speed within 1.2%). `GET /api/analysis/shock?mission=WIND&time=2015-03-17T04:00`.
+    * **Interplanetary shocks:** normals from magnetic coplanarity, velocity coplanarity and the mixed-mode methods MX1-3 (Schwartz 1998), shock speed $V_{sh} = \hat n \cdot (N_2\mathbf V_2 - N_1\mathbf V_1)/(N_2 - N_1)$, $\theta_{Bn}$, jumps, Alfvén and fast Mach numbers with Monte Carlo uncertainties. The normal points into the upstream plasma, as in the Harvard-Smithsonian CfA shock database, against which it was checked (17 March 2015 and 27 February 2014: MX3 normal within 1°, speed within 1%). `GET /api/analysis/shock?mission=WIND&time=2015-03-17T04:00`.
     * **Minimum variance analysis** with eigenvalue ratios and Sonnerup & Scheible (1998) angular errors: `GET /api/analysis/mva?mission=WIND&start=...&end=...`.
     * Every result lists the CDAWeb datasets and HAPI requests behind it, the parameters and the software version; add `&download=true` for a JSON file.
 

@@ -10,6 +10,9 @@ checked against the values published there:
 * 2015-06-22 (event 00693): arrival 65296.5 +- 110 s, FF, selected method RH08 normal
   (-0.983, -0.147, -0.106), theta_Bn 63.8 +- 5.0 deg, 788.2 km/s; MX3 (-0.994, -0.103, 0.037),
   793.8 km/s; median speed of all methods 790.7 km/s, compression 3.35 +- 0.22.
+* 2014-02-27 (event 00658): arrival 57013.5 +- 20 s, FF, MX3 normal (-0.820, -0.543, -0.178),
+  theta_Bn 79.9 +- 3.8 deg, 436.2 km/s, compression 2.47 +- 0.14. Most downstream SWE spectra
+  carry fit_flag 1; the CfA downstream values (V_x -413.4 km/s, N 42.3 cm^-3) are theirs.
 """
 import asyncio
 import gzip
@@ -65,7 +68,9 @@ def test_shock_20150317_matches_cfa_database():
     # Supercritical fast shock: Alfven Mach number well above 1, and the uncertainty is reported.
     assert mx3["alfven_mach"] > 2.5 and mx3["fast_mach"] > 1.5
     assert 0 < mx3["shock_speed_sigma_kms"] < 50
-    assert res["warnings"] == []
+    # With the flag-1 spectra kept, 30 spectra are averaged (the CfA used 17 + 15).
+    assert res["upstream"]["plasma_samples"] + res["downstream"]["plasma_samples"] == 30
+    assert all("fit_flag 1" in w for w in res["warnings"])
 
 
 def test_shock_20150622_matches_cfa_database():
@@ -85,6 +90,23 @@ def test_shock_20150622_matches_cfa_database():
     assert abs(mx3["theta_bn_deg"] - 63.8) < 5.0
     assert abs(mx3["shock_speed_kms"] - 790.7) / 790.7 < 0.04
     assert abs(res["density_ratio"] - 3.35) < 0.4
+
+
+def test_shock_20140227_uses_flagged_downstream_spectra_like_cfa():
+    field, plasma = _wind("20140227")
+    res = analyze_shock(field, plasma, "2014-02-27 15:50", upstream_minutes=13, downstream_minutes=5)
+    t = pd.Timestamp(res["shock_time"], tz="UTC")
+    assert abs((t - (pd.Timestamp("2014-02-27", tz="UTC") + pd.Timedelta(seconds=57013.5))).total_seconds()) <= 20
+    mx3 = res["methods"]["MX3"]
+    assert _angle(mx3["normal_gse"], [-0.820, -0.543, -0.178]) < 2.0
+    assert abs(mx3["theta_bn_deg"] - 79.9) < 3.8
+    assert abs(mx3["shock_speed_kms"] - 436.2) / 436.2 < 0.02
+    assert abs(res["density_ratio"] - 2.47) < 0.14
+    assert res["downstream"]["V_gse_kms"][0] == pytest.approx(-413.4, abs=6)
+    assert any("fit_flag 1" in w for w in res["warnings"])
+    # The magnetic coplanarity normal degenerates for this quasi-perpendicular shock (the CfA
+    # MC normal is 70 deg from MX3 too); the velocity-based methods agree, so no warning.
+    assert not any("poorly constrained" in w for w in res["warnings"])
 
 
 def test_shock_normal_conventions_and_reverse_shock():

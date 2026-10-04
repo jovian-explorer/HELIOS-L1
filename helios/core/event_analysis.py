@@ -68,9 +68,15 @@ def _field(name: str, flag: Optional[str] = None) -> Callable:
 
 
 def _wind_swe(df: pd.DataFrame) -> pd.DataFrame:
-    df = df[df["fit_flag"] > 1]  # "10=He_OK, >1=P_OK"
+    # fit_flag: 10 = parameters OK, 2-9 = alpha-particle contingencies with valid protons,
+    # 1 = "poor peak identification", 0 = no fit. Behind strong shocks most spectra carry
+    # flag 1, and the CfA shock database (built by the SWE team) uses them: its downstream
+    # values for e.g. 27 Feb 2014 are those of the flag-1 spectra. Event analysis keeps them
+    # and marks them, so the number used is reported; flag 0 is dropped.
+    df = df[df["fit_flag"] >= 1]
     return pd.DataFrame({"vx": df["Proton_VX_nonlin"], "vy": df["Proton_VY_nonlin"], "vz": df["Proton_VZ_nonlin"],
-                         "n": df["Proton_Np_nonlin"], "t": _w_to_kelvin(df["Proton_W_nonlin"])}, index=df.index)
+                         "n": df["Proton_Np_nonlin"], "t": _w_to_kelvin(df["Proton_W_nonlin"]),
+                         "poor_fit": (df["fit_flag"] == 1).astype(float)}, index=df.index)
 
 
 def _wind_pos(df: pd.DataFrame) -> pd.DataFrame:
@@ -262,7 +268,7 @@ def refine_shock_time(field: pd.DataFrame, guess: pd.Timestamp, search_minutes: 
     secs = (t - t[0]).total_seconds().to_numpy()
     csum = np.concatenate([[0.0], np.cumsum(vals)])
     lo_t, hi_t = (guess - pd.Timedelta(minutes=search_minutes)), (guess + pd.Timedelta(minutes=search_minutes))
-    best, best_t = -np.inf, None
+    best, best_i = -np.inf, None
     for i in range(len(t)):
         if t[i] < lo_t or t[i] > hi_t:
             continue
@@ -272,8 +278,20 @@ def refine_shock_time(field: pd.DataFrame, guess: pd.Timestamp, search_minutes: 
             continue
         jump = abs((csum[c] - csum[i]) / (c - i) - (csum[i] - csum[a]) / (i - a))
         if jump > best:
-            best, best_t = jump, t[i]
-    return best_t
+            best, best_i = jump, i
+    if best_i is None:
+        return None
+    # The largest window difference can sit on the overshoot behind the ramp; the arrival is
+    # where |B| first crosses half-way between the levels before and after.
+    i = best_i
+    a = np.searchsorted(secs, secs[i] - half_window_seconds, side="left")
+    c = np.searchsorted(secs, secs[i] + half_window_seconds, side="left")
+    pre, post = vals[a:i].mean(), vals[i:c].mean()
+    mid = 0.5 * (pre + post)
+    for j in range(a, c):
+        if (vals[j] >= mid) if post > pre else (vals[j] <= mid):
+            return t[j]
+    return t[i]
 
 
 def _means(df: pd.DataFrame, cols: List[str], required: int = 3) -> Tuple[np.ndarray, np.ndarray, int]:
@@ -371,6 +389,9 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
     ba, ba_e, kba = _means(_window(field, t0, *after), fcols)
     pb, pb_e, kpb = _means(_window(plasma, t0, *before), pcols, 4)
     pa, pa_e, kpa = _means(_window(plasma, t0, *after), pcols, 4)
+    poor = 0
+    if "poor_fit" in plasma.columns:
+        poor = int(_window(plasma, t0, *before)["poor_fit"].sum() + _window(plasma, t0, *after)["poor_fit"].sum())
     if min(kbb, kba) < 3 or min(kpb, kpa) < 2:
         raise ValueError("Not enough field or plasma samples in the upstream/downstream windows "
                          f"(field {kbb}/{kba}, plasma {kpb}/{kpa}).")
@@ -429,14 +450,23 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
     waves = _upstream_waves(p1[3], p1[4], b1, best[PREFERRED_METHOD][1] if PREFERRED_METHOD in best else 90.0)
     density_ratio = float(p2[3] / p1[3])
     warnings = []
+    if poor:
+        warnings.append(f"{poor} of {kpb + kpa} plasma spectra carry the WIND SWE flag 'poor peak identification' "
+                        "(fit_flag 1); they are used, as in the CfA shock database.")
     if density_ratio < 1.2:
         warnings.append(f"Density jump {density_ratio:.2f} is too small for a reliable mass-flux shock speed.")
     if min(k_up[1], k_dn[1]) < 3:
         warnings.append("Fewer than 3 plasma samples on one side: the averages rest on very few spectra.")
-    if PREFERRED_METHOD in methods and "MC" in methods:
-        spread = math.degrees(math.acos(min(1.0, abs(float(np.dot(best["MC"][0], best[PREFERRED_METHOD][0]))))))
-        if spread > 30.0:
-            warnings.append(f"The MC and {PREFERRED_METHOD} normals differ by {spread:.0f} deg: the normal is poorly constrained.")
+    if PREFERRED_METHOD in methods:
+        # The methods that use the velocity jump (VC, MX1-3) should agree; the magnetic
+        # coplanarity normal alone degenerates for quasi-perpendicular and quasi-parallel
+        # shocks and is not part of this check.
+        others = [m for m in ("VC", "MX1", "MX2") if m in best]
+        spread = max((math.degrees(math.acos(min(1.0, abs(float(np.dot(best[m][0], best[PREFERRED_METHOD][0]))))))
+                      for m in others), default=0.0)
+        if spread > 20.0:
+            warnings.append(f"The VC/MX normals differ from {PREFERRED_METHOD} by up to {spread:.0f} deg: "
+                            "the normal is poorly constrained.")
     if PREFERRED_METHOD in methods and abs(methods[PREFERRED_METHOD]["shock_speed_kms"]) > 3000.0:
         warnings.append("Shock speed above 3000 km/s: the upstream and downstream states are not those of a shock.")
     return {
@@ -463,3 +493,4 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
             "Harvard-Smithsonian CfA Interplanetary Shock Database, https://www.cfa.harvard.edu/shocks/",
         ],
     }
+
