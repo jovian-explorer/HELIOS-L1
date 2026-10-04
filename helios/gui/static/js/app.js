@@ -2126,7 +2126,11 @@ async function loadEvents() {
   }
 }
 
+// Each selection gets a number; a slower answer for an earlier selection is dropped, so a
+// quick second click cannot end with the first event's data under the second's highlight.
+let eventSelectSeq = 0;
 async function selectEvent(eventId) {
+  const seq = ++eventSelectSeq;
   try {
     // Highlight active card
     document.querySelectorAll('.event-benchmark-card').forEach(el => {
@@ -2141,6 +2145,7 @@ async function selectEvent(eventId) {
 
     const res = await fetch(`/api/event/${eventId}`);
     const ev = await res.json();
+    if (seq !== eventSelectSeq) return;
     const meta = ev.metadata;
 
     document.getElementById('event-title').innerText = meta.title;
