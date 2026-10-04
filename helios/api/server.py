@@ -505,8 +505,18 @@ async def get_events():
 async def get_event(event_id: str):
     return await downloader.get_historical_event(event_id)
 
+def check_epoch(epoch: Optional[str]) -> None:
+    """422 for an epoch the ephemeris engine cannot read (it used to fall back to a fixed date)."""
+    if epoch:
+        try:
+            get_spice_engine().epoch_to_et(epoch)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+
 @app.get("/api/orbits")
 async def get_orbits(epoch: Optional[str] = Query(None, description="UTC ISO epoch for spacecraft position calculations")):
+    check_epoch(epoch)
     lagrange = OrbitalMechanics.get_lagrange_points()
     orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc=epoch)
     return {
@@ -525,6 +535,7 @@ async def get_spice_ephemeris(
     Returns verified positions (km, AU), orbital velocities (km/s, AU/day),
     heliocentric distances, Earth-relative distances, true anomalies, and orbital elements.
     """
+    check_epoch(epoch)
     engine = get_spice_engine()
     sc_list = [s.strip().upper() for s in satellites.split(",")] if satellites else None
     return engine.get_fleet_states(spacecraft_ids=sc_list, epoch_utc=epoch, frame=frame)
@@ -538,6 +549,7 @@ async def get_spice_trajectory(
     """
     Generates full 3D orbital path track points across an entire orbital period using SPICE.
     """
+    check_epoch(epoch)
     engine = get_spice_engine()
     trajectory = engine.get_orbit_trajectory(spacecraft_id=satellite, num_points=points, epoch_utc=epoch)
     return {

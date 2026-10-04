@@ -170,8 +170,9 @@ class SpiceEphemerisEngine:
             unix_ts = dt.timestamp()
             # ET ~ TAI + 32.184s; TAI = UTC + 37s (leapseconds up to 2026) -> ET ~ UTC + 69.184s
             return float(unix_ts - 946728000.0 + 69.184)
-        except Exception:
-            return 843336000.0  # Approx Sept 2026
+        except ValueError:
+            # An unreadable epoch used to become a fixed ET in September 2026 without a word.
+            raise ValueError(f"Unrecognised epoch {epoch!r}; use ISO 8601 UTC, e.g. 2026-10-04T12:00:00")
 
     def et_to_utc(self, et: float, format_str: str = "ISOC") -> str:
         """Converts SPICE Ephemeris Time (ET) back to ISO UTC string."""
