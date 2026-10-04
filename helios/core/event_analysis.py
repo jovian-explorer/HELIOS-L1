@@ -29,6 +29,7 @@ import hashlib
 import math
 import os
 import time
+import warnings
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -723,4 +724,73 @@ def fit_flux_rope(field: pd.DataFrame, plasma: Optional[pd.DataFrame], start, en
                        "doi:10.1029/JA095iA08p11957",
                        "Burlaga, L. F. (1988), J. Geophys. Res. 93, 7217, doi:10.1029/JA093iA07p07217",
                        "WIND MFI magnetic cloud table, https://wind.nasa.gov/mfi/mag_cloud_S1.html"],
+    }
+
+
+# ----------------------------------------------------------------------------
+# Superposed epoch analysis
+# ----------------------------------------------------------------------------
+SEA_PARAMETERS = ("sym_h", "asy_h", "ae", "al", "au", "bz_gsm", "by_gsm", "bt", "speed", "density",
+                  "temperature", "dynamic_pressure", "akasofu_gw")
+
+
+def superposed_epoch(events: List[Tuple[pd.Timestamp, List[Dict[str, Any]]]], parameters: List[str],
+                     before_hours: float, after_hours: float, cadence_minutes: int = 10) -> Dict[str, Any]:
+    """
+    Superposed epoch analysis: each event's records are put on a common grid of epoch times
+    (minutes from its onset, bins [k*cadence, (k+1)*cadence) labelled by their start) and the
+    events are combined per bin into mean, median, quartiles and the number of events with
+    data. Per event, the extremes of every parameter at the records' own cadence and their
+    epoch times are listed. `events` = [(onset, records with "time_tag")].
+    """
+    if not events:
+        raise ValueError("No events.")
+    cad = int(cadence_minutes)
+    offsets = np.arange(-int(round(before_hours * 60)), int(round(after_hours * 60)), cad)
+    grids = {p: np.full((len(events), len(offsets)), np.nan) for p in parameters}
+    summaries = []
+    for k, (onset, recs) in enumerate(events):
+        onset = pd.Timestamp(onset)
+        onset = onset.tz_localize("UTC") if onset.tzinfo is None else onset.tz_convert("UTC")
+        summary: Dict[str, Any] = {"onset": onset.strftime("%Y-%m-%d %H:%M"), "n_records": len(recs)}
+        if recs:
+            t = pd.to_datetime([r["time_tag"] for r in recs], utc=True)
+            epoch_min = ((t - onset).total_seconds() / 60.0).to_numpy()
+            idx = np.floor((epoch_min - offsets[0]) / cad).astype(int)
+            inside = (idx >= 0) & (idx < len(offsets))
+            for p in parameters:
+                vals = np.array([np.nan if r.get(p) is None else float(r[p]) for r in recs])
+                ok = inside & np.isfinite(vals)
+                if ok.any():
+                    sums = np.bincount(idx[ok], weights=vals[ok], minlength=len(offsets))
+                    counts = np.bincount(idx[ok], minlength=len(offsets))
+                    grids[p][k] = np.where(counts > 0, sums / np.maximum(counts, 1), np.nan)
+                    masked = np.where(ok, vals, np.nan)
+                    i_min, i_max = int(np.nanargmin(masked)), int(np.nanargmax(masked))
+                    summary[p] = {"min": vals[i_min], "min_epoch_hours": epoch_min[i_min] / 60.0,
+                                  "max": vals[i_max], "max_epoch_hours": epoch_min[i_max] / 60.0}
+        summaries.append(summary)
+
+    def clean(a):
+        return [None if not np.isfinite(v) else round(float(v), 3) for v in a]
+
+    stats = {}
+    for p in parameters:
+        g = grids[p]
+        n = np.sum(np.isfinite(g), axis=0)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)  # bins without any event give NaN, kept as null
+            stats[p] = {"mean": clean(np.nanmean(g, axis=0)), "median": clean(np.nanmedian(g, axis=0)),
+                        "q25": clean(np.nanpercentile(g, 25, axis=0)), "q75": clean(np.nanpercentile(g, 75, axis=0)),
+                        "n_events": n.astype(int).tolist(),
+                        "per_event": [clean(row) for row in g]}
+    return {
+        "epoch_hours": (offsets / 60.0).tolist(),
+        "cadence_minutes": cad,
+        "n_events": len(events),
+        "parameters": list(parameters),
+        "statistics": stats,
+        "events": summaries,
+        "method": ("Superposed epoch analysis: block means on a common epoch grid (bins labelled by their start), "
+                   "then mean, median and quartiles over the events with data in each bin"),
     }

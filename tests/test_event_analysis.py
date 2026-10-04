@@ -384,3 +384,58 @@ def test_flux_rope_api(monkeypatch, tmp_path):
     assert body["result"]["handedness"] == "R"
     assert body["provenance"]["datasets"][0]["id"] == "WI_H0_MFI@0"  # 1-min file for day-long fits
     assert client.get("/api/analysis/fluxrope?mission=WIND&start=1995-10-18T19:48&end=1995-10-18T20:48").status_code == 422
+
+
+def test_superposed_epoch_of_two_storms_from_omni(monkeypatch, tmp_path):
+    """
+    Epoch zero at the sudden commencements of 17 March 2015 (04:45 UT) and 10 May 2024
+    (17:05 UT, Tulasi Ram et al. 2024, Space Weather, doi:10.1029/2024SW004126). Published
+    SYM-H minima: about -234 nT at 22:47 UT on 17 March 2015 (e.g. arXiv:1703.10583) and
+    -518 nT at 02:14 UT on 11 May 2024 (Tulasi Ram et al. 2024).
+    """
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.archive import ArchiveClient
+    from helios.core.downloader import DataDownloader
+
+    days = {"2015-03-17": "omni_hro_1min_20150317", "2024-05-10": "omni_hro_1min_20240510_storm",
+            "2024-05-11": "omni_hro_1min_20240511"}
+    no_data = (Path(__file__).parent / "data" / "hapi" / "wi_h1_swe_nodata.csv").read_text()
+
+    async def fake(url, timeout=120.0):
+        q = parse_qs(urlparse(url).query)
+        day = q["time.min"][0][:10]
+        return _text(days[day]) if q["id"][0] == "OMNI_HRO_1MIN" and day in days else no_data
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.archive = ArchiveClient(lambda url: dl.fetch_text(url), tmp_path)
+    monkeypatch.setattr(server, "downloader", dl)
+    client = TestClient(server.app)
+    base = "/api/analysis/superposed?onsets=2015-03-17T04:45,2024-05-10T17:05&before_hours=2&after_hours=18.5"
+    r = client.get(base + "&cadence_minutes=1&parameters=sym_h,bz_gsm")
+    assert r.status_code == 200, r.text
+    res = r.json()["result"]
+    ev15, ev24 = res["events"]
+    assert ev15["sym_h"]["min"] == -234 and ev15["sym_h"]["min_epoch_hours"] == pytest.approx(18 + 2 / 60)
+    assert ev24["sym_h"]["min"] == -518 and ev24["sym_h"]["min_epoch_hours"] == pytest.approx(9 + 9 / 60)
+    epoch = np.array(res["epoch_hours"])
+    per = res["statistics"]["sym_h"]["per_event"]
+    i0 = int(np.argmin(np.abs(epoch)))
+    for row in per:  # sudden commencement: SYM-H jumps by tens of nT within minutes of epoch zero
+        assert row[i0 + 5] - row[i0 - 5] > 40
+    st = res["statistics"]["sym_h"]
+    assert st["mean"][i0 + 60] == pytest.approx((per[0][i0 + 60] + per[1][i0 + 60]) / 2, abs=1e-3)
+    assert st["n_events"][i0] == 2 and st["n_events"][-1] == 1  # the 2024 file ends at 04:00 UT
+
+    ten = client.get(base + "&cadence_minutes=10&parameters=sym_h").json()["result"]
+    assert len(ten["epoch_hours"]) == 123 and ten["epoch_hours"][12] == 0.0
+    # 10-minute block means can only be shallower than the 1-minute minimum.
+    assert min(v for v in ten["statistics"]["sym_h"]["per_event"][1] if v is not None) > -518
+    csv_text = client.get(base + "&cadence_minutes=60&parameters=sym_h,speed&format=csv").text
+    assert csv_text.startswith("# title: HELIOS-L1 superposed epoch analysis (2 events")
+    assert "epoch_hours,sym_h_mean,sym_h_median,sym_h_q25,sym_h_q75,sym_h_n_events,speed_mean" in csv_text
+    prov = r.json()["provenance"]
+    assert prov["datasets"][0]["datasets"][0]["id"] == "OMNI_HRO_1MIN"
+    assert client.get(base + "&parameters=kp").status_code == 422
+    assert client.get("/api/analysis/superposed?onsets=yesterday").status_code == 422

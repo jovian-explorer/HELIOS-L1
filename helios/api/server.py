@@ -27,7 +27,8 @@ from helios.config import (
 )
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
-from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SHOCK_METHODS, analyze_shock,
+from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
+                                        analyze_shock, superposed_epoch,
                                         fit_flux_rope, minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
@@ -696,6 +697,89 @@ async def analyse_flux_rope(
     params = {"average_minutes": average_minutes, "speed_kms": speed_kms}
     prov = _analysis_provenance(key, data, t0, t1, "Lundquist force-free flux rope fit, Lepping et al. (1990)", params)
     return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_fluxrope_{key}_{t0:%Y%m%dT%H%M}")
+
+
+SEA_MAX_EVENTS = 60
+SEA_MAX_HOURS = 240
+
+
+@app.get("/api/analysis/superposed")
+async def analyse_superposed_epoch(
+    onsets: str = Query(..., description="Comma-separated UTC onset times (epoch zero), ISO 8601"),
+    parameters: str = Query("sym_h,bz_gsm,speed,dynamic_pressure", description="OMNI quantities to superpose"),
+    before_hours: float = Query(12.0, ge=0.0, le=120.0),
+    after_hours: float = Query(48.0, gt=0.0, le=240.0),
+    cadence_minutes: int = Query(10, ge=1, le=180),
+    format: str = Query("json", pattern="^(json|csv)$"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Superposed epoch analysis of OMNI 1-min data (SYM-H, AE, solar wind drivers) keyed on
+    the given onset times, e.g. storm sudden commencements or shock arrivals.
+    """
+    try:
+        times = [_parse_utc(s, "onsets") for s in onsets.split(",") if s.strip()]
+    except HTTPException:
+        raise HTTPException(status_code=422, detail="'onsets' must be comma-separated ISO 8601 UTC times.")
+    if not times:
+        raise HTTPException(status_code=422, detail="Give at least one onset time.")
+    if len(times) > SEA_MAX_EVENTS:
+        raise HTTPException(status_code=422, detail=f"At most {SEA_MAX_EVENTS} onsets.")
+    if before_hours + after_hours > SEA_MAX_HOURS:
+        raise HTTPException(status_code=422, detail=f"The epoch window is limited to {SEA_MAX_HOURS} hours.")
+    params = [p.strip().lower() for p in parameters.split(",") if p.strip()]
+    unknown = [p for p in params if p not in SEA_PARAMETERS]
+    if unknown or not params:
+        raise HTTPException(status_code=422, detail=f"Unknown parameter(s) {', '.join(unknown) or '(none)'}; "
+                                                    f"available: {', '.join(SEA_PARAMETERS)}.")
+    sem = asyncio.Semaphore(4)
+
+    async def one(t):
+        async with sem:
+            return await downloader.get_archive_bundle("OMNI", t - timedelta(hours=before_hours),
+                                                       t + timedelta(hours=after_hours), cadence_minutes=1)
+
+    bundles = await asyncio.gather(*(one(t) for t in times))
+    result = await run_in_workers(superposed_epoch, [(t, b["records"]) for t, b in zip(times, bundles)],
+                                  params, before_hours, after_hours, cadence_minutes)
+    if not any(b["records"] for b in bundles):
+        raise HTTPException(status_code=404, detail="OMNI has no data for any of the windows"
+                            + (" (CDAWeb could not be reached)." if all(b["provenance"].get("kind") != "observed"
+                                                                        for b in bundles) else "."))
+    prov = {
+        "kind": "observed",
+        "archive": HAPI_SERVER,
+        "datasets": [{"onset": t.strftime("%Y-%m-%d %H:%M"), "kind": b["provenance"].get("kind"),
+                      "datasets": b["provenance"].get("datasets", []),
+                      "coverage": [b["provenance"].get("time_coverage_start"), b["provenance"].get("time_coverage_end")]}
+                     for t, b in zip(times, bundles)],
+        "time_standard": "UTC",
+        "note": "OMNI 1-min values are time-shifted to the bow shock nose; SYM-H, ASY-H, AE, AL and AU are WDC Kyoto.",
+        "method": result["method"],
+        "parameters": {"onsets": [t.strftime("%Y-%m-%d %H:%M:%S") for t in times], "parameters": params,
+                       "before_hours": before_hours, "after_hours": after_hours, "cadence_minutes": cadence_minutes},
+        "software": f"HELIOS-L1 {__version__}",
+        "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    stamp = f"{times[0]:%Y%m%dT%H%M}_{len(times)}events"
+    if format == "csv":
+        out = io.StringIO()
+        out.write(f"# title: HELIOS-L1 superposed epoch analysis ({len(times)} events, OMNI 1-min)\n")
+        out.write(f"# onsets: {' '.join(prov['parameters']['onsets'])}\n")
+        out.write(f"# method: {result['method']}\n# cadence_minutes: {cadence_minutes}\n")
+        out.write(f"# software: {prov['software']}\n# retrieved_utc: {prov['retrieved_utc']}\n")
+        w = csv.writer(out, lineterminator="\n")
+        cols = ["epoch_hours"] + [f"{p}_{s}" for p in params for s in ("mean", "median", "q25", "q75", "n_events")]
+        w.writerow(cols)
+        for i, e in enumerate(result["epoch_hours"]):
+            row = [round(e, 4)]
+            for p in params:
+                st = result["statistics"][p]
+                row += ["" if st[s][i] is None else st[s][i] for s in ("mean", "median", "q25", "q75")] + [st["n_events"][i]]
+            w.writerow(row)
+        return Response(content=out.getvalue(), media_type="text/csv", headers={
+            "Content-Disposition": f"attachment; filename=HELIOS_superposed_epoch_{stamp}.csv"})
+    return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_superposed_epoch_{stamp}")
 
 
 @app.get("/api/analysis/mva")
