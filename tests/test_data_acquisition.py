@@ -409,3 +409,33 @@ def test_unexpected_errors_answer_json(monkeypatch):
     r = TestClient(server.app, raise_server_exceptions=False).get("/api/solar_cycle")
     assert r.status_code == 500
     assert r.json()["detail"] == "Internal error in /api/solar_cycle: RuntimeError: solver diverged"
+
+
+def test_solar_cycle_uses_noaa_observed_indices(monkeypatch):
+    """The tab showed a sin^2/exp curve labelled as Hathaway's model and as the current sunspot number."""
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+    obs = [{"time-tag": "2008-12", "ssn": 1.7, "smoothed_ssn": 2.2, "f10.7": 69.0, "smoothed_f10.7": 69.5},
+           {"time-tag": "2019-12", "ssn": 1.5, "smoothed_ssn": 1.8, "f10.7": 70.9, "smoothed_f10.7": 71.0},
+           {"time-tag": "2024-10", "ssn": 166.3, "smoothed_ssn": 160.9, "f10.7": 210.0, "smoothed_f10.7": 200.0},
+           {"time-tag": "2026-09", "ssn": 60.3, "smoothed_ssn": -1.0, "f10.7": 105.4, "smoothed_f10.7": -1.0}]
+    pred = [{"time-tag": "2026-10", "predicted_ssn": 80.0, "low_ssn": 70.0, "high_ssn": 90.0}]
+
+    async def fake(self, url, cache_key):
+        return {"solar_cycle_observed": obs, "solar_cycle_predicted": pred}.get(cache_key)
+    monkeypatch.setattr(DataDownloader, "fetch_json", fake)
+    sc = TestClient(server.app).get("/api/solar_cycle?year=2026.8").json()
+    assert sc["data_kind"] == "observed"
+    assert sc["monthly_sunspot_number"] == 60.3 and sc["month"] == "2026-09"
+    assert sc["smoothed_sunspot_number"] == 160.9 and sc["smoothed_month"] == "2024-10"  # -1 = not yet smoothed
+    assert sc["peak_sunspot_number"] == 160.9 and sc["peak_month"] == "2024-10"
+    t = {r["year_month"]: r for r in sc["timeline"]}
+    assert t["2019-12"]["cycle_24_comparison_ssn"] == 2.2 and t["2026-10"]["ssn_predicted"] == 80.0
+
+
+def test_solar_cycle_offline_is_labelled_model():
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    sc = TestClient(server.app).get("/api/solar_cycle").json()
+    assert sc["data_kind"] == "model" and "approximation" in sc["source"]

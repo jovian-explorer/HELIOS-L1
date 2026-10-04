@@ -3824,11 +3824,20 @@ async function loadHazardsAndCycle() {
     const gic = await resGic.json();
 
     // 1. Update Solar Cycle 25 Gauges
+    const observedCycle = sc.data_kind === 'observed';
     const ssnEl = document.getElementById('sc25-ssn');
-    if (ssnEl) ssnEl.innerText = sc.smoothed_sunspot_number;
+    if (ssnEl) ssnEl.innerText = sc.smoothed_sunspot_number ?? '---';
+    const ssnNote = document.getElementById('sc25-ssn-note');
+    if (ssnNote) ssnNote.innerText = observedCycle
+      ? `13-month smoothed, ${sc.smoothed_month}; monthly ${sc.monthly_sunspot_number} (${sc.month})`
+      : 'MODEL (NOAA data unavailable)';
 
     const f107El = document.getElementById('sc25-f107');
-    if (f107El) f107El.innerText = sc.f107_radio_flux_sfu;
+    if (f107El) f107El.innerText = sc.f107_radio_flux_sfu ?? '---';
+    const f107Note = document.getElementById('sc25-f107-note');
+    if (f107Note) f107Note.innerText = observedCycle
+      ? `Smoothed, ${sc.smoothed_month}; monthly ${sc.monthly_f107_sfu} (${sc.month})`
+      : 'MODEL: 63.7 + 0.728 SSN + 0.00089 SSN²';
 
     const progEl = document.getElementById('sc25-progress');
     if (progEl) progEl.innerText = `${sc.cycle_progress_percent}%`;
@@ -3837,7 +3846,9 @@ async function loadHazardsAndCycle() {
     if (progBar) progBar.style.width = `${sc.cycle_progress_percent}%`;
 
     const revEl = document.getElementById('sc25-reversal');
-    if (revEl) revEl.innerText = sc.polar_magnetic_reversal;
+    if (revEl) revEl.innerText = observedCycle && sc.peak_month ? `SSN ${sc.peak_sunspot_number} in ${sc.peak_month}` : `Model peak ${sc.peak_sunspot_number}`;
+    const srcEl = document.getElementById('sc25-source');
+    if (srcEl) srcEl.innerText = sc.source || '';
 
     renderSolarCycleChart(sc.timeline || []);
 
@@ -3957,8 +3968,11 @@ function renderSolarCycleChart(timeline) {
   if (chartSolarCycle) chartSolarCycle.destroy();
 
   const labels = timeline.map(t => t.year_month);
-  const ssnVals = timeline.map(t => t.ssn_smoothed);
-  const c24Vals = timeline.map(t => t.cycle_24_comparison_ssn);
+  const ssnVals = timeline.map(t => t.ssn_smoothed ?? null);
+  const c24Vals = timeline.map(t => t.cycle_24_comparison_ssn ?? null);
+  const monthlyVals = timeline.map(t => t.ssn_monthly ?? null);
+  const predVals = timeline.map(t => t.ssn_predicted ?? null);
+  const observed = timeline.some(t => t.ssn_monthly !== undefined);
 
   chartSolarCycle = new Chart(ctx, {
     type: 'line',
@@ -3966,7 +3980,7 @@ function renderSolarCycleChart(timeline) {
       labels: labels,
       datasets: [
         {
-          label: 'Solar Cycle 25 (Observed / Modeled SSN)',
+          label: observed ? 'Cycle 25, 13-month smoothed SSN (observed)' : 'Cycle 25 SSN (MODEL, NOAA data unavailable)',
           data: ssnVals,
           borderColor: '#f59e0b',
           backgroundColor: 'rgba(245, 158, 11, 0.15)',
@@ -3976,14 +3990,30 @@ function renderSolarCycleChart(timeline) {
           tension: 0.3
         },
         {
-          label: 'Cycle 24 Baseline (Smoothed SSN Comparison)',
+          label: observed ? 'Cycle 24, smoothed SSN (months since its Dec 2008 minimum)' : 'Cycle 24 (MODEL: 0.68 x cycle 25)',
           data: c24Vals,
           borderColor: '#64748b',
           borderDash: [4, 4],
           borderWidth: 1.5,
           pointRadius: 0,
           tension: 0.3
-        }
+        },
+        ...(observed ? [{
+          label: 'Monthly mean SSN',
+          data: monthlyVals,
+          borderColor: 'rgba(251, 191, 36, 0.45)',
+          borderWidth: 1,
+          pointRadius: 0,
+          tension: 0
+        }, {
+          label: 'NOAA SWPC predicted SSN',
+          data: predVals,
+          borderColor: '#a78bfa',
+          borderDash: [6, 3],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.3
+        }] : [])
       ]
     },
     options: {

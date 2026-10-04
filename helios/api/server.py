@@ -22,7 +22,7 @@ from helios import __version__
 from helios.config import (
     MISSIONS, STATIC_DIR, DATA_PROVIDERS,
     SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
-    get_system_settings, update_system_settings, run_in_workers
+    get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -840,7 +840,15 @@ async def export_custom_telemetry(export_format: str):
         raise HTTPException(status_code=400, detail="Invalid export format. Choose 'csv' or 'json'.")
 
 @app.get("/api/solar_cycle")
-async def get_solar_cycle(year: Optional[float] = None):
+async def get_solar_cycle(year: Optional[float] = Query(None, ge=2019.9, le=2031.0)):
+    """Observed cycle 25 indices and NOAA's predicted cycle; the analytic model only when NOAA is unreachable."""
+    observed, predicted = await asyncio.gather(
+        downloader.fetch_json(NOAA_SWPC_ENDPOINTS["solar_cycle_observed"], "solar_cycle_observed"),
+        downloader.fetch_json(NOAA_SWPC_ENDPOINTS["solar_cycle_predicted"], "solar_cycle_predicted"))
+    res = SolarCycleEngine.from_noaa(observed if isinstance(observed, list) else None,
+                                     predicted if isinstance(predicted, list) else None, current_year_float=year)
+    if res is not None:
+        return res
     cur_year = year if year is not None else (datetime.now(timezone.utc).year + datetime.now(timezone.utc).timetuple().tm_yday / 365.25)
     return SolarCycleEngine.calculate_cycle_25_progression(current_year_float=cur_year)
 

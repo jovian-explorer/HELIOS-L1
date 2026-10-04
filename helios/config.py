@@ -449,6 +449,8 @@ NOAA_SWPC_ENDPOINTS = {
     "kp_7day": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
     "kyoto_dst": "https://services.swpc.noaa.gov/products/kyoto-dst.json",
     "solar_regions": "https://services.swpc.noaa.gov/json/solar_regions.json",
+    "solar_cycle_observed": "https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle-indices.json",
+    "solar_cycle_predicted": "https://services.swpc.noaa.gov/json/solar-cycle/predicted-solar-cycle.json",
     "alerts": "https://services.swpc.noaa.gov/products/alerts.json"
 }
 
@@ -761,7 +763,7 @@ SCIENTIFIC_REFERENCES = [
         "doi": "10.1007/lrsp-2015-4",
         "doi_url": "https://doi.org/10.1007/lrsp-2015-4",
         "category": "Solar Cycle 25 Dynamo & Modulation",
-        "formula": "SSN(t) = a * (t - t0)^c / (exp((t - t0)^2 / b^2) - 1),  F10.7 = 63.7 + 0.728*SSN + 0.00089*SSN^2",
+        "formula": "SSN(t) = a * (t - t0)^3 / (exp((t - t0)^2 / b^2) - c) (Hathaway et al. 1994 shape; reference only: HELIOS-L1 shows the observed SILSO sunspot number and NOAA SWPC prediction, and offline a sin^2-rise / exponential-decay approximation with F10.7 = 63.7 + 0.728*SSN + 0.00089*SSN^2)",
         "parameters": ["SSN (monthly smoothed sunspot number)", "F10.7 (10.7 cm radio flux in s.f.u.)", "t0 (cycle minimum epoch)"],
         "physical_meaning": "Comprehensive empirical dynamo model describing 11-year sunspot cycle progression, solar maximum timing, and EUV/radio irradiance variations."
     },

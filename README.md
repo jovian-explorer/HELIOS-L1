@@ -97,6 +97,8 @@ Every telemetry record carries a `data_source` field and every API response a `p
 | `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. Historical storm profiles are also synthetic (built from published peak values). |
 | `imported` | Rows from a user file in the Custom Ingestion tab. |
 
+* **Solar cycle:** the hazards tab shows the observed monthly and 13-month smoothed international sunspot number (SILSO) and F10.7 with NOAA SWPC's predicted cycle and range (`json/solar-cycle/observed-solar-cycle-indices.json`, `predicted-solar-cycle.json`), the observed cycle 25 maximum, and cycle 24 aligned on its minimum. Without network access an analytic approximation is shown and labelled MODEL.
+
 * **DSCOVR view:** the RTSW operational stream (rows flagged active). The spacecraft actually supplying it (e.g. SOLAR1) is stored per record in `source_spacecraft`.
 * **ACE view:** the RTSW rows tagged `source = ACE` (real ACE data), so ACE vs. operational-monitor comparisons are genuine inter-spacecraft comparisons.
 * **Coverage:** the RTSW feeds hold about the last 24 h. The 7-day span uses the CDAWeb archive where it has data and RTSW after the archive's last sample, as 5-minute block averages.
