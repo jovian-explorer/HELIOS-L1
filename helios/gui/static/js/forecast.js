@@ -1,10 +1,10 @@
 /**
- * HELIOS-L1: MACHINE LEARNING & ADVANCED MAGNETOSPHERIC COUPLING CONTROLLER
+ * HELIOS-L1: MAGNETOSPHERIC COUPLING & STORM TRAJECTORY CONTROLLER
  * Features:
  * - Newell Solar Wind Magnetosphere Coupling Function Monitor
- * - O'Brien & McPherron (2000) ring current Dst forecast, started from observed Kyoto Dst
- * - Multi-Horizon (1h to 12h) Kp Confidence Interval Charting
- * - Probabilistic NOAA Geomagnetic Storm Scale Gauges (G1, G3, G5)
+ * - O'Brien & McPherron (2000) ring current Dst trajectory, started from observed Kyoto Dst
+ * - 12 h Newell et al. (2008) Kp trajectory with the Kp range of the last 3 h, and NOAA SWPC's Kp forecast
+ * - NOAA SWPC storm probabilities for the next UTC day (G1, G2, G3-G5)
  * - Critical Infrastructure Hazard Advisories (GIC, Aviation, Satellites)
  */
 
@@ -25,17 +25,22 @@ async function loadMLForecast() {
     const newellStateEl = document.getElementById('forecast-newell-state');
     const dstEstEl = document.getElementById('forecast-dst-val');
 
-    if (newellEl) newellEl.innerText = `${c.newell_coupling_rate.toLocaleString()} Wb/s`;
-    if (newellStateEl) newellStateEl.innerText = c.coupling_state;
+    if (newellEl) newellEl.innerText = c.newell_coupling_rate.toLocaleString();
+    if (newellEl && c.newell_units) newellEl.title = c.newell_units;
+    if (newellStateEl) newellStateEl.innerText = `${c.coupling_state}` + (c.newell_kp_now !== null && c.newell_kp_now !== undefined ? ` • Newell Kp ${c.newell_kp_now}` : '');
     if (dstEstEl) dstEstEl.innerText = `${c.estimated_dst_nt} nT`;
     const dstSrcEl = document.getElementById('forecast-dst-source');
     if (dstSrcEl && c.dst_source) dstSrcEl.innerText = c.dst_source;
 
     // 2. Storm Scale Probabilities
     const probs = data.storm_probabilities;
-    setGaugeValue('gauge-g1', probs.minor_storm_g1_kp5_percent);
-    setGaugeValue('gauge-g3', probs.strong_storm_g3_kp7_percent);
-    setGaugeValue('gauge-g5', probs.extreme_storm_g5_kp9_percent);
+    setGaugeValue('gauge-g1', probs.minor_storm_g1_percent);
+    setGaugeValue('gauge-g3', probs.moderate_storm_g2_percent);
+    setGaugeValue('gauge-g5', probs.strong_extreme_storm_g3_g5_percent);
+    const gSrc = document.getElementById('gauge-source');
+    if (gSrc) gSrc.innerText = probs.day ? `NOAA SWPC forecast for ${probs.day} (issued ${probs.issued})` : probs.source;
+    const notes = document.getElementById('forecast-assumptions');
+    if (notes) notes.innerHTML = (data.assumptions || []).map(a => `<div>• ${a}</div>`).join('');
 
     // 3. Hazard Assessment Cards
     const h = data.hazard_assessment;
@@ -44,7 +49,7 @@ async function loadMLForecast() {
     updateHazardCard('hazard-satellite', h.satellite_ops);
 
     // 4. Render 12-Hour Forecast Chart
-    renderForecastChart(data.predictions_timeline);
+    renderForecastChart(data.predictions_timeline, data.noaa_kp_forecast || []);
 
   } catch (err) {
     console.error('Error loading ML forecast:', err);
@@ -54,8 +59,10 @@ async function loadMLForecast() {
 function setGaugeValue(id, pct) {
   const bar = document.getElementById(`${id}-bar`);
   const val = document.getElementById(`${id}-val`);
-  if (bar) bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
-  if (val) val.innerText = `${pct}%`;
+  // null when NOAA's forecast could not be loaded: no number is shown
+  const ok = pct !== null && pct !== undefined;
+  if (bar) bar.style.width = ok ? `${Math.min(100, Math.max(0, pct))}%` : '0%';
+  if (val) val.innerText = ok ? `${pct}%` : 'n/a';
 }
 
 function updateHazardCard(id, info) {
@@ -70,7 +77,17 @@ function updateHazardCard(id, info) {
   if (desc) desc.innerText = info.advisory;
 }
 
-function renderForecastChart(timeline) {
+// NOAA predicted Kp of the 3-hour bin containing a time (ISO string), or null
+function noaaKpAt(noaaKp, iso) {
+  const t = Date.parse(iso);
+  for (const k of noaaKp) {
+    const t0 = Date.parse(String(k.time_tag).replace(' ', 'T') + 'Z');
+    if (t >= t0 && t < t0 + 3 * 3600 * 1000) return k.kp;
+  }
+  return null;
+}
+
+function renderForecastChart(timeline, noaaKp = []) {
   const ctx = document.getElementById('chart-ml-timeline')?.getContext('2d');
   if (!ctx || !timeline) return;
 
@@ -81,6 +98,7 @@ function renderForecastChart(timeline) {
   const kpUpper = timeline.map(t => t.kp_confidence_interval[1]);
   const kpLower = timeline.map(t => t.kp_confidence_interval[0]);
   const dstVals = timeline.map(t => t.predicted_dst_nt);
+  const noaaVals = timeline.map(t => noaaKpAt(noaaKp, t.time_iso));
 
   chartMLForecast = new Chart(ctx, {
     type: 'line',
@@ -88,7 +106,7 @@ function renderForecastChart(timeline) {
       labels: labels,
       datasets: [
         {
-          label: 'Predicted Kp Index',
+          label: 'Kp, Newell et al. (2008) from persisted L1 wind',
           data: kpVals,
           borderColor: '#ff2a6d',
           backgroundColor: 'rgba(255, 42, 109, 0.15)',
@@ -98,7 +116,7 @@ function renderForecastChart(timeline) {
           yAxisID: 'yKp'
         },
         {
-          label: 'Kp Upper Confidence (95%)',
+          label: 'Kp range of the last 3 h (upper)',
           data: kpUpper,
           borderColor: 'rgba(255, 42, 109, 0.35)',
           borderDash: [3, 3],
@@ -109,7 +127,7 @@ function renderForecastChart(timeline) {
           yAxisID: 'yKp'
         },
         {
-          label: 'Kp Lower Confidence (95%)',
+          label: 'Kp range of the last 3 h (lower)',
           data: kpLower,
           borderColor: 'rgba(255, 42, 109, 0.35)',
           borderDash: [3, 3],
@@ -119,7 +137,18 @@ function renderForecastChart(timeline) {
           yAxisID: 'yKp'
         },
         {
-          label: 'Ring Current Dst Forecast [nT]',
+          label: 'NOAA SWPC predicted Kp',
+          data: noaaVals,
+          borderColor: '#facc15',
+          stepped: true,
+          fill: false,
+          borderWidth: 1.8,
+          pointRadius: 0,
+          spanGaps: false,
+          yAxisID: 'yKp'
+        },
+        {
+          label: "O'Brien-McPherron Dst [nT]",
           data: dstVals,
           borderColor: '#00f0ff',
           backgroundColor: 'rgba(0, 240, 255, 0.08)',

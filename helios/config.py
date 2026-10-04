@@ -447,6 +447,8 @@ NOAA_SWPC_ENDPOINTS = {
     "xrays_7day": "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json",
     "protons_1day": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json",
     "kp_7day": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+    "kp_forecast": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json",
+    "geomag_forecast_3day": "https://services.swpc.noaa.gov/text/3-day-geomag-forecast.txt",
     "kyoto_dst": "https://services.swpc.noaa.gov/products/kyoto-dst.json",
     "solar_regions": "https://services.swpc.noaa.gov/json/solar_regions.json",
     "solar_cycle_observed": "https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle-indices.json",
@@ -688,6 +690,22 @@ SCIENTIFIC_REFERENCES = [
         "formula": "theta = A0 + A1 cos[15(t + a1)] + A2 cos[15(2t + a2)] + A3 cos[15(3t + a3)], Ai and ai cubic in log10|AL| (theta = corrected geomagnetic colatitude, t = MLT in hours; |AL| = 18 - 12.3 Kp + 27.2 Kp^2 - 2.0 Kp^3 when only Kp is known; coefficients as tabulated by Sigernes et al. 2011)",
         "parameters": ["theta (corrected geomagnetic colatitude of the poleward and equatorward oval boundaries and of the equatorward edge of the diffuse aurora)", "AL (auroral electrojet index, nT)", "MLT (Magnetic Local Time)"],
         "physical_meaning": "Empirical model of the auroral oval boundaries as functions of the AL index (or Kp converted to AL) and magnetic local time, fitted to the Feldstein-Starkov ovals."
+    },
+    {
+        "id": "newell_kp_2008",
+        "title": "Pairs of solar wind-magnetosphere coupling functions: Combining a merging term with a viscous term works best",
+        "authors": "Newell, P. T., Sotirelis, T., Liou, K., & Rich, F. J.",
+        "journal": "Journal of Geophysical Research: Space Physics",
+        "year": 2008,
+        "volume": "113",
+        "issue": "A4",
+        "pages": "A04218",
+        "doi": "10.1029/2007JA012825",
+        "doi_url": "https://doi.org/10.1029/2007JA012825",
+        "category": "Universal Solar Wind-Magnetosphere Coupling",
+        "formula": "Kp = 0.05 + 2.244e-4 dPhi_MP/dt + 2.844e-6 n^(1/2) v^2, dPhi_MP/dt = v^(4/3) B_T^(2/3) sin^(8/3)(theta_c/2) (v km/s, B nT, n cm^-3; coefficients as implemented in JHUAPL kaipy)",
+        "parameters": ["dPhi_MP/dt (merging term)", "n^(1/2) v^2 (viscous term)", "Kp (planetary geomagnetic index)"],
+        "physical_meaning": "Statistical fit of Kp to a merging plus a viscous coupling term; used for the 12-hour Kp trajectory of the forecast tab."
     },
     {
         "id": "zhang_paxton_hp_2008",

@@ -428,7 +428,7 @@ class TestTab9MLForecast:
         assert 12000.0 < coupling < 15000.0, f"Expected ~13650, got {coupling}"
 
     def test_ml_forecast_timeline_api(self):
-        """Verify 12-hour predictive timeline, confidence intervals, and hazard cards."""
+        """Verify 12-hour predictive timeline, Kp band, and hazard cards."""
         res = client.get("/api/forecast/ml?mission_id=DSCOVR")
         assert res.status_code == 200
         data = res.json()
@@ -440,9 +440,11 @@ class TestTab9MLForecast:
             assert lower <= step["predicted_kp"] <= upper
             assert "predicted_dst_nt" in step
 
+        # Offline: NOAA's forecast is unavailable, so no probabilities are invented
         probs = data["storm_probabilities"]
-        assert 0 <= probs["minor_storm_g1_kp5_percent"] <= 100
-        assert 0 <= probs["extreme_storm_g5_kp9_percent"] <= 100
+        assert probs["minor_storm_g1_percent"] is None
+        assert probs["strong_extreme_storm_g3_g5_percent"] is None
+        assert probs["source"].startswith("unavailable")
 
 
 # =============================================================================

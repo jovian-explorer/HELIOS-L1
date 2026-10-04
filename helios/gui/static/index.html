@@ -171,7 +171,7 @@
           <span>Solar &amp; Heliosphere</span>
           <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">3 MODELS</span>
         </button>
-        <button id="domain-btn-geospace" onclick="switchDomain('geospace')" data-domain="geospace" class="domain-btn" title="Auroral Ovals, AI/ML Storm Forecasts, Terrestrial Hazards &amp; Events (Key: 3)">
+        <button id="domain-btn-geospace" onclick="switchDomain('geospace')" data-domain="geospace" class="domain-btn" title="Auroral Ovals, Storm Forecasts, Terrestrial Hazards &amp; Events (Key: 3)">
           <i class="fa-solid fa-earth-americas text-emerald-400"></i>
           <span>Geospace &amp; Hazards</span>
           <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">4 MODULES</span>
@@ -1814,16 +1814,16 @@
     </section>
 
     <!-- ========================================================================= -->
-    <!-- TAB 11: MACHINE LEARNING & GEOMAGNETIC STORM FORECAST -->
+    <!-- TAB 11: GEOMAGNETIC STORM FORECAST -->
     <!-- ========================================================================= -->
     <section id="tab-forecast" class="tab-content hidden space-y-6">
       <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div class="flex items-center space-x-2">
             <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse"></span>
-            <h3 class="font-tech font-bold text-base text-slate-100">AI / MHD Magnetospheric Coupling & Storm Horizon Engine</h3>
+            <h3 class="font-tech font-bold text-base text-slate-100">Magnetospheric Coupling &amp; Storm Horizon</h3>
           </div>
-          <p class="text-xs text-slate-400 mt-0.5">Predictive solar wind coupling rates, ring current Dst simulations, and 12-hour probabilistic storm forecasting.</p>
+          <p class="text-xs text-slate-400 mt-0.5">Newell coupling, a 12-hour Kp (Newell et al. 2008) and Dst (O'Brien &amp; McPherron 2000) trajectory from persisted L1 solar wind, and NOAA SWPC's storm probabilities and Kp forecast.</p>
         </div>
 
         <div class="flex items-center space-x-3 text-xs">
@@ -1838,7 +1838,7 @@
           </div>
           <button onclick="loadMLForecast()" class="self-end px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition flex items-center space-x-1.5 shadow-md shadow-purple-600/30">
             <i class="fa-solid fa-arrows-rotate"></i>
-            <span>Recompute ML</span>
+            <span>Recompute</span>
           </button>
         </div>
       </div>
@@ -1850,7 +1850,7 @@
             <span>Newell Coupling dΦ/dt</span>
             <i class="fa-solid fa-bolt text-cyan-400"></i>
           </div>
-          <div id="forecast-newell-val" class="text-2xl font-hud font-black text-cyan-300">--- Wb/s</div>
+          <div id="forecast-newell-val" class="text-2xl font-hud font-black text-cyan-300">---</div>
           <div id="forecast-newell-state" class="text-[10px] text-slate-400 mt-1">Calculating coupling...</div>
         </div>
 
@@ -1865,35 +1865,35 @@
 
         <div class="metric-card" style="border-left: 3px solid #eab308;">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-            <span>Minor Storm (G1, Kp≥5)</span>
+            <span>Minor Storm (G1, Kp 5)</span>
             <span id="gauge-g1-val" class="text-xs font-hud font-bold text-yellow-400">---%</span>
           </div>
           <div class="w-full bg-slate-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/40">
             <div id="gauge-g1-bar" class="bg-yellow-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div class="text-[10px] text-slate-400 mt-1">6-hour forecast window</div>
+          <div id="gauge-source" class="text-[10px] text-slate-400 mt-1">NOAA SWPC forecast, next UTC day</div>
         </div>
 
         <div class="metric-card" style="border-left: 3px solid #f97316;">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-            <span>Strong Storm (G3, Kp≥7)</span>
+            <span>Moderate Storm (G2, Kp 6)</span>
             <span id="gauge-g3-val" class="text-xs font-hud font-bold text-orange-400">---%</span>
           </div>
           <div class="w-full bg-slate-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/40">
             <div id="gauge-g3-bar" class="bg-orange-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div class="text-[10px] text-slate-400 mt-1">Sub-auroral reach</div>
+          <div class="text-[10px] text-slate-400 mt-1">NOAA SWPC forecast, next UTC day</div>
         </div>
 
         <div class="metric-card" style="border-left: 3px solid #ef4444;">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-            <span>Extreme Storm (G5, Kp≥9)</span>
+            <span>Strong-Extreme (G3-G5, Kp ≥ 7)</span>
             <span id="gauge-g5-val" class="text-xs font-hud font-bold text-rose-400">---%</span>
           </div>
           <div class="w-full bg-slate-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/40">
             <div id="gauge-g5-bar" class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div class="text-[10px] text-slate-400 mt-1">Historic Carrington-level</div>
+          <div class="text-[10px] text-slate-400 mt-1">NOAA SWPC forecast, next UTC day</div>
         </div>
       </div>
 
@@ -1904,11 +1904,12 @@
             <i class="fa-solid fa-chart-line text-purple-400"></i>
             <h3 class="font-bold text-sm text-slate-200">12-Hour Multi-Horizon Geomagnetic Kp & Dst Predictive Trajectory</h3>
           </div>
-          <span class="text-xs text-purple-400 font-mono">Confidence Band: 95% CI</span>
+          <span class="text-xs text-purple-400 font-mono" title="Range of Newell (2008) Kp over the last 3 h of solar wind, carried along the trajectory; not a statistical confidence interval">Band: Kp range of the last 3 h</span>
         </div>
         <div class="h-72 w-full">
           <canvas id="chart-ml-timeline"></canvas>
         </div>
+        <div id="forecast-assumptions" class="text-[10px] text-slate-500 space-y-0.5"></div>
       </div>
 
       <!-- Critical Infrastructure Hazard Advisories -->

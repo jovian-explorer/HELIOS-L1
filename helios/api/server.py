@@ -451,11 +451,14 @@ async def get_ml_forecast(mission_id: str = Query("DSCOVR")):
     mission_key = mission_id.upper()
     if mission_key not in MISSIONS:
         mission_key = "DSCOVR"
-    data, kyoto = await asyncio.gather(downloader.get_satellite_telemetry(mission_key, span_days=1),
-                                       downloader.get_kyoto_dst())
+    data, kyoto, noaa = await asyncio.gather(downloader.get_satellite_telemetry(mission_key, span_days=1),
+                                             downloader.get_kyoto_dst(), downloader.get_noaa_geomag_forecast())
     obs = kyoto["records"]
-    return SpaceWeatherForecaster.forecast_geomagnetic_storm(
-        data, observed_dst=obs[-1]["dst"] if obs else None)
+    out = SpaceWeatherForecaster.forecast_geomagnetic_storm(
+        data, observed_dst=obs[-1]["dst"] if obs else None, noaa_forecast=noaa)
+    if out.get("status") == "error":
+        raise HTTPException(status_code=503, detail=out["message"])
+    return out
 
 
 @app.get("/api/storm/indices")

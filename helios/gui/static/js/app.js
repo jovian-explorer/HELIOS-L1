@@ -87,10 +87,10 @@ const DOMAINS = {
     id: 'geospace',
     name: 'Geospace & Hazards',
     badge: '4 MODULES',
-    context: 'DOMAIN: GEOSPACE & HAZARDS // OVATION, ML FORECAST, D-RAP & GIC',
+    context: 'DOMAIN: GEOSPACE & HAZARDS // STARKOV OVAL, STORM FORECAST, D-RAP & GIC',
     views: [
       { id: 'aurora', label: 'Auroral Oval & Map', icon: 'fa-earth-americas', color: 'text-emerald-400' },
-      { id: 'forecast', label: 'AI / ML Storm Forecast', icon: 'fa-chart-line', color: 'text-blue-400' },
+      { id: 'forecast', label: 'Storm Forecast', icon: 'fa-chart-line', color: 'text-blue-400' },
       { id: 'hazards', label: 'Terrestrial Hazards & Solar Cycle', icon: 'fa-tower-broadcast', color: 'text-amber-400' },
       { id: 'events', label: 'Storms Archive', icon: 'fa-clock-rotate-left', color: 'text-rose-400' }
     ]
@@ -3118,7 +3118,7 @@ function renderUserGuideTab(container) {
                 <li><strong class="text-slate-200">1: L1 Fleet &amp; Telemetry</strong> (DSCOVR, ACE, Aditya-L1 real-time IMF &amp; plasma)</li>
                 <li><strong class="text-slate-200">2: Solar &amp; Heliosphere</strong> (SDO AIA EUV, Parker Spiral, CME 3D Simulation)</li>
                 <li><strong class="text-slate-200">3: Geospace &amp; Hazards</strong> (Auroral Oval, Boteler GIC, D-RAP Absorption)</li>
-                <li><strong class="text-slate-200">4: Data Studio &amp; Science</strong> (NASA OMNI Ingestion, Machine Learning Forecaster)</li>
+                <li><strong class="text-slate-200">4: Data Studio &amp; Science</strong> (NASA OMNI Ingestion, Storm Forecaster)</li>
               </ul>
             </div>
 

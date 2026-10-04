@@ -12,6 +12,7 @@ never be confused downstream (plots, exports, reports).
 import os
 import json
 import time
+import re
 import math
 import random
 import asyncio
@@ -682,6 +683,69 @@ class DataDownloader:
         rows = await self.fetch_json(NOAA_SWPC_ENDPOINTS["kyoto_dst"], "kyoto_dst")
         return {"records": self.parse_kyoto_dst(rows if isinstance(rows, list) else None),
                 "source": "WDC for Geomagnetism, Kyoto real-time (quicklook) Dst via NOAA SWPC; hourly means, time stamp = start of hour"}
+
+    @staticmethod
+    def parse_geomag_forecast(text: Optional[str]) -> Optional[Dict[str, Any]]:
+        """
+        Day-1 values of the NOAA SWPC 3-day geomagnetic forecast text product: the issue
+        time and the mid-latitude probabilities (%) of active, minor, moderate and
+        strong-extreme storm conditions. None when the text has no probability block.
+        """
+        if not text:
+            return None
+        issued, day, probs = None, None, {}
+        in_block = False
+        for line in text.splitlines():
+            line = line.strip()
+            if line.startswith(":Issued:"):
+                issued = line.split(":Issued:", 1)[1].strip()
+            elif line.startswith("NOAA Geomagnetic Activity Probabilities"):
+                in_block = True
+                rest = line.replace("NOAA Geomagnetic Activity Probabilities", "").strip()
+                day = rest.split("-")[0].strip() or None
+            elif in_block:
+                m = re.match(r"^(Active|Minor storm|Moderate storm|Strong-Extreme storm)\s+(\d+)/", line)
+                if m:
+                    probs[m.group(1).lower().replace(" ", "_").replace("-", "_")] = int(m.group(2))
+                elif line:
+                    in_block = False
+        if not probs:
+            return None
+        return {"issued": issued, "day": day, "probabilities": probs}
+
+    @staticmethod
+    def parse_kp_forecast(rows: Optional[List[Any]]) -> List[Dict[str, Any]]:
+        """Predicted 3-hourly Kp of the NOAA SWPC planetary K-index forecast product."""
+        out = []
+        for row in (rows or []):
+            if isinstance(row, dict) and row.get("observed") == "predicted" and row.get("time_tag"):
+                kp = _num(row.get("kp"))
+                if kp is not None:
+                    out.append({"time_tag": _iso_space(row["time_tag"]), "kp": kp})
+        return out
+
+    async def get_noaa_geomag_forecast(self) -> Dict[str, Any]:
+        """
+        NOAA SWPC 3-day geomagnetic forecast: day-1 storm probabilities and the predicted
+        3-hourly Kp. The parsed text product is cached; on a failure the cached copy is used.
+        """
+        text, kp_rows = await asyncio.gather(
+            self.fetch_text(NOAA_SWPC_ENDPOINTS["geomag_forecast_3day"], timeout=15.0),
+            self.fetch_json(NOAA_SWPC_ENDPOINTS["kp_forecast"], "kp_forecast"),
+        )
+        parsed = self.parse_geomag_forecast(text)
+        cache_path = self._get_cache_path("geomag_forecast_3day")
+        if parsed is not None:
+            try:
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    json.dump(parsed, f)
+            except OSError:
+                pass
+        elif os.path.exists(cache_path):
+            parsed = self._read_cache(cache_path)
+        out = dict(parsed or {})
+        out["kp_forecast"] = self.parse_kp_forecast(kp_rows if isinstance(kp_rows, list) else None)
+        return out
 
     def generate_synthetic_telemetry(self, mission: str = "DSCOVR", hours: int = 24, condition: str = "active") -> List[Dict[str, Any]]:
         """

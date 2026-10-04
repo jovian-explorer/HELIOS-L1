@@ -547,3 +547,60 @@ def test_cme_presets_match_cdaw_catalogue_speeds():
     assert labels["May 2024"] == pytest.approx(1280.0, abs=1.0)
     assert labels["Halloween 2003"] == pytest.approx(2459.0, abs=1.0)
     assert labels["Bastille Day"] == pytest.approx(1674.0, abs=1.0)
+
+
+def test_forecaster_kp_is_newell_2008_fit():
+    """
+    Newell et al. (2008, JGR 113, A04218): Kp = 0.05 + 2.244e-4 dPhi/dt + 2.844e-6 n^(1/2) v^2.
+    v = 400 km/s, n = 5 cm^-3, Bz = -5 nT, By = 0: dPhi/dt = 400^(4/3) 5^(2/3) = 8617.6,
+    Kp = 0.05 + 1.9338 + 1.0175 = 3.001. The old Kp blended 1.8 + dPhi/7000 with Dst/22
+    and came with an invented +-(0.3 + 0.12 h) "95% CI".
+    """
+    from helios.core.ml_forecast import SpaceWeatherForecaster as F
+    dphi = 400.0 ** (4.0 / 3.0) * 5.0 ** (2.0 / 3.0)
+    expected = 0.05 + 2.244e-4 * dphi + 2.844e-6 * math.sqrt(5.0) * 400.0 ** 2
+    assert F.newell_2008_kp(400.0, 5.0, 0.0, -5.0) == pytest.approx(expected, rel=1e-4)
+    assert expected == pytest.approx(3.001, abs=0.002)
+    # Northward IMF: only the viscous term, 0.05 + 1.0175
+    assert F.newell_2008_kp(400.0, 5.0, 0.0, 5.0) == pytest.approx(1.0675, abs=1e-3)
+    assert F.newell_2008_kp(400.0, None, 0.0, -5.0) is None
+    # Steady drivers equal to the quiet values: the trajectory stays at the same Kp, the band
+    # (range of the last 3 h) is zero wide and the probabilities come only from NOAA.
+    recs = [{"time_tag": f"2026-01-01 00:{m:02d}:00", "speed": 400.0, "density": 5.0,
+             "by_gsm": 0.0, "bz_gsm": -1.0, "bt": 1.0} for m in range(30)]
+    noaa = {"issued": "2026 Jan 01 0030 UTC", "day": "01 Jan",
+            "probabilities": {"active": 10, "minor_storm": 5, "moderate_storm": 1, "strong_extreme_storm": 1}}
+    out = F.forecast_geomagnetic_storm(recs, observed_dst=-10.0, noaa_forecast=noaa)
+    kp_quiet = round(F.newell_2008_kp(400.0, 5.0, 0.0, -1.0), 1)
+    for step in out["predictions_timeline"]:
+        assert step["predicted_kp"] == kp_quiet
+        assert step["kp_confidence_interval"] == [kp_quiet, kp_quiet]
+    assert out["storm_probabilities"]["minor_storm_g1_percent"] == 5
+    assert out["storm_probabilities"]["day"] == "01 Jan"
+    # Auroral boundary from Starkov (1994) for the trajectory Kp
+    from helios.core.aurora_model import AuroralModel
+    lat = AuroralModel.calculate_auroral_boundaries(kp_quiet)["equatorward_midnight_lat"]
+    assert out["predictions_timeline"][0]["auroral_midnight_boundary_lat"] == pytest.approx(lat, abs=0.15)
+
+
+def test_noaa_geomag_forecast_parsers():
+    """Day-1 probabilities and issue time from the SWPC 3-day forecast text; predicted Kp rows only."""
+    from helios.core.downloader import DataDownloader as D
+    text = """:Product: Geomagnetic Forecast
+:Issued: 2026 Oct 03 2205 UTC
+NOAA Geomagnetic Activity Probabilities 04 Oct-06 Oct
+Active                25/35/35
+Minor storm           35/20/20
+Moderate storm        20/05/05
+Strong-Extreme storm  05/01/01
+
+NOAA Kp index forecast 04 Oct - 06 Oct
+"""
+    out = D.parse_geomag_forecast(text)
+    assert out == {"issued": "2026 Oct 03 2205 UTC", "day": "04 Oct",
+                   "probabilities": {"active": 25, "minor_storm": 35, "moderate_storm": 20, "strong_extreme_storm": 5}}
+    assert D.parse_geomag_forecast("no block here") is None
+    rows = [{"time_tag": "2026-10-03T21:00:00", "kp": 3.0, "observed": "observed"},
+            {"time_tag": "2026-10-04T00:00:00", "kp": 2.33, "observed": "estimated"},
+            {"time_tag": "2026-10-04T03:00:00", "kp": 4.67, "observed": "predicted"}]
+    assert D.parse_kp_forecast(rows) == [{"time_tag": "2026-10-04 03:00:00", "kp": 4.67}]

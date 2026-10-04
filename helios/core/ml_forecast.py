@@ -1,11 +1,10 @@
 """
-HELIOS-L1 Machine Learning & Advanced Magnetospheric Coupling Forecasting Engine.
+HELIOS-L1 magnetospheric coupling and storm trajectory engine (empirical relations, no machine learning).
 Implements:
 1. Newell Solar Wind Magnetosphere Coupling Function (Newell et al., 2007)
 2. O'Brien & McPherron (2000) ring current Dst model (helios.core.aurora_model), started from observed Dst
-3. Borovsky Solar Wind Energy Coupling & Akasofu Epsilon Poynting Flux
-4. Multi-Horizon (1h, 3h, 6h, 12h) Kp and Geomagnetic Storm Probability Forecaster
-5. Critical Infrastructure Hazard Impact Evaluator (GIC, Aviation, Satellites, HF Radio)
+3. 12-hour Kp trajectory (Newell et al. 2008 fit, persisted drivers); NOAA SWPC storm probabilities
+4. Critical Infrastructure Hazard Impact Evaluator (GIC, Aviation, Satellites, HF Radio)
 """
 import math
 from typing import Dict, Any, List, Optional
@@ -13,8 +12,14 @@ from datetime import datetime, timezone, timedelta
 
 from helios.core.aurora_model import AuroralModel
 
+# Newell et al. (2008) Kp fit: Kp = a + b dPhi/dt + c n^(1/2) v^2
+NEWELL_2008_KP = (0.05, 2.244e-4, 2.844e-6)
+# Persistence assumption for the 12 h trajectory: the drivers relax to these quiet values
+QUIET_DRIVERS = {"speed": 400.0, "density": 5.0, "bz_gsm": -1.0}
+RELAXATION_PER_HOUR = 0.05
+
 class SpaceWeatherForecaster:
-    """Advanced physical and empirical space weather forecasting model."""
+    """Empirical coupling functions, Kp and Dst trajectories and hazard categories."""
 
     @staticmethod
     def calculate_newell_coupling(speed_kms: float, b_total_nt: float, bz_gsm_nt: float, by_gsm_nt: float = 0.0) -> float:
@@ -39,44 +44,94 @@ class SpaceWeatherForecaster:
         v_pow = math.pow(v, 4.0 / 3.0)
         bt_pow = math.pow(bt, 2.0 / 3.0)
 
-        # Scale factor so typical quiet sun ~ 5000-10000, severe storm > 30000
+        # In the (km/s)^(4/3) nT^(2/3) units of Newell et al. (2007): ~8600 for 400 km/s and
+        # 5 nT due south
         coupling = v_pow * bt_pow * sin_half_pow
         return round(coupling, 1)
+
+    @staticmethod
+    def newell_2008_kp(speed_kms: Optional[float], density_cm3: Optional[float],
+                       by_gsm_nt: Optional[float], bz_gsm_nt: Optional[float]) -> Optional[float]:
+        """
+        Kp from the solar wind with the merging + viscous pair of Newell et al. (2008,
+        JGR 113, A04218, doi:10.1029/2007JA012825):
+            Kp = 0.05 + 2.244e-4 dPhi/dt + 2.844e-6 n^(1/2) v^2
+        with dPhi/dt = v^(4/3) B_T^(2/3) sin^(8/3)(theta_c/2) (v in km/s, B in nT, n in cm^-3).
+        Coefficients as implemented in JHUAPL kaipy (kaiTools.newellkp). Clipped to 0-9.
+        None when a driver is missing.
+        """
+        if speed_kms is None or density_cm3 is None or bz_gsm_nt is None:
+            return None
+        v, n = float(speed_kms), max(0.0, float(density_cm3))
+        dphi = SpaceWeatherForecaster.calculate_newell_coupling(v, None, float(bz_gsm_nt), float(by_gsm_nt or 0.0))
+        a, b, c = NEWELL_2008_KP
+        return max(0.0, min(9.0, a + b * dphi + c * math.sqrt(n) * v * v))
+
+    @staticmethod
+    def _density(rec: Dict[str, Any]) -> Optional[float]:
+        """Proton density, or the one implied by the dynamic pressure when only that is present."""
+        if rec.get("density") is not None:
+            return float(rec["density"])
+        if rec.get("dynamic_pressure") is not None and rec.get("speed"):
+            return float(rec["dynamic_pressure"]) / (1.6726e-6 * float(rec["speed"]) ** 2)
+        return None
 
     @staticmethod
     def forecast_geomagnetic_storm(
         telemetry_records: List[Dict[str, Any]],
         prediction_horizons_hours: List[int] = [1, 3, 6, 12],
-        observed_dst: Optional[float] = None
+        observed_dst: Optional[float] = None,
+        noaa_forecast: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Generates forward-looking predictions for Kp, Dst, and auroral extent
-        with probabilistic classification across NOAA geomagnetic storm scales.
+        12-hour Kp and Dst trajectory from the latest L1 solar wind.
 
-        The current Dst is the latest observed (Kyoto) value when given; otherwise the
-        O'Brien & McPherron (2000) model run over the records. The Dst trajectory steps
-        that model forward hourly.
+        Kp: Newell et al. (2008) from the drivers. Dst: O'Brien & McPherron (2000) stepped
+        hourly from the latest observed (Kyoto) value when given, else from the model run
+        over the records. The drivers are not forecast: they relax from the latest values
+        towards quiet values by 5 % per hour (an assumption, listed in the response). The
+        Kp band is the range of Newell Kp over the last 3 h of data, not a statistical
+        interval. Storm probabilities are NOAA SWPC's own forecast (noaa_forecast) when
+        available; this model does not compute probabilities.
         """
         if not telemetry_records:
             return {"status": "error", "message": "No telemetry data provided"}
 
         # Newest record with the drivers present (the last row is often a partial gap).
         latest = next((r for r in reversed(telemetry_records)
-                       if r.get("speed") is not None and r.get("bz_gsm") is not None), telemetry_records[-1])
+                       if r.get("speed") is not None and r.get("bz_gsm") is not None), None)
+        if latest is None:
+            return {"status": "error", "message": "No record with solar wind speed and Bz"}
 
-        def val(key, default):
-            v = latest.get(key)
-            return float(v) if v is not None else default
+        v_now = float(latest["speed"])
+        bz_now = float(latest["bz_gsm"])
+        by_now = float(latest.get("by_gsm") or 0.0)
+        n_now = SpaceWeatherForecaster._density(latest)
 
-        v_now = val("speed", 420.0)
-        bz_now = val("bz_gsm", -1.5)
-        bt_now = val("bt", 6.0)
-        by_now = val("by_gsm", 0.0)
-        pdyn_now = val("dynamic_pressure", 2.2)
-        density_now = val("density", 5.0)
+        newell_now = SpaceWeatherForecaster.calculate_newell_coupling(v_now, None, bz_now, by_now)
+        kp_now = SpaceWeatherForecaster.newell_2008_kp(v_now, n_now, by_now, bz_now)
 
-        # Universal Newell Coupling
-        newell_now = SpaceWeatherForecaster.calculate_newell_coupling(v_now, bt_now, bz_now, by_now)
+        # Spread of Newell Kp over the last 3 h of data (records with all drivers)
+        def parse(t):
+            try:
+                return datetime.fromisoformat(str(t).replace("Z", "").replace("T", " "))
+            except ValueError:
+                return None
+        t_last = parse(latest.get("time_tag"))
+        recent = []
+        for r in telemetry_records:
+            t = parse(r.get("time_tag"))
+            if t_last is not None and (t is None or t > t_last or (t_last - t).total_seconds() > 3 * 3600):
+                continue
+            k = SpaceWeatherForecaster.newell_2008_kp(r.get("speed"), SpaceWeatherForecaster._density(r),
+                                                      r.get("by_gsm"), r.get("bz_gsm"))
+            if k is not None:
+                recent.append(k)
+        if kp_now is not None:
+            recent.append(kp_now)
+            band = (min(recent) - kp_now, max(recent) - kp_now)
+        else:
+            band = (0.0, 0.0)
 
         # Current Dst: observed when available, else the ring current model over the records
         # (a previous ad hoc formula, 6.5 * Bz * V/400 - 1.5 * P_dyn, had no published basis).
@@ -87,67 +142,85 @@ class SpaceWeatherForecaster:
             current_dst = sim[-1]["dst_predicted_nt"] if sim else 0.0
             dst_source = "O'Brien & McPherron (2000) model over the last day of solar wind"
 
-        # Compute forecasted Dst forward in time
         predictions = []
         now_time = datetime.now(timezone.utc)
-
-        # Forecast forward
         sim_dst = current_dst
+        q = QUIET_DRIVERS
         for h in range(1, 13):
-            # Persistence with physical relaxation
-            decay_ratio = 1.0 - (h * 0.05)
-            eff_v = v_now * decay_ratio + 400.0 * (1.0 - decay_ratio)
-            eff_bz = bz_now * decay_ratio - 1.0 * (1.0 - decay_ratio)
-            eff_pdyn = pdyn_now * decay_ratio + 2.0 * (1.0 - decay_ratio)
+            # Persistence relaxing towards quiet conditions (assumption, not a forecast)
+            w = max(0.0, 1.0 - RELAXATION_PER_HOUR * h)
+            eff_v = v_now * w + q["speed"] * (1.0 - w)
+            eff_bz = bz_now * w + q["bz_gsm"] * (1.0 - w)
+            eff_by = by_now * w
+            eff_n = (n_now * w + q["density"] * (1.0 - w)) if n_now is not None else None
+            eff_pdyn = 1.6726e-6 * eff_n * eff_v ** 2 if eff_n is not None else None
 
             sim_dst = round(AuroralModel.dst_step(sim_dst, eff_v, eff_bz, eff_pdyn, dt_hours=1.0), 1)
-
-            # Estimate Kp from Dst and Newell Coupling
-            # Approximate relationship: Kp ~ 2.0 + 0.00015 * Newell + abs(min(0, Dst)) / 25
-            kp_from_newell = min(9.0, max(1.0, 1.8 + (newell_now / 7000.0) * decay_ratio))
-            kp_from_dst = min(9.0, max(1.0, 1.0 + abs(min(0.0, sim_dst)) / 22.0))
-            predicted_kp = round(0.6 * kp_from_newell + 0.4 * kp_from_dst, 1)
-
-            # Confidence interval bounds (uncertainty grows with horizon)
-            uncertainty = round(0.3 + 0.12 * h, 1)
-            kp_low = max(0.0, round(predicted_kp - uncertainty, 1))
-            kp_high = min(9.0, round(predicted_kp + uncertainty, 1))
+            kp = SpaceWeatherForecaster.newell_2008_kp(eff_v, eff_n, eff_by, eff_bz)
 
             fut_time = now_time + timedelta(hours=h)
             predictions.append({
                 "horizon_hours": h,
                 "time_iso": fut_time.isoformat(),
                 "time_label": fut_time.strftime("%H:%M UTC"),
-                "predicted_kp": predicted_kp,
-                "kp_confidence_interval": [kp_low, kp_high],
+                "predicted_kp": round(kp, 1) if kp is not None else None,
+                "kp_confidence_interval": [max(0.0, round(kp + band[0], 1)), min(9.0, round(kp + band[1], 1))]
+                                          if kp is not None else [None, None],
                 "predicted_dst_nt": sim_dst,
-                "auroral_midnight_boundary_lat": round(max(45.0, 68.0 - predicted_kp * 1.9), 1)
+                # Starkov (1994) equatorward midnight boundary for this Kp (Kp converted to AL)
+                "auroral_midnight_boundary_lat": round(float(AuroralModel.starkov_latitude(
+                    AuroralModel.kp_to_al(kp), 0.0, "equatorward")), 1) if kp is not None else None
             })
 
-        # Calculate Probabilities for NOAA Storm Scales
-        max_pred_kp = max(p["predicted_kp"] for p in predictions[:6])
-        prob_g1 = round(min(98.0, max(5.0, (max_pred_kp / 5.0) * 80.0)), 1)
-        prob_g3 = round(min(95.0, max(2.0, ((max_pred_kp - 4.5) / 2.5) * 80.0)) if max_pred_kp >= 4.5 else 4.0, 1)
-        prob_g5 = round(min(90.0, max(1.0, ((max_pred_kp - 7.5) / 1.5) * 80.0)) if max_pred_kp >= 7.5 else 1.0, 1)
+        kps = [p["predicted_kp"] for p in predictions[:6] if p["predicted_kp"] is not None]
+        max_pred_kp = max(kps) if kps else (kp_now or 0.0)
 
-        # Hazard Impact Assessment
-        hazards = SpaceWeatherForecaster.assess_hazards(v_now, bz_now, pdyn_now, max_pred_kp)
+        hazards = SpaceWeatherForecaster.assess_hazards(v_now, bz_now, None, max_pred_kp)
+
+        if bz_now < -5.0:
+            coupling_state = "Strong southward IMF (Bz < -5 nT): enhanced dayside reconnection"
+        elif bz_now < 0.0:
+            coupling_state = "Southward IMF: dayside reconnection"
+        else:
+            coupling_state = "Northward IMF: weak dayside coupling"
 
         return {
-            "model_version": "HELIOS-ML-MHD v2.4",
+            "model_version": "Newell et al. (2008) Kp + O'Brien & McPherron (2000) Dst, persisted L1 drivers",
             "current_coupling": {
                 "newell_coupling_rate": newell_now,
-                "coupling_state": "Intense Dayside Reconnection" if bz_now < -5.0 else "Shielded / Closed Magnetosphere",
+                "newell_units": "(km/s)^4/3 nT^2/3",
+                "newell_kp_now": round(kp_now, 1) if kp_now is not None else None,
+                "coupling_state": coupling_state,
                 "estimated_dst_nt": current_dst,
                 "dst_source": dst_source
             },
-            "storm_probabilities": {
-                "minor_storm_g1_kp5_percent": prob_g1,
-                "strong_storm_g3_kp7_percent": prob_g3,
-                "extreme_storm_g5_kp9_percent": prob_g5
-            },
+            "storm_probabilities": SpaceWeatherForecaster.noaa_probabilities(noaa_forecast),
+            "noaa_kp_forecast": (noaa_forecast or {}).get("kp_forecast", []),
             "predictions_timeline": predictions,
+            "kp_band_description": "Range of Newell (2008) Kp over the last 3 h of solar wind data, carried along the trajectory; not a statistical confidence interval.",
+            "assumptions": [
+                f"The L1 drivers are not forecast: they relax linearly from the latest values towards {q['speed']:.0f} km/s, "
+                f"{q['density']:.0f} cm^-3 and Bz {q['bz_gsm']:.0f} nT by {RELAXATION_PER_HOUR * 100:.0f}% per hour.",
+                "Kp is the Newell et al. (2008) solar wind fit, a statistical relation with substantial scatter, not an official Kp forecast.",
+                "Storm probabilities are NOAA SWPC's forecast for the next UTC day, not computed here.",
+            ],
             "hazard_assessment": hazards
+        }
+
+    @staticmethod
+    def noaa_probabilities(noaa_forecast: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """Day-1 geomagnetic activity probabilities of the NOAA SWPC 3-day forecast (None when unavailable)."""
+        f = noaa_forecast or {}
+        p = f.get("probabilities") or {}
+        return {
+            "minor_storm_g1_percent": p.get("minor_storm"),
+            "moderate_storm_g2_percent": p.get("moderate_storm"),
+            "strong_extreme_storm_g3_g5_percent": p.get("strong_extreme_storm"),
+            "active_percent": p.get("active"),
+            "day": f.get("day"),
+            "issued": f.get("issued"),
+            "source": ("NOAA SWPC 3-day geomagnetic forecast, probabilities for the next UTC day" if p
+                       else "unavailable (the NOAA SWPC forecast could not be loaded)")
         }
 
     @staticmethod
@@ -171,7 +244,7 @@ class SpaceWeatherForecaster:
         if max_kp >= 7.0 or bz < -10.0:
             aviation_risk = "HIGH / SEVERE ABSORPTION"
             aviation_color = "#ff2a6d"
-            aviation_advice = "Polar Cap Absorption (PCA) event imminent. Re-routing trans-polar airline flights south of 60° recommended."
+            aviation_advice = "HF fading and absorption at high latitudes and GNSS scintillation likely. (Polar cap absorption needs a solar proton event: see the S scale.)"
         elif max_kp >= 5.0:
             aviation_risk = "MODERATE"
             aviation_color = "#ffb703"
@@ -182,15 +255,16 @@ class SpaceWeatherForecaster:
             aviation_advice = "Normal trans-polar navigation and HF propagation."
 
         # 3. Satellite Operations (Surface Charging & Atmospheric Drag)
-        drag_multiplier = round(1.0 + max(0.0, max_kp - 3.0) * 0.45, 2)
+        # Categories follow the NOAA G scale; the drag increase itself is not modelled (it was
+        # given as an invented 1 + 0.45 (Kp - 3) multiplier).
         if max_kp >= 7.0:
             sat_risk = "CRITICAL / DRAG ACCELERATION"
             sat_color = "#ff2a6d"
-            sat_advice = f"Atmospheric expansion increasing LEO aerodynamic drag by {drag_multiplier}x. Surface dielectric charging warnings."
+            sat_advice = "Thermospheric heating raises LEO drag strongly (NOAA G3+: surface charging, orientation and tracking problems possible)."
         elif max_kp >= 5.0:
             sat_risk = "ELEVATED"
             sat_color = "#ffb703"
-            sat_advice = f"Moderate drag increase ({drag_multiplier}x); orientation tracking errors on high-inclination birds."
+            sat_advice = "Increased LEO drag and orbit prediction errors possible (NOAA G1-G2)."
         else:
             sat_risk = "NOMINAL"
             sat_color = "#00ff9d"
@@ -199,5 +273,5 @@ class SpaceWeatherForecaster:
         return {
             "power_grid_gic": {"risk_level": gic_risk, "color": gic_color, "advisory": gic_advice},
             "aviation_hf": {"risk_level": aviation_risk, "color": aviation_color, "advisory": aviation_advice},
-            "satellite_ops": {"risk_level": sat_risk, "color": sat_color, "drag_multiplier": drag_multiplier, "advisory": sat_advice}
+            "satellite_ops": {"risk_level": sat_risk, "color": sat_color, "drag_multiplier": None, "advisory": sat_advice}
         }
