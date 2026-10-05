@@ -232,3 +232,25 @@ def test_omni_geomagnetic_indices_and_storm_endpoint(monkeypatch, tmp_path):
     cmp = body["dst_comparison"]
     assert cmp["observed_index"] == "SYM-H" and cmp["models"]["obrien"]["series"][0] == 15.0
     assert cmp["models"]["burton"]["skill"]["n"] == 6
+
+
+def test_hapi_sample_before_the_day_does_not_duplicate_a_minute(tmp_path):
+    # Real case: the WIND SWE response for 17 March 1997 starts with a spectrum at 16 March
+    # 23:58, so that minute appeared in two day files, and merging the field and plasma
+    # groups for any interval containing both days failed (pandas InvalidIndexError, a 500).
+    header = "".join(l for l in (DATA / "wi_h1_swe_20240520.csv").read_text().splitlines(True) if l.startswith("#"))
+    stray = header + "2024-05-20T17:02:10.000Z,2,3.60e+02,3.00e+01,9.99e+00\n"
+    served = {"WI_H1_SWE": ("2024-05-20", "wi_h1_swe_20240520.csv")}
+    dl = _downloader(tmp_path, served)
+    base = dl.fetch_text
+
+    async def text(url, timeout=120.0):
+        if "time.min=2024-05-21" in url:
+            return stray
+        return await base(url, timeout)
+
+    dl.fetch_text = text
+    spec = ARCHIVE_SOURCES["WIND"]["groups"][1][0]
+    df, failed = asyncio.run(dl.archive.fetch_dataset(spec, _utc("2024-05-20T00:00"), _utc("2024-05-22T00:00")))
+    assert failed == 0 and df.index.is_unique
+    assert df.loc[df.index == "2024-05-20 17:02:00+00:00", "density"].tolist() == [pytest.approx(4.03)]  # day 1 value

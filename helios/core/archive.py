@@ -317,6 +317,11 @@ class ArchiveClient:
             frame = await run_in_workers(decode)
         except (HapiError, KeyError, ValueError):
             return cached
+        if not frame.empty:
+            # HAPI can return a sample just before time.min (WIND SWE, 17 March 1997 starts with
+            # 16 March 23:58), which duplicated that minute of the previous day's file and made
+            # the merge of the instrument groups fail.
+            frame = frame[(frame.index >= pd.Timestamp(day)) & (frame.index < pd.Timestamp(day + timedelta(days=1)))]
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(_frame_to_json(frame), f)
@@ -347,7 +352,8 @@ class ArchiveClient:
             return pd.DataFrame(), failed
         df = pd.concat(nonempty).sort_index()
         df = df[(df.index >= pd.Timestamp(start)) & (df.index < pd.Timestamp(end))]
-        return df, failed
+        # Day files cached before fetch_day clipped them can still hold a stray minute of the day before.
+        return df[~df.index.duplicated(keep="first")], failed
 
     async def fetch_mission(self, mission: str, start: datetime, end: datetime) -> Dict[str, Any]:
         """
