@@ -12,9 +12,12 @@ import webbrowser
 import logging
 import urllib.request
 import json
+from typing import Tuple
+
 import uvicorn
 
 from helios.config import DEFAULT_HOST, DEFAULT_PORT, LOG_DIR
+from helios.api.guard import is_loopback_host
 from helios.api.server import app
 
 
@@ -26,20 +29,39 @@ def _setup_logging():
         format="%(asctime)s [%(levelname)s] %(message)s"
     )
 
+def check_bind_host(host: str) -> None:
+    """
+    Raise ValueError unless `host` is a loopback address. The API changes settings and
+    reads imported files; bound to 0.0.0.0 or a LAN address it would be open to the network.
+    """
+    if not is_loopback_host(host):
+        raise ValueError(f"HELIOS-L1 only listens on the local machine (127.0.0.1, localhost or ::1), not {host!r}.")
+
+
+def _url_host(host: str) -> str:
+    """Host as written in a URL (IPv6 addresses in brackets)."""
+    h = host.strip("[]")
+    return f"[{h}]" if ":" in h else h
+
+
+def _family(host: str) -> int:
+    return socket.AF_INET6 if ":" in host.strip("[]") else socket.AF_INET
+
+
 def is_port_in_use(port: int, host: str = DEFAULT_HOST) -> bool:
     """Check if server port is already bound."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex((host, port)) == 0
+    with socket.socket(_family(host), socket.SOCK_STREAM) as s:
+        return s.connect_ex((host.strip("[]"), port)) == 0
 
 def check_existing_helios(host: str, port: int) -> bool:
     """Check if HELIOS-L1 is already running on the given host/port."""
     try:
-        req = urllib.request.Request(f"http://{host}:{port}/api/status", headers={"User-Agent": "HELIOS-Launcher"})
+        req = urllib.request.Request(f"http://{_url_host(host)}:{port}/api/status", headers={"User-Agent": "HELIOS-Launcher"})
         with urllib.request.urlopen(req, timeout=1.2) as resp:
             if resp.status == 200:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data.get("app_name") == "HELIOS-L1"
-    except Exception:
+    except (OSError, ValueError):  # refused, timed out, HTTP error, not JSON
         pass
     return False
 
@@ -48,34 +70,51 @@ def find_available_port(host: str = DEFAULT_HOST, preferred_port: int = DEFAULT_
     if check_existing_helios(host, preferred_port):
         return preferred_port
     for p in range(preferred_port, preferred_port + 50):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        with socket.socket(_family(host), socket.SOCK_STREAM) as s:
             try:
-                s.bind((host, p))
+                s.bind((host.strip("[]"), p))
                 return p
             except OSError:
                 continue
-    return preferred_port
+    return preferred_port  # all busy: the server start then fails with a clear message
 
-def start_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT):
-    """Run uvicorn server in worker thread."""
+def start_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> Tuple[uvicorn.Server, threading.Thread]:
+    """Run the uvicorn server in a daemon thread; returns the server (its `started` flag) and the thread."""
     config = uvicorn.Config(
         app=app,
-        host=host,
+        host=host.strip("[]"),
         port=port,
         log_level="warning",
         access_log=False
     )
     server = uvicorn.Server(config)
-    server.run()
+    server.start_error = None
 
-def wait_for_server(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, timeout: float = 6.0) -> bool:
-    """Wait until backend server is accepting connections."""
-    start = time.time()
-    while time.time() - start < timeout:
-        if is_port_in_use(port, host):
+    def run():
+        try:
+            server.run()
+        except (OSError, SystemExit) as exc:  # bind failure (uvicorn raises or exits)
+            server.start_error = exc
+            logging.error("HELIOS-L1 server failed to start on %s:%s: %s", host, port, exc)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    return server, thread
+
+def wait_for_server(server: uvicorn.Server, thread: threading.Thread, timeout: float = 15.0) -> bool:
+    """
+    Wait until this server is listening. False if its thread ended first (uvicorn could not
+    bind the port) or the timeout passed. Checking only whether something answers on the
+    port, as before, mistook another program on that port for HELIOS-L1.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if server.started:
             return True
-        time.sleep(0.1)
-    return False
+        if not thread.is_alive():
+            return False
+        thread.join(0.05)
+    return bool(server.started)
 
 def launch_desktop(
     host: str = DEFAULT_HOST,
@@ -88,20 +127,33 @@ def launch_desktop(
     print("=" * 65)
     print(" HELIOS-L1: Heliophysical Exploration & L1 Space-weather Suite")
     print("=" * 65)
+    try:
+        check_bind_host(host)
+    except ValueError as exc:
+        print(f"[!] {exc}")
+        logging.error(str(exc))
+        sys.exit(2)
 
     actual_port = find_available_port(host, port)
     is_existing = check_existing_helios(host, actual_port)
 
-    url = f"http://{host}:{actual_port}"
+    url = f"http://{_url_host(host)}:{actual_port}"
     logging.info(f"Launching HELIOS-L1 on {url} (Existing instance: {is_existing})")
 
     if not is_existing:
         print(f"[*] Starting local scientific telemetry engine on {url}")
-        server_thread = threading.Thread(target=start_server, args=(host, actual_port), daemon=True)
-        server_thread.start()
-
-        if not wait_for_server(host, actual_port):
-            print(f"[!] Warning: Server startup timeout on {host}:{actual_port}. Attempting connection anyway...")
+        server, server_thread = start_server(host, actual_port)
+        if not wait_for_server(server, server_thread):
+            if server_thread.is_alive():
+                msg = f"The HELIOS-L1 server did not start on {host}:{actual_port} within 15 s."
+            else:
+                msg = (f"The HELIOS-L1 server could not listen on {host}:{actual_port}: the port is in use by "
+                       f"another program or not permitted. Close that program or start HELIOS-L1 with "
+                       f"--port <a free port>."
+                       + (f" ({server.start_error})" if isinstance(server.start_error, OSError) else ""))
+            print(f"[!] {msg}")
+            logging.error(msg)
+            sys.exit(1)
     else:
         print(f"[+] Reconnecting to active HELIOS-L1 engine on {url}")
 

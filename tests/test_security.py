@@ -198,3 +198,54 @@ def test_settings_save_failure_is_reported(client, restore_settings, monkeypatch
     body = r.json()
     assert body["saved"] is False and "Permission denied" in body["save_error"]
     assert body["theme"] == "deep-space"  # still applied for this session
+
+
+class _Stop(Exception):
+    """Ends the launcher's headless wait loop in a test."""
+
+
+def _launcher(monkeypatch):
+    import threading
+    import time as _time
+    from helios.gui import app as launcher
+    real_sleep = _time.sleep
+
+    def sleep(seconds):
+        if threading.current_thread() is threading.main_thread():
+            raise _Stop()
+        real_sleep(seconds)
+
+    monkeypatch.setattr(launcher.time, "sleep", sleep)
+    monkeypatch.setattr(launcher, "check_existing_helios", lambda host, port: False)
+    return launcher
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.20", "::"])
+def test_launcher_refuses_non_loopback_bind_address(monkeypatch, capsys, host):
+    # Reproduction: `helios --headless --host 0.0.0.0` served the API to the whole network.
+    launcher = _launcher(monkeypatch)
+    started = []
+    monkeypatch.setattr(launcher, "find_available_port", lambda h, p: started.append(h) or p)
+    with pytest.raises(SystemExit) as exc:
+        launcher.launch_desktop(host=host, port=8799, headless=True)
+    assert exc.value.code == 2 and not started
+    assert "only listens on the local machine" in capsys.readouterr().out
+
+
+def test_launcher_reports_a_port_taken_by_another_program(monkeypatch, capsys):
+    # Reproduction: another program listens on the port HELIOS chose (taken between the
+    # free-port check and the start). The server thread died, the launcher saw *something*
+    # answering on the port, printed "Engine online" and opened the window on the other program.
+    import socket
+    launcher = _launcher(monkeypatch)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as other:
+        other.bind(("127.0.0.1", 0))
+        other.listen(1)
+        port = other.getsockname()[1]
+        monkeypatch.setattr(launcher, "find_available_port", lambda h, p: port)
+        with pytest.raises(SystemExit) as exc:
+            launcher.launch_desktop(host="127.0.0.1", port=port, headless=True)
+    out = capsys.readouterr().out
+    assert exc.value.code == 1
+    assert f"could not listen on 127.0.0.1:{port}" in out and "--port" in out
+    assert "Engine online" not in out

@@ -160,7 +160,8 @@ helios [--host 127.0.0.1] [--port 8765] [--headless] [--browser] [--version]
 ```
 * `--headless` runs only the server (open `http://127.0.0.1:8765` yourself).
 * `--browser` skips the desktop window and uses the default browser.
-* If the port is busy, HELIOS picks the next free one automatically.
+* `--host` accepts only local addresses (`127.0.0.1`, `localhost`, `::1`); HELIOS is not meant to be reachable from the network.
+* If the port is busy, HELIOS picks the next free one automatically; if it still cannot listen, it stops with a message naming the port and suggests `--port`.
 * The API answers only requests addressed to `127.0.0.1`/`localhost` and refuses requests that a browser sends on behalf of another web site; scripts and `curl` can use it (POST bodies must be JSON with `Content-Type: application/json`).
 * Limits: imported files up to 64 MB, archive and index intervals up to 31 days, event analyses up to 72 h, superposed epoch analyses up to 60 onsets and 180 days of data in total.
 
