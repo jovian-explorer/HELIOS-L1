@@ -29,6 +29,9 @@ from helios.core.archive import parse_hapi_csv
 from helios.core.event_analysis import (EVENT_SOURCES, EventDataClient, analyze_shock, classify_shock,
                                         minimum_variance, shock_normals, shock_speed)
 
+# The server only answers requests addressed to a loopback host (helios.api.guard).
+LOCAL = "http://127.0.0.1:8765"
+
 EVENTS = Path(__file__).parent / "data" / "hapi" / "events"
 
 
@@ -226,7 +229,7 @@ def test_shock_and_mva_api_with_provenance(monkeypatch, tmp_path):
     dl.fetch_text = fake
     dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
     monkeypatch.setattr(server, "downloader", dl)
-    client = TestClient(server.app)
+    client = TestClient(server.app, base_url=LOCAL)
 
     r = client.get("/api/analysis/shock?mission=wind&time=2015-03-17T04:00&upstream_minutes=28&downstream_minutes=24")
     assert r.status_code == 200, r.text
@@ -304,7 +307,7 @@ def test_timing_api(monkeypatch, tmp_path):
     dl.fetch_text = fake
     dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
     monkeypatch.setattr(server, "downloader", dl)
-    client = TestClient(server.app)
+    client = TestClient(server.app, base_url=LOCAL)
     r = client.get("/api/analysis/timing?reference=WIND&time=2014-02-27T15:50&upstream_minutes=13&downstream_minutes=5")
     assert r.status_code == 200, r.text
     body = r.json()
@@ -377,7 +380,7 @@ def test_flux_rope_api(monkeypatch, tmp_path):
     dl.fetch_text = fake
     dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
     monkeypatch.setattr(server, "downloader", dl)
-    client = TestClient(server.app)
+    client = TestClient(server.app, base_url=LOCAL)
     r = client.get("/api/analysis/fluxrope?mission=WIND&start=1995-10-18T19:48&end=1995-10-20T01:18")
     assert r.status_code == 200, r.text
     body = r.json()
@@ -411,7 +414,7 @@ def test_superposed_epoch_of_two_storms_from_omni(monkeypatch, tmp_path):
     dl.fetch_text = fake
     dl.archive = ArchiveClient(lambda url: dl.fetch_text(url), tmp_path)
     monkeypatch.setattr(server, "downloader", dl)
-    client = TestClient(server.app)
+    client = TestClient(server.app, base_url=LOCAL)
     base = "/api/analysis/superposed?onsets=2015-03-17T04:45,2024-05-10T17:05&before_hours=2&after_hours=18.5"
     r = client.get(base + "&cadence_minutes=1&parameters=sym_h,bz_gsm")
     assert r.status_code == 200, r.text

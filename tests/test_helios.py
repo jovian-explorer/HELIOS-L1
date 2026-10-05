@@ -17,7 +17,10 @@ from helios.core.parker_spiral import ParkerSpiralModel
 from helios.core.report_generator import ScientificReportGenerator
 from helios.api.server import app
 
-client = TestClient(app)
+# The server only answers requests addressed to a loopback host (helios.api.guard).
+LOCAL = "http://127.0.0.1:8765"
+
+client = TestClient(app, base_url=LOCAL)
 
 def test_space_weather_physics_equations():
     # 1. Dynamic pressure

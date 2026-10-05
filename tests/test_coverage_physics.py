@@ -13,7 +13,10 @@ import helios.core.spice_engine as spice_mod
 from helios.api.server import app
 from helios.core.spice_engine import get_spice_engine
 
-client = TestClient(app)
+# The server only answers requests addressed to a loopback host (helios.api.guard).
+LOCAL = "http://127.0.0.1:8765"
+
+client = TestClient(app, base_url=LOCAL)
 
 
 @pytest.fixture

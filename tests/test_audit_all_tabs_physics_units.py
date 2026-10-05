@@ -21,7 +21,10 @@ from helios.core.solar_cycle import SolarCycleEngine
 from helios.core.ml_forecast import SpaceWeatherForecaster
 from helios.core.importer import TelemetryImporter
 
-client = TestClient(app)
+# The server only answers requests addressed to a loopback host (helios.api.guard).
+LOCAL = "http://127.0.0.1:8765"
+
+client = TestClient(app, base_url=LOCAL)
 
 # =============================================================================
 # TAB 1: DASHBOARD / L1 TELEMETRY (Telemetry, Filters, Pdyn, Epsilon, Delay, NOAA)

@@ -9,6 +9,9 @@ import pytest
 
 from helios.core.science import SpaceWeatherPhysics
 
+# The server only answers requests addressed to a loopback host (helios.api.guard).
+LOCAL = "http://127.0.0.1:8765"
+
 
 def test_akasofu_epsilon_includes_4pi_over_mu0():
     """
@@ -98,7 +101,7 @@ def test_spectrum_api_uses_record_cadence():
     """The offline model is 5-minute data; the API used to assume 60 s, putting every frequency 5x too high."""
     from fastapi.testclient import TestClient
     from helios.api.server import app
-    res = TestClient(app).get("/api/spectrum?mission_id=DSCOVR&parameter=bz_gsm").json()
+    res = TestClient(app, base_url=LOCAL).get("/api/spectrum?mission_id=DSCOVR&parameter=bz_gsm").json()
     assert res["dt_seconds"] == 300.0
     n = 24 * 12  # 24 h of 5-minute samples
     assert res["frequencies_hz"][0] == pytest.approx(1.0 / (n * 300.0), rel=1e-3)
@@ -295,7 +298,7 @@ def test_boyle_polar_cap_potential_uses_imf_magnitude():
     assert res["polar_cap_potential_kv"] == pytest.approx(1e-4 * 500.0 ** 2 + 11.7 * 10.0, abs=0.06)
     from fastapi.testclient import TestClient
     from helios.api.server import app
-    api = TestClient(app).get("/api/geospace/coupling?speed_kms=500&b_total_nt=10&by_gsm_nt=0&bz_gsm_nt=-6").json()
+    api = TestClient(app, base_url=LOCAL).get("/api/geospace/coupling?speed_kms=500&b_total_nt=10&by_gsm_nt=0&bz_gsm_nt=-6").json()
     assert api["polar_cap_potential"]["polar_cap_potential_kv"] == pytest.approx(142.0, abs=0.06)
 
 
@@ -335,7 +338,7 @@ def test_shue_1998_and_farris_russell_1994_standoffs():
 def test_boundary_endpoint_models_and_inputs():
     from fastapi.testclient import TestClient
     from helios.api.server import app
-    client = TestClient(app)
+    client = TestClient(app, base_url=LOCAL)
     chao = client.get("/api/magnetosphere/boundaries?dynamic_pressure=2.42&bz_gsm=-0.35"
                       "&mach_number=5.77&plasma_beta=3.02&model=chao").json()
     assert chao["bow_shock"]["standoff_re"] == pytest.approx(13.325, abs=0.01)
@@ -360,14 +363,14 @@ def test_aurora_endpoint_shows_observed_dst_next_to_model(monkeypatch):
 
     monkeypatch.setattr(server.downloader, "get_telemetry_bundle", bundle)
     monkeypatch.setattr(server.downloader, "get_kyoto_dst", kyoto)
-    body = TestClient(server.app).get("/api/aurora?kp=3&dst_model=burton").json()
+    body = TestClient(server.app, base_url=LOCAL).get("/api/aurora?kp=3&dst_model=burton").json()
     assert body["dst_model"] == "Burton et al. (1975)"
     # Shifted by 60 min the drivers start at 01:00, where Kyoto Dst is -10 nT
     assert body["dst_evolution"][0]["time_tag"] == "2026-10-02 01:00:00"
     assert body["dst_initial_observed_nt"] == -10.0 and body["dst_evolution"][0]["dst_predicted_nt"] == -10.0
     assert [o["dst"] for o in body["dst_observed"]] == [-10.0, -20.0, -30.0, -40.0]
     assert body["dst_skill"]["n"] == 3  # 01, 02, 03 h are complete; 04:00 has one sample
-    assert TestClient(server.app).get("/api/aurora?dst_model=xyz").status_code == 400
+    assert TestClient(server.app, base_url=LOCAL).get("/api/aurora?dst_model=xyz").status_code == 400
 
 
 def test_reference_dois_point_to_the_cited_papers():
@@ -387,7 +390,7 @@ def test_custom_latest_is_not_an_error_before_any_import(monkeypatch):
     from fastapi.testclient import TestClient
     from helios.api import server
     monkeypatch.setattr(server, "latest_custom_dataset", None)
-    res = TestClient(server.app).get("/api/custom/latest")
+    res = TestClient(server.app, base_url=LOCAL).get("/api/custom/latest")
     assert res.status_code == 200 and res.json()["status"] == "empty" and res.json()["total_records"] == 0
 
 
@@ -462,7 +465,7 @@ def test_dipole_pole_and_magnetic_local_time():
 def test_aurora_endpoint_uses_al_and_draws_starkov_oval(monkeypatch):
     from fastapi.testclient import TestClient
     from helios.api import server
-    client = TestClient(server.app)
+    client = TestClient(server.app, base_url=LOCAL)
     body = client.get("/api/aurora?al=-450&kp=5&time=2024-05-10T22:00").json()
     b = body["boundaries"]
     assert b["model"] == "Starkov (1994)" and b["al_used_nt"] == 450.0 and b["al_source"] == "user input"

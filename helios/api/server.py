@@ -6,7 +6,6 @@ from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel
 from fastapi import FastAPI, Query, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 import logging
 import os
@@ -20,6 +19,7 @@ import pandas as pd
 from datetime import datetime, timezone, timedelta
 
 from helios import __version__
+from helios.api.guard import LocalRequestGuard
 from helios.config import (
     MISSIONS, STATIC_DIR, DATA_PROVIDERS,
     SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
@@ -62,13 +62,11 @@ async def unexpected_error(request, exc: Exception):
     return JSONResponse(status_code=500, content={
         "detail": f"Internal error in {request.url.path}: {type(exc).__name__}: {exc}"[:500]})
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# No CORS middleware: the interface is served by this server (same origin). The former
+# allow_origins=["*"] with credentials let any web page open in the browser read every
+# answer and send JSON POSTs (settings, imports) after an approved preflight.
+# The guard rejects cross-site and DNS-rebinding requests before routing (helios.api.guard).
+app.add_middleware(LocalRequestGuard)
 
 downloader = DataDownloader()
 latest_custom_dataset: Optional[Dict[str, Any]] = None

@@ -12,6 +12,9 @@ import pytest
 
 from helios.core.downloader import DataDownloader, block_average, infer_cadence_seconds
 
+# The server only answers requests addressed to a loopback host (helios.api.guard).
+LOCAL = "http://127.0.0.1:8765"
+
 
 def _mag(t, source, active, bz, by=-3.0, bx=2.0, bt=5.0, quality=0):
     return {"time_tag": t, "active": active, "source": source, "bt": bt,
@@ -174,7 +177,7 @@ def test_telemetry_api_uses_observed_indices_and_reports_provenance(monkeypatch)
         return None
 
     monkeypatch.setattr(DataDownloader, "fetch_json", fake_fetch)
-    data = TestClient(app).get("/api/telemetry/DSCOVR").json()
+    data = TestClient(app, base_url=LOCAL).get("/api/telemetry/DSCOVR").json()
     assert data["provenance"]["kind"] == "observed"
     cls = data["classification"]
     # Previously: Kp guessed from Bz (3.0 here), X-ray fixed at 1.5e-6, protons fixed at 1.2 pfu.
@@ -194,7 +197,7 @@ def test_latest_valid_record_skips_partial_rows():
 def test_export_rejects_unknown_mission():
     from fastapi.testclient import TestClient
     from helios.api.server import app
-    client = TestClient(app)
+    client = TestClient(app, base_url=LOCAL)
     assert client.get("/api/export/csv?mission_id=NOT_A_MISSION").status_code == 404
     assert client.get("/api/export/csv?mission_id=DSCOVR&span_days=99").status_code == 422
 
@@ -256,13 +259,13 @@ def test_csv_export_handles_mixed_keys_and_carries_metadata():
     out = DataExporter.to_csv([{"time_tag": "a", "speed": 400.0}, {"time_tag": "b", "speed": None, "hp_mag": 90.0}])
     assert out.splitlines()[0] == "time_tag,speed,hp_mag"
 
-    text = TestClient(app).get("/api/export/csv?mission_id=DSCOVR").text
+    text = TestClient(app, base_url=LOCAL).get("/api/export/csv?mission_id=DSCOVR").text
     assert text.startswith("# title:")
     assert "# data_kind: synthetic" in text  # offline test run
     assert "speed=km/s" in text
     df = pd.read_csv(io.StringIO(text), comment="#")
     assert "data_source" in df.columns and len(df) > 0
-    plain = TestClient(app).get("/api/export/csv?mission_id=DSCOVR&metadata=false").text
+    plain = TestClient(app, base_url=LOCAL).get("/api/export/csv?mission_id=DSCOVR&metadata=false").text
     assert plain.startswith("time_tag,")
 
 
@@ -282,7 +285,7 @@ def test_compare_and_matrix_expose_provenance(monkeypatch):
         return MAG if "rtsw_mag" in url else (WIND if "rtsw_wind" in url else None)
 
     monkeypatch.setattr(DataDownloader, "fetch_json", fake_fetch)
-    client = TestClient(app)
+    client = TestClient(app, base_url=LOCAL)
     comp = client.get("/api/compare?mission_a=ACE&mission_b=WIND&parameter=bz_gsm").json()
     assert comp["provenance_a"]["kind"] == "observed"
     assert comp["provenance_b"]["kind"] == "simulated"
@@ -321,7 +324,7 @@ def test_compare_baseline_uses_supplying_spacecraft_position(monkeypatch):
         return mag if "rtsw_mag" in url else wind
 
     monkeypatch.setattr(DataDownloader, "fetch_json", fake_fetch)
-    comp = TestClient(app).get("/api/compare?mission_a=DSCOVR&mission_b=ACE&parameter=bz_gsm").json()
+    comp = TestClient(app, base_url=LOCAL).get("/api/compare?mission_a=DSCOVR&mission_b=ACE&parameter=bz_gsm").json()
     base = comp["spatial_baseline"]
     assert "SOLAR1" in base["position_source_a"] and "ACE" in base["position_source_b"]
     # SOLAR1 is 172,689 km further sunward than ACE: dx < 0 and the plasma reaches it first.
@@ -358,7 +361,7 @@ def test_solar_regions_use_latest_noaa_summary(monkeypatch):
         return rows if cache_key == "solar_regions" else None
     from helios.core.downloader import DataDownloader
     monkeypatch.setattr(DataDownloader, "fetch_json", fake)
-    body = TestClient(server.app).get("/api/solar/regions").json()
+    body = TestClient(server.app, base_url=LOCAL).get("/api/solar/regions").json()
     assert body["observed_date"] == "2026-10-03" and body["kind"] == "observed"
     assert [r["region"] for r in body["regions"]] == [4548]
     r = body["regions"][0]
@@ -368,7 +371,7 @@ def test_solar_regions_use_latest_noaa_summary(monkeypatch):
 def test_solar_regions_offline_is_unavailable():
     from fastapi.testclient import TestClient
     from helios.api import server
-    body = TestClient(server.app).get("/api/solar/regions").json()
+    body = TestClient(server.app, base_url=LOCAL).get("/api/solar/regions").json()
     assert body["kind"] == "unavailable" and body["regions"] == []
 
 
@@ -384,7 +387,7 @@ def test_custom_csv_export_has_metadata_and_plot_states_provenance(monkeypatch):
     from fastapi.testclient import TestClient
     from helios.api import server
     from helios.core.exporter import DataExporter
-    client = TestClient(server.app)
+    client = TestClient(server.app, base_url=LOCAL)
     csv_text = "time,speed,bz\n2024-05-10 00:00:00,400,-3\n2024-05-10 00:01:00,410,-4\n"
     assert client.post("/api/custom/import", json={"content": csv_text, "mission_name": "Test"}).status_code == 200
     out = client.get("/api/custom/export/csv").text
@@ -406,7 +409,7 @@ def test_unexpected_errors_answer_json(monkeypatch):
     def boom(*a, **k):
         raise RuntimeError("solver diverged")
     monkeypatch.setattr(server.SolarCycleEngine, "calculate_cycle_25_progression", boom)
-    r = TestClient(server.app, raise_server_exceptions=False).get("/api/solar_cycle")
+    r = TestClient(server.app, base_url=LOCAL, raise_server_exceptions=False).get("/api/solar_cycle")
     assert r.status_code == 500
     assert r.json()["detail"] == "Internal error in /api/solar_cycle: RuntimeError: solver diverged"
 
@@ -425,7 +428,7 @@ def test_solar_cycle_uses_noaa_observed_indices(monkeypatch):
     async def fake(self, url, cache_key):
         return {"solar_cycle_observed": obs, "solar_cycle_predicted": pred}.get(cache_key)
     monkeypatch.setattr(DataDownloader, "fetch_json", fake)
-    sc = TestClient(server.app).get("/api/solar_cycle?year=2026.8").json()
+    sc = TestClient(server.app, base_url=LOCAL).get("/api/solar_cycle?year=2026.8").json()
     assert sc["data_kind"] == "observed"
     assert sc["monthly_sunspot_number"] == 60.3 and sc["month"] == "2026-09"
     assert sc["smoothed_sunspot_number"] == 160.9 and sc["smoothed_month"] == "2024-10"  # -1 = not yet smoothed
@@ -437,5 +440,5 @@ def test_solar_cycle_uses_noaa_observed_indices(monkeypatch):
 def test_solar_cycle_offline_is_labelled_model():
     from fastapi.testclient import TestClient
     from helios.api import server
-    sc = TestClient(server.app).get("/api/solar_cycle").json()
+    sc = TestClient(server.app, base_url=LOCAL).get("/api/solar_cycle").json()
     assert sc["data_kind"] == "model" and "approximation" in sc["source"]

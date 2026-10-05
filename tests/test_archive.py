@@ -17,6 +17,9 @@ from helios.core.archive import ArchiveClient, HapiError, parse_hapi_csv, ARCHIV
 from helios.core.coordinates import gse_to_gsm
 from helios.core.downloader import DataDownloader
 
+# The server only answers requests addressed to a loopback host (helios.api.guard).
+LOCAL = "http://127.0.0.1:8765"
+
 DATA = Path(__file__).parent / "data" / "hapi"
 
 # dataset id -> (UTC day served, recorded file)
@@ -173,7 +176,7 @@ def test_archive_api_endpoint(monkeypatch, tmp_path):
 
     dl = _downloader(tmp_path)
     monkeypatch.setattr(server, "downloader", dl)
-    client = TestClient(server.app)
+    client = TestClient(server.app, base_url=LOCAL)
     r = client.get("/api/archive/omni?start=2024-05-10T17:00Z&end=2024-05-10T17:06")
     assert r.status_code == 200
     body = r.json()
@@ -224,7 +227,7 @@ def test_omni_geomagnetic_indices_and_storm_endpoint(monkeypatch, tmp_path):
     assert p_full != p_less
 
     monkeypatch.setattr(server, "downloader", dl)
-    body = TestClient(server.app).get("/api/storm/indices?start=2024-05-10T17:00&end=2024-05-10T17:06&cadence_minutes=1").json()
+    body = TestClient(server.app, base_url=LOCAL).get("/api/storm/indices?start=2024-05-10T17:00&end=2024-05-10T17:06&cadence_minutes=1").json()
     assert body["indices"]["sym_h"] == [15.0, 13.0, 11.0, 12.0, 11.0, 10.0]
     cmp = body["dst_comparison"]
     assert cmp["observed_index"] == "SYM-H" and cmp["models"]["obrien"]["series"][0] == 15.0

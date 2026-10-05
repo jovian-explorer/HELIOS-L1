@@ -161,6 +161,7 @@ helios [--host 127.0.0.1] [--port 8765] [--headless] [--browser] [--version]
 * `--headless` runs only the server (open `http://127.0.0.1:8765` yourself).
 * `--browser` skips the desktop window and uses the default browser.
 * If the port is busy, HELIOS picks the next free one automatically.
+* The API answers only requests addressed to `127.0.0.1`/`localhost` and refuses requests that a browser sends on behalf of another web site; scripts and `curl` can use it (POST bodies must be JSON with `Content-Type: application/json`).
 
 ### Where HELIOS keeps its files
 Downloaded telemetry cache and logs go in the per-user app folders, and your settings (`settings.json`) and the desktop window's browser storage in the config folder:
