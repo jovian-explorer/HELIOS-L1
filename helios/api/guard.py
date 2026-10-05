@@ -10,7 +10,8 @@ answer; the request itself still runs. The guard therefore rejects, before routi
 * /api requests that a browser marks as coming from another site (Sec-Fetch-Site other
   than same-origin or none) or that carry an Origin other than the server's own;
 * state-changing /api requests (POST, PUT, PATCH, DELETE) without a JSON Content-Type,
-  which no cross-site page can send without a CORS preflight.
+  which no cross-site page can send without a CORS preflight;
+* request bodies larger than the endpoint's limit (Content-Length or streamed size).
 
 Requests without these headers (scripts, curl, the test client) pass: they are not a
 browser acting on behalf of another site.
@@ -38,8 +39,13 @@ def is_loopback_host(host: Optional[str]) -> bool:
 class LocalRequestGuard:
     """ASGI middleware applying the rules in the module docstring."""
 
-    def __init__(self, app):
+    def __init__(self, app, body_limits: Dict[str, int], default_body_limit: int):
         self.app = app
+        self.body_limits = body_limits
+        self.default_body_limit = default_body_limit
+
+    def _body_limit(self, path: str) -> int:
+        return self.body_limits.get(path, self.default_body_limit)
 
     @staticmethod
     def _headers(scope) -> Dict[str, str]:
@@ -62,7 +68,18 @@ class LocalRequestGuard:
             ctype = headers.get("content-type", "").split(";")[0].strip().lower()
             if ctype != "application/json":
                 return 415, "State-changing requests must send Content-Type: application/json."
+            length = headers.get("content-length")
+            if length is not None:
+                try:
+                    too_big = int(length) > self._body_limit(path)
+                except ValueError:
+                    return 400, "Invalid Content-Length header."
+                if too_big:
+                    return 413, self._too_large(path)
         return None
+
+    def _too_large(self, path: str) -> str:
+        return f"Request body too large (limit {self._body_limit(path) / 1e6:g} MB)."
 
     @staticmethod
     async def _reject(send, status: int, reason: str) -> None:
@@ -74,7 +91,34 @@ class LocalRequestGuard:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
-        refusal = self.check(scope.get("method", "GET").upper(), scope.get("path", ""), self._headers(scope))
+        method, path = scope.get("method", "GET").upper(), scope.get("path", "")
+        refusal = self.check(method, path, self._headers(scope))
         if refusal:
             return await self._reject(send, *refusal)
-        return await self.app(scope, receive, send)
+        if method not in UNSAFE_METHODS:
+            return await self.app(scope, receive, send)
+
+        # Read the body here, up to the limit, and hand it on: a chunked body has no
+        # Content-Length to check up front. (FastAPI buffers request bodies anyway.)
+        limit, chunks, size = self._body_limit(path), [], 0
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            chunk = message.get("body", b"")
+            size += len(chunk)
+            if size > limit:
+                return await self._reject(send, 413, self._too_large(path))
+            chunks.append(chunk)
+            if not message.get("more_body", False):
+                break
+        body, delivered = b"".join(chunks), False
+
+        async def replay():
+            nonlocal delivered
+            if not delivered:
+                delivered = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            return await receive()
+
+        return await self.app(scope, replay, send)

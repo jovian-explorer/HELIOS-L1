@@ -162,6 +162,7 @@ helios [--host 127.0.0.1] [--port 8765] [--headless] [--browser] [--version]
 * `--browser` skips the desktop window and uses the default browser.
 * If the port is busy, HELIOS picks the next free one automatically.
 * The API answers only requests addressed to `127.0.0.1`/`localhost` and refuses requests that a browser sends on behalf of another web site; scripts and `curl` can use it (POST bodies must be JSON with `Content-Type: application/json`).
+* Limits: imported files up to 64 MB, archive and index intervals up to 31 days, event analyses up to 72 h, superposed epoch analyses up to 60 onsets and 180 days of data in total.
 
 ### Where HELIOS keeps its files
 Downloaded telemetry cache and logs go in the per-user app folders, and your settings (`settings.json`) and the desktop window's browser storage in the config folder:

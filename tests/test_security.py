@@ -119,3 +119,41 @@ def test_static_files_do_not_leave_the_static_folder(client):
                  "/static/%2e%2e%2fapi%2fserver.py"):
         r = client.get(path)
         assert r.status_code == 404 or "DEFAULT_PORT" not in r.text
+
+
+def test_import_body_size_is_limited(client):
+    # Reproduction: POST a 70 MB import; it was read, decoded and parsed whole.
+    big = '{"content": "' + "x" * (70 * 1024 * 1024) + '"}'
+    r = client.post("/api/custom/import", content=big, headers={"Content-Type": "application/json"})
+    assert r.status_code == 413
+    # Without Content-Length (chunked), the streamed size is counted.
+    def chunks():
+        yield b'{"content": "'
+        for _ in range(70):
+            yield b"x" * (1 << 20)
+        yield b'"}'
+    r = client.post("/api/custom/import", content=chunks(), headers={"Content-Type": "application/json"})
+    assert r.status_code == 413
+    # Normal imports still pass, and so do small forms.
+    assert client.post("/api/custom/import", json={"content": CSV, "mission_name": "probe"}).status_code == 200
+
+
+def test_form_endpoints_have_a_small_body_limit(client):
+    r = client.post("/api/coronagraph/kinematics", json={"dt_minutes": 30, "pad": "x" * 100_000})
+    assert r.status_code == 413
+    r = client.post("/api/custom/import", json={"content": CSV, "mission_name": "m" * 500})
+    assert r.status_code == 422
+
+
+def test_superposed_epoch_total_download_is_limited(client):
+    # 60 onsets x 240 h asked for 600 days of OMNI files in one request.
+    onsets = ",".join(f"2020-{m:02d}-{d:02d}T00:00" for m in range(1, 4) for d in range(1, 21))
+    r = client.get("/api/analysis/superposed", params={"onsets": onsets, "before_hours": 120, "after_hours": 120})
+    assert r.status_code == 422 and "at most 180 days" in r.json()["detail"]
+
+
+def test_ephemeris_id_list_is_deduplicated_and_limited(client):
+    r = client.get("/api/ephemeris/spice", params={"satellites": ",".join(f"SC{i}" for i in range(41))})
+    assert r.status_code == 422
+    r = client.get("/api/ephemeris/spice", params={"satellites": "EARTH," * 500})
+    assert r.status_code == 200 and list(r.json()["fleet"]) == ["EARTH"]

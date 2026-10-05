@@ -1723,6 +1723,12 @@ function handleFileUpload(event) {
     event.target.value = '';
     return;
   }
+  // The server accepts imports of up to 64 MB (MAX_IMPORT_BYTES); say so before reading the file.
+  if (file.size > 60 * 1024 * 1024) {
+    alert(`${file.name} is ${(file.size / 1048576).toFixed(0)} MB. Imports are limited to about 60 MB: split the file or average it to a coarser cadence first.`);
+    event.target.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = (e) => {
     document.getElementById('import-content').value = e.target.result;

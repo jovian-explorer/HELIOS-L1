@@ -3,7 +3,7 @@ FastAPI REST API server for HELIOS-L1.
 Bridges scientific backend engines with interactive frontend dashboard.
 """
 from typing import Optional, Dict, Any, List, Tuple
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi import FastAPI, Query, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -67,7 +67,12 @@ async def unexpected_error(request, exc: Exception):
 # allow_origins=["*"] with credentials let any web page open in the browser read every
 # answer and send JSON POSTs (settings, imports) after an approved preflight.
 # The guard rejects cross-site and DNS-rebinding requests before routing (helios.api.guard).
-app.add_middleware(LocalRequestGuard)
+# Request body limits: an imported file (a year of 1-minute data as CSV is ~50 MB) and
+# small JSON forms everywhere else.
+MAX_IMPORT_BYTES = 64 * 1024 * 1024
+MAX_FORM_BYTES = 64 * 1024
+app.add_middleware(LocalRequestGuard, body_limits={"/api/custom/import": MAX_IMPORT_BYTES},
+                   default_body_limit=MAX_FORM_BYTES)
 
 downloader = DataDownloader()
 latest_custom_dataset: Optional[Dict[str, Any]] = None
@@ -148,7 +153,7 @@ class CMEKinematicsRequest(BaseModel):
 
 class CustomImportRequest(BaseModel):
     content: str
-    mission_name: Optional[str] = "User Spacecraft / OMNI"
+    mission_name: Optional[str] = Field("User Spacecraft / OMNI", max_length=200)
 
 class SettingsUpdateRequest(BaseModel):
     processors: Optional[int] = None
@@ -717,6 +722,8 @@ async def analyse_flux_rope(
 
 SEA_MAX_EVENTS = 60
 SEA_MAX_HOURS = 240
+# Total OMNI data one request may fetch (events x window): 60 events of 72 h, or 18 of 240 h.
+SEA_MAX_TOTAL_HOURS = 180 * 24
 
 
 @app.get("/api/analysis/superposed")
@@ -743,6 +750,9 @@ async def analyse_superposed_epoch(
         raise HTTPException(status_code=422, detail=f"At most {SEA_MAX_EVENTS} onsets.")
     if before_hours + after_hours > SEA_MAX_HOURS:
         raise HTTPException(status_code=422, detail=f"The epoch window is limited to {SEA_MAX_HOURS} hours.")
+    if len(times) * (before_hours + after_hours) > SEA_MAX_TOTAL_HOURS:
+        raise HTTPException(status_code=422, detail=f"Events x window may cover at most {SEA_MAX_TOTAL_HOURS // 24} days "
+                                                    f"of data ({len(times)} x {before_hours + after_hours:g} h requested).")
     params = [p.strip().lower() for p in parameters.split(",") if p.strip()]
     unknown = [p for p in params if p not in SEA_PARAMETERS]
     if unknown or not params:
@@ -866,6 +876,9 @@ async def get_orbits(epoch: Optional[str] = Query(None, description="UTC ISO epo
         "orbits": orbits
     }
 
+MAX_EPHEMERIS_IDS = 40
+
+
 @app.get("/api/ephemeris/spice")
 async def get_spice_ephemeris(
     satellites: Optional[str] = Query(None, description="Comma-separated spacecraft IDs (e.g. PARKER_SOLAR_PROBE,ADITYA_L1,SOLAR_ORBITER)"),
@@ -879,7 +892,9 @@ async def get_spice_ephemeris(
     """
     check_epoch(epoch)
     engine = get_spice_engine()
-    sc_list = [s.strip().upper() for s in satellites.split(",")] if satellites else None
+    sc_list = list(dict.fromkeys(s.strip().upper() for s in satellites.split(",") if s.strip())) if satellites else None
+    if sc_list and len(sc_list) > MAX_EPHEMERIS_IDS:
+        raise HTTPException(status_code=422, detail=f"At most {MAX_EPHEMERIS_IDS} spacecraft per request.")
     return engine.get_fleet_states(spacecraft_ids=sc_list, epoch_utc=epoch, frame=frame)
 
 @app.get("/api/ephemeris/spice/trajectory")
