@@ -178,8 +178,14 @@ def update_system_settings(processors: int = None, theme: str = None, font_size:
         tmp = SETTINGS_FILE.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
         os.replace(tmp, SETTINGS_FILE)
-    except OSError:
-        pass  # read-only profile: the settings still apply for this session
+    except OSError as exc:
+        # Read-only profile, full disk, file locked: the settings still apply for this
+        # session, but the answer must say they were not saved. It used to report
+        # "saved": true whenever an older settings file existed.
+        out = get_system_settings()
+        out["saved"] = False
+        out["save_error"] = f"Could not write {SETTINGS_FILE}: {exc.strerror or exc}"
+        return out
     return get_system_settings()
 
 # Comprehensive Space Weather Missions Metadata

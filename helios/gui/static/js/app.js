@@ -499,6 +499,10 @@ async function saveAndApplySettings() {
       alert(`Settings not saved: ${apiErrorText(body, res)}`);
       return;
     }
+    const saved = await res.json().catch(() => ({}));
+    if (saved.save_error) {
+      alert(`The settings apply to this session but could not be saved for the next start: ${saved.save_error}`);
+    }
   } catch (err) {
     console.warn('Backend settings persist error:', err);
   }

@@ -186,10 +186,13 @@ class CoronagraphAnalyzer:
         # 4. Timestamps & Lead Time
         now_dt = datetime.now(timezone.utc)
         if launch_time_iso:
+            # An unreadable launch time used to be replaced by the current time without a
+            # word, so the arrival times looked valid but referred to now.
             try:
-                base_dt = datetime.fromisoformat(launch_time_iso.replace("Z", "+00:00"))
-            except Exception:
-                base_dt = now_dt
+                base_dt = datetime.fromisoformat(launch_time_iso.strip().replace("Z", "+00:00"))
+            except ValueError:
+                raise ValueError(f"Unreadable launch time {launch_time_iso!r}; use ISO 8601 UTC, e.g. 2024-05-09T09:24")
+            base_dt = base_dt.replace(tzinfo=timezone.utc) if base_dt.tzinfo is None else base_dt
         else:
             base_dt = now_dt
 

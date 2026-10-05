@@ -134,7 +134,7 @@ class SpiceEphemerisEngine:
         Converts UTC timestamp (ISO format, datetime, or ET float) into SPICE Ephemeris Time (ET).
         ET is seconds past J2000 epoch (2000-01-01 12:00:00 TDB).
         """
-        if epoch is None:
+        if epoch is None or (isinstance(epoch, str) and not epoch.strip()):
             now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
             epoch = now_utc
 
@@ -147,9 +147,13 @@ class SpiceEphemerisEngine:
         epoch_str = str(epoch).replace("Z", "").strip()
         try:
             # A bare number is already an ET value (e.g. from a previous epoch_to_et call).
-            return float(epoch_str)
+            et = float(epoch_str)
         except ValueError:
             pass
+        else:
+            if not math.isfinite(et):  # 'nan' / 'inf' gave NaN positions and a 500
+                raise ValueError(f"Unrecognised epoch {epoch!r}; use ISO 8601 UTC, e.g. 2026-10-04T12:00:00")
+            return et
 
         if SPICE_AVAILABLE:
             try:

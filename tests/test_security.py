@@ -157,3 +157,44 @@ def test_ephemeris_id_list_is_deduplicated_and_limited(client):
     assert r.status_code == 422
     r = client.get("/api/ephemeris/spice", params={"satellites": "EARTH," * 500})
     assert r.status_code == 200 and list(r.json()["fleet"]) == ["EARTH"]
+
+
+@pytest.mark.parametrize("url", ["/api/orbits?epoch=nan", "/api/ephemeris/spice?epoch=1e309",
+                                 "/api/parker_spiral?speed_kms=inf", "/api/gic/hazard?db_dt=-Infinity",
+                                 "/api/ionosphere/absorption?xray_flux=NaN"])
+def test_non_finite_query_numbers_are_422_not_500(url):
+    # Reproduction: FastAPI parses 'nan'/'inf' as floats; the NaN results failed JSON encoding (500).
+    r = TestClient(server.app, base_url=LOCAL, raise_server_exceptions=False).get(url)
+    assert r.status_code == 422 and "finite" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("body", ['{"dt_minutes": NaN}', '{"r2_rsun": Infinity}', '{"dt_minutes": 0}',
+                                  '{"r1_rsun": 6, "r2_rsun": 3}', '{"launch_time_iso": "yesterday"}'])
+def test_invalid_cme_inputs_are_422(body):
+    # NaN/Infinity bodies made FastAPI's own 422 handler fail (500); dt = 0 or r2 < r1 answered
+    # 200 with an "error" field; an unreadable launch time silently became "now".
+    c = TestClient(server.app, base_url=LOCAL, raise_server_exceptions=False)
+    r = c.post("/api/coronagraph/kinematics", content=body, headers={"Content-Type": "application/json"})
+    assert r.status_code == 422
+
+
+def test_empty_epoch_means_now(client):
+    assert client.get("/api/orbits?epoch=").status_code == 200
+    assert client.get("/api/ephemeris/spice/trajectory?epoch=").status_code == 200
+
+
+def test_settings_save_failure_is_reported(client, restore_settings, monkeypatch):
+    # Reproduction: make the settings file unwritable; the answer said "saved": true because
+    # an older settings file existed, and the interface closed the dialog as if saved.
+    client.post("/api/settings", json={"theme": "mission-slate"})
+    assert config.SETTINGS_FILE.exists()
+
+    def locked(*a, **k):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(config.os, "replace", locked)
+    r = client.post("/api/settings", json={"theme": "deep-space"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["saved"] is False and "Permission denied" in body["save_error"]
+    assert body["theme"] == "deep-space"  # still applied for this session

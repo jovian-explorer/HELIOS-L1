@@ -4,8 +4,9 @@ Bridges scientific backend engines with interactive frontend dashboard.
 """
 from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel, Field
-from fastapi import FastAPI, Query, HTTPException, Response
+from fastapi import Depends, FastAPI, Query, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 import logging
 import os
@@ -46,10 +47,25 @@ from helios.core.ionosphere import IonosphericModel
 from helios.core.gic_model import GICHazardModel
 from helios.core.spice_engine import get_spice_engine
 
+async def reject_non_finite_numbers(request: Request) -> None:
+    """
+    422 for 'nan', 'inf' or overflowing numbers in the query string. FastAPI accepts them
+    as floats; they ran through the models and failed JSON encoding as a 500.
+    """
+    for key, value in request.query_params.multi_items():
+        try:
+            x = float(value)
+        except ValueError:
+            continue
+        if not math.isfinite(x):
+            raise HTTPException(status_code=422, detail=f"'{key}' must be a finite number.")
+
+
 app = FastAPI(
     title="HELIOS-L1 API",
     description="Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite",
-    version=__version__
+    version=__version__,
+    dependencies=[Depends(reject_non_finite_numbers)],
 )
 
 @app.exception_handler(Exception)
@@ -62,6 +78,17 @@ async def unexpected_error(request, exc: Exception):
     logging.getLogger("helios.api").exception("Unhandled error in %s", request.url.path)
     return JSONResponse(status_code=500, content={
         "detail": f"Internal error in {request.url.path}: {type(exc).__name__}: {exc}"[:500]})
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request, exc: RequestValidationError):
+    """
+    The usual 422 list (loc, msg, type), with the offending input as text: FastAPI's own
+    handler echoed it as JSON and failed with a 500 when it was NaN or Infinity, which
+    Python's JSON parser accepts in request bodies.
+    """
+    errors = [{"loc": list(e.get("loc", ())), "msg": e.get("msg", ""), "type": e.get("type", ""),
+               "input": repr(e.get("input"))[:200]} for e in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors})
 
 # No CORS middleware: the interface is served by this server (same origin). The former
 # allow_origins=["*"] with credentials let any web page open in the browser read every
@@ -144,12 +171,14 @@ async def classify_current_conditions(latest: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class CMEKinematicsRequest(BaseModel):
-    r1_rsun: float = 2.5
-    r2_rsun: float = 6.0
-    dt_minutes: float = 30.0
-    launch_time_iso: Optional[str] = None
-    ambient_wind_kms: float = 420.0
-    gamma_drag: float = 1.0e-7
+    # Ranges keep NaN/Infinity (valid in Python's JSON parser) and impossible values out;
+    # they produced a 500 or a 200 answer with an "error" field.
+    r1_rsun: float = Field(2.5, gt=1.0, le=300.0, allow_inf_nan=False)
+    r2_rsun: float = Field(6.0, gt=1.0, le=300.0, allow_inf_nan=False)
+    dt_minutes: float = Field(30.0, gt=0.0, le=10080.0, allow_inf_nan=False)
+    launch_time_iso: Optional[str] = Field(None, max_length=64)
+    ambient_wind_kms: float = Field(420.0, ge=100.0, le=1500.0, allow_inf_nan=False)
+    gamma_drag: float = Field(1.0e-7, gt=0.0, le=1.0e-5, allow_inf_nan=False)
 
 class CustomImportRequest(BaseModel):
     content: str
@@ -1117,14 +1146,20 @@ async def get_coronagraph_feeds():
 
 @app.post("/api/coronagraph/kinematics")
 async def calculate_cme_kinematics(req: CMEKinematicsRequest):
-    return CoronagraphAnalyzer.calculate_cme_kinematics(
-        r1_rsun=req.r1_rsun,
-        r2_rsun=req.r2_rsun,
-        dt_minutes=req.dt_minutes,
-        launch_time_iso=req.launch_time_iso,
-        ambient_wind_kms=req.ambient_wind_kms,
-        gamma_drag=req.gamma_drag
-    )
+    try:
+        res = CoronagraphAnalyzer.calculate_cme_kinematics(
+            r1_rsun=req.r1_rsun,
+            r2_rsun=req.r2_rsun,
+            dt_minutes=req.dt_minutes,
+            launch_time_iso=req.launch_time_iso,
+            ambient_wind_kms=req.ambient_wind_kms,
+            gamma_drag=req.gamma_drag
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if "error" in res:
+        raise HTTPException(status_code=422, detail=res["error"])
+    return res
 
 @app.get("/api/parker_spiral")
 @app.get("/api/parker/spiral")
