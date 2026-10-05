@@ -14,6 +14,7 @@ import asyncio
 import csv
 import json
 import math
+import re
 import numpy as np
 import pandas as pd
 from datetime import datetime, timezone, timedelta
@@ -303,6 +304,21 @@ async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
 ARCHIVE_MAX_DAYS = 31
 
 
+def attachment(filename: str) -> Dict[str, str]:
+    """
+    Content-Disposition header for a download. The name is reduced to ASCII letters, digits,
+    '.', '_' and '-': names built from request values (an imported file's mission name) could
+    carry path separators, quotes, CR/LF (header injection) or characters outside Latin-1,
+    which made the export fail with a 500.
+    """
+    stem, dot, ext = filename.rpartition(".")
+    if not dot:
+        stem, ext = filename, ""
+    clean = re.sub(r"[^A-Za-z0-9_-]+", "_", stem).strip("_.-")[:120] or "helios_export"
+    ext = re.sub(r"[^A-Za-z0-9]+", "", ext)[:8]
+    return {"Content-Disposition": f'attachment; filename="{clean}.{ext}"' if ext else f'attachment; filename="{clean}"'}
+
+
 def _parse_utc(value: str, name: str) -> datetime:
     """ISO 8601 date or date-time; naive values are UTC, offsets are converted to UTC."""
     try:
@@ -361,9 +377,8 @@ async def get_archive(
             "missing_values": "empty cell",
         }
         stamp = f"{t0:%Y%m%dT%H%M}_{t1:%Y%m%dT%H%M}"
-        return Response(content=DataExporter.to_csv(data, metadata=meta), media_type="text/csv", headers={
-            "Content-Disposition": f"attachment; filename=HELIOS_{key}_archive_{stamp}.csv"
-        })
+        return Response(content=DataExporter.to_csv(data, metadata=meta), media_type="text/csv",
+                        headers=attachment(f"HELIOS_{key}_archive_{stamp}.csv"))
     return {
         "mission": {"id": key, "name": MISSIONS.get(key, {}).get("name", key)},
         "provenance": prov,
@@ -544,8 +559,8 @@ def _analysis_answer(body: Dict[str, Any], download: bool, name: str):
     """The analysis as JSON, or as a JSON file (results, inputs and provenance) when `download` is set."""
     if not download:
         return body
-    return Response(content=json.dumps(body, indent=1, default=str), media_type="application/json", headers={
-        "Content-Disposition": f"attachment; filename={name}.json"})
+    return Response(content=json.dumps(body, indent=1, default=str), media_type="application/json",
+                    headers=attachment(f"{name}.json"))
 
 
 async def _run_shock(key: str, tc: datetime, upstream_minutes: float, downstream_minutes: float,
@@ -778,8 +793,8 @@ async def analyse_superposed_epoch(
                 st = result["statistics"][p]
                 row += ["" if st[s][i] is None else st[s][i] for s in ("mean", "median", "q25", "q75")] + [st["n_events"][i]]
             w.writerow(row)
-        return Response(content=out.getvalue(), media_type="text/csv", headers={
-            "Content-Disposition": f"attachment; filename=HELIOS_superposed_epoch_{stamp}.csv"})
+        return Response(content=out.getvalue(), media_type="text/csv",
+                        headers=attachment(f"HELIOS_superposed_epoch_{stamp}.csv"))
     return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_superposed_epoch_{stamp}")
 
 
@@ -1170,13 +1185,13 @@ async def export_custom_telemetry(export_format: str):
         return Response(
             content=DataExporter.to_csv(records, metadata=meta),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename=helios_{mission_slug}_telemetry.csv"}
+            headers=attachment(f"helios_{mission_slug}_telemetry.csv")
         )
     elif export_format.lower() == "json":
         return Response(
             content=json.dumps(latest_custom_dataset, indent=2),
             media_type="application/json",
-            headers={"Content-Disposition": f"attachment; filename=helios_{mission_slug}_telemetry.json"}
+            headers=attachment(f"helios_{mission_slug}_telemetry.json")
         )
     else:
         raise HTTPException(status_code=400, detail="Invalid export format. Choose 'csv' or 'json'.")
@@ -1229,9 +1244,7 @@ async def get_html_report(mission_id: str = "DSCOVR", download: bool = False):
         auroral_data=auroral_data,
         provenance=bundle["provenance"]
     )
-    headers = {}
-    if download:
-        headers["Content-Disposition"] = f'attachment; filename="HELIOS-L1-{mission_key}-Bulletin.html"'
+    headers = attachment(f"HELIOS-L1-{mission_key}-Bulletin.html") if download else {}
     return Response(content=html, media_type="text/html", headers=headers)
 
 @app.get("/api/report/markdown")
@@ -1254,9 +1267,7 @@ async def get_markdown_report(mission_id: str = "DSCOVR", download: bool = False
         auroral_data=auroral_data,
         provenance=bundle["provenance"]
     )
-    headers = {}
-    if download:
-        headers["Content-Disposition"] = f'attachment; filename="HELIOS-L1-{mission_key}-Executive-Summary.md"'
+    headers = attachment(f"HELIOS-L1-{mission_key}-Executive-Summary.md") if download else {}
     return Response(content=md, media_type="text/markdown; charset=utf-8", headers=headers)
 
 @app.get("/api/spectrum")
@@ -1304,9 +1315,7 @@ async def export_csv(
             "missing_values": "empty cell",
         }
     csv_str = DataExporter.to_csv(data, metadata=meta)
-    return Response(content=csv_str, media_type="text/csv", headers={
-        "Content-Disposition": f"attachment; filename=HELIOS_{mission_id}_telemetry.csv"
-    })
+    return Response(content=csv_str, media_type="text/csv", headers=attachment(f"HELIOS_{mission_id}_telemetry.csv"))
 
 @app.get("/api/export/plot")
 async def export_plot(mission_id: str = "DSCOVR", span_days: int = Query(1, ge=1, le=7)):
@@ -1316,9 +1325,7 @@ async def export_plot(mission_id: str = "DSCOVR", span_days: int = Query(1, ge=1
     bundle = await downloader.get_telemetry_bundle(mission_key, span_days=span_days)
     name = MISSIONS.get(mission_key, {}).get("name", mission_id)
     png_bytes = await run_in_workers(DataExporter.generate_overview_chart, bundle["records"], name, bundle["provenance"])
-    return Response(content=png_bytes, media_type="image/png", headers={
-        "Content-Disposition": f"attachment; filename=HELIOS_{mission_id}_chart.png"
-    })
+    return Response(content=png_bytes, media_type="image/png", headers=attachment(f"HELIOS_{mission_id}_chart.png"))
 
 
 # Mount frontend static directory if exists

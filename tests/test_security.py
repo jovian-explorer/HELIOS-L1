@@ -92,3 +92,30 @@ def test_interface_requests_still_work(client, restore_settings):
     for host in ("localhost:8765", "[::1]:8765"):
         c = TestClient(server.app, base_url=f"http://{host}")
         assert c.get("/api/status", headers={"Origin": f"http://{host}"}).status_code == 200
+
+
+CSV = "time_tag,speed,density\n2024-05-10 00:00,400,5\n2024-05-10 00:01,410,6\n"
+
+
+@pytest.mark.parametrize("name", ["..\..\AppData\Roaming\evil.bat", "../../etc/x", 'a"; filename=x.exe',
+                                  "probe\r\nX-Injected: 1", "日本の探査機"])
+def test_download_names_from_request_values_are_sanitised(client, name):
+    # Reproduction: import a file with this mission name, then export it. The name went
+    # into the Content-Disposition header unchanged: path separators and quotes reached the
+    # browser, CR/LF injected a header and non-Latin-1 names made the export a 500.
+    assert client.post("/api/custom/import", json={"content": CSV, "mission_name": name}).status_code == 200
+    for fmt in ("csv", "json"):
+        r = client.get(f"/api/custom/export/{fmt}")
+        assert r.status_code == 200
+        disp = r.headers["content-disposition"]
+        assert "x-injected" not in {k.lower() for k in r.headers}
+        filename = disp.split("filename=", 1)[1].strip('"')
+        assert all(c.isascii() and (c.isalnum() or c in "._-") for c in filename), disp
+        assert filename.endswith(f"_telemetry.{fmt}") and ".." not in filename
+
+
+def test_static_files_do_not_leave_the_static_folder(client):
+    for path in ("/static/../config.py", "/static/%2e%2e/%2e%2e/config.py", "/static/..%5c..%5cconfig.py",
+                 "/static/%2e%2e%2fapi%2fserver.py"):
+        r = client.get(path)
+        assert r.status_code == 404 or "DEFAULT_PORT" not in r.text

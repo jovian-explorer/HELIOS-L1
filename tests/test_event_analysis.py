@@ -243,7 +243,7 @@ def test_shock_and_mva_api_with_provenance(monkeypatch, tmp_path):
 
     dl_file = client.get("/api/analysis/shock?mission=WIND&time=2015-03-17T04:00&upstream_minutes=28"
                          "&downstream_minutes=24&download=true")
-    assert "attachment; filename=HELIOS_shock_WIND_20150317T0400.json" in dl_file.headers["content-disposition"]
+    assert 'attachment; filename="HELIOS_shock_WIND_20150317T0400.json"' in dl_file.headers["content-disposition"]
     assert '"hapi_url"' in dl_file.text
 
     mva = client.get("/api/analysis/mva?mission=WIND&start=2015-03-17T04:01&end=2015-03-17T04:25").json()
