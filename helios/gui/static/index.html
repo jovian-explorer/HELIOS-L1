@@ -1805,6 +1805,98 @@
     <!-- ========================================================================= -->
     <!-- TAB 10: FLEET CATALOG -->
     <!-- ========================================================================= -->
+    <section id="tab-analysis" class="tab-content hidden space-y-6">
+      <div class="glass-panel p-4 border-l-4 border-indigo-500">
+        <h3 class="font-tech font-bold text-base text-slate-100 tracking-wide">Event Analysis on Archive Data</h3>
+        <p class="text-xs text-slate-400">WIND, ACE and DSCOVR at the instruments' own cadence and OMNI 1-min from NASA CDAWeb (HAPI). All vectors GSE, all times UTC (YYYY-MM-DDTHH:MM). Every result can be saved as JSON with the datasets, HAPI requests, parameters and software version behind it.</p>
+      </div>
+
+      <!-- Shock analysis and multi-spacecraft timing -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Interplanetary shock: normal, speed, θ<sub>Bn</sub>, Mach numbers and timing</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">Spacecraft</label>
+            <select id="ea-shock-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
+          <div><label class="ea-label">Shock time (UTC)</label><input id="ea-shock-time" type="text" class="ea-input w-40" value="2015-03-17T04:00"></div>
+          <div><label class="ea-label">Upstream (min)</label><input id="ea-shock-up" type="number" min="1" max="60" step="0.5" class="ea-input w-20" value="28"></div>
+          <div><label class="ea-label">Downstream (min)</label><input id="ea-shock-down" type="number" min="1" max="60" step="0.5" class="ea-input w-20" value="24"></div>
+          <div><label class="ea-label">Gap each side (min)</label><input id="ea-shock-gap" type="number" min="0" max="15" step="0.5" class="ea-input w-20" value="1"></div>
+          <button onclick="eaRunShock()" class="ea-btn">Analyse shock</button>
+          <button onclick="eaRunTiming()" class="ea-btn">Timing with the other spacecraft</button>
+          <a id="ea-shock-download" class="ea-link hidden" href="#">Save JSON</a>
+        </div>
+        <div class="flex flex-wrap gap-2 text-[11px] text-slate-400">
+          <span>CfA database examples:</span>
+          <button class="ea-chip" onclick="eaShockPreset('WIND','2015-03-17T04:00',28,24,1)">WIND 17 Mar 2015</button>
+          <button class="ea-chip" onclick="eaShockPreset('WIND','2014-02-27T15:50',13,5,1)">WIND 27 Feb 2014 (timing to ACE)</button>
+          <button class="ea-chip" onclick="eaShockPreset('WIND','2015-06-22T18:08',10,8,2)">WIND 22 Jun 2015</button>
+        </div>
+        <div id="ea-shock-status" class="text-xs text-slate-400"></div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div id="ea-shock-table" class="overflow-x-auto text-xs"></div>
+          <div class="h-64"><canvas id="ea-shock-chart"></canvas></div>
+        </div>
+        <div id="ea-timing-table" class="overflow-x-auto text-xs"></div>
+      </div>
+
+      <!-- Minimum variance -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Minimum variance analysis of the magnetic field</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">Spacecraft</label>
+            <select id="ea-mva-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
+          <div><label class="ea-label">Start (UTC)</label><input id="ea-mva-start" type="text" class="ea-input w-40" value="2015-03-17T04:01"></div>
+          <div><label class="ea-label">End (UTC)</label><input id="ea-mva-end" type="text" class="ea-input w-40" value="2015-03-17T04:25"></div>
+          <div><label class="ea-label">Average (s, 0 = native)</label><input id="ea-mva-avg" type="number" min="0" max="3600" class="ea-input w-20" value="0"></div>
+          <button onclick="eaRunMva()" class="ea-btn">Run MVA</button>
+          <a id="ea-mva-download" class="ea-link hidden" href="#">Save JSON</a>
+        </div>
+        <div id="ea-mva-status" class="text-xs text-slate-400"></div>
+        <div id="ea-mva-table" class="overflow-x-auto text-xs"></div>
+      </div>
+
+      <!-- Flux rope -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Magnetic cloud: Lundquist flux rope fit</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">Spacecraft</label>
+            <select id="ea-mc-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
+          <div><label class="ea-label">Cloud start (UTC)</label><input id="ea-mc-start" type="text" class="ea-input w-40" value="1995-10-18T19:48"></div>
+          <div><label class="ea-label">Cloud end (UTC)</label><input id="ea-mc-end" type="text" class="ea-input w-40" value="1995-10-20T01:18"></div>
+          <div><label class="ea-label">Averages (min)</label><input id="ea-mc-avg" type="number" min="5" max="120" class="ea-input w-20" value="30"></div>
+          <button onclick="eaRunFluxRope()" class="ea-btn">Fit flux rope</button>
+          <a id="ea-mc-download" class="ea-link hidden" href="#">Save JSON</a>
+        </div>
+        <div id="ea-mc-status" class="text-xs text-slate-400"></div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div id="ea-mc-table" class="overflow-x-auto text-xs"></div>
+          <div class="h-64"><canvas id="ea-mc-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Superposed epoch -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Superposed epoch analysis (OMNI 1-min)</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div class="flex-1 min-w-[16rem]"><label class="ea-label">Onset times (UTC, one per line or comma-separated)</label>
+            <textarea id="ea-sea-onsets" rows="2" class="ea-input w-full font-mono">2015-03-17T04:45
+2024-05-10T17:05</textarea></div>
+          <div><label class="ea-label">Quantities</label><input id="ea-sea-params" type="text" class="ea-input w-56" value="sym_h,bz_gsm,speed,dynamic_pressure"></div>
+          <div><label class="ea-label">Before (h)</label><input id="ea-sea-before" type="number" min="0" max="120" class="ea-input w-16" value="12"></div>
+          <div><label class="ea-label">After (h)</label><input id="ea-sea-after" type="number" min="1" max="240" class="ea-input w-16" value="48"></div>
+          <div><label class="ea-label">Bin (min)</label><input id="ea-sea-cad" type="number" min="1" max="180" class="ea-input w-16" value="10"></div>
+          <button onclick="eaRunSea()" class="ea-btn">Run</button>
+          <a id="ea-sea-csv" class="ea-link hidden" href="#">CSV</a>
+          <a id="ea-sea-download" class="ea-link hidden" href="#">Save JSON</a>
+        </div>
+        <div class="flex items-center gap-2 text-xs"><label class="ea-label mb-0">Show</label>
+          <select id="ea-sea-show" class="ea-input" onchange="eaDrawSea()"></select>
+          <span id="ea-sea-status" class="text-slate-400"></span></div>
+        <div class="h-72"><canvas id="ea-sea-chart"></canvas></div>
+        <div id="ea-sea-table" class="overflow-x-auto text-xs"></div>
+      </div>
+    </section>
+
     <section id="tab-missions" class="tab-content hidden space-y-6">
       <div>
         <h3 class="text-base font-bold text-slate-200 mb-1">Global Sun-Earth L1 & Space Weather Spacecraft Fleet</h3>
@@ -3041,6 +3133,7 @@
   <script src="/static/js/solar_viewer.js"></script>
   <script src="/static/js/matrix.js"></script>
   <script src="/static/js/forecast.js"></script>
+  <script src="/static/js/event_analysis.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>

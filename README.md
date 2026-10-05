@@ -87,6 +87,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
     * **Magnetic cloud flux rope fit:** Lundquist force-free model, $\mathbf B = B_0[J_0(\alpha r)\hat e_{axis} + H J_1(\alpha r)\hat e_\phi]$ with $\alpha R_0 = 2.405$, fitted as in Lepping et al. (1990): axis longitude and latitude, $B_0$, handedness, closest approach, diameter, axial flux and $\chi_R$, checked against the WIND MFI magnetic cloud table (axis within 9-18°, $B_0$ within 6 % for three clouds). `GET /api/analysis/fluxrope?mission=WIND&start=1995-10-18T19:48&end=1995-10-20T01:18`.
     * **Superposed epoch analysis** of OMNI SYM-H, AE and the solar wind drivers keyed on your onset times (mean, median, quartiles, events per bin, per-event extremes): `GET /api/analysis/superposed?onsets=2015-03-17T04:45,2024-05-10T17:05&parameters=sym_h,bz_gsm,speed`.
     * **Minimum variance analysis** with eigenvalue ratios and Sonnerup & Scheible (1998) angular errors: `GET /api/analysis/mva?mission=WIND&start=...&end=...`.
+    * **In the app:** Data Studio & Science, Event Analysis: one form per analysis, tables and charts of the results, example buttons for the checked events, and Save JSON / CSV links.
     * Every result lists the CDAWeb datasets and HAPI requests behind it, the parameters and the software version; add `&download=true` for a JSON file.
 
 11. **Operator User Guide & Scientific Literature Handbook (Hotkeys 'U' & 'P'):**

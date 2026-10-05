@@ -102,6 +102,7 @@ const DOMAINS = {
     context: 'DOMAIN: DATA STUDIO & SCIENCE // CUSTOM OMNI & PEER-REVIEWED DOIS',
     views: [
       { id: 'import', label: 'Custom Ingestion & OMNI', icon: 'fa-database', color: 'text-indigo-400' },
+      { id: 'analysis', label: 'Event Analysis', icon: 'fa-microscope', color: 'text-indigo-400' },
       { id: 'references', label: 'References & Portals', icon: 'fa-book-atlas', color: 'text-emerald-400', isModal: true }
     ]
   }
@@ -120,6 +121,7 @@ const TAB_TO_DOMAIN = {
   hazards: 'geospace',
   events: 'geospace',
   import: 'data',
+  analysis: 'data',
   references: 'data'
 };
 

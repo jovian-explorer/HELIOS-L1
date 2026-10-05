@@ -639,7 +639,10 @@ async def analyse_timing(
         entry = {"spacecraft": name, "datasets": tdata["datasets"]}
         r = position_at(tdata["position"], t_ref)
         if r is None or tdata["field"] is None:
-            entry["status"] = "no position" if r is None else "no magnetic field data"
+            if r is None and tdata["field"] is None:
+                entry["status"] = "no data for this interval" + (" (CDAWeb not reached)" if tdata["offline"] else "")
+            else:
+                entry["status"] = "no position" if r is None else "no magnetic field data"
             return entry
         cmp = await run_in_workers(timing_comparison, m["normal_gse"], m["shock_speed_kms"], t_ref, r_ref,
                                    tdata["field"], r, search_minutes)

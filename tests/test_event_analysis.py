@@ -312,7 +312,7 @@ def test_timing_api(monkeypatch, tmp_path):
     by = {t["spacecraft"]: t for t in body["targets"]}
     assert set(by) == {"ACE", "DSCOVR"}
     assert by["ACE"]["status"] == "ok" and by["ACE"]["observed_time"].startswith("2014-02-27 16:08")
-    assert by["DSCOVR"]["status"] in ("no position", "no magnetic field data")
+    assert by["DSCOVR"]["status"].startswith("no data for this interval")  # DSCOVR science data start in 2015
     assert any(d["id"] == "AC_H0_MFI" and d["spacecraft"] == "ACE" for d in body["provenance"]["datasets"])
     assert client.get("/api/analysis/timing?reference=WIND&time=2014-02-27T15:50&method=XYZ").status_code == 422
 
