@@ -1855,6 +1855,23 @@
         <div id="ea-mva-table" class="overflow-x-auto text-xs"></div>
       </div>
 
+      <!-- Magnetic cloud search -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Magnetic cloud search (Lepping et al. 2005)</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">Spacecraft</label>
+            <select id="ea-mcd-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option><option>OMNI</option></select></div>
+          <div><label class="ea-label">Start (UTC)</label><input id="ea-mcd-start" type="text" class="ea-input w-40" value="1997-11-01T00:00"></div>
+          <div><label class="ea-label">End (UTC, up to 31 days)</label><input id="ea-mcd-end" type="text" class="ea-input w-40" value="1997-11-30T00:00"></div>
+          <div><label class="ea-label">Criteria</label>
+            <select id="ea-mcd-criteria" class="ea-input"><option value="loose">Loose</option><option value="strict">Strict</option></select></div>
+          <button onclick="eaRunCloudSearch()" class="ea-btn">Search</button>
+          <a id="ea-mcd-download" class="ea-link hidden" href="#">Save JSON</a>
+        </div>
+        <div id="ea-mcd-status" class="text-xs text-slate-400"></div>
+        <div id="ea-mcd-table" class="overflow-x-auto text-xs"></div>
+      </div>
+
       <!-- Flux rope -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Magnetic cloud: Lundquist flux rope fit</h4>

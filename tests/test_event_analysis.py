@@ -442,3 +442,58 @@ def test_superposed_epoch_of_two_storms_from_omni(monkeypatch, tmp_path):
     assert prov["datasets"][0]["datasets"][0]["id"] == "OMNI_HRO_1MIN"
     assert client.get(base + "&parameters=kp").status_code == 422
     assert client.get("/api/analysis/superposed?onsets=yesterday").status_code == 422
+
+
+# WIND MFI magnetic cloud table (https://wind.nasa.gov/mfi/mag_cloud_S1.html), clouds 25 and 26:
+# 7 Nov 1997 15:48 - 8 Nov 04:18 and 8 Nov 04:54 - 14:54 (quality 2). WIND 1-min MFI and SWE
+# from CDAWeb (WI_H0_MFI@0, WI_H1_SWE) for 6 Nov 12:00 - 9 Nov 12:00.
+MC_TABLE_1997_11 = [("1997-11-07 15:48", "1997-11-08 04:18"), ("1997-11-08 04:54", "1997-11-08 14:54")]
+
+
+def _wind_1min_19971106():
+    return pd.read_csv(EVENTS / "wi_1min_19971106_mc.csv.gz", index_col=0, parse_dates=True)
+
+
+@pytest.mark.parametrize("criteria", ["loose", "strict"])
+def test_magnetic_cloud_detection_finds_the_wind_mfi_clouds(criteria):
+    from helios.core.event_analysis import detect_magnetic_clouds
+    res = detect_magnetic_clouds(_wind_1min_19971106(), criteria)
+    found = [(pd.Timestamp(c["start"]), pd.Timestamp(c["end"])) for c in res["accepted"]]
+    assert len(found) == 2
+    for (s, e), (fs, fe) in zip(MC_TABLE_1997_11, found):
+        assert abs((fs - pd.Timestamp(s)).total_seconds()) <= 1800   # front boundary within 30 min
+        assert abs((fe - pd.Timestamp(e)).total_seconds()) <= 2400   # rear boundary within 40 min
+    for c in res["accepted"]:
+        assert c["mean_b_nt"] >= 7 and c["mean_beta"] <= 0.3 and c["theta_b_range_deg"] >= 35
+        assert c["chi_m_over_b"] <= 0.42 and c["mean_thermal_speed_kms"] <= 30
+
+
+def test_magnetic_cloud_detection_rejects_ordinary_solar_wind():
+    from helios.core.event_analysis import detect_magnetic_clouds
+    df = _wind_1min_19971106()
+    quiet = df[df.index < "1997-11-07 14:00"]  # the 27 h before the first cloud
+    assert detect_magnetic_clouds(quiet, "loose")["accepted"] == []
+    with pytest.raises(ValueError):
+        detect_magnetic_clouds(quiet.drop(columns=["temperature"]), "loose")
+    with pytest.raises(ValueError):
+        detect_magnetic_clouds(quiet, "medium")
+
+
+def test_magnetic_cloud_detection_api(monkeypatch):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    frame = _wind_1min_19971106()
+    frame.index = frame.index.tz_localize("UTC") if frame.index.tz is None else frame.index
+
+    async def fetch_mission(mission, start, end):
+        return {"frame": frame, "datasets": [{"id": "WI_H0_MFI@0"}, {"id": "WI_H1_SWE"}], "offline": False,
+                "failed_days": 0}
+
+    monkeypatch.setattr(server.downloader.archive, "fetch_mission", fetch_mission)
+    client = TestClient(server.app, base_url=LOCAL)
+    body = client.get("/api/analysis/mcdetect?mission=WIND&start=1997-11-06T12:00&end=1997-11-09T12:00").json()
+    assert [c["start"] for c in body["result"]["accepted"]] == ["1997-11-07 15:34", "1997-11-08 04:54"]
+    assert body["provenance"]["datasets"][1]["id"] == "WI_H1_SWE" and body["provenance"]["parameters"]["criteria"] == "loose"
+    assert client.get("/api/analysis/mcdetect?start=1997-11-06&end=1997-11-06T04:00").status_code == 422
+    assert client.get("/api/analysis/mcdetect?start=1997-11-01&end=1997-12-15").status_code == 422
+    assert client.get("/api/analysis/mcdetect?mission=SOHO&start=1997-11-06&end=1997-11-07").status_code == 404

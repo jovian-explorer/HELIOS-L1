@@ -1,6 +1,6 @@
 /*
- * Event analysis tab: shock normals and timing, minimum variance, Lundquist flux rope fit
- * and superposed epoch analysis (/api/analysis/*). All numbers come from the server; this
+ * Event analysis tab: shock normals and timing, minimum variance, magnetic cloud search,
+ * Lundquist flux rope fit and superposed epoch analysis (/api/analysis/*). All numbers come from the server; this
  * file only builds the requests, tables and charts. Times are entered and shown in UTC.
  */
 (function () {
@@ -177,6 +177,41 @@
     } catch (e) {
       setStatus('ea-mva-status', e.message, true);
     }
+  };
+
+  // ---------------------------------------------------------------- magnetic cloud search
+  window.eaRunCloudSearch = async function () {
+    const mission = el('ea-mcd-mission').value;
+    const q = new URLSearchParams({ mission, start: utc('ea-mcd-start'), end: utc('ea-mcd-end'),
+      criteria: el('ea-mcd-criteria').value });
+    const url = `/api/analysis/mcdetect?${q}`;
+    setStatus('ea-mcd-status', 'Fetching 1-min data and scanning (up to a minute for a month)...');
+    try {
+      const r = (await getJSON(url)).result;
+      const yes = c => c ? 'pass' : '<span class="text-rose-400">fail</span>';
+      setStatus('ea-mcd-status', `${r.accepted.length} of ${r.candidates.length} candidate regions pass all tests (${r.criteria} criteria). ${r.notes}`);
+      el('ea-mcd-table').innerHTML = r.candidates.length ? table(
+        ['Start (UTC)', 'End (UTC)', 'Hours', '<B> (nT)', '<βp>', '<VTh> (km/s)', 'ΔθB (°)', 'χM/<B>', 'Bz', 'Tests', ''],
+        r.candidates.map((c, i) => [c.start, c.end, fmt(c.duration_hours, 1), fmt(c.mean_b_nt, 1), fmt(c.mean_beta, 2),
+          fmt(c.mean_thermal_speed_kms, 1), fmt(c.theta_b_range_deg, 0), fmt(c.chi_m_over_b, 2), c.bz_sense,
+          Object.entries(c.tests).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${yes(v)}`).join('<br>'),
+          `<button class="ea-link" onclick="eaFitCandidate(${i})">Fit flux rope</button>`])) : '';
+      window.eaCloudCandidates = { mission, list: r.candidates };
+      showDownload('ea-mcd-download', url);
+    } catch (e) {
+      setStatus('ea-mcd-status', e.message, true);
+    }
+  };
+
+  window.eaFitCandidate = function (i) {
+    const c = window.eaCloudCandidates?.list?.[i];
+    if (!c) return;
+    const m = el('ea-mc-mission');
+    if ([...m.options].some(o => o.value === window.eaCloudCandidates.mission)) m.value = window.eaCloudCandidates.mission;
+    el('ea-mc-start').value = c.start.replace(' ', 'T');
+    el('ea-mc-end').value = c.end.replace(' ', 'T');
+    el('ea-mc-start').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.eaRunFluxRope();
   };
 
   // ---------------------------------------------------------------- flux rope

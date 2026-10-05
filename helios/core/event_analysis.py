@@ -728,6 +728,146 @@ def fit_flux_rope(field: pd.DataFrame, plasma: Optional[pd.DataFrame], start, en
 
 
 # ----------------------------------------------------------------------------
+# Automatic magnetic cloud identification (Lepping, Wu & Berdichevsky 2005)
+# ----------------------------------------------------------------------------
+# Identification test parameters of Lepping et al. (2005, Ann. Geophys. 23, 2687), Table 4,
+# and the large-scale smoothness limit of their Sect. 4.3.
+MC_CRITERIA = {
+    "loose": {"window_minutes": 25, "beta_max": 0.3, "theta_chi2_max": 500.0, "min_hours": 8.0,
+              "b_min_nt": 7.0, "vth_max_kms": 30.0, "vth_central_third": True, "dtheta_min_deg": 35.0,
+              "chi_m_over_b_max": 0.42, "bridge_minutes": 25},
+    "strict": {"window_minutes": 30, "beta_max": 0.3, "theta_chi2_max": 450.0, "min_hours": 8.0,
+               "b_min_nt": 8.0, "vth_max_kms": 30.0, "vth_central_third": False, "dtheta_min_deg": 45.0,
+               "chi_m_over_b_max": 0.42, "bridge_minutes": 30},
+}
+# Windows need plasma for at least this fraction of their minutes (WIND SWE has gaps).
+MC_PLASMA_COVERAGE = 0.5
+
+
+def _quadratic_residual_ss(y: np.ndarray, length: int) -> np.ndarray:
+    """Sum of squared residuals of a least-squares quadratic fit in every window of `length` samples."""
+    x = np.arange(length, dtype=float)
+    X = np.column_stack([np.ones(length), x, x * x])
+    resid = np.eye(length) - X @ np.linalg.pinv(X)  # (I - H): residual operator of the fit
+    win = np.lib.stride_tricks.sliding_window_view(y, length)
+    r = win @ resid.T
+    return (r * r).sum(axis=1)
+
+
+def detect_magnetic_clouds(frame: pd.DataFrame, criteria: str = "loose") -> Dict[str, Any]:
+    """
+    Magnetic cloud candidates in 1-minute field (GSE) and proton plasma data with the
+    scheme of Lepping et al. (2005). Over running windows of 25 min (30 min for the strict
+    set) stepped by 1 min, the mean proton beta must be <= 0.3 and the chi^2 of a
+    quadratic fit to the field latitude theta_B (deg^2, 1-min values) <= 500 (450); runs of
+    such windows lasting >= 8 h form a candidate region (failing stretches no longer than one
+    window are bridged, and windows need plasma data for half their minutes). A region is kept when the mean
+    |B| >= 7 nT (8), the mean proton thermal speed over its central third (whole region)
+    <= 30 km/s and theta_B spans >= 35 deg (45). The large-scale test fits a quadratic to
+    each component of the 15-min averages; chi_M / <B> <= 0.42 with
+    chi_M^2 = sum_j sum_n (B_jn - fit_jn)^2 / N.
+    `frame` needs bx_gse, by_gse, bz_gse (nT), density (cm^-3) and temperature (K).
+    """
+    if criteria not in MC_CRITERIA:
+        raise ValueError(f"criteria must be one of {', '.join(MC_CRITERIA)}.")
+    c = MC_CRITERIA[criteria]
+    need = ["bx_gse", "by_gse", "bz_gse", "density", "temperature"]
+    missing = [k for k in need if k not in frame.columns]
+    if missing:
+        raise ValueError(f"Missing columns for magnetic cloud identification: {', '.join(missing)}.")
+    df = frame[need].copy()
+    df.index = pd.DatetimeIndex(df.index)
+    df = df[~df.index.duplicated()].sort_index()
+    if len(df) < 2:
+        raise ValueError("Not enough data for magnetic cloud identification.")
+    df = df.resample("1min").mean()
+    # WIND SWE spectra come every 92 s, so some minutes have field but no plasma: bridge gaps of up to 5 min.
+    df = df.interpolate(limit=5, limit_area="inside")
+    bmag = np.sqrt(df["bx_gse"] ** 2 + df["by_gse"] ** 2 + df["bz_gse"] ** 2)
+    theta = np.degrees(np.arcsin(np.clip(df["bz_gse"] / bmag, -1.0, 1.0)))
+    beta = (df["density"] * 1e6 * BOLTZMANN_J_K * df["temperature"]) / ((bmag * 1e-9) ** 2 / (2 * 4e-7 * math.pi))
+    vth = np.sqrt(2.0 * BOLTZMANN_J_K * df["temperature"] / PROTON_MASS_KG) / 1e3  # km/s
+
+    L = int(c["window_minutes"])
+    if len(df) < L:
+        raise ValueError(f"At least {L} minutes of data are needed.")
+    th = theta.to_numpy(float)
+    be = beta.to_numpy(float)
+    field_ok = np.lib.stride_tricks.sliding_window_view(np.isfinite(th), L).all(axis=1)
+    chi2 = np.where(field_ok, _quadratic_residual_ss(np.nan_to_num(th), L), np.inf)
+    bwin = np.lib.stride_tricks.sliding_window_view(be, L)
+    nb = np.isfinite(bwin).sum(axis=1)
+    beta_mean = np.where(nb >= MC_PLASMA_COVERAGE * L, np.nansum(bwin, axis=1) / np.maximum(nb, 1), np.inf)
+    ok = (beta_mean <= c["beta_max"]) & (chi2 <= c["theta_chi2_max"])
+    # A single noisy minute fails every window that contains it; failing runs no longer
+    # than one window inside a passing stretch do not end the region (Lepping et al. give
+    # no rule for this; without it most 1-min WIND clouds break into pieces shorter than 8 h).
+    e2 = np.diff(np.concatenate([[1], ok.astype(int), [1]]))
+    for a, b in zip(np.where(e2 == -1)[0], np.where(e2 == 1)[0]):
+        if 0 < a and b < len(ok) and b - a <= c["bridge_minutes"]:
+            ok[a:b] = True
+
+    # Runs of consecutive passing windows; a run of windows i0..i1 covers minutes i0 .. i1 + L - 1.
+    regions = []
+    edges = np.diff(np.concatenate([[0], ok.astype(int), [0]]))
+    for i0, i1 in zip(np.where(edges == 1)[0], np.where(edges == -1)[0] - 1):
+        t0, t1 = df.index[i0], df.index[i1 + L - 1] + pd.Timedelta(minutes=1)
+        hours = (t1 - t0).total_seconds() / 3600.0
+        if hours < c["min_hours"]:
+            continue
+        sl = slice(i0, i1 + L)
+        b_mean = float(np.nanmean(bmag.iloc[sl]))
+        v = vth.iloc[sl].to_numpy(float)
+        v_used = v[len(v) // 3: 2 * len(v) // 3] if c["vth_central_third"] else v
+        vth_mean = float(np.nanmean(v_used))
+        dtheta = float(np.nanmax(th[sl]) - np.nanmin(th[sl]))
+        avg = df[["bx_gse", "by_gse", "bz_gse"]].iloc[sl].resample("15min", origin=t0).mean().dropna()
+        chi_m_over_b = None
+        if len(avg) >= 4:
+            x = (avg.index - avg.index[0]).total_seconds().to_numpy() / 3600.0
+            chi_sq = 0.0
+            for col in ("bx_gse", "by_gse", "bz_gse"):
+                y = avg[col].to_numpy(float)
+                fit = np.polyval(np.polyfit(x, y, 2), x)
+                chi_sq += float(np.mean((y - fit) ** 2))
+            chi_m_over_b = math.sqrt(chi_sq) / b_mean if b_mean > 0 else None
+        tests = {
+            "mean_b": b_mean >= c["b_min_nt"],
+            "thermal_speed": vth_mean <= c["vth_max_kms"],
+            "latitude_change": dtheta >= c["dtheta_min_deg"],
+            "large_scale_smoothness": chi_m_over_b is not None and chi_m_over_b <= c["chi_m_over_b_max"],
+        }
+        bz = df["bz_gse"].iloc[sl].to_numpy(float)
+        half = len(bz) // 2
+        regions.append({
+            "start": t0.strftime("%Y-%m-%d %H:%M"), "end": t1.strftime("%Y-%m-%d %H:%M"),
+            "duration_hours": round(hours, 2),
+            "mean_b_nt": round(b_mean, 2), "mean_beta": round(float(np.nanmean(be[sl])), 3),
+            "mean_thermal_speed_kms": round(vth_mean, 1), "theta_b_range_deg": round(dtheta, 1),
+            "chi_m_over_b": None if chi_m_over_b is None else round(chi_m_over_b, 3),
+            "bz_sense": ("N=>S" if np.nanmean(bz[:half]) > 0 > np.nanmean(bz[half:]) else
+                         "S=>N" if np.nanmean(bz[:half]) < 0 < np.nanmean(bz[half:]) else
+                         "all N" if np.nanmean(bz) > 0 else "all S"),
+            "tests": tests, "accepted": all(tests.values()),
+        })
+    return {
+        "criteria": criteria, "parameters": dict(c),
+        "candidates": regions,
+        "accepted": [r for r in regions if r["accepted"]],
+        "method": ("Automatic magnetic cloud identification, Lepping, Wu & Berdichevsky (2005), "
+                   f"{criteria} identification test parameters (Table 4) and the chi_M/<B> smoothness test"),
+        "notes": ("theta_B chi^2 is the sum of squared residuals (deg^2) of the quadratic fit to the 1-min "
+                  "latitudes of each window. Thermal speed sqrt(2kT/m_p). Plasma gaps up to 5 min are "
+                  "interpolated (WIND SWE spectra every 92 s); failing stretches no longer than one window "
+                  "are bridged (an addition: the paper gives no rule). Lepping et al. found 88 % of the visually "
+                  "identified WIND clouds with the loose set, and about twice as many cloud-like regions."),
+        "references": ["Lepping, R. P., C.-C. Wu and D. B. Berdichevsky (2005), Automatic identification of "
+                       "magnetic clouds and cloud-like regions at 1 AU, Ann. Geophys. 23, 2687, "
+                       "doi:10.5194/angeo-23-2687-2005"],
+    }
+
+
+# ----------------------------------------------------------------------------
 # Superposed epoch analysis
 # ----------------------------------------------------------------------------
 SEA_PARAMETERS = ("sym_h", "asy_h", "ae", "al", "au", "bz_gsm", "by_gsm", "bt", "speed", "density",

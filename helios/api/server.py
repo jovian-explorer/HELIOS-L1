@@ -30,7 +30,7 @@ from helios.config import (
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
 from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
-                                        analyze_shock, superposed_epoch,
+                                        MC_CRITERIA, analyze_shock, detect_magnetic_clouds, superposed_epoch,
                                         fit_flux_rope, minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
@@ -747,6 +747,43 @@ async def analyse_flux_rope(
     params = {"average_minutes": average_minutes, "speed_kms": speed_kms}
     prov = _analysis_provenance(key, data, t0, t1, "Lundquist force-free flux rope fit, Lepping et al. (1990)", params)
     return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_fluxrope_{key}_{t0:%Y%m%dT%H%M}")
+
+
+@app.get("/api/analysis/mcdetect")
+async def detect_clouds(
+    mission: str = Query("WIND", description="WIND, ACE, DSCOVR or OMNI"),
+    start: str = Query(..., description="UTC start, ISO 8601"),
+    end: str = Query(..., description="UTC end (exclusive), ISO 8601"),
+    criteria: str = Query("loose", pattern="^(loose|strict)$"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Magnetic cloud candidates in 1-minute archive data (Lepping, Wu & Berdichevsky 2005),
+    for any interval of up to 31 days. Each accepted region can be passed to
+    /api/analysis/fluxrope as its start and end.
+    """
+    key = mission.upper()
+    if key not in ARCHIVE_SOURCES:
+        raise HTTPException(status_code=404, detail=f"No archive source for '{mission}'. Available: {', '.join(ARCHIVE_SOURCES)}.")
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 - t0 < timedelta(hours=8):
+        raise HTTPException(status_code=422, detail="The interval must be at least 8 hours long.")
+    if t1 - t0 > timedelta(days=ARCHIVE_MAX_DAYS):
+        raise HTTPException(status_code=422, detail=f"Intervals are limited to {ARCHIVE_MAX_DAYS} days.")
+    res = await downloader.archive.fetch_mission(key, t0, t1)
+    frame = res["frame"]
+    if frame is None or frame.empty:
+        raise HTTPException(status_code=404, detail="The CDAWeb HAPI server could not be reached and nothing is cached "
+                            "for this interval." if res["offline"] else f"CDAWeb has no {key} data for this interval.")
+    try:
+        result = await run_in_workers(detect_magnetic_clouds, frame, criteria)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    prov = _analysis_provenance(key, {"field": frame, "datasets": res["datasets"]}, t0, t1, result["method"],
+                                {"criteria": criteria, **MC_CRITERIA[criteria]})
+    prov["cadence_seconds"] = 60
+    return _analysis_answer({"provenance": prov, "result": result}, download,
+                            f"HELIOS_mc_candidates_{key}_{t0:%Y%m%d}_{t1:%Y%m%d}")
 
 
 SEA_MAX_EVENTS = 60
