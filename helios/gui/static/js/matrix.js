@@ -99,7 +99,7 @@ async function loadFleetMatrix() {
     container.innerHTML = html;
 
   } catch (err) {
-    container.innerHTML = `<div class="text-rose-400 text-xs p-4">Error loading fleet matrix: ${err.message}</div>`;
+    container.innerHTML = `<div class="text-rose-400 text-xs p-4">Error loading fleet matrix: ${escapeHtml(err.message)}</div>`;
   }
 }
 

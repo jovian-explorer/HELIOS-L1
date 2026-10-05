@@ -207,3 +207,24 @@ def test_js_constants_match_python_models():
     assert float(l1.group(1)) - float(l1.group(2)) == pytest.approx(CoronagraphAnalyzer.L1_DIST_KM)
     gamma = float(re.search(r"this\.gamma = ([\d.e+-]+);", cme).group(1))
     assert gamma == 1.0e-7  # calculate_cme_kinematics default
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_mission_cards_escape_the_imported_mission_name():
+    """
+    The custom mission's name (an imported file's name, or the import form) went into the
+    mission directory's HTML unescaped: a file named '<img src=x onerror=...>.csv' (a valid
+    name on macOS and Linux) ran script in the application's own origin.
+    """
+    src = APP_JS.read_text(encoding="utf-8")
+    assert "missions.map(escapeHtmlDeep).map(m =>" in src
+    script = _extract("escapeHtml") + _extract("escapeHtmlDeep") + """
+const m = escapeHtmlDeep({name: '<img src=x onerror="alert(1)">', status: "a'b", n: 3,
+                          instruments: [{name: '<b>'}]});
+console.log(JSON.stringify(m));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    out = json.loads(res.stdout)
+    assert out["name"] == "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;"
+    assert out["status"] == "a&#39;b" and out["n"] == 3 and out["instruments"][0]["name"] == "&lt;b&gt;"

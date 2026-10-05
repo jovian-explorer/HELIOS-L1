@@ -2006,7 +2006,9 @@ async function loadMissions() {
     const container = document.getElementById('fleet-cards-container');
     if (!container) return;
 
-    container.innerHTML = missions.map(m => `
+    // The custom mission's name comes from the imported file's name or the import form;
+    // escape every text field before it goes into HTML.
+    container.innerHTML = missions.map(escapeHtmlDeep).map(m => `
       <div class="mission-card bg-space-800/90 p-5 rounded-xl border border-slate-800 hover:border-slate-700 shadow-xl flex flex-col justify-between space-y-4">
         <div>
           <!-- Card Header -->
@@ -2590,7 +2592,7 @@ async function openBulletinModal() {
 
     renderBulletinContent();
   } catch (err) {
-    if (container) container.innerHTML = `<div class="text-rose-400 p-4">Failed to generate bulletin: ${err.message}</div>`;
+    if (container) container.innerHTML = `<div class="text-rose-400 p-4">Failed to generate bulletin: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -2620,6 +2622,25 @@ function renderBulletinContent() {
     // High-contrast clean monospace Markdown view
     container.innerHTML = `<pre class="bg-space-950 p-4 rounded-xl border border-slate-800 text-slate-200 text-xs font-mono leading-relaxed whitespace-pre-wrap select-text">${escapeHtmlReport(bulletinCache.md)}</pre>`;
   }
+}
+
+function escapeHtml(text) {
+  return String(text ?? '')
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Copy of a JSON value with every string HTML-escaped (for template literals rendered as HTML).
+function escapeHtmlDeep(value) {
+  if (typeof value === 'string') return escapeHtml(value);
+  if (Array.isArray(value)) return value.map(escapeHtmlDeep);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, escapeHtmlDeep(v)]));
+  }
+  return value;
 }
 
 function escapeHtmlReport(text) {
@@ -2697,7 +2718,7 @@ async function openReferencesModal(initialTab = 'equations') {
       console.error('Error fetching references repository:', err);
       const body = document.getElementById('modal-references-body');
       if (body) {
-        body.innerHTML = `<div class="p-6 text-center text-rose-400">Failed to load scientific references: ${err.message}</div>`;
+        body.innerHTML = `<div class="p-6 text-center text-rose-400">Failed to load scientific references: ${escapeHtml(err.message)}</div>`;
       }
       return;
     }
@@ -2787,7 +2808,7 @@ function renderEquationsTab(container) {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="text-center py-12 text-slate-400">No scientific papers matched "${refSearchQuery}".</div>`;
+    container.innerHTML = `<div class="text-center py-12 text-slate-400">No scientific papers matched "${escapeHtml(refSearchQuery)}".</div>`;
     return;
   }
 
@@ -2862,7 +2883,7 @@ function renderProvidersTab(container) {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="text-center py-12 text-slate-400">No data observatories matched "${refSearchQuery}".</div>`;
+    container.innerHTML = `<div class="text-center py-12 text-slate-400">No data observatories matched "${escapeHtml(refSearchQuery)}".</div>`;
     return;
   }
 
@@ -3054,7 +3075,7 @@ function renderHandbookTab(container) {
   });
 
   if (entries.length === 0) {
-    container.innerHTML = `<div class="text-center py-12 text-slate-400">No physical parameters matched "${refSearchQuery}".</div>`;
+    container.innerHTML = `<div class="text-center py-12 text-slate-400">No physical parameters matched "${escapeHtml(refSearchQuery)}".</div>`;
     return;
   }
 
@@ -3355,7 +3376,7 @@ function renderUserGuideTab(container) {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="text-center py-12 text-slate-400">No user guide chapters matched "${refSearchQuery}".</div>`;
+    container.innerHTML = `<div class="text-center py-12 text-slate-400">No user guide chapters matched "${escapeHtml(refSearchQuery)}".</div>`;
     return;
   }
 

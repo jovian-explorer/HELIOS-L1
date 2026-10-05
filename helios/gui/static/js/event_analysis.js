@@ -152,7 +152,7 @@
         table(['Spacecraft', 'Predicted (UTC)', 'Observed (UTC)', 'Predicted delay (s)', 'Observed delay (s)', 'Residual (s)', 'Implied V along n (km/s)'], rows) +
         `<p class="text-[10px] text-slate-500 mt-1">${body.note}</p>`;
     } catch (e) {
-      el('ea-timing-table').innerHTML = `<p class="text-rose-400">${e.message}</p>`;
+      el('ea-timing-table').innerHTML = `<p class="text-rose-400">${escapeHtml(e.message)}</p>`;
     }
   };
 
