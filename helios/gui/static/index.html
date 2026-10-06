@@ -1860,6 +1860,22 @@
         <div id="ea-ht-table" class="overflow-x-auto text-xs"></div>
       </div>
 
+      <!-- Coupling functions with errors -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Coupling functions with uncertainties</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">Spacecraft</label>
+            <select id="ea-cpl-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
+          <div><label class="ea-label">Start (UTC)</label><input id="ea-cpl-start" type="text" class="ea-input w-40" value="2015-03-17T04:00"></div>
+          <div><label class="ea-label">End (UTC, up to 72 h)</label><input id="ea-cpl-end" type="text" class="ea-input w-40" value="2015-03-18T04:00"></div>
+          <button onclick="eaRunCoupling()" class="ea-btn">Compute</button>
+          <a id="ea-cpl-download" class="ea-link hidden" href="#">Save JSON</a>
+        </div>
+        <p class="text-[10px] text-slate-400">Interval means of Newell dΦ/dt, Akasofu ε, V·Bs and dynamic pressure (GSM). ±: measurement error propagated from the archive's 1-σ speed and density uncertainties (WIND SWE only; field errors are not in the archive). 95 % interval: sampling uncertainty of the mean from the effective number of independent samples.</p>
+        <div id="ea-cpl-status" class="text-xs text-slate-400"></div>
+        <div id="ea-cpl-table" class="overflow-x-auto text-xs"></div>
+      </div>
+
       <!-- Magnetic cloud search -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Magnetic cloud search (Lepping et al. 2005)</h4>

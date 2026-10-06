@@ -1,5 +1,5 @@
 /*
- * Event analysis tab: shock normals and timing, minimum variance, magnetic cloud search,
+ * Event analysis tab: shock normals and timing, minimum variance, coupling functions, magnetic cloud search,
  * Lundquist flux rope fit and superposed epoch analysis (/api/analysis/*). All numbers come from the server; this
  * file only builds the requests, tables and charts. Times are entered and shown in UTC.
  */
@@ -196,6 +196,29 @@
       showDownload('ea-mva-download', url);
     } catch (e) {
       setStatus('ea-ht-status', e.message, true);
+    }
+  };
+
+  // ---------------------------------------------------------------- coupling functions
+  window.eaRunCoupling = async function () {
+    const q = new URLSearchParams({ mission: el('ea-cpl-mission').value, start: utc('ea-cpl-start'), end: utc('ea-cpl-end') });
+    const url = `/api/analysis/coupling?${q}`;
+    setStatus('ea-cpl-status', 'Running...');
+    el('ea-cpl-table').innerHTML = '';
+    try {
+      const r = (await getJSON(url)).result;
+      setStatus('ea-cpl-status', `${r.n_samples} plasma samples` +
+        (r.uncertainties_available ? '; archive 1-σ speed and density errors propagated.' : '; this archive gives no per-sample uncertainties (measurement errors not shown).'));
+      const names = { newell_dphi_dt: 'Newell dΦ/dt', akasofu_epsilon_gw: 'Akasofu ε (GW)', vbs_mv_m: 'V·Bs (mV/m)', dynamic_pressure_npa: 'P_dyn (nPa)' };
+      const sig = v => (v === null || v === undefined ? '---' : Number(v).toPrecision(2));
+      const rows = Object.entries(r.functions).map(([k, f]) => [names[k] || k, Number(f.mean).toPrecision(4),
+        `± ${sig(f.measurement_sigma_of_mean)}`,
+        f.sampling_ci95_of_mean ? `${Number(f.sampling_ci95_of_mean[0]).toPrecision(3)} to ${Number(f.sampling_ci95_of_mean[1]).toPrecision(3)}` : 'too few independent samples',
+        fmt(f.n_eff, 1), f.median_relative_sigma === null ? '---' : `${fmt(100 * f.median_relative_sigma, 1)} %`]);
+      el('ea-cpl-table').innerHTML = table(['Quantity', 'Mean', 'Measurement error', '95 % sampling interval', 'n_eff', 'Median per-sample error'], rows);
+      showDownload('ea-cpl-download', url);
+    } catch (e) {
+      setStatus('ea-cpl-status', e.message, true);
     }
   };
 

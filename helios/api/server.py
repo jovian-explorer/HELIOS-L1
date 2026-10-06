@@ -30,7 +30,8 @@ from helios.config import (
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
 from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
-                                        MC_CRITERIA, analyze_shock, dehoffmann_teller, detect_magnetic_clouds,
+                                        MC_CRITERIA, analyze_shock, coupling_with_errors, dehoffmann_teller,
+                                        detect_magnetic_clouds,
                                         field_at_plasma_times, superposed_epoch,
                                         fit_flux_rope, minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
@@ -953,6 +954,39 @@ async def analyse_dehoffmann_teller(
         raise HTTPException(status_code=422, detail=str(exc))
     prov = _analysis_provenance(key, data, t0, t1, result["method"], {})
     return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_ht_{key}_{t0:%Y%m%dT%H%M}")
+
+
+@app.get("/api/analysis/coupling")
+async def analyse_coupling(
+    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    start: str = Query(..., description="UTC start, ISO 8601"),
+    end: str = Query(..., description="UTC end (exclusive), ISO 8601"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Solar wind-magnetosphere coupling functions (Newell dPhi/dt, Akasofu epsilon, V Bs,
+    dynamic pressure) on every plasma sample of an interval of up to 72 h, with 1-sigma
+    errors propagated from the archive's speed and density uncertainties (WIND SWE) and the
+    sampling interval of each mean.
+    """
+    key = _event_mission(mission)
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    if t1 - t0 > timedelta(hours=MAX_EVENT_HOURS):
+        raise HTTPException(status_code=422, detail=f"Intervals are limited to {MAX_EVENT_HOURS} hours.")
+    data = await downloader.events.fetch(key, t0, t1, coarse=True)
+    if data["field"] is None or data["plasma"] is None:
+        raise HTTPException(status_code=404, detail="No field or plasma data for this interval"
+                            + (" (CDAWeb could not be reached)." if data["offline"] else "."))
+    sel = lambda df: df[(df.index >= pd.Timestamp(t0)) & (df.index < pd.Timestamp(t1))]
+    try:
+        result = await run_in_workers(coupling_with_errors, sel(data["field"]), sel(data["plasma"]))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    prov = _analysis_provenance(key, data, t0, t1, result["method"], {})
+    prov["coordinates"] = "GSM (field rotated from GSE per sample)"
+    return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_coupling_{key}_{t0:%Y%m%dT%H%M}")
 
 
 @app.get("/api/events")

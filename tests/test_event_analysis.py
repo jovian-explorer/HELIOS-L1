@@ -603,3 +603,69 @@ def test_superposed_epoch_bootstrap_confidence_bands():
     assert st["median_ci95_low"][0] < st["median"][0] < st["median_ci95_high"][0]
     # Fewer than 3 events: no bands.
     assert "mean_ci95_low" not in superposed_epoch(events[:2], ["sym_h"], 1, 2)["statistics"]["sym_h"]
+
+
+def test_coupling_functions_with_propagated_errors():
+    """WIND 17 Mar 2015 12-18 UT (sheath of the St Patrick's Day storm) with SWE 1-sigma uncertainties."""
+    from helios.core.coordinates import gse_to_gsm
+    from helios.core.event_analysis import coupling_with_errors, field_at_plasma_times
+    field = EVENT_SOURCES["WIND"]["field_coarse"]["reduce"](parse_hapi_csv(_text("wi_h0_mfi1m_20150317_cpl")))
+    plasma = EVENT_SOURCES["WIND"]["plasma"]["reduce"](parse_hapi_csv(_text("wi_h1_swe_20150317_cpl")))
+    assert {"sigma_v", "sigma_n"} <= set(plasma.columns)
+    res = coupling_with_errors(field, plasma)
+    assert res["uncertainties_available"]
+    # Independent recomputation of the values from the definitions.
+    p = plasma.dropna(subset=["vx", "vy", "vz"])
+    b = field_at_plasma_times(field, p)
+    ok = np.all(np.isfinite(b), axis=1)
+    p, b = p[ok], b[ok]
+    _, by, bz = gse_to_gsm(p.index, b[:, 0], b[:, 1], b[:, 2])
+    v = np.sqrt(p.vx ** 2 + p.vy ** 2 + p.vz ** 2).to_numpy()
+    theta = np.arctan2(np.abs(by), bz)
+    newell = v ** (4 / 3) * np.hypot(by, bz) ** (2 / 3) * np.sin(theta / 2) ** (8 / 3)
+    eps = 1e7 * v * 1e3 * (np.linalg.norm(b, axis=1) * 1e-9) ** 2 * np.sin(theta / 2) ** 4 * (7 * 6371e3) ** 2 / 1e9
+    f = res["functions"]
+    assert f["newell_dphi_dt"]["mean"] == pytest.approx(newell.mean(), rel=1e-9)
+    assert f["akasofu_epsilon_gw"]["mean"] == pytest.approx(eps.mean(), rel=1e-6)
+    assert f["dynamic_pressure_npa"]["mean"] == pytest.approx((1.6726e-6 * p.n * v ** 2).mean(), rel=1e-3)
+    # First-order propagation against Monte Carlo draws from the archive's 1-sigma errors.
+    rng = np.random.default_rng(0)
+    sv, sn, n = p.sigma_v.to_numpy(), p.sigma_n.to_numpy(), p.n.to_numpy()
+    draws_pd, draws_nw = [], []
+    for _ in range(4000):
+        vv = v + sv * rng.normal(size=len(v))
+        nn = n + sn * rng.normal(size=len(v))
+        draws_pd.append((1.6726e-6 * nn * vv ** 2).mean())
+        draws_nw.append((vv ** (4 / 3) * np.hypot(by, bz) ** (2 / 3) * np.sin(theta / 2) ** (8 / 3)).mean())
+    assert f["dynamic_pressure_npa"]["measurement_sigma_of_mean"] == pytest.approx(np.std(draws_pd), rel=0.05)
+    assert f["newell_dphi_dt"]["measurement_sigma_of_mean"] == pytest.approx(np.std(draws_nw), rel=0.05)
+    # The sampling interval of a mean is much wider than its measurement error.
+    lo, hi = f["dynamic_pressure_npa"]["sampling_ci95_of_mean"]
+    assert hi - lo > 10 * f["dynamic_pressure_npa"]["measurement_sigma_of_mean"]
+
+
+def test_coupling_api_without_archive_uncertainties(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+
+    served = {"WI_H0_MFI@0": "wi_h0_mfi1m_19951018", "WI_H1_SWE": "wi_h1_swe_19951018"}  # recorded without sigmas
+
+    async def fake(url, timeout=120.0):
+        ds = parse_qs(urlparse(url).query)["id"][0]
+        return _text(served[ds]) if ds in served else None
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
+    monkeypatch.setattr(server, "downloader", dl)
+    client = TestClient(server.app, base_url=LOCAL)
+    r = client.get("/api/analysis/coupling?mission=WIND&start=1995-10-18T20:00&end=1995-10-19T08:00")
+    assert r.status_code == 200, r.text
+    res = r.json()["result"]
+    assert not res["uncertainties_available"]
+    assert res["functions"]["vbs_mv_m"]["measurement_sigma_of_mean"] is None
+    assert res["functions"]["dynamic_pressure_npa"]["n_eff"] > 3  # sampling intervals need no archive errors
+    assert res["functions"]["dynamic_pressure_npa"]["sampling_ci95_of_mean"] is not None
+    assert r.json()["provenance"]["coordinates"].startswith("GSM")
+    assert client.get("/api/analysis/coupling?mission=WIND&start=1995-10-18T20:00&end=1995-10-22T20:00").status_code == 422

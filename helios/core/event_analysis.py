@@ -75,9 +75,16 @@ def _wind_swe(df: pd.DataFrame) -> pd.DataFrame:
     # values for e.g. 27 Feb 2014 are those of the flag-1 spectra. Event analysis keeps them
     # and marks them, so the number used is reported; flag 0 is dropped.
     df = df[df["fit_flag"] >= 1]
-    return pd.DataFrame({"vx": df["Proton_VX_nonlin"], "vy": df["Proton_VY_nonlin"], "vz": df["Proton_VZ_nonlin"],
-                         "n": df["Proton_Np_nonlin"], "t": thermal_speed_to_kelvin(df["Proton_W_nonlin"]),
-                         "poor_fit": (df["fit_flag"] == 1).astype(float)}, index=df.index)
+    out = pd.DataFrame({"vx": df["Proton_VX_nonlin"], "vy": df["Proton_VY_nonlin"], "vz": df["Proton_VZ_nonlin"],
+                        "n": df["Proton_Np_nonlin"], "t": thermal_speed_to_kelvin(df["Proton_W_nonlin"]),
+                        "poor_fit": (df["fit_flag"] == 1).astype(float)}, index=df.index)
+    # 1-sigma fit uncertainties of the bulk speed and density ("1-sigma uncertainty of the
+    # proton bulk speed / density" in the CDF metadata), where the request included them.
+    if "Proton_sigmaV_nonlin" in df:
+        out["sigma_v"] = df["Proton_sigmaV_nonlin"]
+    if "Proton_sigmaNp_nonlin" in df:
+        out["sigma_n"] = df["Proton_sigmaNp_nonlin"]
+    return out
 
 
 def _wind_pos(df: pd.DataFrame) -> pd.DataFrame:
@@ -111,8 +118,8 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
     "WIND": {
         "field": _ds("WI_H0_MFI@1", ["B3GSE"], _field("B3GSE"), "WIND MFI 3-s"),
         "field_coarse": _ds("WI_H0_MFI@0", ["BGSE"], _field("BGSE"), "WIND MFI 1-min"),
-        "plasma": _ds("WI_H1_SWE", ["fit_flag", "Proton_VX_nonlin", "Proton_VY_nonlin", "Proton_VZ_nonlin",
-                                    "Proton_W_nonlin", "Proton_Np_nonlin"],
+        "plasma": _ds("WI_H1_SWE", ["fit_flag", "Proton_sigmaV_nonlin", "Proton_VX_nonlin", "Proton_VY_nonlin",
+                                    "Proton_VZ_nonlin", "Proton_W_nonlin", "Proton_Np_nonlin", "Proton_sigmaNp_nonlin"],
                       _wind_swe, "WIND SWE non-linear proton fits (92 s)"),
         "position": _ds("WI_H0_MFI@0", ["PGSE"], _wind_pos, "WIND position (MFI 1-min file, definitive orbit)"),
     },
@@ -411,6 +418,85 @@ def field_at_plasma_times(field: pd.DataFrame, plasma: pd.DataFrame) -> np.ndarr
     inside = (fidx.asi8 >= edges[0]) & (fidx.asi8 < edges[-1])
     which = np.searchsorted(edges, fidx.asi8[inside], side="right") - 1
     return field[inside][["bx", "by", "bz"]].groupby(which).mean().reindex(range(len(plasma))).to_numpy(float)
+
+
+# ----------------------------------------------------------------------------
+# Coupling functions with propagated measurement uncertainties
+# ----------------------------------------------------------------------------
+COUPLING_FUNCTIONS = {
+    "newell_dphi_dt": "Newell et al. (2007) dPhi/dt = V^4/3 B_T^2/3 sin^8/3(theta/2) [(km/s)^4/3 nT^2/3]",
+    "akasofu_epsilon_gw": "Perreault & Akasofu (1978) epsilon = (4 pi/mu0) V B^2 sin^4(theta/2) l0^2, l0 = 7 R_E [GW]",
+    "vbs_mv_m": "Rectified dawn-dusk electric field V Bs, Bs = max(0, -Bz GSM) [mV/m]",
+    "dynamic_pressure_npa": "Proton dynamic pressure m_p n V^2 [nPa]",
+}
+
+
+def coupling_with_errors(field: pd.DataFrame, plasma: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Coupling functions on every plasma sample (field averaged over the sample, rotated from
+    GSE to GSM) and their interval means, with 1-sigma uncertainties propagated to first
+    order from the archive's per-sample uncertainties of the bulk speed and density where it
+    gives them (WIND SWE non-linear fits): relative errors (4/3) sV/V for dPhi/dt, sV/V for
+    epsilon and V Bs, sqrt((sn/n)^2 + (2 sV/V)^2) for the dynamic pressure. Field
+    uncertainties are not in the archive and are not included. Each mean carries two
+    uncertainties: the propagated measurement error sqrt(sum s_i^2) / N (independent sample
+    errors) and the 95 % sampling interval of the mean from the effective sample size.
+    """
+    from helios.core.coordinates import gse_to_gsm
+    from helios.core.science import SpaceWeatherPhysics as swp
+    from helios.core.statistics import mean_interval
+
+    plasma = plasma.dropna(subset=["vx", "vy", "vz"])
+    if len(plasma) < 3:
+        raise ValueError(f"Only {len(plasma)} plasma samples; at least 3 are needed.")
+    b = field_at_plasma_times(field, plasma)
+    ok = np.all(np.isfinite(b), axis=1)
+    plasma, b = plasma[ok], b[ok]
+    if len(plasma) < 3:
+        raise ValueError("Fewer than 3 plasma samples have magnetic field data.")
+    _, by, bz = gse_to_gsm(plasma.index, b[:, 0], b[:, 1], b[:, 2])
+    btot = np.linalg.norm(b, axis=1)
+    v = np.sqrt(plasma["vx"] ** 2 + plasma["vy"] ** 2 + plasma["vz"] ** 2).to_numpy(float)
+    n = plasma["n"].to_numpy(float)
+    sv = plasma["sigma_v"].to_numpy(float) if "sigma_v" in plasma else np.full(len(v), np.nan)
+    sn = plasma["sigma_n"].to_numpy(float) if "sigma_n" in plasma else np.full(len(v), np.nan)
+    rv, rn = sv / v, sn / n
+
+    values = {
+        "newell_dphi_dt": np.array([swp.newell_coupling(vi, y, z) for vi, y, z in zip(v, by, bz)]),
+        "akasofu_epsilon_gw": np.array([swp.akasofu_epsilon(vi, bt, y, z) for vi, bt, y, z in zip(v, btot, by, bz)]),
+        "vbs_mv_m": v * np.maximum(0.0, -bz) * 1e-3,
+        "dynamic_pressure_npa": PROTON_MASS_KG * n * 1e6 * (v * 1e3) ** 2 * 1e9,
+    }
+    rel = {"newell_dphi_dt": 4.0 / 3.0 * rv, "akasofu_epsilon_gw": rv, "vbs_mv_m": rv,
+           "dynamic_pressure_npa": np.sqrt(rn ** 2 + (2.0 * rv) ** 2)}
+    out: Dict[str, Any] = {}
+    for key, val in values.items():
+        sig = np.abs(val) * rel[key]
+        stats = mean_interval(val)
+        have = np.isfinite(sig)
+        out[key] = {
+            "definition": COUPLING_FUNCTIONS[key],
+            "mean": stats["mean"],
+            "measurement_sigma_of_mean": (float(np.sqrt(np.sum(sig[have] ** 2)) / have.sum())
+                                          if have.all() else None),
+            "sampling_ci95_of_mean": list(stats["ci95"]) if stats["ci95"] else None,
+            "n_eff": stats["n_eff"],
+            "median_relative_sigma": float(np.median(rel[key][have])) if have.any() else None,
+            "series": [None if not np.isfinite(x) else float(x) for x in val],
+            "series_sigma": [None if not np.isfinite(x) else float(x) for x in sig],
+        }
+    return {
+        "n_samples": int(len(plasma)),
+        "time_tags": [t.strftime("%Y-%m-%d %H:%M:%S") for t in plasma.index],
+        "uncertainties_available": bool(np.isfinite(rv).all()),
+        "functions": out,
+        "method": ("Coupling functions per plasma sample (field averaged over the sample, GSE->GSM); "
+                   "first-order propagation of the archive's 1-sigma speed and density uncertainties; "
+                   "sampling interval of the mean from the lag-1 effective sample size"),
+        "note": ("The measurement error of a mean is usually far smaller than its sampling interval: the "
+                 "variability of the solar wind, not the instrument, limits interval averages."),
+    }
 
 
 # ----------------------------------------------------------------------------
