@@ -1927,6 +1927,24 @@
           <a id="ea-sea-csv" class="ea-link hidden" href="#">CSV</a>
           <a id="ea-sea-download" class="ea-link hidden" href="#">Save JSON</a>
         </div>
+        <div class="flex flex-wrap items-end gap-3 text-xs border-t border-slate-800 pt-2">
+          <span class="ea-label w-full mb-0">Or select storms by hourly Dst (OMNI, WDC Kyoto)</span>
+          <div><label class="ea-label">From year</label><input id="ea-storm-y0" type="number" min="1963" max="2100" class="ea-input w-20" value="2015"></div>
+          <div><label class="ea-label">To year</label><input id="ea-storm-y1" type="number" min="1963" max="2100" class="ea-input w-20" value="2024"></div>
+          <div><label class="ea-label">Dst at or below (nT)</label><input id="ea-storm-thr" type="number" max="0" class="ea-input w-20" value="-150"></div>
+          <div><label class="ea-label">Minimum above (nT, optional)</label><input id="ea-storm-floor" type="number" max="0" class="ea-input w-24" value=""></div>
+          <div><label class="ea-label">Join recoveries shorter than (h)</label><input id="ea-storm-sep" type="number" min="0" max="240" class="ea-input w-16" value="6"></div>
+          <div><label class="ea-label">Plasma type before the minimum</label>
+            <select id="ea-storm-driver" class="ea-input"><option value="">any</option><option value="ejecta">ejecta</option>
+              <option value="coronal_hole">coronal hole</option><option value="sector_reversal">sector reversal</option>
+              <option value="streamer_belt">streamer belt</option></select></div>
+          <div><label class="ea-label">Epoch zero</label>
+            <select id="ea-storm-epoch" class="ea-input"><option value="minimum">Dst minimum</option><option value="first_below">first hour below the threshold</option></select></div>
+          <button onclick="eaFindStorms()" class="ea-btn">Find storms</button>
+        </div>
+        <p class="text-[10px] text-slate-400">Plasma type: Xu &amp; Borovsky (2015) class most frequent in the 6 h before the minimum. Compressed plasma in sheaths and stream interaction regions often falls in their ejecta class, so it is a plasma property, not a driver catalogue.</p>
+        <div id="ea-storm-status" class="text-xs text-slate-400"></div>
+        <div id="ea-storm-table" class="overflow-x-auto text-xs max-h-48 overflow-y-auto"></div>
         <div class="flex items-center gap-2 text-xs"><label class="ea-label mb-0">Show</label>
           <select id="ea-sea-show" class="ea-input" onchange="eaDrawSea()"></select>
           <span id="ea-sea-status" class="text-slate-400"></span></div>

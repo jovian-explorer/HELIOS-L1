@@ -797,18 +797,39 @@ SEA_MAX_TOTAL_HOURS = 180 * 24
 
 @app.get("/api/analysis/superposed")
 async def analyse_superposed_epoch(
-    onsets: str = Query(..., description="Comma-separated UTC onset times (epoch zero), ISO 8601"),
+    onsets: str = Query("", description="Comma-separated UTC onset times (epoch zero), ISO 8601"),
     parameters: str = Query("sym_h,bz_gsm,speed,dynamic_pressure", description="OMNI quantities to superpose"),
     before_hours: float = Query(12.0, ge=0.0, le=120.0),
     after_hours: float = Query(48.0, gt=0.0, le=240.0),
     cadence_minutes: int = Query(10, ge=1, le=180),
     format: str = Query("json", pattern="^(json|csv)$"),
     download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+    storm_threshold_nt: Optional[float] = Query(None, ge=-2000, le=0, description="Select storms instead of onsets: "
+                                                "hourly Dst at or below this value"),
+    storm_start_year: int = Query(1995, ge=omni_statistics.FIRST_YEAR, le=2100),
+    storm_end_year: int = Query(2024, ge=omni_statistics.FIRST_YEAR, le=2100),
+    storm_separation_hours: float = Query(6.0, ge=0, le=240),
+    storm_floor_nt: Optional[float] = Query(None, ge=-2000, le=0, description="Keep storms with a minimum above this"),
+    storm_driver: str = Query("", max_length=100, description="Xu & Borovsky types of the driver, comma-separated"),
+    storm_epoch: str = Query("minimum", pattern="^(minimum|first_below)$"),
 ):
     """
     Superposed epoch analysis of OMNI 1-min data (SYM-H, AE, solar wind drivers) keyed on
-    the given onset times, e.g. storm sudden commencements or shock arrivals.
+    the given onset times, e.g. storm sudden commencements or shock arrivals, or on storms
+    selected by their Dst (storm_threshold_nt and the other storm_* parameters, as in
+    /api/statistics/storms), with the selection recorded in the provenance.
     """
+    selection = None
+    if storm_threshold_nt is not None:
+        sel = await _select_storms(storm_start_year, storm_end_year, storm_threshold_nt, storm_separation_hours,
+                                   storm_floor_nt, storm_driver)
+        key = "minimum_time" if storm_epoch == "minimum" else "first_hour_below"
+        onsets = ",".join(st[key].replace(" ", "T") for st in sel["result"]["storms"])
+        if not onsets:
+            raise HTTPException(status_code=422, detail="No storm matches the selection.")
+        selection = {"epoch": "Dst minimum" if storm_epoch == "minimum" else "first hour at or below the threshold",
+                     "years": [storm_start_year, storm_end_year], "filters": sel["result"]["log"],
+                     "dataset": omni_statistics.OMNI_HOURLY_ID}
     try:
         times = [_parse_utc(s, "onsets") for s in onsets.split(",") if s.strip()]
     except HTTPException:
@@ -816,7 +837,9 @@ async def analyse_superposed_epoch(
     if not times:
         raise HTTPException(status_code=422, detail="Give at least one onset time.")
     if len(times) > SEA_MAX_EVENTS:
-        raise HTTPException(status_code=422, detail=f"At most {SEA_MAX_EVENTS} onsets.")
+        raise HTTPException(status_code=422, detail=f"At most {SEA_MAX_EVENTS} onsets ({len(times)} given"
+                            + ("; narrow the years, lower the threshold or add a floor or driver type)." if selection
+                               else ")."))
     if before_hours + after_hours > SEA_MAX_HOURS:
         raise HTTPException(status_code=422, detail=f"The epoch window is limited to {SEA_MAX_HOURS} hours.")
     if len(times) * (before_hours + after_hours) > SEA_MAX_TOTAL_HOURS:
@@ -850,6 +873,7 @@ async def analyse_superposed_epoch(
                      for t, b in zip(times, bundles)],
         "time_standard": "UTC",
         "note": "OMNI 1-min values are time-shifted to the bow shock nose; SYM-H, ASY-H, AE, AL and AU are WDC Kyoto.",
+        "event_selection": selection or "onset times given by the user",
         "method": result["method"],
         "parameters": {"onsets": [t.strftime("%Y-%m-%d %H:%M:%S") for t in times], "parameters": params,
                        "before_hours": before_hours, "after_hours": after_hours, "cadence_minutes": cadence_minutes},
@@ -862,6 +886,11 @@ async def analyse_superposed_epoch(
         out.write(f"# title: HELIOS-L1 superposed epoch analysis ({len(times)} events, OMNI 1-min)\n")
         out.write(f"# onsets: {' '.join(prov['parameters']['onsets'])}\n")
         out.write(f"# method: {result['method']}\n# cadence_minutes: {cadence_minutes}\n")
+        if selection:
+            out.write(f"# event selection: {selection['epoch']} of storms in {selection['dataset']} "
+                      f"{selection['years'][0]}-{selection['years'][1]}\n")
+            for f in selection["filters"]:
+                out.write(f"# filter: {f['filter']} -> {f['storms_remaining']} storms\n")
         out.write(f"# software: {prov['software']}\n# retrieved_utc: {prov['retrieved_utc']}\n")
         w = csv.writer(out, lineterminator="\n")
         bands = [k for k in ("mean_ci95_low", "mean_ci95_high", "median_ci95_low", "median_ci95_high")
@@ -1097,6 +1126,47 @@ async def omni_statistics_endpoint(
         w.writerows(rows)
         return Response(content=out.getvalue(), media_type="text/csv", headers=attachment(f"{stamp}.csv"))
     return _analysis_answer({"provenance": prov, "result": result}, download, stamp)
+
+
+async def _select_storms(y0: int, y1: int, threshold: float, separation: float, floor: Optional[float],
+                         driver: str) -> Dict[str, Any]:
+    if y1 < y0 or y1 - y0 + 1 > omni_statistics.MAX_YEARS:
+        raise HTTPException(status_code=422, detail=f"Give 1 to {omni_statistics.MAX_YEARS} years, start before end.")
+    drivers = [t.strip().lower() for t in driver.split(",") if t.strip()]
+    bad = [t for t in drivers if t not in omni_statistics.SW_TYPES.values()]
+    if bad:
+        raise HTTPException(status_code=422, detail=f"Unknown solar wind type(s) {', '.join(bad)}.")
+    if floor is not None and floor >= threshold:
+        raise HTTPException(status_code=422, detail="'floor' must be below the threshold.")
+    df, prov = await _omni_hourly_frame(y0, y1)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No OMNI hourly data for these years.")
+    result = await run_in_workers(omni_statistics.find_storms, df, threshold, separation, floor, drivers)
+    prov.update({"method": "Runs of hourly Dst at or below the threshold, joined across shorter recoveries "
+                           "(helios.core.omni_statistics.find_storms)",
+                 "parameters": {"threshold_nt": threshold, "separation_hours": separation, "floor_nt": floor,
+                                "drivers": drivers},
+                 "software": f"HELIOS-L1 {__version__}",
+                 "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")})
+    return {"provenance": prov, "result": result}
+
+
+@app.get("/api/statistics/storms")
+async def omni_storm_list(
+    start_year: int = Query(1995, ge=omni_statistics.FIRST_YEAR, le=2100),
+    end_year: int = Query(2024, ge=omni_statistics.FIRST_YEAR, le=2100),
+    threshold_nt: float = Query(-100.0, ge=-2000, le=0, description="Hourly Dst at or below this value"),
+    separation_hours: float = Query(6.0, ge=0, le=240, description="Join runs separated by shorter recoveries"),
+    floor_nt: Optional[float] = Query(None, ge=-2000, le=0, description="Keep storms with a minimum above this"),
+    driver: str = Query("", max_length=100, description="Xu & Borovsky types of the driver, comma-separated"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Geomagnetic storms in hourly Dst (OMNI, WDC Kyoto) by strength, with the solar wind
+    before each minimum; the onset times feed /api/analysis/superposed.
+    """
+    body = await _select_storms(start_year, end_year, threshold_nt, separation_hours, floor_nt, driver)
+    return _analysis_answer(body, download, f"HELIOS_storms_{start_year}_{end_year}_{int(threshold_nt)}nT")
 
 
 @app.get("/api/statistics/omni/quantities")

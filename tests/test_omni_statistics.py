@@ -156,3 +156,67 @@ def test_statistics_api_records_filters(monkeypatch, tmp_path):
     assert client.get("/api/statistics/omni?start_year=1963&end_year=2040").status_code == 422
     quantities = client.get("/api/statistics/omni/quantities").json()
     assert "sw_type" in quantities["quantities"] and "ejecta" in quantities["solar_wind_types"]
+
+
+def _dst_fixture():
+    rows = []
+    with gzip.open(Path(__file__).parent / "data" / "omni_dst_le_minus100_1996_2006.csv.gz", "rt") as f:
+        for line in f:
+            if not line.startswith("#"):
+                t, v = line.strip().split(",")
+                rows.append((pd.Timestamp(t, tz="UTC"), float(v)))
+    return pd.DataFrame({"dst": [v for _, v in rows]}, index=pd.DatetimeIndex([t for t, _ in rows]))
+
+
+def test_storm_counts_match_echer_2008():
+    """Hours with Dst <= -100 nT in 1996-2006 (OMNI); hours absent from the file are above -100 nT."""
+    df = _dst_fixture()
+    intense = om.find_storms(df, -100.0, 6.0)["storms"]
+    assert len(intense) == 90  # Echer et al. (2008, JGR 113, A05221): 90 intense storms
+    supers = om.find_storms(df, -250.0, 6.0)["storms"]
+    assert [s["minimum_time"][:10] for s in supers] == [
+        "2000-04-07", "2000-07-16", "2001-03-31", "2001-04-11", "2001-11-06", "2003-10-30", "2003-10-30",
+        "2003-11-20", "2004-11-08", "2004-11-10"]
+    # Echer et al. (2008, GRL 35, L06S03): peak Dst of the superstorms from -263 to -422 nT.
+    assert min(s["minimum_dst_nt"] for s in supers) == -422 and max(s["minimum_dst_nt"] for s in supers) == -263
+    # Without joining, the two-step storm of 31 March 2001 counts twice.
+    assert len(om.find_storms(df, -250.0, 0.0)["storms"]) == 11
+    capped = om.find_storms(df, -100.0, 6.0, floor_nt=-250.0)
+    # 82, not 90 - 10: at -100 nT the two Halloween minima (and those of 8 and 10 Nov 2004) lie in one storm.
+    assert len(capped["storms"]) == 82 and capped["log"][-1]["storms_remaining"] == 82
+
+
+def test_storm_driver_and_superposed_epoch_selection(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+
+    df = _frame()
+    res = om.find_storms(df, -200.0)
+    assert [(s["minimum_time"], s["minimum_dst_nt"]) for s in res["storms"]] == [
+        ("2003-10-30 00:00", -353.0), ("2003-10-30 22:00", -383.0)]
+    assert res["storms"][1]["driver_bz_gsm_nt"] < -10  # strongly southward IMF before the minimum
+
+    text = _fixture_text()
+
+    async def fake(url, timeout=120.0):
+        return text if "OMNI2_H0_MRG1HR" in url and "time.min=2003-01-01" in url else None
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.omni_hourly = om.OmniHourlyClient(lambda url: dl.fetch_text(url), tmp_path)
+    dl.archive.fetch_text = fake
+    monkeypatch.setattr(server, "downloader", dl)
+    client = TestClient(server.app, base_url=LOCAL)
+    body = client.get("/api/statistics/storms?start_year=2003&end_year=2003&threshold_nt=-200").json()
+    assert len(body["result"]["storms"]) == 2 and body["provenance"]["dataset"] == "OMNI2_H0_MRG1HR"
+    # The superposed epoch analysis takes the same selection and records it (the 1-min data are not
+    # served here, so it answers 404 after selecting the two onsets).
+    r = client.get("/api/analysis/superposed?storm_threshold_nt=-200&storm_start_year=2003&storm_end_year=2003"
+                   "&parameters=sym_h&before_hours=6&after_hours=12")
+    assert r.status_code == 404 and "OMNI has no data" in r.text
+    r = client.get("/api/analysis/superposed?storm_threshold_nt=-500&storm_start_year=2003&storm_end_year=2003")
+    assert r.status_code == 422 and "No storm" in r.text
+    assert client.get("/api/statistics/storms?start_year=2003&end_year=2003&driver=wind").status_code == 422
+    assert client.get("/api/statistics/storms?start_year=2003&end_year=2003&threshold_nt=-100&floor_nt=-50").status_code == 422
+    assert client.get("/api/analysis/superposed?parameters=sym_h").status_code == 422  # neither onsets nor storms

@@ -511,3 +511,64 @@ def to_csv_rows(answer: Dict[str, Any]) -> Tuple[List[str], List[List[Any]]]:
     keys = ["period", "hours", "coverage", "mean", "median", "std", "n_eff", "sunspot_number"]
     return (keys + ["mean_ci95_low", "mean_ci95_high"],
             [[p[k] for k in keys] + list(p["mean_ci95"] or [None, None]) for p in r["periods"]])
+
+
+# ----------------------------------------------------------------------------
+# Storm selection
+# ----------------------------------------------------------------------------
+DRIVER_HOURS = 6  # hours before the Dst minimum that characterise the driver of a storm
+
+
+def find_storms(df: pd.DataFrame, threshold_nt: float = -100.0, separation_hours: float = 6.0,
+                floor_nt: Optional[float] = None, drivers: Sequence[str] = ()) -> Dict[str, Any]:
+    """
+    Geomagnetic storms in hourly Dst: runs of consecutive hours with Dst <= threshold, joined
+    when Dst stays above the threshold for less than `separation_hours` between them (so a
+    two-step main phase is one storm). Each storm is listed with the time and value of its
+    Dst minimum, the first and last hour at or below the threshold, and the solar wind in
+    the DRIVER_HOURS hours before the minimum: mean Bz GSM, speed, Newell dPhi/dt and the
+    most frequent Xu & Borovsky (2015) type. `floor_nt` keeps storms whose minimum is above
+    it (e.g. -100 >= min > -250); `drivers` keeps storms whose driver type is in the list.
+
+    For 1996-2006 the default (-100 nT, 6 h) gives 90 storms, as Echer et al. (2008,
+    J. Geophys. Res. 113, A05221) counted; at -250 nT the ten storms have minima from -263
+    to -422 nT, as in Echer et al. (2008, Geophys. Res. Lett. 35, L06S03), who list eleven:
+    the eleventh, 15 May 2005 (-263 nT then), is -247 nT in the current final Dst.
+    """
+    d = df["dst"].dropna()
+    if d.empty:
+        return {"storms": [], "log": []}
+    below = (d <= threshold_nt).to_numpy()
+    hours = (d.index.as_unit("ns").asi8 // 3_600_000_000_000).astype(np.int64)
+    runs: List[List[int]] = []
+    for i in np.flatnonzero(below):
+        gap = hours[i] - hours[runs[-1][1]] - 1 if runs else None  # hours above the threshold in between
+        if runs and (gap == 0 or gap < separation_hours):
+            runs[-1][1] = i
+        else:
+            runs.append([i, i])
+    storms = []
+    for a, b in runs:
+        seg = d.iloc[a:b + 1]
+        t_min = seg.idxmin()
+        pre = df.loc[(df.index > t_min - pd.Timedelta(hours=DRIVER_HOURS)) & (df.index <= t_min)]
+        types = pre["sw_type"].dropna() if "sw_type" in pre else pd.Series(dtype=float)
+        mode = SW_TYPES.get(int(types.mode().iloc[0])) if len(types) else None
+        mean = lambda col: (None if col not in pre or pre[col].dropna().empty else float(pre[col].mean()))
+        storms.append({
+            "minimum_time": t_min.strftime("%Y-%m-%d %H:%M"), "minimum_dst_nt": float(seg.min()),
+            "first_hour_below": d.index[a].strftime("%Y-%m-%d %H:%M"),
+            "last_hour_below": d.index[b].strftime("%Y-%m-%d %H:%M"),
+            "driver_bz_gsm_nt": mean("bz_gsm"), "driver_speed_kms": mean("speed"), "driver_newell": mean("newell"),
+            "driver_type": mode, "driver_type_hours": int(len(types)),
+        })
+    log = [{"filter": f"storms: Dst <= {threshold_nt:g} nT, runs closer than {separation_hours:g} h joined",
+            "storms_remaining": len(storms)}]
+    if floor_nt is not None:
+        storms = [s for s in storms if s["minimum_dst_nt"] > floor_nt]
+        log.append({"filter": f"storm minimum above {floor_nt:g} nT", "storms_remaining": len(storms)})
+    if drivers:
+        storms = [s for s in storms if s["driver_type"] in drivers]
+        log.append({"filter": f"most frequent Xu & Borovsky type in the {DRIVER_HOURS} h before the minimum in "
+                              f"{', '.join(drivers)}", "storms_remaining": len(storms)})
+    return {"storms": storms, "log": log, "time_convention": "start of the hourly Dst average (UTC)"}

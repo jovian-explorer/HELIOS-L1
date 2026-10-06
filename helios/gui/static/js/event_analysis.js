@@ -294,10 +294,50 @@
   };
 
   // ---------------------------------------------------------------- superposed epoch
+  // Storm selection by Dst: the onsets come from /api/statistics/storms, and while the list
+  // is unchanged the analysis is requested with the same selection, so that the server
+  // records it in the provenance and the CSV.
+  let stormSelection = null;
+
+  function stormParams() {
+    const p = { storm_threshold_nt: el('ea-storm-thr').value, storm_start_year: el('ea-storm-y0').value,
+      storm_end_year: el('ea-storm-y1').value, storm_separation_hours: el('ea-storm-sep').value,
+      storm_driver: el('ea-storm-driver').value, storm_epoch: el('ea-storm-epoch').value };
+    if (el('ea-storm-floor').value !== '') p.storm_floor_nt = el('ea-storm-floor').value;
+    return p;
+  }
+
+  window.eaFindStorms = async function () {
+    const p = stormParams();
+    const q = new URLSearchParams({ start_year: p.storm_start_year, end_year: p.storm_end_year,
+      threshold_nt: p.storm_threshold_nt, separation_hours: p.storm_separation_hours, driver: p.storm_driver });
+    if (p.storm_floor_nt !== undefined) q.set('floor_nt', p.storm_floor_nt);
+    setStatus('ea-storm-status', 'Selecting storms from hourly Dst...');
+    try {
+      const r = (await getJSON(`/api/statistics/storms?${q}`)).result;
+      const key = p.storm_epoch === 'minimum' ? 'minimum_time' : 'first_hour_below';
+      const list = r.storms.map(st => st[key].replace(' ', 'T')).join('\n');
+      el('ea-sea-onsets').value = list;
+      stormSelection = r.storms.length ? { params: p, text: list } : null;
+      setStatus('ea-storm-status', `${r.storms.length} storms (${r.log.map(l => `${l.filter}: ${l.storms_remaining}`).join('; ')}).` +
+        (r.storms.length > 60 ? ' The analysis takes at most 60: narrow the selection.' : ''), r.storms.length > 60);
+      el('ea-storm-table').innerHTML = r.storms.length ? table(['Dst minimum (UTC)', 'Dst (nT)', 'Below threshold from', 'Bz 6 h before (nT)', 'V (km/s)', 'Plasma type'],
+        r.storms.map(st => [st.minimum_time, fmt(st.minimum_dst_nt, 0), st.first_hour_below, fmt(st.driver_bz_gsm_nt, 1),
+          fmt(st.driver_speed_kms, 0), st.driver_type ? st.driver_type.replace('_', ' ') : '---'])) : '';
+    } catch (e) {
+      setStatus('ea-storm-status', e.message, true);
+    }
+  };
+
   window.eaRunSea = async function () {
     const onsets = (el('ea-sea-onsets').value || '').split(/[\s,]+/).filter(Boolean).join(',');
-    const q = new URLSearchParams({ onsets, parameters: el('ea-sea-params').value.replace(/\s+/g, ''),
+    const q = new URLSearchParams({ parameters: el('ea-sea-params').value.replace(/\s+/g, ''),
       before_hours: el('ea-sea-before').value, after_hours: el('ea-sea-after').value, cadence_minutes: el('ea-sea-cad').value });
+    if (stormSelection && el('ea-sea-onsets').value === stormSelection.text) {
+      Object.entries(stormSelection.params).forEach(([k, v]) => q.set(k, v));
+    } else {
+      q.set('onsets', onsets);
+    }
     const url = `/api/analysis/superposed?${q}`;
     setStatus('ea-sea-status', 'Fetching OMNI windows...');
     try {
