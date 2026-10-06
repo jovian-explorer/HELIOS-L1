@@ -572,3 +572,76 @@ def find_storms(df: pd.DataFrame, threshold_nt: float = -100.0, separation_hours
         log.append({"filter": f"most frequent Xu & Borovsky type in the {DRIVER_HOURS} h before the minimum in "
                               f"{', '.join(drivers)}", "storms_remaining": len(storms)})
     return {"storms": storms, "log": log, "time_convention": "start of the hourly Dst average (UTC)"}
+
+
+# ----------------------------------------------------------------------------
+# Ring current model skill over many storms
+# ----------------------------------------------------------------------------
+def storm_window(dst: pd.Series, minimum_time: pd.Timestamp, recovery_nt: float = -50.0,
+                 max_before_h: int = 24, max_after_h: int = 72) -> Tuple[pd.Timestamp, pd.Timestamp]:
+    """
+    Scoring window of a storm, after Ji et al. (2012): from the highest Dst in the 24 h
+    before the minimum (the pre-storm level or the sudden commencement) to the first hour
+    after the minimum at which Dst has recovered above -50 nT (at most 72 h later).
+    """
+    before = dst.loc[minimum_time - pd.Timedelta(hours=max_before_h):minimum_time]
+    start = before.idxmax() if len(before.dropna()) else minimum_time
+    after = dst.loc[minimum_time:minimum_time + pd.Timedelta(hours=max_after_h)]
+    rec = after[after > recovery_nt]
+    end = rec.index[0] if len(rec) else after.index[-1] if len(after) else minimum_time
+    return start, end
+
+
+def dst_model_skill(df: pd.DataFrame, storms: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Burton et al. (1975) and O'Brien & McPherron (2000) driven by the hourly OMNI solar wind
+    over the whole interval (started from the first observed Dst, never reset to the
+    observations), scored storm by storm against hourly Dst: r, RMSE, bias and the error of
+    the minimum (model - observed) in each storm window, and their means over the storms with
+    95 % intervals (Student t; the storms are taken as independent samples).
+    """
+    from helios.core.aurora_model import AuroralModel
+
+    obs = df["dst"]
+    recs = [{"time_tag": t.strftime("%Y-%m-%d %H:%M:%S"),
+             "speed": None if not np.isfinite(v) else float(v),
+             "bz_gsm": None if not np.isfinite(bz) else float(bz),
+             "dynamic_pressure": None if not np.isfinite(p) else float(p)}
+            for t, v, bz, p in zip(df.index, df["speed"].to_numpy(float), df["bz_gsm"].to_numpy(float),
+                                   df["pressure"].to_numpy(float))]
+    first = obs.dropna()
+    initial = float(first.iloc[0]) if len(first) else 0.0
+    out: Dict[str, Any] = {"models": {}, "storms": []}
+    windows = [storm_window(obs, pd.Timestamp(s["minimum_time"], tz="UTC")) for s in storms]
+    for s, (a, b) in zip(storms, windows):
+        out["storms"].append({"minimum_time": s["minimum_time"], "minimum_dst_nt": s["minimum_dst_nt"],
+                              "window_start": a.strftime("%Y-%m-%d %H:%M"), "window_end": b.strftime("%Y-%m-%d %H:%M")})
+    for key in ("obrien", "burton"):
+        sim = AuroralModel.simulate_dst_evolution(recs, model=key, initial_dst=initial)
+        pred = pd.Series([r["dst_predicted_nt"] for r in sim], index=df.index, dtype=float)
+        per = []
+        for entry, (a, b) in zip(out["storms"], windows):
+            j = pd.concat([obs.loc[a:b], pred.loc[a:b]], axis=1).dropna()
+            if len(j) < 3 or j.iloc[:, 0].std() == 0 or j.iloc[:, 1].std() == 0:
+                entry[key] = None
+                continue
+            o, p = j.iloc[:, 0].to_numpy(), j.iloc[:, 1].to_numpy()
+            sc = {"r": float(np.corrcoef(o, p)[0, 1]), "rmse_nt": float(np.sqrt(np.mean((p - o) ** 2))),
+                  "bias_nt": float(np.mean(p - o)), "minimum_error_nt": float(p.min() - o.min()), "hours": int(len(o))}
+            entry[key] = sc
+            per.append(sc)
+
+        def summary(name):
+            v = np.array([sc[name] for sc in per])
+            if len(v) < 2:
+                return {"mean": float(v.mean()) if len(v) else None, "ci95": None}
+            half = student_t95(len(v) - 1.0) * v.std(ddof=1) / math.sqrt(len(v))
+            return {"mean": float(v.mean()), "ci95": [float(v.mean() - half), float(v.mean() + half)],
+                    "median": float(np.median(v))}
+
+        out["models"][key] = {"name": AuroralModel.DST_MODELS[key]["name"], "n_storms": len(per),
+                              **{n: summary(n) for n in ("r", "rmse_nt", "bias_nt", "minimum_error_nt")}}
+    out["method"] = ("Models driven by OMNI hourly speed, Bz GSM and flow pressure from the first hour of the "
+                     "interval; storm windows from the highest Dst in the 24 h before the minimum to the recovery "
+                     "above -50 nT (Ji et al. 2012); means over storms with Student-t 95 % intervals")
+    return out

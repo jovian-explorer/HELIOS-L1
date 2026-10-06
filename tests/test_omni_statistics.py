@@ -220,3 +220,46 @@ def test_storm_driver_and_superposed_epoch_selection(monkeypatch, tmp_path):
     assert client.get("/api/statistics/storms?start_year=2003&end_year=2003&driver=wind").status_code == 422
     assert client.get("/api/statistics/storms?start_year=2003&end_year=2003&threshold_nt=-100&floor_nt=-50").status_code == 422
     assert client.get("/api/analysis/superposed?parameters=sym_h").status_code == 422  # neither onsets nor storms
+
+
+def test_storm_window_after_ji_2012():
+    idx = pd.date_range("2001-01-01", periods=60, freq="h", tz="UTC")
+    dst = pd.Series([5.0] * 10 + [12.0] + [-20.0 * k for k in range(1, 11)] + [-200 + 10 * k for k in range(39)], index=idx)
+    t_min = dst.idxmin()
+    a, b = om.storm_window(dst, t_min)
+    assert a == idx[10]  # highest Dst in the 24 h before the minimum (the commencement)
+    assert dst.loc[b] > -50 and dst.loc[:b].iloc[-2] <= -50  # first hour recovered above -50 nT
+
+
+def test_dst_model_skill_over_storms(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+
+    df = _frame()
+    storms = om.find_storms(df, -150.0)["storms"]
+    res = om.dst_model_skill(df, storms)
+    for key in ("obrien", "burton"):
+        m = res["models"][key]
+        assert m["n_storms"] == len(storms) >= 2
+        per = [s[key] for s in res["storms"] if s[key]]
+        assert m["rmse_nt"]["mean"] == pytest.approx(np.mean([p["rmse_nt"] for p in per]))
+        lo, hi = m["r"]["ci95"]
+        assert lo <= m["r"]["mean"] <= hi
+
+    text = _fixture_text()
+
+    async def fake(url, timeout=120.0):
+        return text if "time.min=2003-01-01" in url else None
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.omni_hourly = om.OmniHourlyClient(lambda url: dl.fetch_text(url), tmp_path)
+    monkeypatch.setattr(server, "downloader", dl)
+    client = TestClient(server.app, base_url=LOCAL)
+    r = client.get("/api/statistics/dst_models?start_year=2003&end_year=2003&threshold_nt=-150")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["result"]["models"]["obrien"]["n_storms"] == len(storms)
+    assert body["provenance"]["filters"][0]["filter"].startswith("storms: Dst <= -150")
+    assert client.get("/api/statistics/dst_models?start_year=1970&end_year=2010").status_code == 422

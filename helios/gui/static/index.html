@@ -1941,10 +1941,13 @@
           <div><label class="ea-label">Epoch zero</label>
             <select id="ea-storm-epoch" class="ea-input"><option value="minimum">Dst minimum</option><option value="first_below">first hour below the threshold</option></select></div>
           <button onclick="eaFindStorms()" class="ea-btn">Find storms</button>
+          <button onclick="eaScoreDstModels()" class="ea-btn">Score the Dst models on these storms</button>
         </div>
         <p class="text-[10px] text-slate-400">Plasma type: Xu &amp; Borovsky (2015) class most frequent in the 6 h before the minimum. Compressed plasma in sheaths and stream interaction regions often falls in their ejecta class, so it is a plasma property, not a driver catalogue.</p>
         <div id="ea-storm-status" class="text-xs text-slate-400"></div>
         <div id="ea-storm-table" class="overflow-x-auto text-xs max-h-48 overflow-y-auto"></div>
+        <div id="ea-skill-status" class="text-xs text-slate-400"></div>
+        <div id="ea-skill-table" class="overflow-x-auto text-xs"></div>
         <div class="flex items-center gap-2 text-xs"><label class="ea-label mb-0">Show</label>
           <select id="ea-sea-show" class="ea-input" onchange="eaDrawSea()"></select>
           <span id="ea-sea-status" class="text-slate-400"></span></div>

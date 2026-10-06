@@ -1169,6 +1169,36 @@ async def omni_storm_list(
     return _analysis_answer(body, download, f"HELIOS_storms_{start_year}_{end_year}_{int(threshold_nt)}nT")
 
 
+@app.get("/api/statistics/dst_models")
+async def omni_dst_model_skill(
+    start_year: int = Query(1998, ge=omni_statistics.FIRST_YEAR, le=2100),
+    end_year: int = Query(2006, ge=omni_statistics.FIRST_YEAR, le=2100),
+    threshold_nt: float = Query(-100.0, ge=-2000, le=0, description="Hourly Dst at or below this value"),
+    separation_hours: float = Query(6.0, ge=0, le=240),
+    floor_nt: Optional[float] = Query(None, ge=-2000, le=0),
+    driver: str = Query("", max_length=100),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Skill of the Burton and O'Brien-McPherron ring current models over every storm of a
+    selection (as /api/statistics/storms): per-storm r, RMSE, bias and minimum error against
+    hourly Dst, and their means over the storms with 95 % intervals.
+    """
+    if end_year - start_year + 1 > 30:
+        raise HTTPException(status_code=422, detail="At most 30 years per request (the models run over every hour).")
+    body = await _select_storms(start_year, end_year, threshold_nt, separation_hours, floor_nt, driver)
+    storms = body["result"]["storms"]
+    if not storms:
+        raise HTTPException(status_code=422, detail="No storm matches the selection.")
+    df, _ = await _omni_hourly_frame(start_year, end_year)
+    result = await run_in_workers(omni_statistics.dst_model_skill, df, storms)
+    result["selection"] = body["result"]["log"]
+    body["provenance"]["method"] = result["method"]
+    body["provenance"]["filters"] = body["result"]["log"]
+    return _analysis_answer({"provenance": body["provenance"], "result": result}, download,
+                            f"HELIOS_dst_model_skill_{start_year}_{end_year}_{int(threshold_nt)}nT")
+
+
 @app.get("/api/statistics/omni/quantities")
 async def omni_statistics_quantities():
     """Quantities, solar wind types and analyses available to /api/statistics/omni."""

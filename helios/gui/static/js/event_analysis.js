@@ -329,6 +329,25 @@
     }
   };
 
+  window.eaScoreDstModels = async function () {
+    const p = stormParams();
+    const q = new URLSearchParams({ start_year: p.storm_start_year, end_year: p.storm_end_year,
+      threshold_nt: p.storm_threshold_nt, separation_hours: p.storm_separation_hours, driver: p.storm_driver });
+    if (p.storm_floor_nt !== undefined) q.set('floor_nt', p.storm_floor_nt);
+    const url = `/api/statistics/dst_models?${q}`;
+    setStatus('ea-skill-status', 'Running both models over every hour of the years...');
+    el('ea-skill-table').innerHTML = '';
+    try {
+      const r = (await getJSON(url)).result;
+      const cell = (m, k, d) => (m[k].mean === null ? '---' : `${fmt(m[k].mean, d)}${m[k].ci95 ? ` (${fmt(m[k].ci95[0], d)} to ${fmt(m[k].ci95[1], d)})` : ''}`);
+      el('ea-skill-table').innerHTML = table(['Model', 'Storms', 'Mean r (95 %)', 'Mean RMSE nT (95 %)', 'Mean bias nT (95 %)', 'Minimum error nT (95 %)'],
+        Object.values(r.models).map(m => [m.name, m.n_storms, cell(m, 'r', 2), cell(m, 'rmse_nt', 1), cell(m, 'bias_nt', 1), cell(m, 'minimum_error_nt', 1)]));
+      setStatus('ea-skill-status', `Scored against hourly Dst in each storm window (highest Dst in the 24 h before the minimum to recovery above -50 nT, after Ji et al. 2012); bias and minimum error are model minus observed. Intervals treat the storms as independent.`);
+    } catch (e) {
+      setStatus('ea-skill-status', e.message, true);
+    }
+  };
+
   window.eaRunSea = async function () {
     const onsets = (el('ea-sea-onsets').value || '').split(/[\s,]+/).filter(Boolean).join(',');
     const q = new URLSearchParams({ parameters: el('ea-sea-params').value.replace(/\s+/g, ''),
