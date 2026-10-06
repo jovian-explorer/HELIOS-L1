@@ -25,6 +25,7 @@ from helios.config import CACHE_DIR, NOAA_SWPC_ENDPOINTS, MISSIONS
 from helios.core.science import SpaceWeatherPhysics
 from helios.core.aurora_model import AuroralModel
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER, INDEX_COLUMNS, ArchiveClient, frame_to_records
+from helios.core.omni_statistics import OmniHourlyClient
 from helios.core.event_analysis import EventDataClient
 
 # Primary plasma / field quantities carried by telemetry records.
@@ -188,6 +189,7 @@ class DataDownloader:
         # The lambda looks fetch_text up at call time, so it can be replaced (tests, offline mode).
         self.archive = ArchiveClient(lambda url: self.fetch_text(url), self.cache_dir)
         self.events = EventDataClient(lambda url: self.fetch_text(url), self.cache_dir)
+        self.omni_hourly = OmniHourlyClient(lambda url: self.fetch_text(url), self.cache_dir)
 
     def _get_cache_path(self, key: str) -> str:
         return os.path.join(self.cache_dir, f"{key}.json")

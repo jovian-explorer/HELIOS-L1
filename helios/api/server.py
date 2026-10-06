@@ -35,6 +35,7 @@ from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARA
                                         field_at_plasma_times, superposed_epoch,
                                         fit_flux_rope, minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
+from helios.core import omni_statistics
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
 from helios.core.exporter import DataExporter
@@ -987,6 +988,122 @@ async def analyse_coupling(
     prov = _analysis_provenance(key, data, t0, t1, result["method"], {})
     prov["coordinates"] = "GSM (field rotated from GSE per sample)"
     return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_coupling_{key}_{t0:%Y%m%dT%H%M}")
+
+
+def _omni_filters(where: str, bz_south_hours: int, bz_north_hours: int, sw_type: str,
+                  min_imf_points: int, min_plasma_points: int) -> Dict[str, Any]:
+    """Filter arguments of omni_statistics.apply_filters from query values (422 on bad input)."""
+    try:
+        conditions = omni_statistics.parse_conditions(where)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    types = [t.strip().lower() for t in sw_type.split(",") if t.strip()]
+    bad = [t for t in types if t not in omni_statistics.SW_TYPES.values()]
+    if bad:
+        raise HTTPException(status_code=422, detail=f"Unknown solar wind type(s) {', '.join(bad)}; available: "
+                                                    f"{', '.join(omni_statistics.SW_TYPES.values())}.")
+    return {"conditions": conditions, "bz_south_min_hours": bz_south_hours, "bz_north_min_hours": bz_north_hours,
+            "sw_types": types, "min_imf_points": min_imf_points, "min_plasma_points": min_plasma_points}
+
+
+async def _omni_hourly_frame(y0: int, y1: int) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    """Hourly OMNI for whole years y0..y1 and the provenance of the requests."""
+    sem = asyncio.Semaphore(4)
+
+    async def one(y):
+        async with sem:
+            return await downloader.omni_hourly.year(y)
+
+    got = await asyncio.gather(*(one(y) for y in range(y0, y1 + 1)))
+    frames = [f for f, _ in got if f is not None]
+    missing = [y for y, (f, _) in zip(range(y0, y1 + 1), got) if f is None]
+    prov = {
+        "kind": "observed" if frames else "unavailable",
+        "archive": HAPI_SERVER,
+        "dataset": omni_statistics.OMNI_HOURLY_ID,
+        "label": "OMNI hourly merged solar wind (NASA OMNIWeb), field and plasma shifted to the bow shock nose; "
+                 "Dst, AE, AL, AU from WDC Kyoto; Kp from GFZ; sunspot number from SILSO",
+        "hapi_urls": [downloader.omni_hourly.url(y) for y in range(y0, y1 + 1)],
+        "years": [y0, y1],
+        "years_without_data": missing,
+        "years_not_refreshed": [y for y, (_, off) in zip(range(y0, y1 + 1), got) if off],
+        "time_standard": "UTC, time stamps at the start of each hourly average",
+    }
+    return (pd.concat(frames).sort_index() if frames else pd.DataFrame()), prov
+
+
+@app.get("/api/statistics/omni")
+async def omni_statistics_endpoint(
+    start_year: int = Query(1995, ge=omni_statistics.FIRST_YEAR, le=2100),
+    end_year: int = Query(2025, ge=omni_statistics.FIRST_YEAR, le=2100),
+    analysis: str = Query("distribution", description="distribution, joint, conditional, correlation or cycle"),
+    x: str = Query("speed", description="Quantity (see /api/statistics/omni/quantities)"),
+    y: Optional[str] = Query(None, description="Second quantity for joint, conditional and correlation"),
+    bins: int = Query(30, ge=3, le=200),
+    log_x: bool = Query(False),
+    log_y: bool = Query(False),
+    resolution: str = Query("year", pattern="^(year|month)$"),
+    min_count: int = Query(10, ge=1, le=10000, description="Fewest hours for a conditional-average bin"),
+    where: str = Query("", max_length=500, description="Conditions such as 'speed>500; beta<1; dst<=-50'"),
+    bz_south_hours: int = Query(0, ge=0, le=240, description="Keep hours inside runs of Bz<0 lasting this long"),
+    bz_north_hours: int = Query(0, ge=0, le=240, description="Keep hours inside runs of Bz>0 lasting this long"),
+    sw_type: str = Query("", max_length=100, description="Xu & Borovsky (2015) types, comma-separated"),
+    min_imf_points: int = Query(0, ge=0, le=1000, description="Fewest fine-scale field points in the hour"),
+    min_plasma_points: int = Query(0, ge=0, le=1000, description="Fewest fine-scale plasma points in the hour"),
+    format: str = Query("json", pattern="^(json|csv)$"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Statistics of hourly OMNI data (1963 to the present): distributions, joint histograms,
+    conditional averages, correlations and yearly or monthly statistics against the
+    sunspot number, after regime, quality and storm filters. Every filter and the hours it
+    kept are part of the answer and of the CSV export.
+    """
+    if end_year < start_year:
+        raise HTTPException(status_code=422, detail="'end_year' must not be before 'start_year'.")
+    if end_year - start_year + 1 > omni_statistics.MAX_YEARS:
+        raise HTTPException(status_code=422, detail=f"At most {omni_statistics.MAX_YEARS} years per request.")
+    filters = _omni_filters(where, bz_south_hours, bz_north_hours, sw_type, min_imf_points, min_plasma_points)
+    x, y = x.strip().lower(), (y.strip().lower() if y else None)
+    df, prov = await _omni_hourly_frame(start_year, end_year)
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No OMNI hourly data for these years"
+                            + (" (CDAWeb could not be reached and nothing is cached)." if prov["years_not_refreshed"] else "."))
+    try:
+        result = await run_in_workers(omni_statistics.run_analysis, df, analysis, x, y, filters, bins, log_x, log_y,
+                                      resolution, min_count)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    prov.update({
+        "method": result["method"],
+        "parameters": {"analysis": analysis, "x": x, "y": y, "bins": bins, "log_x": log_x, "log_y": log_y,
+                       "resolution": resolution, "min_count": min_count},
+        "filters": result["filters"],
+        "software": f"HELIOS-L1 {__version__}",
+        "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+    })
+    stamp = f"HELIOS_omni_{analysis}_{x}{'_' + y if y else ''}_{start_year}_{end_year}"
+    if format == "csv":
+        header, rows = omni_statistics.to_csv_rows(result)
+        out = io.StringIO()
+        out.write(f"# title: HELIOS-L1 OMNI hourly statistics ({analysis} of {x}{' and ' + y if y else ''}, "
+                  f"{start_year}-{end_year})\n")
+        out.write(f"# dataset: {prov['dataset']} ({HAPI_SERVER})\n")
+        for f in result["filters"]:
+            out.write(f"# filter: {f['filter']} -> {f['hours_remaining']} hours\n")
+        out.write(f"# method: {result['method']}\n# software: {prov['software']}\n# retrieved_utc: {prov['retrieved_utc']}\n")
+        w = csv.writer(out, lineterminator="\n")
+        w.writerow(header)
+        w.writerows(rows)
+        return Response(content=out.getvalue(), media_type="text/csv", headers=attachment(f"{stamp}.csv"))
+    return _analysis_answer({"provenance": prov, "result": result}, download, stamp)
+
+
+@app.get("/api/statistics/omni/quantities")
+async def omni_statistics_quantities():
+    """Quantities, solar wind types and analyses available to /api/statistics/omni."""
+    return {"quantities": omni_statistics.QUANTITIES, "solar_wind_types": list(omni_statistics.SW_TYPES.values()),
+            "analyses": list(omni_statistics.ANALYSES)}
 
 
 @app.get("/api/events")
