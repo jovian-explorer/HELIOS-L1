@@ -266,12 +266,16 @@
     try {
       const r = (await getJSON(url)).result;
       setStatus('ea-mc-status', `${r.n_averages} averages of ${r.average_minutes} min, cloud speed ${fmt(r.speed_kms, 0)} km/s. ${r.conventions}`);
-      el('ea-mc-table').innerHTML = table(['Quantity', 'Value'], [
-        ['Axis longitude φA / latitude θA (GSE)', `${fmt(r.axis_longitude_deg, 1)}° / ${fmt(r.axis_latitude_deg, 1)}°`],
-        ['B0 (axial field)', `${fmt(r.b0_nT, 1)} nT`], ['Handedness', r.handedness],
-        ['Closest approach', `${fmt(r.closest_approach_percent, 0)} % of R0 at ${r.closest_approach_time} UTC`],
-        ['Diameter 2R0', `${fmt(r.diameter_au, 3)} AU`], ['Axial flux', `${fmt(r.axial_flux_1e20_Mx, 1)} × 10²⁰ Mx`],
-        ['χR (unit vectors)', fmt(r.chi_r, 3)]]);
+      const u = r.uncertainties || {};
+      const pm = (v, d) => (v === undefined || v === null ? '' : ` ± ${fmt(v, d)}`);
+      el('ea-mc-table').innerHTML = table(['Quantity', 'Value ± 1σ'], [
+        ['Axis longitude φA / latitude θA (GSE)', `${fmt(r.axis_longitude_deg, 1)}° / ${fmt(r.axis_latitude_deg, 1)}°${pm(u.axis_latitude_deg, 0)}°`],
+        ['Axis direction (error cone)', u.axis_cone_deg !== undefined ? `± ${fmt(u.axis_cone_deg, 0)}° (cone angle βCA ${fmt(u.cone_angle_beta_ca_deg, 0)}°)` : '---'],
+        ['B0 (axial field)', `${fmt(r.b0_nT, 1)}${pm(u.b0_nT, 1)} nT`], ['Handedness', r.handedness],
+        ['Closest approach', `${fmt(r.closest_approach_percent, 0)}${pm(u.closest_approach_percent, 0)} % of R0 at ${r.closest_approach_time} UTC`],
+        ['Diameter 2R0', `${fmt(r.diameter_au, 3)}${pm(u.diameter_au, 3)} AU`], ['Axial flux', `${fmt(r.axial_flux_1e20_Mx, 1)} × 10²⁰ Mx`],
+        ['χR (unit vectors)', `${fmt(r.chi_r, 3)} (noise level ${fmt(u.noise_level_nT, 1)} nT)`]]) +
+        `<p class="text-[10px] text-slate-400 mt-1">Uncertainties from the error study of Lepping et al. (2003) as tabulated for the WIND clouds (Lepping et al. 2006).${(u.warnings || []).map(w => ' ' + escapeHtml(w)).join('')}</p>`;
       const hx = hoursFrom(r.model.time_tags, r.start.replace(' ', 'T'));
       const comp = ['Bx', 'By', 'Bz'], colors = ['#38bdf8', '#10b981', '#f43f5e'];
       const ds = [];

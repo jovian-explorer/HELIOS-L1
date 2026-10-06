@@ -669,3 +669,52 @@ def test_coupling_api_without_archive_uncertainties(monkeypatch, tmp_path):
     assert res["functions"]["dynamic_pressure_npa"]["sampling_ci95_of_mean"] is not None
     assert r.json()["provenance"]["coordinates"].startswith("GSM")
     assert client.get("/api/analysis/coupling?mission=WIND&start=1995-10-18T20:00&end=1995-10-22T20:00").status_code == 422
+
+
+# Lepping et al. (2006, Ann. Geophys. 24, 215) Table 5: sigma B0 (nT), R0 (0.01 AU), asf (%),
+# CA (%), theta_A, cone, |theta_A| (deg; printed truncated to integers), with the inputs of
+# the WIND MFI cloud table (https://wind.nasa.gov/mfi/mag_cloud_S1.html): B0, chi_R, CA %,
+# axis longitude and latitude.
+LEPPING_TABLE5 = [
+    ("1995-2-8", 15.2, 0.118, -49, 100, 18, (1.3, 1.1, 17.5, 30, 13, 25, 11)),
+    ("1995-10-18", 25.9, 0.143, 12, 287, -8, (2.9, 1.1, 16.7, 28, 14, 25, 11)),
+    ("1996-12-24", 14.6, 0.156, -47, 82, 26, (1.8, 1.3, 18.6, 40, 16, 31, 13)),
+    ("1997-6-9", 15.3, 0.169, 53, 215, -21, (4.7, 1.9, 18.9, 46, 18, 34, 15)),
+    ("1997-11-7", 17.6, 0.082, -16, 244, 38, (1.1, 0.7, 12.7, 16, 9, 16, 7)),
+    ("1998-3-4", 12.4, 0.152, -6, 121, 21, (1.8, 1.3, 16.9, 29, 15, 25, 12)),
+    ("1998-9-25", 18.5, 0.099, 57, 212, 46, (1.9, 1.1, 16.7, 26, 12, 23, 10)),
+    ("2000-10-3", 19.4, 0.11, 23, 58, 33, (1.9, 1.0, 15.6, 23, 12, 21, 10)),
+    ("2001-4-4", 17.8, 0.121, -86, 281, 8, (1.8, 1.3, 19.9, 38, 15, 31, 12)),
+    ("2001-5-28", 11.7, 0.129, 37, 49, -12, (1.9, 1.3, 17.6, 31, 15, 26, 12)),
+    ("2002-4-18", 16.2, 0.086, -53, 318, -27, (1.4, 0.9, 15.4, 21, 11, 20, 9)),
+    ("2003-3-20", 16.7, 0.118, 66, 238, -81, (1.3, 1.1, 18.6, 33, 14, 27, 11)),
+]
+
+
+@pytest.mark.parametrize("row", LEPPING_TABLE5, ids=[r[0] for r in LEPPING_TABLE5])
+def test_flux_rope_uncertainties_reproduce_lepping_2006_table5(row):
+    from helios.core.lepping_errors import lepping_uncertainties
+    _, b0, chi, ca, phi, theta, pub = row
+    u = lepping_uncertainties(b0, chi, ca, phi, theta)
+    assert u["b0_nT"] == pytest.approx(pub[0], abs=0.051)
+    assert 100 * u["radius_au"] == pytest.approx(pub[1], abs=0.051)
+    assert u["asymmetry_factor_percent"] == pytest.approx(pub[2], abs=0.051)
+    truncated = [math.floor(u[k] + 1e-6) for k in ("closest_approach_percent", "axis_latitude_deg",
+                                                   "axis_cone_deg", "axis_abs_latitude_deg")]
+    assert truncated == list(pub[3:])
+    assert not u["warnings"]
+
+
+def test_flux_rope_fit_reports_uncertainties():
+    from helios.core.event_analysis import _field, fit_flux_rope
+    day, start, end = LEPPING_CLOUDS[0][:3]
+    field = _field("BGSE")(parse_hapi_csv(_text(f"wi_h0_mfi1m_{day}")))
+    plasma = EVENT_SOURCES["WIND"]["plasma"]["reduce"](parse_hapi_csv(_text(f"wi_h1_swe_{day}")))
+    u = fit_flux_rope(field, plasma, start, end, average_minutes=30)["uncertainties"]
+    # Our chi_R, CA and axis for 18-20 Oct 1995 are close to the table's, so are the errors
+    # (Table 5: 2.9 nT, 28 %, cone 25 deg).
+    assert u["b0_nT"] == pytest.approx(2.9, abs=0.4)
+    assert u["closest_approach_percent"] == pytest.approx(28, abs=3)
+    assert u["axis_cone_deg"] == pytest.approx(25, abs=2)
+    from helios.core.lepping_errors import lepping_uncertainties
+    assert lepping_uncertainties(15.0, 0.30, 10, 90, 0)["warnings"]  # beyond the 4 nT noise range

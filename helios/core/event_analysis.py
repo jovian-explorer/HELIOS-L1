@@ -36,6 +36,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from helios.core.lepping_errors import lepping_uncertainties
 from helios.core.archive import (BOLTZMANN_J_K, PROTON_MASS_KG, HapiError, hapi_data_url, parse_hapi_csv,
                                  thermal_speed_to_kelvin)
 
@@ -892,6 +893,8 @@ def fit_flux_rope(field: pd.DataFrame, plasma: Optional[pd.DataFrame], start, en
     follows from the full vectors. R0 comes from the duration and the mean solar wind speed
     in the cloud. chi_R = sqrt(sum |b_obs - b_model|^2 / (3N - 5)) on the unit vectors and
     the axial flux 1.36 B0 R0^2 are defined as in the WIND MFI magnetic cloud table.
+    The 1-sigma uncertainties follow from chi_R, the closest approach and the cone angle
+    through the error study of Lepping et al. (2003) (helios.core.lepping_errors).
     """
     t_start, t_end = _utc(start), _utc(end)
     duration = (t_end - t_start).total_seconds() / 3600.0
@@ -944,6 +947,7 @@ def fit_flux_rope(field: pd.DataFrame, plasma: Optional[pd.DataFrame], start, en
     s = float(np.linalg.norm(np.array([1.0, 0.0, 0.0]) - a[0] * a))
     r0_km = speed_kms * duration * 3600.0 * s / (2.0 * math.sqrt(1.0 - y0 * y0))
     flux_wb = 1.36 * b0 * 1e-9 * (r0_km * 1e3) ** 2  # 2 pi B0 R0^2 J1(x0)/x0
+    chi_r = math.sqrt(chi2 / max(1, 3 * n - 5))
     return {
         "start": t_start.strftime("%Y-%m-%d %H:%M"),
         "end": t_end.strftime("%Y-%m-%d %H:%M"),
@@ -960,7 +964,8 @@ def fit_flux_rope(field: pd.DataFrame, plasma: Optional[pd.DataFrame], start, en
         "closest_approach_time": (t_start + pd.Timedelta(hours=float(t0))).strftime("%Y-%m-%d %H:%M"),
         "diameter_au": 2.0 * r0_km / AU_KM,
         "axial_flux_1e20_Mx": flux_wb * 1e8 / 1e20,
-        "chi_r": math.sqrt(chi2 / max(1, 3 * n - 5)),
+        "chi_r": chi_r,
+        "uncertainties": lepping_uncertainties(b0, chi_r, 100.0 * y0, phi, theta),
         "model": {"time_tags": [(t_start + pd.Timedelta(hours=float(x))).strftime("%Y-%m-%d %H:%M") for x in th],
                   "observed_gse_nT": bobs.round(3).tolist(), "model_gse_nT": (b0 * unit).round(3).tolist()},
         "conventions": ("GSE. The axis points along the axial (core) field, so B0 > 0; closest approach in % of the "
@@ -968,6 +973,9 @@ def fit_flux_rope(field: pd.DataFrame, plasma: Optional[pd.DataFrame], start, en
         "references": ["Lepping, R. P., Jones, J. A. & Burlaga, L. F. (1990), J. Geophys. Res. 95, 11957, "
                        "doi:10.1029/JA095iA08p11957",
                        "Burlaga, L. F. (1988), J. Geophys. Res. 93, 7217, doi:10.1029/JA093iA07p07217",
+                       "Lepping, R. P., Berdichevsky, D. B. & Ferguson, T. J. (2003), J. Geophys. Res. 108(A10), "
+                       "1356, doi:10.1029/2002JA009657 (fit-parameter errors)",
+                       "Lepping, R. P. et al. (2006), Ann. Geophys. 24, 215, doi:10.5194/angeo-24-215-2006",
                        "WIND MFI magnetic cloud table, https://wind.nasa.gov/mfi/mag_cloud_S1.html"],
     }
 
