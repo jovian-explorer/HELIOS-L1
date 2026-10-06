@@ -1933,6 +1933,59 @@
         <div class="h-72"><canvas id="ea-sea-chart"></canvas></div>
         <div id="ea-sea-table" class="overflow-x-auto text-xs"></div>
       </div>
+
+      <!-- OMNI statistics -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">OMNI statistics (hourly, 1963 to the present)</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">From year</label><input id="st-y0" type="number" min="1963" max="2100" class="ea-input w-20" value="1995"></div>
+          <div><label class="ea-label">To year</label><input id="st-y1" type="number" min="1963" max="2100" class="ea-input w-20" value="2024"></div>
+          <div><label class="ea-label">Analysis</label>
+            <select id="st-analysis" class="ea-input" onchange="stAnalysisChanged()">
+              <option value="distribution">Distribution of x</option>
+              <option value="joint">Joint histogram of x and y</option>
+              <option value="conditional" selected>Mean of y in bins of x</option>
+              <option value="correlation">Correlation of x and y</option>
+              <option value="cycle">Yearly / monthly statistics of x</option>
+            </select></div>
+          <div><label class="ea-label">x</label><select id="st-x" class="ea-input w-40"></select></div>
+          <div id="st-y-box"><label class="ea-label">y</label><select id="st-y" class="ea-input w-40"></select></div>
+          <div><label class="ea-label">Bins</label><input id="st-bins" type="number" min="3" max="200" class="ea-input w-16" value="15"></div>
+          <label class="flex items-center gap-1 text-slate-300"><input id="st-logx" type="checkbox" checked> log x</label>
+          <label class="flex items-center gap-1 text-slate-300"><input id="st-logy" type="checkbox"> log y</label>
+          <div id="st-res-box"><label class="ea-label">Periods</label>
+            <select id="st-res" class="ea-input"><option value="year">Years</option><option value="month">Months</option></select></div>
+        </div>
+        <div class="flex flex-wrap items-end gap-3 text-xs border-t border-slate-800 pt-2">
+          <div class="flex-1 min-w-[14rem]"><label class="ea-label">Conditions (e.g. speed&gt;500; beta&lt;1; dst&lt;=-50)</label>
+            <input id="st-where" type="text" class="ea-input w-full font-mono" value=""></div>
+          <div><label class="ea-label">Bz &lt; 0 for ≥ h</label><input id="st-bzs" type="number" min="0" max="240" class="ea-input w-16" value="0"></div>
+          <div><label class="ea-label">Bz &gt; 0 for ≥ h</label><input id="st-bzn" type="number" min="0" max="240" class="ea-input w-16" value="0"></div>
+          <div><label class="ea-label">Min field points / h</label><input id="st-imfpts" type="number" min="0" max="1000" class="ea-input w-16" value="0"></div>
+          <div><label class="ea-label">Min plasma points / h</label><input id="st-plspts" type="number" min="0" max="1000" class="ea-input w-16" value="0"></div>
+          <div><label class="ea-label">Solar wind type (Xu &amp; Borovsky 2015)</label>
+            <div class="flex gap-2 text-slate-300">
+              <label><input type="checkbox" class="st-type" value="ejecta"> ejecta</label>
+              <label><input type="checkbox" class="st-type" value="coronal_hole"> coronal hole</label>
+              <label><input type="checkbox" class="st-type" value="sector_reversal"> sector reversal</label>
+              <label><input type="checkbox" class="st-type" value="streamer_belt"> streamer belt</label>
+            </div></div>
+          <button onclick="stRun()" class="ea-btn">Run</button>
+          <a id="st-csv" class="ea-link hidden" href="#">CSV</a>
+          <a id="st-download" class="ea-link hidden" href="#">Save JSON</a>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs"><span class="ea-label mb-0">Examples</span>
+          <button class="ea-chip" onclick="stPreset('conditional','newell','dst',15,true,'')">Dst vs Newell coupling</button>
+          <button class="ea-chip" onclick="stPreset('cycle','b',null,15,false,'')">|B| over the solar cycles</button>
+          <button class="ea-chip" onclick="stPreset('distribution','speed',null,40,false,'')">Speed distribution</button>
+          <button class="ea-chip" onclick="stPreset('joint','speed','temperature',30,true,'','log')">Speed vs temperature</button>
+          <button class="ea-chip" onclick="stPreset('distribution','bz_gsm',null,40,false,'dst<=-100')">Bz during intense storms</button>
+        </div>
+        <div id="st-status" class="text-xs text-slate-400"></div>
+        <div class="h-72"><canvas id="st-chart"></canvas></div>
+        <div id="st-summary" class="overflow-x-auto text-xs"></div>
+        <div id="st-filters" class="overflow-x-auto text-xs"></div>
+      </div>
     </section>
 
     <section id="tab-missions" class="tab-content hidden space-y-6">
@@ -3172,6 +3225,7 @@
   <script src="/static/js/matrix.js"></script>
   <script src="/static/js/forecast.js"></script>
   <script src="/static/js/event_analysis.js"></script>
+  <script src="/static/js/statistics.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
