@@ -36,10 +36,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from helios.core.archive import HapiError, hapi_data_url, parse_hapi_csv
+from helios.core.archive import (BOLTZMANN_J_K, PROTON_MASS_KG, HapiError, hapi_data_url, parse_hapi_csv,
+                                 thermal_speed_to_kelvin)
 
-PROTON_MASS_KG = 1.67262192369e-27
-BOLTZMANN_J_K = 1.380649e-23
 MU0 = 4.0e-7 * math.pi
 EARTH_RADIUS_KM = 6371.2
 
@@ -50,9 +49,10 @@ SHOCK_METHODS = ("MC", "VC", "MX1", "MX2", "MX3")
 PREFERRED_METHOD = "MX3"  # the mixed-mode normal used by the CfA and Helsinki shock lists for single-spacecraft data
 
 
-def _w_to_kelvin(w_kms):
-    """Most probable thermal speed W = sqrt(2kT/m_p) (km/s) to proton temperature (K)."""
-    return PROTON_MASS_KG * (np.asarray(w_kms, dtype=float) * 1e3) ** 2 / (2.0 * BOLTZMANN_J_K)
+def _utc(t) -> pd.Timestamp:
+    """Timestamp in UTC; naive values are taken as UTC."""
+    t = pd.Timestamp(t)
+    return t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
 
 
 # ----------------------------------------------------------------------------
@@ -76,7 +76,7 @@ def _wind_swe(df: pd.DataFrame) -> pd.DataFrame:
     # and marks them, so the number used is reported; flag 0 is dropped.
     df = df[df["fit_flag"] >= 1]
     return pd.DataFrame({"vx": df["Proton_VX_nonlin"], "vy": df["Proton_VY_nonlin"], "vz": df["Proton_VZ_nonlin"],
-                         "n": df["Proton_Np_nonlin"], "t": _w_to_kelvin(df["Proton_W_nonlin"]),
+                         "n": df["Proton_Np_nonlin"], "t": thermal_speed_to_kelvin(df["Proton_W_nonlin"]),
                          "poor_fit": (df["fit_flag"] == 1).astype(float)}, index=df.index)
 
 
@@ -380,7 +380,7 @@ def dehoffmann_teller(b: np.ndarray, v: np.ndarray, n_cm3: Optional[np.ndarray] 
     ec, eht = -np.cross(v, b).ravel(), -np.cross(np.broadcast_to(vht, v.shape), b).ravel()
     out["correlation_ec_eht"] = float(np.corrcoef(ec, eht)[0, 1])
     if n_cm3 is not None:
-        va = b * 1e-9 / np.sqrt(4e-7 * math.pi * n_cm3[ok][:, None] * 1e6 * PROTON_MASS_KG) / 1e3  # km/s
+        va = b * 1e-9 / np.sqrt(MU0 * n_cm3[ok][:, None] * 1e6 * PROTON_MASS_KG) / 1e3  # km/s
         x, y = va.ravel(), (v - vht).ravel()
         slope = float(np.dot(x, y) / np.dot(x, x))  # regression through the origin
         out["walen"] = {"slope": slope, "correlation": float(np.corrcoef(x, y)[0, 1]),
@@ -549,8 +549,7 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
     side, `exclude_minutes` away from the shock. Uncertainties come from `n_draws` Monte
     Carlo draws of the window means within their standard errors.
     """
-    t_guess = pd.Timestamp(shock_time)
-    t_guess = t_guess.tz_localize("UTC") if t_guess.tzinfo is None else t_guess.tz_convert("UTC")
+    t_guess = _utc(shock_time)
     t0 = refine_shock_time(field, t_guess) if refine else None
     t0 = t0 if t0 is not None else t_guess
 
@@ -808,9 +807,7 @@ def fit_flux_rope(field: pd.DataFrame, plasma: Optional[pd.DataFrame], start, en
     in the cloud. chi_R = sqrt(sum |b_obs - b_model|^2 / (3N - 5)) on the unit vectors and
     the axial flux 1.36 B0 R0^2 are defined as in the WIND MFI magnetic cloud table.
     """
-    t_start, t_end = (pd.Timestamp(x) for x in (start, end))
-    t_start = t_start.tz_localize("UTC") if t_start.tzinfo is None else t_start.tz_convert("UTC")
-    t_end = t_end.tz_localize("UTC") if t_end.tzinfo is None else t_end.tz_convert("UTC")
+    t_start, t_end = _utc(start), _utc(end)
     duration = (t_end - t_start).total_seconds() / 3600.0
     if duration <= 1.0:
         raise ValueError("The cloud interval must be longer than one hour.")
@@ -947,7 +944,7 @@ def detect_magnetic_clouds(frame: pd.DataFrame, criteria: str = "loose") -> Dict
     df = df.interpolate(limit=5, limit_area="inside")
     bmag = np.sqrt(df["bx_gse"] ** 2 + df["by_gse"] ** 2 + df["bz_gse"] ** 2)
     theta = np.degrees(np.arcsin(np.clip(df["bz_gse"] / bmag, -1.0, 1.0)))
-    beta = (df["density"] * 1e6 * BOLTZMANN_J_K * df["temperature"]) / ((bmag * 1e-9) ** 2 / (2 * 4e-7 * math.pi))
+    beta = (df["density"] * 1e6 * BOLTZMANN_J_K * df["temperature"]) / ((bmag * 1e-9) ** 2 / (2 * MU0))
     vth = np.sqrt(2.0 * BOLTZMANN_J_K * df["temperature"] / PROTON_MASS_KG) / 1e3  # km/s
 
     L = int(c["window_minutes"])
@@ -1052,8 +1049,7 @@ def superposed_epoch(events: List[Tuple[pd.Timestamp, List[Dict[str, Any]]]], pa
     grids = {p: np.full((len(events), len(offsets)), np.nan) for p in parameters}
     summaries = []
     for k, (onset, recs) in enumerate(events):
-        onset = pd.Timestamp(onset)
-        onset = onset.tz_localize("UTC") if onset.tzinfo is None else onset.tz_convert("UTC")
+        onset = _utc(onset)
         summary: Dict[str, Any] = {"onset": onset.strftime("%Y-%m-%d %H:%M"), "n_records": len(recs)}
         if recs:
             t = pd.to_datetime([r["time_tag"] for r in recs], utc=True)

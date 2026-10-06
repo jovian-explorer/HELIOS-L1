@@ -108,9 +108,10 @@ def _vector(df: pd.DataFrame, name: str, prefix: str, out: pd.DataFrame) -> None
         out[f"b{axis}_{prefix}"] = df[f"{name}_{i}"]
 
 
-def _thermal_speed_to_kelvin(w_kms: pd.Series) -> pd.Series:
+def thermal_speed_to_kelvin(w_kms):
     """Most probable thermal speed W = sqrt(2kT/m_p) (km/s) to proton temperature (K)."""
-    return PROTON_MASS_KG * (w_kms * 1e3) ** 2 / (2.0 * BOLTZMANN_J_K)
+    w = w_kms if isinstance(w_kms, pd.Series) else np.asarray(w_kms, dtype=float)  # keep a Series a Series
+    return PROTON_MASS_KG * (w * 1e3) ** 2 / (2.0 * BOLTZMANN_J_K)
 
 
 def _mag(bt: str, gsm: Optional[str] = None, gse: Optional[str] = None, flag: Optional[str] = None) -> Callable:
@@ -133,7 +134,7 @@ def _wind_swe_h1(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
     out["speed"] = df["Proton_V_nonlin"]
     out["density"] = df["Proton_Np_nonlin"]
-    out["temperature"] = _thermal_speed_to_kelvin(df["Proton_W_nonlin"])
+    out["temperature"] = thermal_speed_to_kelvin(df["Proton_W_nonlin"])
     return out
 
 
@@ -146,7 +147,7 @@ def _wind_swe_k0(df: pd.DataFrame) -> pd.DataFrame:
     speed = np.sqrt(df["V_GSE_0"] ** 2 + df["V_GSE_1"] ** 2 + df["V_GSE_2"] ** 2)
     out["speed"] = speed.where(ok_v)
     out["density"] = df["Np"].where(ok_n)
-    out["temperature"] = _thermal_speed_to_kelvin(df["THERMAL_SPD"]).where(ok_v)
+    out["temperature"] = thermal_speed_to_kelvin(df["THERMAL_SPD"]).where(ok_v)
     return out
 
 
