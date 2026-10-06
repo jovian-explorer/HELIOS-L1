@@ -10,7 +10,6 @@ import csv
 import json
 import numpy as np
 import pandas as pd
-from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 from helios.core.science import SpaceWeatherPhysics
@@ -268,7 +267,7 @@ class TelemetryImporter:
         """
         try:
             df = cls._read_table(content)
-        except Exception as e:
+        except (ValueError, KeyError, TypeError, csv.Error) as e:  # pandas parser errors are ValueErrors
             return {"error": f"Could not read the file as CSV, delimited text or JSON: {str(e)}"}
 
         if df.empty or len(df.columns) < 2:

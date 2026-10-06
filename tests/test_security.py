@@ -249,3 +249,38 @@ def test_launcher_reports_a_port_taken_by_another_program(monkeypatch, capsys):
     assert exc.value.code == 1
     assert f"could not listen on 127.0.0.1:{port}" in out and "--port" in out
     assert "Engine online" not in out
+
+
+def test_ctrl_c_in_the_desktop_window_does_not_open_a_browser(monkeypatch):
+    # The window fallback caught BaseException, so Ctrl+C (KeyboardInterrupt) or a SystemExit
+    # raised while the desktop window was open started the system browser instead of quitting.
+    import sys
+    import types
+    launcher = _launcher(monkeypatch)
+    monkeypatch.setattr(launcher, "find_available_port", lambda h, p: p)
+
+    class FakeServer:
+        started = True
+
+    monkeypatch.setattr(launcher, "start_server", lambda h, p: (FakeServer(), None))
+    monkeypatch.setattr(launcher, "wait_for_server", lambda server, thread: True)
+    opened = []
+    monkeypatch.setattr(launcher.webbrowser, "open", lambda url: opened.append(url))
+
+    def start(**kwargs):
+        raise KeyboardInterrupt
+
+    fake = types.SimpleNamespace(create_window=lambda **kw: None, start=start)
+    monkeypatch.setitem(sys.modules, "webview", fake)
+    with pytest.raises(KeyboardInterrupt):
+        launcher.launch_desktop(host="127.0.0.1", port=8798, headless=False)
+    assert opened == []
+
+    # An ordinary failure of the window toolkit still falls back to the browser.
+    def broken(**kwargs):
+        raise RuntimeError("no GUI toolkit")
+
+    fake.start = broken
+    with pytest.raises(_Stop):
+        launcher.launch_desktop(host="127.0.0.1", port=8798, headless=False)
+    assert opened == ["http://127.0.0.1:8798"]

@@ -98,9 +98,8 @@ def _valid_timezone(tz: str) -> bool:
             return True
         zoneinfo.ZoneInfo(tz)
         return True
-    except (ValueError, KeyError, OSError, ImportError):
-        return False
-    except Exception:  # zoneinfo.ZoneInfoNotFoundError and malformed keys
+    except (ValueError, KeyError, TypeError, OSError, ImportError):
+        # ZoneInfoNotFoundError is a KeyError; malformed keys raise ValueError.
         return False
 
 

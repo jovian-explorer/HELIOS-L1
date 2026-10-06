@@ -11,6 +11,7 @@ never be confused downstream (plots, exports, reports).
 """
 import os
 import json
+import logging
 import time
 import re
 import math
@@ -129,7 +130,7 @@ def infer_cadence_seconds(records: List[Dict[str, Any]], default: float = 60.0) 
         diffs = pd.Series(t).diff().dt.total_seconds().dropna()
         diffs = diffs[diffs > 0]
         return float(diffs.median()) if len(diffs) else default
-    except Exception:
+    except (KeyError, TypeError, ValueError):  # missing or unreadable time tags
         return default
 
 
@@ -202,7 +203,7 @@ class DataDownloader:
         try:
             with open(cache_path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
+        except (OSError, ValueError):  # missing, unreadable or truncated cache file
             return None
 
     async def fetch_json(self, url: str, cache_key: str) -> Optional[List[Any]]:
@@ -223,8 +224,8 @@ class DataDownloader:
                 resp = await client.get(url)
             if resp.status_code == 200:
                 return await asyncio.to_thread(_decode_and_store, resp.content, cache_path)
-        except Exception:
-            pass
+        except (httpx.HTTPError, OSError, ValueError) as exc:  # network, cache write, body not JSON
+            logging.getLogger("helios.download").info("%s failed (%s); using the cache", url, exc)
         if os.path.exists(cache_path):
             return await asyncio.to_thread(self._read_cache, cache_path)
         return None
@@ -236,8 +237,8 @@ class DataDownloader:
                 resp = await client.get(url)
             if resp.status_code == 200:
                 return resp.text
-        except Exception:
-            pass
+        except (httpx.HTTPError, OSError) as exc:
+            logging.getLogger("helios.download").info("%s failed: %s", url, exc)
         return None
 
     @staticmethod

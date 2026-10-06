@@ -4,7 +4,6 @@ Initializes background FastAPI server and launches pywebview native window
 with automatic fallback to system web browser.
 """
 import sys
-import os
 import time
 import socket
 import threading
@@ -172,7 +171,7 @@ def launch_desktop(
         try:
             import webview
             print("[+] Initializing native desktop UI window...")
-            window = webview.create_window(
+            webview.create_window(
                 title="HELIOS-L1 | Space Weather & L1 Heliophysics Observatory",
                 url=url,
                 width=1320,
@@ -188,7 +187,7 @@ def launch_desktop(
                 webview.start()
             logging.info("Desktop window closed normally.")
             return
-        except (Exception, BaseException) as e:
+        except Exception as e:  # not BaseException: Ctrl+C or a window-close exit must not open a browser
             logging.warning(f"Native webview fallback triggered: {e}")
             print(f"[i] Native webview notice: {e}. Launching default browser interface.")
 

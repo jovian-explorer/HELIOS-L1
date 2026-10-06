@@ -76,6 +76,7 @@
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
 ### Code quality
+- Broad exception handlers narrowed to the failures they are meant for: SPICE calls catch the CSPICE errors (`SpiceyError`) and log them instead of printing, downloads catch network, cache-write and decoding errors and log the URL, cache reads catch unreadable files, the importer catches parser errors (including the `csv.Error` of the delimiter sniffer), the time zone check the zoneinfo lookup errors and the auroral AL lookup unreadable archive data. Anything else is a bug and now reaches the JSON error handler instead of being silently replaced by a fallback value. The desktop window fallback caught `BaseException`, so Ctrl+C (or any exit) while the window was open started the system browser instead of quitting; it now catches only errors of the window toolkit (new test). Unused imports removed.
 - Ephemeris engine: the analytical fallback for spacecraft and planets was one 407-line function with nine near-identical branches that each set up a Keplerian orbit. The orbital elements are now a table (`CONIC_TARGETS`, with the reference epoch and phase text of each body) and the L1 halo orbits a separate helper, so the function is half as long. The output was checked to be byte-identical for 18 identifiers, both frames and three epochs before and after the change.
 
 ### Interface and robustness

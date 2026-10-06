@@ -1047,7 +1047,7 @@ async def observed_al(when: datetime) -> Tuple[Optional[float], Optional[str]]:
     """Mean OMNI 1-min AL (nT) over the hour before `when`, if at least 30 minutes have data."""
     try:
         bundle = await downloader.get_archive_bundle("OMNI", when - timedelta(hours=1), when)
-    except Exception:  # archive unreachable: the oval falls back to Kp
+    except (OSError, ValueError, KeyError):  # archive unreadable: the oval falls back to Kp
         return None, None
     values = [r["al"] for r in bundle["records"] if r.get("al") is not None]
     if len(values) < 30:

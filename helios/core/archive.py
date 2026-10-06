@@ -300,7 +300,7 @@ class ArchiveClient:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     cached = _frame_from_json(json.load(f))
-            except Exception:
+            except (OSError, ValueError, KeyError, TypeError):  # unreadable or old-format cache file
                 cached = None
             if cached is not None and self._cache_is_fresh(path, day, not cached.empty):
                 return cached

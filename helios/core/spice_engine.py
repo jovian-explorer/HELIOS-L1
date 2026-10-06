@@ -9,6 +9,7 @@ Sun-Earth L1 halo orbiters (Aditya-L1, DSCOVR, ACE, WIND, SOHO),
 and geospace satellites (GOES-16, Moon, Earth).
 """
 
+import logging
 import math
 import os
 import threading
@@ -19,10 +20,17 @@ import numpy as np
 
 try:
     import spiceypy as spice
+    from spiceypy.utils.exceptions import SpiceyError
     SPICE_AVAILABLE = True
 except ImportError:
     spice = None
+    SpiceyError = RuntimeError
     SPICE_AVAILABLE = False
+
+# What a SPICE call can raise for a bad input or a missing kernel (SpiceyError covers the
+# CSPICE error system); anything else is a bug and should surface.
+SPICE_ERRORS = (SpiceyError, ValueError, TypeError)
+_log = logging.getLogger("helios.spice")
 
 
 
@@ -118,7 +126,7 @@ class SpiceEphemerisEngine:
         if SPICE_AVAILABLE:
             try:
                 self._toolkit_version = spice.tkvrsn("TOOLKIT")
-            except Exception:
+            except SPICE_ERRORS:
                 self._toolkit_version = "CSPICE_N0067"
             self.load_kernels()
 
@@ -160,8 +168,8 @@ class SpiceEphemerisEngine:
                     try:
                         spice.furnsh(kernel_path)
                         loaded.append(kernel_path)
-                    except Exception as e:
-                        print(f"[SpiceEngine] Warning: Could not furnish {kernel_file.name}: {e}")
+                    except SPICE_ERRORS as e:
+                        _log.warning("Could not furnish %s: %s", kernel_file.name, e)
 
             self._loaded_kernels = loaded
             return loaded
@@ -173,8 +181,8 @@ class SpiceEphemerisEngine:
                 try:
                     spice.kclear()
                     self._loaded_kernels = []
-                except Exception as e:
-                    print(f"[SpiceEngine] Error clearing kernels: {e}")
+                except SPICE_ERRORS as e:
+                    _log.warning("Could not clear the kernel pool: %s", e)
 
     @property
     def is_spice_available(self) -> bool:
@@ -218,7 +226,7 @@ class SpiceEphemerisEngine:
             try:
                 with self._kernel_lock:
                     return float(spice.str2et(epoch_str))
-            except Exception:
+            except SPICE_ERRORS:
                 pass
 
         # Analytical ET calculation fallback if LSK is unloaded
@@ -243,7 +251,7 @@ class SpiceEphemerisEngine:
             try:
                 with self._kernel_lock:
                     return str(spice.et2utc(et, format_str, 3))
-            except Exception:
+            except SPICE_ERRORS:
                 pass
 
         # Analytical fallback
@@ -260,7 +268,7 @@ class SpiceEphemerisEngine:
             try:
                 with self._kernel_lock:
                     return float(spice.bodvrd(body_id, "GM", 1)[1][0])
-            except Exception:
+            except SPICE_ERRORS:
                 pass
 
         # JPL DE431 standard defaults
@@ -300,8 +308,8 @@ class SpiceEphemerisEngine:
                 with self._kernel_lock:
                     state = spice.conics(elts, target_et)
                 return np.array(state[0:3]), np.array(state[3:6])
-            except Exception as e:
-                print(f"[SpiceEngine] Conics SPICE call error: {e}")
+            except SPICE_ERRORS as e:
+                _log.warning("SPICE conics failed, using the Kepler solver: %s", e)
 
         # Keplerian analytical solver fallback
         a = rp_km / (1.0 - ecc) if ecc < 1.0 else rp_km
@@ -521,7 +529,7 @@ class SpiceEphemerisEngine:
                 true_anomaly_deg = float(math.degrees(math.atan2(sin_nu, cos_nu)) % 360.0)
             else:
                 true_anomaly_deg = ecliptic_long_deg
-        except Exception:
+        except (ValueError, ZeroDivisionError, FloatingPointError):
             true_anomaly_deg = 0.0
 
         # Orbital period calculation (Kepler's third law)
