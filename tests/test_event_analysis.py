@@ -580,3 +580,26 @@ def test_magnetic_cloud_detection_api(monkeypatch):
     assert client.get("/api/analysis/mcdetect?start=1997-11-06&end=1997-11-06T04:00").status_code == 422
     assert client.get("/api/analysis/mcdetect?start=1997-11-01&end=1997-12-15").status_code == 422
     assert client.get("/api/analysis/mcdetect?mission=SOHO&start=1997-11-06&end=1997-11-07").status_code == 404
+
+
+def test_superposed_epoch_bootstrap_confidence_bands():
+    from helios.core.event_analysis import superposed_epoch
+    rng = np.random.default_rng(7)
+    events = []
+    for k in range(40):
+        onset = pd.Timestamp("2020-01-01", tz="UTC") + pd.Timedelta(days=5 * k)
+        recs = [{"time_tag": (onset + pd.Timedelta(minutes=m)).strftime("%Y-%m-%d %H:%M:%S"),
+                 "sym_h": -50.0 + rng.normal(0, 10)} for m in range(-60, 120, 10)]
+        events.append((onset, recs))
+    res = superposed_epoch(events, ["sym_h"], 1, 2, cadence_minutes=10)
+    st = res["statistics"]["sym_h"]
+    # One value per event and bin, sigma = 10 nT, 40 events: the 95 % interval of the mean is
+    # about +-1.96 * 10 / sqrt(40) = +-3.1 nT around the sample mean.
+    widths = np.array(st["mean_ci95_high"]) - np.array(st["mean_ci95_low"])
+    assert np.median(widths) == pytest.approx(2 * 1.96 * 10 / math.sqrt(40), rel=0.15)
+    lo, hi, mean = np.array(st["mean_ci95_low"]), np.array(st["mean_ci95_high"]), np.array(st["mean"])
+    assert np.all(lo < mean) and np.all(mean < hi)
+    assert np.mean((lo < -50) & (-50 < hi)) > 0.8  # the true mean is inside in most bins
+    assert st["median_ci95_low"][0] < st["median"][0] < st["median_ci95_high"][0]
+    # Fewer than 3 events: no bands.
+    assert "mean_ci95_low" not in superposed_epoch(events[:2], ["sym_h"], 1, 2)["statistics"]["sym_h"]

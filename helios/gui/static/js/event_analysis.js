@@ -304,6 +304,10 @@
         { label: 'Lower quartile', data: pts(st.q25), borderColor: 'rgba(56,189,248,0.4)', borderWidth: 1, pointRadius: 0 },
         { label: 'Median', data: pts(st.median), borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0 },
         { label: 'Mean', data: pts(st.mean), borderColor: '#f59e0b', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0 },
+        ...(st.mean_ci95_low ? [
+          { label: 'Mean 95 % CI (bootstrap)', data: pts(st.mean_ci95_high), borderColor: 'rgba(245,158,11,0.5)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(245,158,11,0.10)' },
+          { label: 'Mean 95 % CI low', data: pts(st.mean_ci95_low), borderColor: 'rgba(245,158,11,0.5)', borderWidth: 1, pointRadius: 0 },
+        ] : []),
       ] },
       options: { scales: { x: axis('Epoch time (hours from onset)'), y: axis(p) } },
     });

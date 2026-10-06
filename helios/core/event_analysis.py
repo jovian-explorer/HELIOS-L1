@@ -1033,14 +1033,45 @@ SEA_PARAMETERS = ("sym_h", "asy_h", "ae", "al", "au", "bz_gsm", "by_gsm", "bt", 
                   "temperature", "dynamic_pressure", "akasofu_gw")
 
 
+def _bootstrap_bands(g: np.ndarray, n_boot: int, seed: int, min_events: int = 3) -> Dict[str, Any]:
+    """
+    95 % bootstrap confidence intervals of the per-bin mean (and, for grids of up to 300 000
+    values, the median) of an events x bins grid, resampling whole events with replacement
+    (percentile method). Bins with fewer than `min_events` events give None.
+    """
+    n_ev, n_bins = g.shape
+    rng = np.random.default_rng(seed)
+    # A resample is a multinomial count per event: its bin means are weighted means.
+    counts = rng.multinomial(n_ev, np.full(n_ev, 1.0 / n_ev), size=int(n_boot)).astype(float)  # [B, E]
+    finite = np.isfinite(g)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        means = (counts @ np.where(finite, g, 0.0)) / (counts @ finite)                      # [B, bins]
+        arrays = {"mean": means}
+        if n_ev * n_bins <= 300_000:
+            idx = np.array([np.repeat(np.arange(n_ev), c.astype(int)) for c in counts])  # [B, E]
+            arrays["median"] = np.nanmedian(g[idx], axis=1)
+        enough = finite.sum(axis=0) >= min_events
+        out: Dict[str, Any] = {}
+        for name, arr in arrays.items():
+            lo, hi = np.nanpercentile(arr, 2.5, axis=0), np.nanpercentile(arr, 97.5, axis=0)
+            out[f"{name}_ci95_low"] = [None if not (e and np.isfinite(v)) else round(float(v), 3) for v, e in zip(lo, enough)]
+            out[f"{name}_ci95_high"] = [None if not (e and np.isfinite(v)) else round(float(v), 3) for v, e in zip(hi, enough)]
+    out["n_bootstrap"] = int(n_boot)
+    return out
+
+
 def superposed_epoch(events: List[Tuple[pd.Timestamp, List[Dict[str, Any]]]], parameters: List[str],
-                     before_hours: float, after_hours: float, cadence_minutes: int = 10) -> Dict[str, Any]:
+                     before_hours: float, after_hours: float, cadence_minutes: int = 10,
+                     n_bootstrap: int = 1000, seed: int = 1) -> Dict[str, Any]:
     """
     Superposed epoch analysis: each event's records are put on a common grid of epoch times
     (minutes from its onset, bins [k*cadence, (k+1)*cadence) labelled by their start) and the
     events are combined per bin into mean, median, quartiles and the number of events with
-    data. Per event, the extremes of every parameter at the records' own cadence and their
-    epoch times are listed. `events` = [(onset, records with "time_tag")].
+    data, with 95 % bootstrap confidence intervals of the mean and median (events resampled
+    with replacement; bins with at least 3 events). Per event, the extremes of every
+    parameter at the records' own cadence and their epoch times are listed.
+    `events` = [(onset, records with "time_tag")].
     """
     if not events:
         raise ValueError("No events.")
@@ -1082,6 +1113,8 @@ def superposed_epoch(events: List[Tuple[pd.Timestamp, List[Dict[str, Any]]]], pa
                         "q25": clean(np.nanpercentile(g, 25, axis=0)), "q75": clean(np.nanpercentile(g, 75, axis=0)),
                         "n_events": n.astype(int).tolist(),
                         "per_event": [clean(row) for row in g]}
+        if n_bootstrap and len(events) >= 3:
+            stats[p].update(_bootstrap_bands(g, n_bootstrap, seed))
     return {
         "epoch_hours": (offsets / 60.0).tolist(),
         "cadence_minutes": cad,
@@ -1090,5 +1123,6 @@ def superposed_epoch(events: List[Tuple[pd.Timestamp, List[Dict[str, Any]]]], pa
         "statistics": stats,
         "events": summaries,
         "method": ("Superposed epoch analysis: block means on a common epoch grid (bins labelled by their start), "
-                   "then mean, median and quartiles over the events with data in each bin"),
+                   "then mean, median and quartiles over the events with data in each bin; 95 % confidence "
+                   "intervals of the mean and median by bootstrap resampling of the events"),
     }

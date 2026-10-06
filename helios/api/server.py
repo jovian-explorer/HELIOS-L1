@@ -862,13 +862,16 @@ async def analyse_superposed_epoch(
         out.write(f"# method: {result['method']}\n# cadence_minutes: {cadence_minutes}\n")
         out.write(f"# software: {prov['software']}\n# retrieved_utc: {prov['retrieved_utc']}\n")
         w = csv.writer(out, lineterminator="\n")
-        cols = ["epoch_hours"] + [f"{p}_{s}" for p in params for s in ("mean", "median", "q25", "q75", "n_events")]
+        bands = [k for k in ("mean_ci95_low", "mean_ci95_high", "median_ci95_low", "median_ci95_high")
+                 if k in result["statistics"][params[0]]]
+        cols = ["epoch_hours"] + [f"{p}_{s}" for p in params for s in ("mean", "median", "q25", "q75", *bands, "n_events")]
         w.writerow(cols)
         for i, e in enumerate(result["epoch_hours"]):
             row = [round(e, 4)]
             for p in params:
                 st = result["statistics"][p]
-                row += ["" if st[s][i] is None else st[s][i] for s in ("mean", "median", "q25", "q75")] + [st["n_events"][i]]
+                row += ["" if st[s][i] is None else st[s][i] for s in ("mean", "median", "q25", "q75", *bands)]
+                row += [st["n_events"][i]]
             w.writerow(row)
         return Response(content=out.getvalue(), media_type="text/csv",
                         headers=attachment(f"HELIOS_superposed_epoch_{stamp}.csv"))
