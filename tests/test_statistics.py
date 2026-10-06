@@ -76,3 +76,30 @@ def test_dst_skill_reports_intervals():
     storm = -400 * np.exp(-((t - 300) / 120.0) ** 2)
     sk = AuroralModel.dst_skill(list(zip(0.6 * storm, storm)))
     assert sk["few_independent_samples"] and sk["r_ci95"] is None
+
+
+def test_cross_correlation_lag_interval():
+    """Moving-block bootstrap interval of the lag: covers the true delay of noisy AR(1) signals."""
+    from helios.core.comparator import SatelliteComparator
+    rng = np.random.default_rng(5)
+    n, hits, trials = 288, 0, 60
+    for _ in range(trials):
+        s = _ar1(rng, n + 40, 0.9)
+        a = s[20:20 + n] + rng.normal(size=n) * s.std()
+        b = s[17:17 + n] + rng.normal(size=n) * s.std()  # B sees A's signal 3 samples (15 min) later
+        res = SatelliteComparator.cross_correlation_lag(a, b, max_lags=24, dt_minutes=5.0)
+        hits += res["lag_ci95_minutes"][0] <= 15.0 <= res["lag_ci95_minutes"][1]
+    assert hits / trials >= 0.93
+    # Clean, long signal: the peak never moves.
+    s = _ar1(rng, 1200, 0.8)
+    res = SatelliteComparator.cross_correlation_lag(s[20:1170], s[17:1167], max_lags=24, dt_minutes=5.0)
+    assert res["optimal_lag_minutes"] == 15.0 and res["lag_ci95_minutes"] == [15.0, 15.0]
+
+
+def test_comparator_correlation_interval():
+    from helios.core.comparator import SatelliteComparator
+    rng = np.random.default_rng(2)
+    a = _ar1(rng, 500, 0.7)
+    m = SatelliteComparator.compute_metrics(a + 0.5 * rng.normal(size=500), a)
+    lo, hi = m["correlation_ci95"]
+    assert lo < m["correlation_r"] < hi and m["n_eff"] < 500

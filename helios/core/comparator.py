@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Any, Optional, Tuple
 from helios.core.orbital_mechanics import OrbitalMechanics
+from helios.core.statistics import correlation, effective_sample_size
 
 class SatelliteComparator:
     """Compares and calibrates observations across multiple satellites."""
@@ -70,7 +71,8 @@ class SatelliteComparator:
     def compute_metrics(series_a: np.ndarray, series_b: np.ndarray) -> Dict[str, float]:
         """
         Compute rigorous scientific comparison statistics:
-        - Pearson correlation coefficient (r)
+        - Pearson correlation coefficient (r), with its 95 % interval from the Fisher z
+          transform and the effective sample size of the two autocorrelated series
         - Coefficient of determination (R^2)
         - Root Mean Square Error (RMSE)
         - Mean Absolute Error (MAE)
@@ -103,8 +105,11 @@ class SatelliteComparator:
         slope = float(p[0])
         intercept = float(p[1])
 
+        corr = correlation(series_a, series_b)  # 95 % interval allowing for autocorrelation
         return {
             "correlation_r": round(r, 4),
+            "correlation_ci95": [round(v, 4) for v in corr["ci95"]] if corr["ci95"] else None,
+            "n_eff": round(corr["n_eff"], 1) if corr["n_eff"] is not None else None,
             "r_squared": round(r2, 4),
             "rmse": round(rmse, 3),
             "mae": round(mae, 3),
@@ -153,7 +158,43 @@ class SatelliteComparator:
             "correlation": [round(float(c), 4) for c in sub_corr],
             "optimal_lag_minutes": round(optimal_lag_min, 1),
             "max_correlation": round(max_r, 4),
-            "lag_convention": "positive = B observes later than A"
+            "lag_convention": "positive = B observes later than A",
+            **SatelliteComparator.lag_uncertainty(a_norm, b_norm, sub_lags, dt_minutes),
+        }
+
+    @staticmethod
+    def lag_uncertainty(a_norm: np.ndarray, b_norm: np.ndarray, lags: np.ndarray, dt_minutes: float,
+                        n_boot: int = 500, seed: int = 1) -> Dict[str, Any]:
+        """
+        95 % interval of the cross-correlation lag from a moving-block bootstrap (Kunsch 1989)
+        of the lagged products a[n] b[n + L]: blocks of consecutive samples n are resampled,
+        every lag is re-evaluated on the same resampled samples and the peak is located again.
+        Blocks are as long as the decorrelation length n / n_eff of the pair (at least the
+        largest lag), so that the resamples keep the autocorrelation of the data.
+        """
+        n = len(a_norm)
+        lags = np.asarray(lags, dtype=int)
+        prod = np.zeros((len(lags), n))
+        for k, lag in enumerate(lags):
+            if lag >= 0:
+                prod[k, :n - lag] = a_norm[:n - lag] * b_norm[lag:]
+            else:
+                prod[k, -lag:] = a_norm[-lag:] * b_norm[:n + lag]
+        n_eff = effective_sample_size(a_norm, b_norm)
+        block = int(min(max(int(np.max(np.abs(lags))), math.ceil(n / max(n_eff, 1.0))), max(1, n // 4)))
+        rng = np.random.default_rng(seed)
+        n_blocks = int(math.ceil(n / block))
+        starts = rng.integers(0, n - block + 1, size=(n_boot, n_blocks))
+        idx = (starts[:, :, None] + np.arange(block)[None, None, :]).reshape(n_boot, -1)[:, :n]
+        counts = np.zeros((n_boot, n))
+        np.add.at(counts, (np.repeat(np.arange(n_boot), n), idx.ravel()), 1.0)
+        boot_lags = lags[np.argmax(counts @ prod.T, axis=1)] * dt_minutes
+        lo, hi = np.percentile(boot_lags, [2.5, 97.5])
+        return {
+            "lag_ci95_minutes": [round(float(lo), 1), round(float(hi), 1)],
+            "lag_std_minutes": round(float(np.std(boot_lags)), 1),
+            "lag_uncertainty_method": (f"moving-block bootstrap of the lagged products ({n_boot} resamples, "
+                                       f"blocks of {block} samples); lag resolution {dt_minutes:g} min"),
         }
 
     @classmethod
