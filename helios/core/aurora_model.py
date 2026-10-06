@@ -10,6 +10,7 @@ from typing import Dict, List, Any, Optional, Tuple
 import numpy as np
 
 from helios.core.coordinates import mlt_mlat_to_geo
+from helios.core.statistics import skill_scores
 
 # Starkov, G. V. (1994), Mathematical model of the auroral boundaries, Geomagn. Aeron. 34(3),
 # 331-336, as tabulated by Sigernes et al. (2011, "Real time aurora oval forecasting -
@@ -314,9 +315,10 @@ class AuroralModel:
     @staticmethod
     def dst_skill(pairs: List[Tuple[Optional[float], Optional[float]]]) -> Dict[str, Any]:
         """
-        Model-vs-observed statistics from (predicted, observed) pairs: sample count,
-        Pearson r, RMSE, mean bias (predicted - observed) and both minima, in nT.
-        Pairs with a missing value are skipped.
+        Model-vs-observed statistics from time-ordered (predicted, observed) pairs: sample
+        count, Pearson r, RMSE, mean bias (predicted - observed) and both minima, in nT, with
+        95 % intervals of r, RMSE and bias that allow for the autocorrelation of the series
+        (helios.core.statistics.skill_scores). Pairs with a missing value are skipped.
         """
         pts = [(float(p), float(o)) for p, o in pairs if p is not None and o is not None]
         n = len(pts)
@@ -325,15 +327,18 @@ class AuroralModel:
                     "min_predicted_nt": None, "min_observed_nt": None}
         pred = [p for p, _ in pts]
         obs = [o for _, o in pts]
-        mp, mo = sum(pred) / n, sum(obs) / n
-        sp = math.sqrt(sum((p - mp) ** 2 for p in pred))
-        so = math.sqrt(sum((o - mo) ** 2 for o in obs))
-        r = sum((p - mp) * (o - mo) for p, o in pts) / (sp * so) if sp > 0 and so > 0 else None
+        sk = skill_scores(pred, obs)
+        ci = lambda pair, nd: [round(pair[0], nd), round(pair[1], nd)] if pair is not None else None
         return {
             "n": n,
-            "r": round(r, 3) if r is not None else None,
-            "rmse_nt": round(math.sqrt(sum((p - o) ** 2 for p, o in pts) / n), 1),
-            "bias_nt": round(mp - mo, 1),
+            "r": round(sk["r"], 3) if sk["r"] is not None else None,
+            "r_ci95": ci(sk["r_ci95"], 3),
+            "rmse_nt": round(sk["rmse"], 1),
+            "rmse_ci95_nt": ci(sk["rmse_ci95"], 1),
+            "bias_nt": round(sk["bias"], 1),
+            "bias_ci95_nt": ci(sk["bias_ci95"], 1),
+            "n_eff": round(min(v for v in (sk["n_eff_r"], sk["n_eff_bias"], n) if v is not None), 1),
+            "few_independent_samples": sk["few_independent_samples"],
             "min_predicted_nt": round(min(pred), 1),
             "min_observed_nt": round(min(obs), 1),
         }

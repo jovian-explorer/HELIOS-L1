@@ -2245,7 +2245,14 @@ function alignHourlyToSeries(timeTags, hourly) {
 function describeDstSkill(sk, against) {
   if (!sk || sk.n === undefined) return '';
   if (sk.r === null || sk.r === undefined) return `Not enough overlap with ${against} to score the model (n = ${sk.n}).`;
-  return `vs ${against}: n = ${sk.n}, r = ${sk.r}, RMSE = ${sk.rmse_nt} nT, bias = ${sk.bias_nt} nT, min model ${sk.min_predicted_nt} / observed ${sk.min_observed_nt} nT.`;
+  const iv = (ci) => (ci ? ` [${ci[0]}, ${ci[1]}]` : '');
+  let note = '';
+  if (sk.n_eff !== undefined) {
+    note = sk.few_independent_samples
+      ? ` Only ~${sk.n_eff} independent samples (autocorrelated series): intervals are missing or too narrow; score several storms.`
+      : ` 95 % intervals in brackets (~${sk.n_eff} independent samples).`;
+  }
+  return `vs ${against}: n = ${sk.n}, r = ${sk.r}${iv(sk.r_ci95)}, RMSE = ${sk.rmse_nt}${iv(sk.rmse_ci95_nt)} nT, bias = ${sk.bias_nt}${iv(sk.bias_ci95_nt)} nT, min model ${sk.min_predicted_nt} / observed ${sk.min_observed_nt} nT.${note}`;
 }
 
 function renderEventDst(ev) {

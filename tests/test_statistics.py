@@ -1,0 +1,78 @@
+"""Sampling uncertainty of statistics (helios.core.statistics) and where it is reported."""
+import math
+
+import numpy as np
+import pytest
+
+from helios.core import statistics as st
+
+
+def _ar1(rng, n, phi):
+    e = rng.normal(size=n)
+    x = np.empty(n)
+    x[0] = e[0] / math.sqrt(1 - phi * phi)
+    for i in range(1, n):
+        x[i] = phi * x[i - 1] + e[i]
+    return x
+
+
+def test_fisher_interval_matches_reference_values():
+    # scipy.stats.pearsonr(...).confidence_interval(0.95) for the same r and n (scipy 1.18).
+    assert st.fisher_interval(0.491337, 50) == pytest.approx((0.246733, 0.677085), abs=2e-6)
+    assert st.fisher_interval(0.603249, 400) == pytest.approx((0.536959, 0.662136), abs=2e-6)
+    assert st.fisher_interval(0.5, 50) == pytest.approx((0.2575, 0.6833), abs=1e-4)
+    assert st.fisher_interval(0.5, 3) is None
+
+
+def test_student_t_quantile_against_tables():
+    # Two-sided 95 % points of Student's t (standard tables).
+    for dof, t in ((3, 3.1824), (4, 2.7764), (10, 2.2281), (30, 2.0423), (100, 1.9840)):
+        assert st.student_t95(dof) == pytest.approx(t, rel=1.5e-3)
+
+
+def test_effective_sample_size_formulas():
+    rng = np.random.default_rng(3)
+    x, y = _ar1(rng, 20000, 0.8), _ar1(rng, 20000, 0.5)
+    rx, ry = st.lag1_autocorrelation(x), st.lag1_autocorrelation(y)
+    assert rx == pytest.approx(0.8, abs=0.02) and ry == pytest.approx(0.5, abs=0.02)
+    assert st.effective_sample_size(x) == pytest.approx(20000 * (1 - rx) / (1 + rx))
+    assert st.effective_sample_size(x, y) == pytest.approx(20000 * (1 - rx * ry) / (1 + rx * ry))
+    # White noise: n_eff never exceeds n, even with a slightly negative sample autocorrelation.
+    assert st.effective_sample_size(rng.normal(size=500)) <= 500
+
+
+def test_interval_coverage_for_autocorrelated_errors():
+    """Monte Carlo: AR(1) model and observation series with known r, bias and RMSE."""
+    rng = np.random.default_rng(7)
+    phi, rho, n, trials = 0.5, 0.5, 300, 300
+    true_rmse = math.sqrt(2 * (1 - rho) / (1 - phi * phi) + 0.09)
+    hits = {"r": 0, "bias": 0, "rmse": 0, "naive_bias": 0}
+    for _ in range(trials):
+        o, c = _ar1(rng, n, phi), _ar1(rng, n, phi)
+        p = rho * o + math.sqrt(1 - rho * rho) * c + 0.3
+        s = st.skill_scores(p, o)
+        hits["r"] += s["r_ci95"][0] <= rho <= s["r_ci95"][1]
+        hits["bias"] += s["bias_ci95"][0] <= 0.3 <= s["bias_ci95"][1]
+        hits["rmse"] += s["rmse_ci95"][0] <= true_rmse <= s["rmse_ci95"][1]
+        d = p - o
+        hits["naive_bias"] += abs(d.mean() - 0.3) <= 1.96 * d.std(ddof=1) / math.sqrt(n)
+    for k in ("r", "bias", "rmse"):
+        assert 0.89 <= hits[k] / trials <= 0.99, (k, hits[k] / trials)
+    assert hits["naive_bias"] / trials < 0.85  # treating samples as independent undercovers
+
+
+def test_dst_skill_reports_intervals():
+    from helios.core.aurora_model import AuroralModel
+    rng = np.random.default_rng(1)
+    obs = -50 + 30 * _ar1(rng, 400, 0.3)
+    pred = obs + 5 + 10 * rng.normal(size=400)
+    sk = AuroralModel.dst_skill(list(zip(pred, obs)))
+    assert sk["r_ci95"][0] < sk["r"] < sk["r_ci95"][1]
+    assert sk["bias_ci95_nt"][0] < 5 < sk["bias_ci95_nt"][1]
+    assert sk["rmse_ci95_nt"][0] < sk["rmse_nt"] < sk["rmse_ci95_nt"][1]
+    assert not sk["few_independent_samples"]
+    # A smooth single storm is about one independent sample: flagged, no r interval.
+    t = np.arange(864)
+    storm = -400 * np.exp(-((t - 300) / 120.0) ** 2)
+    sk = AuroralModel.dst_skill(list(zip(0.6 * storm, storm)))
+    assert sk["few_independent_samples"] and sk["r_ci95"] is None
