@@ -167,12 +167,12 @@
       const ev = r.eigenvectors, l = r.eigenvalues_nT2, er = r.angular_error_deg;
       setStatus('ea-mva-status', `${r.n_vectors} vectors; λ2/λ3 = ${fmt(r.ratio_intermediate_to_min, 1)}, λ1/λ2 = ${fmt(r.ratio_max_to_intermediate, 1)}` +
         (r.ratio_intermediate_to_min !== null && r.ratio_intermediate_to_min < 10 ? ' (λ2/λ3 < 10: normal poorly determined)' : '') +
-        `; <B>·n = ${fmt(r.mean_normal_field_nT)} nT.`);
+        `; <B>·n = ${fmt(r.mean_normal_field_nT)} ± ${fmt(r.mean_normal_field_error_nT)} nT (eq. 8.24).`);
       el('ea-mva-table').innerHTML = table(['Direction', 'Eigenvalue (nT²)', 'Eigenvector (GSE)', 'Angular error (°)'], [
-        ['Maximum', fmt(l[0], 3), vec(ev.max), `${fmt(er.max_about_intermediate, 2)} (about intermediate)`],
+        ['Maximum', fmt(l[0], 3), vec(ev.max), `${fmt(er.max_toward_intermediate, 2)} (toward intermediate)`],
         ['Intermediate', fmt(l[1], 3), vec(ev.intermediate), ''],
-        ['Minimum (normal)', fmt(l[2], 3), vec(ev.min), `${fmt(er.normal_about_intermediate, 2)} / ${fmt(er.normal_about_max, 2)} (about intermediate / maximum)`],
-      ]);
+        ['Minimum (normal)', fmt(l[2], 3), vec(ev.min), `${fmt(er.normal_toward_max, 2)} / ${fmt(er.normal_toward_intermediate, 2)} (toward maximum / intermediate)`],
+      ]) + (r.bootstrap ? `<p class="text-slate-400 mt-1">Bootstrap (${r.bootstrap.n_samples} resamples): normal ±${fmt(r.bootstrap.normal_toward_max_std_deg, 2)}° toward maximum, ±${fmt(r.bootstrap.normal_toward_intermediate_std_deg, 2)}° toward intermediate; ⟨B⟩·n ${fmt(r.bootstrap.mean_normal_field_nT)} ± ${fmt(r.bootstrap.mean_normal_field_std_nT)} nT.</p>` : '');
       showDownload('ea-mva-download', url);
     } catch (e) {
       setStatus('ea-mva-status', e.message, true);

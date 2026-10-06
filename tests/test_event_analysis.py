@@ -171,14 +171,50 @@ def test_minimum_variance_recovers_known_frame_and_errors():
     assert _angle(res["eigenvectors"]["min"], rot[:, 2]) < 1.0
     assert _angle(res["eigenvectors"]["max"], rot[:, 0]) < 2.0
     assert res["ratio_intermediate_to_min"] == pytest.approx(l2 / l3)
-    # Sonnerup & Scheible (1998) eq. 8.23 for the normal about the intermediate axis.
+    # Sonnerup & Scheible (1998) eq. 8.23 for the rotation of the normal toward the intermediate axis.
     expect = math.degrees(math.sqrt(l3 / (k - 1) * (l2 + l3 - l3) / (l2 - l3) ** 2))
-    assert res["angular_error_deg"]["normal_about_intermediate"] == pytest.approx(expect)
+    assert res["angular_error_deg"]["normal_toward_intermediate"] == pytest.approx(expect)
     assert res["mean_normal_field_nT"] >= 0
     x1, x2, x3 = (np.array(res["eigenvectors"][k_]) for k_ in ("max", "intermediate", "min"))
     assert np.dot(np.cross(x1, x2), x3) == pytest.approx(1.0)
     with pytest.raises(ValueError):
         minimum_variance(b[:3])
+
+
+# Sonnerup & Scheible (1998, ISSI SR-001, ch. 8), Table 8.4: the 16 AMPTE/IRM vectors
+# (nT, GSE) of the magnetopause crossing on 19 October 1984, 05:18:20-05:19:26 UT.
+AMPTE_IRM_B = np.array([
+    [-13.6, -24.7, 54.6], [-14.8, -24.9, 58.7], [-13.4, -17.2, 62.4], [-14.0, -25.0, 43.8],
+    [-7.1, -4.5, 33.5], [-0.9, -5.0, 44.4], [-10.0, -0.4, 44.6], [-6.1, -4.8, 21.1],
+    [1.2, 1.6, 21.0], [-3.4, -3.9, 4.1], [-0.9, 1.2, 5.0], [-1.0, -1.5, 12.3],
+    [11.0, 13.2, 29.7], [19.1, 34.4, 20.1], [24.9, 50.1, 1.9], [29.2, 47.1, -10.6]])
+
+
+def test_minimum_variance_matches_the_ampte_irm_benchmark():
+    res = minimum_variance(AMPTE_IRM_B)
+    # Fig. 8.2: eigenvalues 1012.86, 138.01, 7.08 nT^2; x3 = (0.8671, -0.4978, 0.0187) with
+    # <B>.x3 = -0.58 nT (the opposite sense: here n is oriented so that <B>.n >= 0).
+    # (The table's one-decimal values give 137.91 for lambda2, 0.08 % below the published 138.01.)
+    assert res["eigenvalues_nT2"] == pytest.approx([1012.86, 138.01, 7.08], rel=1e-3)
+    assert np.allclose(np.abs(res["eigenvectors"]["min"]), [0.8671, 0.4978, 0.0187], atol=1e-4)
+    assert np.allclose(np.abs(res["eigenvectors"]["max"]), [0.4061, 0.6845, 0.6055], atol=1e-4)
+    assert abs(res["mean_normal_field_nT"]) == pytest.approx(0.58, abs=0.005)
+    # Section 8.3.1: dphi32 = 0.062 rad, dphi31 = 0.022 rad, dphi21 = 0.027 rad, d(<B>.x3) = 1.63 nT.
+    err = res["angular_error_deg"]
+    assert math.radians(err["normal_toward_intermediate"]) == pytest.approx(0.062, abs=0.0005)
+    assert math.radians(err["normal_toward_max"]) == pytest.approx(0.022, abs=0.0005)
+    assert math.radians(err["max_toward_intermediate"]) == pytest.approx(0.027, abs=0.0005)
+    assert res["mean_normal_field_error_nT"] == pytest.approx(1.63, abs=0.005)
+    # Section 8.3.2, Fig. 8.6 (1000 bootstrap sets): std of <B>.x3 1.17 nT, of the rotation of
+    # x3 toward x1 0.023 rad and toward x2 0.059 rad; mean normal (0.8669, -0.4982, 0.0182),
+    # 0.04 deg from x3. A 1000-sample bootstrap of 16 vectors scatters by several per cent
+    # between runs (here 1.06 nT, 0.024 and 0.058 rad).
+    bs = res["bootstrap"]
+    assert bs["mean_normal_field_std_nT"] == pytest.approx(1.17, rel=0.15)
+    assert math.radians(bs["normal_toward_max_std_deg"]) == pytest.approx(0.023, rel=0.1)
+    assert math.radians(bs["normal_toward_intermediate_std_deg"]) == pytest.approx(0.059, rel=0.1)
+    assert np.allclose(np.abs(bs["mean_normal"]), [0.8669, 0.4982, 0.0182], atol=0.003)
+    assert bs["mean_normal_angle_to_x3_deg"] < 0.3
 
 
 def test_event_data_client_fetches_native_cadence_and_caches(tmp_path):

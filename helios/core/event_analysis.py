@@ -207,24 +207,37 @@ class EventDataClient:
 # ----------------------------------------------------------------------------
 # Minimum variance analysis
 # ----------------------------------------------------------------------------
-def minimum_variance(b: np.ndarray) -> Dict[str, Any]:
+BOOTSTRAP_MAX_VECTORS = 5_000_000
+
+
+def _mva_eigen(b: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Mean field, eigenvalues (descending, >= 0) and eigenvectors (columns) of the variance matrix (eq. 8.8)."""
+    mean = b.mean(axis=0)
+    m = (b.T @ b) / len(b) - np.outer(mean, mean)
+    lam, vec = np.linalg.eigh(m)  # ascending
+    return mean, np.clip(lam[::-1], 0.0, None), vec[:, ::-1]
+
+
+def minimum_variance(b: np.ndarray, n_bootstrap: int = 1000, seed: int = 1) -> Dict[str, Any]:
     """
     MVA of K field vectors (K x 3). Eigenvalues are returned as lambda1 >= lambda2 >= lambda3
     (maximum, intermediate, minimum variance) with their unit eigenvectors; the minimum
     variance direction is oriented so that <B> . n >= 0 and the triad is right-handed.
-    The angular errors (deg) follow Sonnerup & Scheible (1998) eq. 8.23. A ratio
-    lambda2/lambda3 below about 10 means the normal is poorly determined.
+    Statistical errors follow Sonnerup & Scheible (1998): the angular uncertainties of
+    eq. 8.23, |dphi_ij| = sqrt(lambda3 (lambda_i + lambda_j - lambda3) / ((K - 1)
+    (lambda_i - lambda_j)^2)), where dphi_ij is the rotation of eigenvector i toward j, and
+    the uncertainty of <B> . n from eq. 8.24. With `n_bootstrap` > 0 the same quantities
+    are also estimated from bootstrap resamples of the vectors (Kawano & Higuchi 1995):
+    standard deviations of <B> . x3 and of the rotations of the resampled x3 toward x1 and
+    x2, and the bootstrap mean normal. A ratio lambda2/lambda3 below about 10 means the
+    normal is poorly determined.
     """
     b = np.asarray(b, dtype=float)
     b = b[np.all(np.isfinite(b), axis=1)]
     k = len(b)
     if k < 5:
         raise ValueError("Minimum variance analysis needs at least 5 field vectors.")
-    mean = b.mean(axis=0)
-    m = (b.T @ b) / k - np.outer(mean, mean)
-    lam, vec = np.linalg.eigh(m)  # ascending
-    lam, vec = lam[::-1], vec[:, ::-1]
-    lam = np.clip(lam, 0.0, None)
+    mean, lam, vec = _mva_eigen(b)
     x1, x2, x3 = vec[:, 0], vec[:, 1], vec[:, 2]
     if np.dot(mean, x3) < 0:
         x3 = -x3
@@ -232,23 +245,67 @@ def minimum_variance(b: np.ndarray) -> Dict[str, Any]:
         x2 = -x2
     l1, l2, l3 = (float(v) for v in lam)
 
-    def dphi(li, lj):
+    def dphi(li, lj):  # eq. 8.23, radians
         if li - lj <= 0:
             return None
-        return math.degrees(math.sqrt(l3 / (k - 1) * (li + lj - l3) / (li - lj) ** 2))
+        return math.sqrt(l3 / (k - 1) * (li + lj - l3) / (li - lj) ** 2)
 
-    return {
+    d32, d31, d21 = dphi(l2, l3), dphi(l1, l3), dphi(l1, l2)
+    bn = float(np.dot(mean, x3))
+    bn_err = None
+    if d32 is not None and d31 is not None:  # eq. 8.24
+        bn_err = math.sqrt(l3 / (k - 1) + (d32 * float(np.dot(mean, x2))) ** 2
+                           + (d31 * float(np.dot(mean, x1))) ** 2)
+
+    def deg(r):
+        return None if r is None else math.degrees(r)
+
+    out = {
         "n_vectors": k,
         "eigenvalues_nT2": [l1, l2, l3],
         "eigenvectors": {"max": x1.tolist(), "intermediate": x2.tolist(), "min": x3.tolist()},
         "ratio_intermediate_to_min": (l2 / l3) if l3 > 0 else None,
         "ratio_max_to_intermediate": (l1 / l2) if l2 > 0 else None,
         "mean_field_nT": mean.tolist(),
-        "mean_normal_field_nT": float(np.dot(mean, x3)),
-        "angular_error_deg": {"normal_about_intermediate": dphi(l2, l3), "normal_about_max": dphi(l1, l3),
-                              "max_about_intermediate": dphi(l1, l2)},
-        "method": "Minimum variance analysis, Sonnerup & Scheible (1998), errors from eq. 8.23",
+        "mean_field_along_eigenvectors_nT": [float(np.dot(mean, x)) for x in (x1, x2, x3)],
+        "mean_normal_field_nT": bn,
+        "mean_normal_field_error_nT": bn_err,
+        # dphi_ij: rotation of eigenvector i toward eigenvector j (i.e. about the third one).
+        "angular_error_deg": {"normal_toward_intermediate": deg(d32), "normal_toward_max": deg(d31),
+                              "max_toward_intermediate": deg(d21)},
+        "method": "Minimum variance analysis, Sonnerup & Scheible (1998); errors from eqs. 8.23-8.24",
     }
+    # Memory grows as N x K: limit the resamples to 5 million vectors in all, and skip the
+    # bootstrap (the analytical errors remain) when fewer than 100 resamples fit.
+    n_boot = min(int(n_bootstrap or 0), BOOTSTRAP_MAX_VECTORS // k)
+    if n_bootstrap and n_boot < 100:
+        out["bootstrap"] = None
+        out["bootstrap_note"] = (f"No bootstrap for {k} vectors (more than {BOOTSTRAP_MAX_VECTORS // 100}); "
+                                 "average the data (average_seconds) to obtain one.")
+    elif n_boot > 0:
+        n_bootstrap = n_boot
+        rng = np.random.default_rng(seed)
+        samples = b[rng.integers(0, k, size=(int(n_bootstrap), k))]   # [N, K, 3]
+        means = samples.mean(axis=1)
+        mats = np.einsum("nki,nkj->nij", samples, samples) / k - np.einsum("ni,nj->nij", means, means)
+        n3 = np.linalg.eigh(mats)[1][:, :, 0]                          # minimum variance eigenvectors
+        n3 = n3 * np.where(n3 @ x3 < 0, -1.0, 1.0)[:, None]            # same sense as x3
+        bns = np.einsum("ni,ni->n", means, n3)
+        a31 = np.arcsin(np.clip(n3 @ x1, -1.0, 1.0))
+        a32 = np.arcsin(np.clip(n3 @ x2, -1.0, 1.0))
+        avg = n3.mean(axis=0)
+        avg /= np.linalg.norm(avg)
+        out["bootstrap"] = {
+            "n_samples": int(n_bootstrap),
+            "mean_normal": avg.tolist(),
+            "mean_normal_angle_to_x3_deg": math.degrees(math.acos(min(1.0, float(np.dot(avg, x3))))),
+            "mean_normal_field_nT": float(bns.mean()),
+            "mean_normal_field_std_nT": float(bns.std(ddof=1)),
+            "normal_toward_max_std_deg": math.degrees(float(a31.std(ddof=1))),
+            "normal_toward_intermediate_std_deg": math.degrees(float(a32.std(ddof=1))),
+            "method": "Bootstrap resampling of the field vectors with replacement (Kawano & Higuchi 1995)",
+        }
+    return out
 
 
 # ----------------------------------------------------------------------------
