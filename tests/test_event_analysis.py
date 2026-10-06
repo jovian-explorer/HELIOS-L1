@@ -217,6 +217,49 @@ def test_minimum_variance_matches_the_ampte_irm_benchmark():
     assert bs["mean_normal_angle_to_x3_deg"] < 0.3
 
 
+# Table 8.4: plasma velocity (km/s, GSE) and density (cm^-3) for the same 16 AMPTE/IRM samples.
+AMPTE_IRM_V = np.array([
+    [-111.0, -211.0, 57.0], [-102.0, -213.0, 41.0], [-111.0, -196.0, 34.0], [-135.0, -229.0, 54.0],
+    [-128.0, -252.0, 54.0], [-82.0, -237.0, 51.0], [-139.0, -228.0, 77.0], [-143.0, -241.0, 57.0],
+    [-132.0, -226.0, 80.0], [-117.0, -217.0, 79.0], [-112.0, -210.0, 93.0], [-98.0, -212.0, 92.0],
+    [-90.0, -186.0, 104.0], [-83.0, -168.0, 121.0], [-82.0, -129.0, 88.0], [-93.0, -123.0, 53.0]])
+AMPTE_IRM_N = np.array([12.18, 9.22, 9.92, 18.08, 20.39, 15.00, 20.19, 23.53, 24.31, 25.91, 26.17,
+                        24.49, 22.20, 22.86, 17.56, 17.86])
+
+
+def test_dehoffmann_teller_matches_the_ampte_irm_benchmark():
+    from helios.core.event_analysis import dehoffmann_teller
+    x3 = [0.8671, -0.4978, 0.0187]  # MVAB normal, Fig. 8.2
+    res = dehoffmann_teller(AMPTE_IRM_B, AMPTE_IRM_V, AMPTE_IRM_N, normal=x3, n_bootstrap=5000)
+    # Khrabrov & Sonnerup (1998), Sect. 9.3 and Table 9.1: V_HT = (-122.8, -223.0, 76.0) km/s from
+    # D, c = 0.994, D(V_HT)/D(0) = 0.012; (-120.9, -224.1, 72.9) km/s from Q; error ellipsoid
+    # semiaxes 7.62, 4.59, 3.94 km/s (D) and 8.19, 4.85, 4.21 km/s (Q); u_n = 5.9 +- 3.9 km/s
+    # (D) and 8.1 +- 4.2 km/s (Q). The one-decimal values of Table 8.4 reproduce the field
+    # results of chapter 8 exactly but V_HT only to 0.7 km/s (-122.6, -223.6, 75.7), so the
+    # chapter 9 numbers were evidently computed from unrounded velocities.
+    d, q = res["D"], res["Q"]
+    assert d["v_ht_kms"] == pytest.approx([-122.8, -223.0, 76.0], abs=0.8)
+    assert q["v_ht_kms"] == pytest.approx([-120.9, -224.1, 72.9], abs=0.8)
+    assert res["correlation_ec_eht"] == pytest.approx(0.994, abs=0.0005)
+    assert d["residual_ratio"] == pytest.approx(0.012, abs=0.0005)
+    assert [a["sigma_kms"] for a in d["error_axes"]] == pytest.approx([7.62, 4.59, 3.94], rel=0.015)
+    assert [a["sigma_kms"] for a in q["error_axes"]] == pytest.approx([8.19, 4.85, 4.21], rel=0.015)
+    assert abs(np.dot(d["error_axes"][0]["axis"], [-0.2457, -0.3726, 0.8949])) == pytest.approx(1.0, abs=1e-3)
+    assert d["normal_velocity_kms"] == pytest.approx(5.9, abs=0.6)
+    assert d["normal_velocity_error_kms"] == pytest.approx(3.9, abs=0.05)
+    assert q["normal_velocity_kms"] == pytest.approx(8.1, abs=0.6)
+    assert q["normal_velocity_error_kms"] == pytest.approx(4.2, abs=0.05)
+    # Table 9.2 (5000 bootstrap resamples, D): V_HT (-122.7, -223.2, 74.5) km/s, semiaxes 7.88,
+    # 5.29, 4.62 km/s, u_n = 6.1 +- 4.7 km/s; another set of resamples scatters by a few per cent.
+    bs = res["bootstrap"]
+    assert bs["v_ht_kms"] == pytest.approx([-122.7, -223.2, 74.5], abs=1.0)
+    assert [a["sigma_kms"] for a in bs["error_axes"]] == pytest.approx([7.88, 5.29, 4.62], rel=0.1)
+    assert bs["normal_velocity_kms"] == pytest.approx(6.1, abs=0.8)
+    assert bs["normal_velocity_error_kms"] == pytest.approx(4.7, rel=0.1)
+    # Fig. 9.4a: the Walen test fails for this tangential discontinuity (points cluster near v' = 0).
+    assert abs(res["walen"]["slope"]) < 0.2
+
+
 def test_event_data_client_fetches_native_cadence_and_caches(tmp_path):
     served = {"WI_H0_MFI@1": "wi_h0_mfi3s_20150317", "WI_H1_SWE": "wi_h1_swe_20150317",
               "WI_H0_MFI@0": "wi_h0_pgse_20150317"}
@@ -287,6 +330,10 @@ def test_shock_and_mva_api_with_provenance(monkeypatch, tmp_path):
     assert client.get("/api/analysis/mva?mission=WIND&start=2015-03-17T04:01&end=2015-03-17T04:25"
                       "&average_seconds=60").json()["result"]["n_vectors"] == 24
 
+    ht = client.get("/api/analysis/ht?mission=WIND&start=2015-03-17T04:02&end=2015-03-17T04:25").json()["result"]
+    assert ht["n_vectors"] > 10 and len(ht["D"]["v_ht_kms"]) == 3 and ht["bootstrap"]["n_samples"] == 1000
+    assert 0.9 < ht["correlation_ec_eht"] <= 1.0 and np.linalg.norm(ht["normal_used"]["vector_gse"]) == pytest.approx(1.0)
+    assert client.get("/api/analysis/ht?mission=WIND&start=2015-03-17T04:02&end=2015-03-17T04:04").status_code == 422
     assert client.get("/api/analysis/shock?mission=SOHO&time=2015-03-17T04:00").status_code == 404
     assert client.get("/api/analysis/mva?mission=WIND&start=2015-03-17&end=2015-03-21").status_code == 422
     assert client.get("/api/analysis/shock?mission=ACE&time=2015-03-17T04:00").status_code == 404  # nothing served

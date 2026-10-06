@@ -309,6 +309,111 @@ def minimum_variance(b: np.ndarray, n_bootstrap: int = 1000, seed: int = 1) -> D
 
 
 # ----------------------------------------------------------------------------
+# deHoffmann-Teller frame (Khrabrov & Sonnerup 1998)
+# ----------------------------------------------------------------------------
+def _ht_solve(b: np.ndarray, v: np.ndarray, weight_by_b2: bool) -> Tuple[np.ndarray, np.ndarray]:
+    """V minimising D (eq. 9.8; K^(m) = B^2 P^(m)) or Q (eq. 9.14; P^(m)), and the matrix K0 or P0."""
+    b2 = np.einsum("mi,mi->m", b, b)
+    proj = np.eye(3)[None, :, :] - np.einsum("mi,mj->mij", b, b) / b2[:, None, None]  # P^(m)
+    km = proj * (b2[:, None, None] if weight_by_b2 else 1.0)
+    k0 = km.mean(axis=0)
+    rhs = np.einsum("mij,mj->mi", km, v).mean(axis=0)
+    return np.linalg.solve(k0, rhs), k0
+
+
+def _ht_residual(b: np.ndarray, v: np.ndarray, frame: np.ndarray, weight_by_b2: bool) -> float:
+    """D(V) = <|(v - V) x B|^2> (mV/m)^2, or Q(V) = <|(v - V) x B|^2 / B^2> (km/s)^2."""
+    e = np.cross(v - frame, b)
+    sq = np.einsum("mi,mi->m", e, e)
+    if weight_by_b2:
+        return float(sq.mean()) * 1e-6  # (km/s nT)^2 -> (mV/m)^2
+    return float((sq / np.einsum("mi,mi->m", b, b)).mean())
+
+
+def dehoffmann_teller(b: np.ndarray, v: np.ndarray, n_cm3: Optional[np.ndarray] = None,
+                      normal: Optional[np.ndarray] = None, n_bootstrap: int = 0, seed: int = 1) -> Dict[str, Any]:
+    """
+    deHoffmann-Teller frame velocity from M simultaneous field (nT) and plasma velocity (km/s)
+    vectors, after Khrabrov & Sonnerup (1998, ISSI SR-001, ch. 9): V_HT minimises the mean
+    square convection electric field in the moving frame, D(V) = <|(v - V) x B|^2>
+    (eq. 9.10), and, as a second estimate, the mean square cross-field velocity Q(V)
+    (eq. 9.14). The quality of the frame is the correlation coefficient c between the
+    components of -v x B and -V_HT x B and the ratio D(V_HT)/D(0); uncertainties come from
+    the variance matrix S = D(V_HT) K0^-1 / (2M - 3) (eq. 9.16; Q(V_HT) P0^-1 / (2M - 3) for
+    Q), given as the standard deviations along its principal axes. With a normal, the
+    normal velocity u_n = V_HT . n and its error follow (eq. 9.17). With densities, the
+    Walen test regresses the components of v - V_HT on the proton Alfven velocity
+    B / sqrt(mu0 n m_p): a slope near +-1 indicates a rotational discontinuity, near 0 a
+    tangential discontinuity. Optional bootstrap resampling of the vector pairs (Sect. 9.4.2).
+    """
+    b, v = np.asarray(b, dtype=float), np.asarray(v, dtype=float)
+    ok = np.all(np.isfinite(b), axis=1) & np.all(np.isfinite(v), axis=1)
+    if n_cm3 is not None:
+        n_cm3 = np.asarray(n_cm3, dtype=float)
+        ok &= np.isfinite(n_cm3) & (n_cm3 > 0)
+    b, v = b[ok], v[ok]
+    m = len(b)
+    if m < 4:
+        raise ValueError("The deHoffmann-Teller analysis needs at least 4 pairs of field and velocity vectors.")
+    out = {"n_vectors": m}
+    for name, w in (("D", True), ("Q", False)):
+        vht, k0 = _ht_solve(b, v, w)
+        res = _ht_residual(b, v, vht, w)
+        res0 = _ht_residual(b, v, np.zeros(3), w)
+        lam, vec = np.linalg.eigh(k0)
+        sig = np.sqrt((res * (1e6 if w else 1.0)) / ((2 * m - 3) * lam))  # km/s; D back to (km/s nT)^2
+        s_mat = (res * (1e6 if w else 1.0)) / (2 * m - 3) * np.linalg.inv(k0)
+        entry = {
+            "v_ht_kms": vht.tolist(),
+            "residual": res, "residual_units": "(mV/m)^2" if w else "(km/s)^2",
+            "residual_ratio": res / res0 if res0 > 0 else None,
+            "error_axes": [{"sigma_kms": float(sig[i]), "axis": vec[:, i].tolist()} for i in np.argsort(sig)[::-1]],
+            "covariance_kms2": s_mat.tolist(),
+        }
+        if normal is not None:
+            nn = np.asarray(normal, dtype=float)
+            nn = nn / np.linalg.norm(nn)
+            entry["normal_velocity_kms"] = float(vht @ nn)
+            entry["normal_velocity_error_kms"] = float(math.sqrt(nn @ s_mat @ nn))
+        out[name] = entry
+    vht = np.array(out["D"]["v_ht_kms"])
+    ec, eht = -np.cross(v, b).ravel(), -np.cross(np.broadcast_to(vht, v.shape), b).ravel()
+    out["correlation_ec_eht"] = float(np.corrcoef(ec, eht)[0, 1])
+    if n_cm3 is not None:
+        va = b * 1e-9 / np.sqrt(4e-7 * math.pi * n_cm3[ok][:, None] * 1e6 * PROTON_MASS_KG) / 1e3  # km/s
+        x, y = va.ravel(), (v - vht).ravel()
+        slope = float(np.dot(x, y) / np.dot(x, x))  # regression through the origin
+        out["walen"] = {"slope": slope, "correlation": float(np.corrcoef(x, y)[0, 1]),
+                        "note": "Slope of (v - V_HT) against the proton Alfven velocity; |slope| near 1: "
+                                "rotational discontinuity, near 0: tangential discontinuity."}
+    if n_bootstrap and n_bootstrap > 0:
+        rng = np.random.default_rng(seed)
+        draws = np.array([_ht_solve(b[i], v[i], True)[0] for i in rng.integers(0, m, size=(int(n_bootstrap), m))])
+        cov = np.cov(draws.T)
+        lam, vec = np.linalg.eigh(cov)
+        boot = {"n_samples": int(n_bootstrap), "v_ht_kms": draws.mean(axis=0).tolist(),
+                "error_axes": [{"sigma_kms": float(math.sqrt(max(lam[i], 0.0))), "axis": vec[:, i].tolist()}
+                               for i in np.argsort(lam)[::-1]]}
+        if normal is not None:
+            boot["normal_velocity_kms"] = float(draws.mean(axis=0) @ nn)
+            boot["normal_velocity_error_kms"] = float((draws @ nn).std(ddof=1))
+        out["bootstrap"] = boot
+    out["method"] = ("deHoffmann-Teller analysis, Khrabrov & Sonnerup (1998): minimisation of D (eq. 9.10) and "
+                     "Q (eq. 9.14), errors from eq. 9.16")
+    return out
+
+
+def field_at_plasma_times(field: pd.DataFrame, plasma: pd.DataFrame) -> np.ndarray:
+    """Mean field vector over each plasma sample interval (half the median plasma spacing either side)."""
+    pidx, fidx = plasma.index.as_unit("ns"), field.index.as_unit("ns")
+    half = float(np.median(np.diff(pidx.asi8))) / 2.0 if len(pidx) > 1 else 30e9
+    edges = np.concatenate([pidx.asi8 - half, [pidx.asi8[-1] + half]])
+    inside = (fidx.asi8 >= edges[0]) & (fidx.asi8 < edges[-1])
+    which = np.searchsorted(edges, fidx.asi8[inside], side="right") - 1
+    return field[inside][["bx", "by", "bz"]].groupby(which).mean().reindex(range(len(plasma))).to_numpy(float)
+
+
+# ----------------------------------------------------------------------------
 # Shock analysis
 # ----------------------------------------------------------------------------
 def _window(df: Optional[pd.DataFrame], t0: pd.Timestamp, a_min: float, b_min: float) -> pd.DataFrame:

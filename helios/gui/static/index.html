@@ -1849,10 +1849,13 @@
           <div><label class="ea-label">End (UTC)</label><input id="ea-mva-end" type="text" class="ea-input w-40" value="2015-03-17T04:25"></div>
           <div><label class="ea-label">Average (s, 0 = native)</label><input id="ea-mva-avg" type="number" min="0" max="3600" class="ea-input w-20" value="0"></div>
           <button onclick="eaRunMva()" class="ea-btn">Run MVA</button>
+          <button onclick="eaRunHt()" class="ea-btn">deHoffmann-Teller frame</button>
           <a id="ea-mva-download" class="ea-link hidden" href="#">Save JSON</a>
         </div>
         <div id="ea-mva-status" class="text-xs text-slate-400"></div>
         <div id="ea-mva-table" class="overflow-x-auto text-xs"></div>
+        <div id="ea-ht-status" class="text-xs text-slate-400"></div>
+        <div id="ea-ht-table" class="overflow-x-auto text-xs"></div>
       </div>
 
       <!-- Magnetic cloud search -->

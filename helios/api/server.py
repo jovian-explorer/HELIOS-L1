@@ -30,7 +30,8 @@ from helios.config import (
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
 from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
-                                        MC_CRITERIA, analyze_shock, detect_magnetic_clouds, superposed_epoch,
+                                        MC_CRITERIA, analyze_shock, dehoffmann_teller, detect_magnetic_clouds,
+                                        field_at_plasma_times, superposed_epoch,
                                         fit_flux_rope, minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
 from helios.core.orbital_mechanics import OrbitalMechanics
@@ -904,6 +905,51 @@ async def analyse_mva(
     prov = _analysis_provenance(key, data, t0, t1, result["method"], {"average_seconds": average_seconds})
     body = {"provenance": prov, "result": result, "series": _event_series(field, None)}
     return _analysis_answer(body, download, f"HELIOS_mva_{key}_{t0:%Y%m%dT%H%M}")
+
+
+@app.get("/api/analysis/ht")
+async def analyse_dehoffmann_teller(
+    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    start: str = Query(..., description="UTC start, ISO 8601"),
+    end: str = Query(..., description="UTC end (exclusive), ISO 8601"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    deHoffmann-Teller frame (Khrabrov & Sonnerup 1998) from the plasma velocity and the field
+    averaged over each plasma sample, with analytical and bootstrap errors, the normal
+    velocity along the minimum variance normal of the same field data, and the Walen test.
+    """
+    key = _event_mission(mission)
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    if t1 - t0 > timedelta(hours=MAX_EVENT_HOURS):
+        raise HTTPException(status_code=422, detail=f"Intervals are limited to {MAX_EVENT_HOURS} hours.")
+    data = await downloader.events.fetch(key, t0, t1)
+    if data["field"] is None or data["plasma"] is None:
+        raise HTTPException(status_code=404, detail="No field or plasma data for this interval"
+                            + (" (CDAWeb could not be reached)." if data["offline"] else "."))
+    sel = lambda df: df[(df.index >= pd.Timestamp(t0)) & (df.index < pd.Timestamp(t1))]
+    field, plasma = sel(data["field"]), sel(data["plasma"]).dropna(subset=["vx", "vy", "vz"])
+    if len(plasma) < 4:
+        raise HTTPException(status_code=422, detail=f"Only {len(plasma)} plasma samples in the interval; at least 4 are needed.")
+
+    def run():
+        b = field_at_plasma_times(field, plasma)
+        mva = minimum_variance(field[["bx", "by", "bz"]].to_numpy(), n_bootstrap=0)
+        ht = dehoffmann_teller(b, plasma[["vx", "vy", "vz"]].to_numpy(float), plasma["n"].to_numpy(float),
+                               normal=mva["eigenvectors"]["min"], n_bootstrap=1000)
+        ht["normal_used"] = {"vector_gse": mva["eigenvectors"]["min"],
+                             "source": "minimum variance normal of the field in the same interval",
+                             "ratio_intermediate_to_min": mva["ratio_intermediate_to_min"]}
+        return ht
+
+    try:
+        result = await run_in_workers(run)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    prov = _analysis_provenance(key, data, t0, t1, result["method"], {})
+    return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_ht_{key}_{t0:%Y%m%dT%H%M}")
 
 
 @app.get("/api/events")

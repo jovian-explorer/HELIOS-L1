@@ -179,6 +179,26 @@
     }
   };
 
+  // ---------------------------------------------------------------- deHoffmann-Teller frame
+  window.eaRunHt = async function () {
+    const q = new URLSearchParams({ mission: el('ea-mva-mission').value, start: utc('ea-mva-start'), end: utc('ea-mva-end') });
+    const url = `/api/analysis/ht?${q}`;
+    setStatus('ea-ht-status', 'Running...');
+    try {
+      const r = (await getJSON(url)).result;
+      setStatus('ea-ht-status', `${r.n_vectors} plasma samples; c(Ec, EHT) = ${fmt(r.correlation_ec_eht, 3)}, D(VHT)/D(0) = ${fmt(r.D.residual_ratio, 3)}` +
+        (r.walen ? `; Walén slope ${fmt(r.walen.slope, 2)} (|slope| ≈ 1: rotational, ≈ 0: tangential discontinuity)` : '') + '.');
+      const row = (name, e) => [name, vec(e.v_ht_kms, 1), e.error_axes.map(a => fmt(a.sigma_kms, 1)).join(' / '),
+        `${fmt(e.normal_velocity_kms, 1)} ± ${fmt(e.normal_velocity_error_kms, 1)}`];
+      el('ea-ht-table').innerHTML = table(['Estimate', 'VHT (GSE, km/s)', 'Error semiaxes (km/s)', 'un along MVA normal (km/s)'], [
+        row('Minimum D (eq. 9.10)', r.D), row('Minimum Q (eq. 9.14)', r.Q),
+        ...(r.bootstrap ? [row(`Bootstrap, ${r.bootstrap.n_samples} resamples`, r.bootstrap)] : [])]);
+      showDownload('ea-mva-download', url);
+    } catch (e) {
+      setStatus('ea-ht-status', e.message, true);
+    }
+  };
+
   // ---------------------------------------------------------------- magnetic cloud search
   window.eaRunCloudSearch = async function () {
     const mission = el('ea-mcd-mission').value;
