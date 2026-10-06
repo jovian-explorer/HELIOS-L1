@@ -25,6 +25,65 @@ except ImportError:
     SPICE_AVAILABLE = False
 
 
+
+def _psp_phase(engine, pos_km) -> str:
+    r = np.linalg.norm(pos_km)
+    if r / engine.R_SUN_KM <= 12.0:
+        return f"Perihelion Plunge ({r / engine.R_SUN_KM:.1f} R_sun, Alfvén surface crossing)"
+    if r / engine.AU_KM >= 0.70:
+        return "Aphelion turnaround (~0.73 AU near Venus orbit)"
+    return "Heliocentric orbit leg (WISPR/FIELDS/SWEAP streaming)"
+
+
+# Analytical (Keplerian) fallback orbits: (accepted IDs, elements). Angles in degrees;
+# "epoch" is the reference time of m0 (None: J2000). Geocentric orbits give a_km.
+CONIC_TARGETS = [
+    (("PARKER_SOLAR_PROBE", "PSP", "PARKER"), {
+        # Perihelion 9.85 R_sun, aphelion 0.730 AU, period 88.2 d; reference: perihelion 18 (29 Dec 2023).
+        "name": "Parker Solar Probe (PSP)", "orbit_type": "Inner Heliosphere Elliptic Orbit", "primary": "SUN",
+        "a_au": 0.3879, "e": 0.8819, "inc": 3.4, "raan": 100.0, "argp": 50.0, "m0": 0.0,
+        "epoch": "2023-12-29T00:00:00", "phase": _psp_phase}),
+    (("SOLAR_ORBITER", "SOLO"), {
+        # Perihelion 0.28 AU, aphelion 0.91 AU.
+        "name": "Solar Orbiter (SolO)", "orbit_type": "Heliocentric Polar-Inclined Orbit", "primary": "SUN",
+        "a_au": 0.595, "e": 0.529, "inc": 24.0, "raan": 75.0, "argp": 110.0, "m0": 0.0,
+        "epoch": "2022-03-26T00:00:00", "phase": "High-latitude heliospheric science orbit"}),
+    (("STEREO_A", "STEREOA", "STEREO"), {
+        "name": "STEREO-A", "orbit_type": "Heliocentric Orbit (~21° ahead of Earth)", "primary": "SUN",
+        "a_au": 0.962, "e": 0.006, "inc": 0.12, "raan": 40.0, "argp": 80.0, "m0": 15.0,
+        "epoch": "2007-01-01T00:00:00", "phase": "Leading heliospheric monitor ahead of Sun-Earth line"}),
+    (("VENUS", "299"), {
+        "name": "Venus", "orbit_type": "Planetary Orbit", "primary": "SUN",
+        "a_au": 0.723332, "e": 0.00677, "inc": 3.394, "raan": 76.68, "argp": 54.88, "m0": 50.11,
+        "epoch": None, "phase": "Inner terrestrial planet / PSP gravity assist node"}),
+    (("MERCURY", "199"), {
+        "name": "Mercury", "orbit_type": "Planetary Orbit", "primary": "SUN",
+        "a_au": 0.387098, "e": 0.20563, "inc": 7.005, "raan": 48.33, "argp": 29.12, "m0": 174.79,
+        "epoch": None, "phase": "Innermost terrestrial planet"}),
+    (("MARS", "499"), {
+        "name": "Mars", "orbit_type": "Planetary Orbit", "primary": "SUN",
+        "a_au": 1.52368, "e": 0.0934, "inc": 1.85, "raan": 49.56, "argp": 286.5, "m0": 19.37,
+        "epoch": None, "phase": "Outer terrestrial planet / magnetotail observatory"}),
+    (("MOON", "301"), {
+        "name": "Moon", "orbit_type": "Geocentric Lunar Orbit", "primary": "EARTH",
+        "a_km": 384400.0, "e": 0.0549, "inc": 5.145, "raan": 125.08, "argp": 318.15, "m0": 135.0,
+        "epoch": None, "phase": "Natural satellite of Earth"}),
+    (("GOES_16", "GOES16", "GOES"), {
+        "name": "GOES-16", "orbit_type": "Geostationary Orbit (GEO ~35,786 km alt)", "primary": "EARTH",
+        "a_km": 42164.14, "rp_km": 42164.14, "e": 0.0001, "inc": 0.05, "raan": 0.0, "argp": 0.0, "m0": 0.0,
+        "epoch": None, "phase": "Geostationary East (75.2° W) Space Weather Monitor"}),
+]
+
+# Schematic L1 halo orbits (amplitudes in km, period ~178 days).
+L1_HALO_IDS = ("ADITYA_L1", "ADITYAL1", "ADITYA", "DSCOVR", "ACE", "WIND", "SOHO")
+L1_HALO_SPECS = {
+    "ADITYA_L1": {"name": "Aditya-L1", "ax": 45000.0, "ay": 240000.0, "az": 150000.0, "tau_days": 177.8, "phi_y": 2.4, "phi_z": 2.4, "x_offset": -1510000.0},
+    "DSCOVR":    {"name": "DSCOVR",    "ax": 45000.0, "ay": 280000.0, "az": 160000.0, "tau_days": 180.0, "phi_y": 0.0, "phi_z": 0.5, "x_offset": -1496000.0},
+    "ACE":       {"name": "ACE",       "ax": 60000.0, "ay": 210000.0, "az": 140000.0, "tau_days": 180.0, "phi_y": 1.2, "phi_z": 1.2, "x_offset": -1480000.0},
+    "WIND":      {"name": "WIND",      "ax": 70000.0, "ay": 190000.0, "az": 120000.0, "tau_days": 182.0, "phi_y": 3.14, "phi_z": 3.14, "x_offset": -1520000.0},
+    "SOHO":      {"name": "SOHO",      "ax": 40000.0, "ay": 650000.0, "az": 200000.0, "tau_days": 178.0, "phi_y": 0.5, "phi_z": 0.5, "x_offset": -1500000.0},
+}
+
 class SpiceEphemerisEngine:
     """
     Sovereign Ephemeris Engine wrapping NASA JPL NAIF SPICE (via spiceypy).
@@ -294,6 +353,32 @@ class SpiceEphemerisEngine:
         vel = v_orb[0] * P + v_orb[1] * Q
         return pos, vel
 
+    @staticmethod
+    def _l1_halo_state(spec: Dict[str, Any], target_et: float, pos_earth: np.ndarray,
+                       vel_earth: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Schematic L1 halo orbit (amplitudes and ~180-day period from `spec`): GSE position and
+        velocity (+X toward the Sun), and the heliocentric ECLIPJ2000 state built from Earth's.
+        """
+        omega_h = 2.0 * math.pi / (spec["tau_days"] * 86400.0)
+        phase = (omega_h * target_et) % (2.0 * math.pi)
+        gse_pos = np.array([abs(spec["x_offset"]) + spec["ax"] * math.cos(2.0 * phase),
+                            spec["ay"] * math.sin(phase + spec["phi_y"]),
+                            spec["az"] * math.cos(phase + spec["phi_z"])])
+        gse_vel = np.array([-2.0 * omega_h * spec["ax"] * math.sin(2.0 * phase),
+                            omega_h * spec["ay"] * math.cos(phase + spec["phi_y"]),
+                            -omega_h * spec["az"] * math.sin(phase + spec["phi_z"])])
+        # GSE: X to the Sun, Y = -(Earth's orbital direction) (towards dusk), Z = X x Y
+        # = ecliptic north. Note u_sun x u_orbit would point to ecliptic SOUTH.
+        r_earth_mag = np.linalg.norm(pos_earth)
+        u_sun = -pos_earth / r_earth_mag
+        u_orbit = vel_earth / np.linalg.norm(vel_earth)
+        u_norm = np.cross(u_orbit, u_sun)
+        pos = pos_earth + gse_pos[0] * u_sun - gse_pos[1] * u_orbit + gse_pos[2] * u_norm
+        vel = (vel_earth * (np.linalg.norm(pos) / r_earth_mag)
+               + gse_vel[0] * u_sun - gse_vel[1] * u_orbit + gse_vel[2] * u_norm)
+        return pos, vel, gse_pos, gse_vel
+
     def get_spacecraft_state(
         self,
         spacecraft_id: str,
@@ -335,241 +420,46 @@ class SpiceEphemerisEngine:
             t0_et=t0_j2000, target_et=target_et, primary_gm=mu_sun
         )
 
-        pos_km = np.zeros(3)
-        vel_kms = np.zeros(3)
+        conic = next((c for ids, c in CONIC_TARGETS if target_id in ids), None)
         gse_pos_km = np.zeros(3)
         gse_vel_kms = np.zeros(3)
-        orbit_type = "Heliocentric"
-        display_name = target_id
-        phase_desc = "Nominal Operations"
-        semi_major_axis_km = a_earth
-        eccentricity = 0.0
-        inclination_deg = 0.0
-        primary_body = "SUN"
-
-        # 1. PARKER SOLAR PROBE (PSP)
-        if target_id in ("PARKER_SOLAR_PROBE", "PSP", "PARKER"):
-            display_name = "Parker Solar Probe (PSP)"
-            orbit_type = "Inner Heliosphere Elliptic Orbit"
-            primary_body = "SUN"
-            # Perihelion: 9.85 R_sun = 6.8516e6 km; Aphelion: 0.730 AU = 1.092e8 km
-            # Period: 88.2 days. e = 0.8819, a = 0.3879 AU
-            semi_major_axis_km = 0.3879 * self.AU_KM
-            eccentricity = 0.8819
-            inclination_deg = 3.4
-            rp_km = semi_major_axis_km * (1.0 - eccentricity)
-            # Reference perihelion encounter: Perihelion #18 (Dec 29, 2023)
-            et_ref = self.epoch_to_et("2023-12-29T00:00:00")
+        if conic is not None:
+            display_name, orbit_type, primary_body = conic["name"], conic["orbit_type"], conic["primary"]
+            semi_major_axis_km = conic["a_au"] * self.AU_KM if "a_au" in conic else conic["a_km"]
+            eccentricity, inclination_deg = conic["e"], conic["inc"]
+            et_ref = self.epoch_to_et(conic["epoch"]) if conic["epoch"] else t0_j2000
             pos_km, vel_kms = self.compute_conics(
-                rp_km=rp_km, ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=100.0, argp_deg=50.0, m0_deg=0.0,
-                t0_et=et_ref, target_et=target_et, primary_gm=mu_sun
+                rp_km=conic.get("rp_km", semi_major_axis_km * (1.0 - eccentricity)), ecc=eccentricity, inc_deg=inclination_deg,
+                raan_deg=conic["raan"], argp_deg=conic["argp"], m0_deg=conic["m0"],
+                t0_et=et_ref, target_et=target_et, primary_gm=mu_earth if primary_body == "EARTH" else mu_sun
             )
-            r_sun_ratio = np.linalg.norm(pos_km) / self.R_SUN_KM
-            if r_sun_ratio <= 12.0:
-                phase_desc = f"Perihelion Plunge ({r_sun_ratio:.1f} R_sun, Alfvén surface crossing)"
-            elif np.linalg.norm(pos_km) / self.AU_KM >= 0.70:
-                phase_desc = "Aphelion turnaround (~0.73 AU near Venus orbit)"
-            else:
-                phase_desc = "Heliocentric orbit leg (WISPR/FIELDS/SWEAP streaming)"
+            if primary_body == "EARTH":  # geocentric conic: heliocentric state via Earth
+                gse_pos_km, gse_vel_kms = pos_km, vel_kms
+                pos_km, vel_kms = pos_earth + pos_km, vel_earth + vel_kms
+            phase_desc = conic["phase"](self, pos_km) if callable(conic["phase"]) else conic["phase"]
 
-        # 2. SOLAR ORBITER (SolO)
-        elif target_id in ("SOLAR_ORBITER", "SOLO"):
-            display_name = "Solar Orbiter (SolO)"
-            orbit_type = "Heliocentric Polar-Inclined Orbit"
-            primary_body = "SUN"
-            # Perihelion: 0.28 AU = 4.189e7 km; Aphelion: 0.91 AU = 1.361e8 km
-            semi_major_axis_km = 0.595 * self.AU_KM
-            eccentricity = 0.529
-            inclination_deg = 24.0
-            rp_km = semi_major_axis_km * (1.0 - eccentricity)
-            et_ref = self.epoch_to_et("2022-03-26T00:00:00")
-            pos_km, vel_kms = self.compute_conics(
-                rp_km=rp_km, ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=75.0, argp_deg=110.0, m0_deg=0.0,
-                t0_et=et_ref, target_et=target_et, primary_gm=mu_sun
-            )
-            phase_desc = "High-latitude heliospheric science orbit"
-
-        # 3. STEREO-A
-        elif target_id in ("STEREO_A", "STEREOA", "STEREO"):
-            display_name = "STEREO-A"
-            orbit_type = "Heliocentric Orbit (~21° ahead of Earth)"
-            primary_body = "SUN"
-            semi_major_axis_km = 0.962 * self.AU_KM
-            eccentricity = 0.006
-            inclination_deg = 0.12
-            rp_km = semi_major_axis_km * (1.0 - eccentricity)
-            et_ref = self.epoch_to_et("2007-01-01T00:00:00")
-            pos_km, vel_kms = self.compute_conics(
-                rp_km=rp_km, ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=40.0, argp_deg=80.0, m0_deg=15.0,
-                t0_et=et_ref, target_et=target_et, primary_gm=mu_sun
-            )
-            phase_desc = "Leading heliospheric monitor ahead of Sun-Earth line"
-
-        # 4. EARTH
         elif target_id in ("EARTH", "399"):
-            display_name = "Earth"
-            orbit_type = "Planetary Orbit"
-            primary_body = "SUN"
-            pos_km = pos_earth
-            vel_kms = vel_earth
-            semi_major_axis_km = a_earth
-            eccentricity = e_earth
-            inclination_deg = 0.00005
+            display_name, orbit_type, primary_body = "Earth", "Planetary Orbit", "SUN"
+            pos_km, vel_kms = pos_earth, vel_earth
+            semi_major_axis_km, eccentricity, inclination_deg = a_earth, e_earth, 0.00005
             phase_desc = "Geocenter reference frame origin"
 
-        # 5. VENUS
-        elif target_id in ("VENUS", "299"):
-            display_name = "Venus"
-            orbit_type = "Planetary Orbit"
-            primary_body = "SUN"
-            semi_major_axis_km = 0.723332 * self.AU_KM
-            eccentricity = 0.00677
-            inclination_deg = 3.394
-            rp_km = semi_major_axis_km * (1.0 - eccentricity)
-            et_ref = t0_j2000
-            pos_km, vel_kms = self.compute_conics(
-                rp_km=rp_km, ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=76.68, argp_deg=54.88, m0_deg=50.11,
-                t0_et=et_ref, target_et=target_et, primary_gm=mu_sun
-            )
-            phase_desc = "Inner terrestrial planet / PSP gravity assist node"
-
-        # 6. MERCURY
-        elif target_id in ("MERCURY", "199"):
-            display_name = "Mercury"
-            orbit_type = "Planetary Orbit"
-            primary_body = "SUN"
-            semi_major_axis_km = 0.387098 * self.AU_KM
-            eccentricity = 0.20563
-            inclination_deg = 7.005
-            rp_km = semi_major_axis_km * (1.0 - eccentricity)
-            et_ref = t0_j2000
-            pos_km, vel_kms = self.compute_conics(
-                rp_km=rp_km, ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=48.33, argp_deg=29.12, m0_deg=174.79,
-                t0_et=et_ref, target_et=target_et, primary_gm=mu_sun
-            )
-            phase_desc = "Innermost terrestrial planet"
-
-        # 7. MARS
-        elif target_id in ("MARS", "499"):
-            display_name = "Mars"
-            orbit_type = "Planetary Orbit"
-            primary_body = "SUN"
-            semi_major_axis_km = 1.52368 * self.AU_KM
-            eccentricity = 0.0934
-            inclination_deg = 1.85
-            rp_km = semi_major_axis_km * (1.0 - eccentricity)
-            et_ref = t0_j2000
-            pos_km, vel_kms = self.compute_conics(
-                rp_km=rp_km, ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=49.56, argp_deg=286.5, m0_deg=19.37,
-                t0_et=et_ref, target_et=target_et, primary_gm=mu_sun
-            )
-            phase_desc = "Outer terrestrial planet / magnetotail observatory"
-
-        # 8. MOON
-        elif target_id in ("MOON", "301"):
-            display_name = "Moon"
-            orbit_type = "Geocentric Lunar Orbit"
-            primary_body = "EARTH"
-            semi_major_axis_km = 384400.0
-            eccentricity = 0.0549
-            inclination_deg = 5.145
-            rp_km = semi_major_axis_km * (1.0 - eccentricity)
-            et_ref = t0_j2000
-            pos_lunar_geo, vel_lunar_geo = self.compute_conics(
-                rp_km=rp_km, ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=125.08, argp_deg=318.15, m0_deg=135.0,
-                t0_et=et_ref, target_et=target_et, primary_gm=mu_earth
-            )
-            pos_km = pos_earth + pos_lunar_geo
-            vel_kms = vel_earth + vel_lunar_geo
-            gse_pos_km = pos_lunar_geo
-            gse_vel_kms = vel_lunar_geo
-            phase_desc = "Natural satellite of Earth"
-
-        # 9. GOES-16
-        elif target_id in ("GOES_16", "GOES16", "GOES"):
-            display_name = "GOES-16"
-            orbit_type = "Geostationary Orbit (GEO ~35,786 km alt)"
-            primary_body = "EARTH"
-            r_geo = 42164.14
-            semi_major_axis_km = r_geo
-            eccentricity = 0.0001
-            inclination_deg = 0.05
-            pos_geo, vel_geo = self.compute_conics(
-                rp_km=r_geo, ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=0.0, argp_deg=0.0, m0_deg=0.0,
-                t0_et=t0_j2000, target_et=target_et, primary_gm=mu_earth
-            )
-            pos_km = pos_earth + pos_geo
-            vel_kms = vel_earth + vel_geo
-            gse_pos_km = pos_geo
-            gse_vel_kms = vel_geo
-            phase_desc = "Geostationary East (75.2° W) Space Weather Monitor"
-
-        # 10. SUN-EARTH L1 FLEET: ADITYA-L1, DSCOVR, ACE, WIND, SOHO
-        elif target_id in ("ADITYA_L1", "ADITYAL1", "ADITYA", "DSCOVR", "ACE", "WIND", "SOHO"):
+        elif target_id in L1_HALO_IDS:
             primary_body = "SUN-EARTH L1"
             orbit_type = "Sun-Earth L1 Halo/Lissajous Orbit"
             semi_major_axis_km = a_earth - self.L1_NOMINAL_KM
             eccentricity = e_earth
             inclination_deg = 0.0
-
-            # L1 Halo orbital parameters (amplitude in km, period ~178 days)
-            halo_specs = {
-                "ADITYA_L1": {"name": "Aditya-L1", "ax": 45000.0, "ay": 240000.0, "az": 150000.0, "tau_days": 177.8, "phi_y": 2.4, "phi_z": 2.4, "x_offset": -1510000.0},
-                "DSCOVR":    {"name": "DSCOVR",    "ax": 45000.0, "ay": 280000.0, "az": 160000.0, "tau_days": 180.0, "phi_y": 0.0, "phi_z": 0.5, "x_offset": -1496000.0},
-                "ACE":       {"name": "ACE",       "ax": 60000.0, "ay": 210000.0, "az": 140000.0, "tau_days": 180.0, "phi_y": 1.2, "phi_z": 1.2, "x_offset": -1480000.0},
-                "WIND":      {"name": "WIND",      "ax": 70000.0, "ay": 190000.0, "az": 120000.0, "tau_days": 182.0, "phi_y": 3.14, "phi_z": 3.14, "x_offset": -1520000.0},
-                "SOHO":      {"name": "SOHO",      "ax": 40000.0, "ay": 650000.0, "az": 200000.0, "tau_days": 178.0, "phi_y": 0.5, "phi_z": 0.5, "x_offset": -1500000.0},
-            }
-
-            probe_key = "ADITYA_L1" if "ADITYA" in target_id else target_id
-            spec = halo_specs.get(probe_key, halo_specs["ADITYA_L1"])
+            spec = L1_HALO_SPECS["ADITYA_L1" if "ADITYA" in target_id else target_id]
             display_name = spec["name"]
-
-            # GSE Frame calculation:
-            # +X points Sunward from Earth (in GSE, Sun is at +X; but standard heliospheric orbit tool uses -X Sunward)
-            # We provide standard GSE coordinates: +X points to Sun (+1.5 Mkm)
-            tau_sec = spec["tau_days"] * 86400.0
-            omega_h = 2.0 * math.pi / tau_sec
-            phase = (omega_h * target_et) % (2.0 * math.pi)
-
-            # In standard GSE: X points from Earth toward Sun
-            x_gse = abs(spec["x_offset"]) + spec["ax"] * math.cos(2.0 * phase)
-            y_gse = spec["ay"] * math.sin(phase + spec["phi_y"])
-            z_gse = spec["az"] * math.cos(phase + spec["phi_z"])
-
-            vx_gse = -2.0 * omega_h * spec["ax"] * math.sin(2.0 * phase)
-            vy_gse = omega_h * spec["ay"] * math.cos(phase + spec["phi_y"])
-            vz_gse = -omega_h * spec["az"] * math.sin(phase + spec["phi_z"])
-
-            gse_pos_km = np.array([x_gse, y_gse, z_gse])
-            gse_vel_kms = np.array([vx_gse, vy_gse, vz_gse])
-
-            # Transform GSE position to Heliocentric ECLIPJ2000:
-            # Unit vector from Earth to Sun:
-            r_earth_mag = np.linalg.norm(pos_earth)
-            u_sun = -pos_earth / r_earth_mag
-            u_orbit = vel_earth / np.linalg.norm(vel_earth)
-            # GSE: X to the Sun, Y = -(Earth's orbital direction) (towards dusk), Z = X x Y
-            # = ecliptic north. Note u_sun x u_orbit would point to ecliptic SOUTH.
-            u_norm = np.cross(u_orbit, u_sun)
-
-            pos_km = pos_earth + x_gse * u_sun + y_gse * (-u_orbit) + z_gse * u_norm
-            vel_km_l1 = vel_earth * (np.linalg.norm(pos_km) / r_earth_mag)
-            vel_kms = vel_km_l1 + vx_gse * u_sun + vy_gse * (-u_orbit) + vz_gse * u_norm
-
+            pos_km, vel_kms, gse_pos_km, gse_vel_kms = self._l1_halo_state(spec, target_et, pos_earth, vel_earth)
             phase_desc = f"Active Sun-Earth L1 Halo Orbit (~{spec['tau_days']}d period)"
 
         else:
             # Generic probe fallback: follow Earth L1 nominal
-            display_name = spacecraft_id
+            display_name, orbit_type, primary_body = spacecraft_id, "Heliocentric", "SUN"
+            semi_major_axis_km, eccentricity, inclination_deg = a_earth, 0.0, 0.0
+            phase_desc = "Nominal Operations"
             pos_km = pos_earth * 0.99
             vel_kms = vel_earth * 0.99
             gse_pos_km = np.array([1496000.0, 0.0, 0.0])

@@ -75,6 +75,9 @@
 - CSV export includes a metadata header (provenance, coverage, cadence, units) and handles records with differing fields; NetCDF-style schema units are correct.
 - Reports state the actual provenance of the data they summarise and no longer fail on a trailing data gap.
 
+### Code quality
+- Ephemeris engine: the analytical fallback for spacecraft and planets was one 407-line function with nine near-identical branches that each set up a Keplerian orbit. The orbital elements are now a table (`CONIC_TARGETS`, with the reference epoch and phase text of each body) and the L1 halo orbits a separate helper, so the function is half as long. The output was checked to be byte-identical for 18 identifiers, both frames and three epochs before and after the change.
+
 ### Interface and robustness
 - Storms archive: clicking a second event while the first was still loading (an OMNI download takes seconds) could leave the first event's data and cards under the second event's highlight. A slower answer for an earlier selection is now dropped (found in the end-to-end run).
 - Historical event cards: the Bz, speed and pressure cards showed fixed "published" values without a source while the measured OMNI extremes were only mentioned in the text, and several were wrong: Bastille Day 2000 gave 1675 km/s as the peak solar wind speed (that is the coronagraph CME speed; OMNI peaks near 1140 km/s at L1), Halloween 2003 gave Bz -52 nT and 55 nPa (OMNI 5-min: -28.5 nT, 12.5 nPa), May 2024 -48.5 nT (OMNI -44.3 nT). For events covered by OMNI the cards now show the OMNI 5-minute extremes of the 48 h window; the offline fallback profiles are built from those values, and for March 1989, Carrington and the quiet baseline the cards say they show the illustrative profile inputs. The St. Patrick's Day 2015 peak Kp is 8- (7.67), not 8, and the severity badge uses the NOAA levels.
