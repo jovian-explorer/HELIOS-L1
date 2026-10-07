@@ -256,7 +256,13 @@ def test_installed_build_keeps_its_notes_and_cleans_up(installed, monkeypatch):
     updates.save_state({"staged": {"tag": f"v{__version__}", "version": __version__, "name": "N",
                                    "notes": "What changed.", "url": "u"}})
     updates.finish_install()
-    assert not updates.staged_dir(root).exists() and not updates.previous_dir(root).exists()
+    # The previous build stays until this one has run a while (the install script may need it).
+    assert not updates.staged_dir(root).exists() and updates.previous_dir(root).exists()
+    st = updates.load_state()
+    st["installed"]["installed_at"] -= updates.KEEP_PREVIOUS_S + 1
+    updates.save_state(st)
+    updates.finish_install()  # a later start
+    assert not updates.previous_dir(root).exists()
     assert updates.installed_notes() == {"tag": f"v{__version__}", "name": "N", "notes": "What changed.", "url": "u"}
     # the settings review shows them once
     from helios import settings_review
@@ -279,3 +285,80 @@ def test_swap_script_restarts_with_the_same_arguments(installed):
     # nothing staged: start-up goes on normally
     updates.save_state({})
     assert updates.install_staged_on_start(["--headless"]) is False
+
+
+def test_failed_install_runs_the_old_build_and_retries_later(installed):
+    """
+    A locked installation folder made every start hand over to the install script, which
+    could not move the folder and started the old build, which handed over again: the
+    application never came up (seen end to end: a new attempt every 33 s for as long as
+    the folder was locked). A failed attempt is now recorded and the old build runs.
+    """
+    root = installed
+    newer = "9.9.9"
+    staged = updates.staged_dir(root)
+    staged.mkdir()
+    (staged / EXE).write_text("build new")
+    updates.save_state({"staged": {"tag": f"v{newer}", "version": newer, "name": "N", "notes": "x"}})
+    script, _ = updates.helper_script(root, staged, updates.previous_dir(root), [], 1)
+    body = script.read_text(encoding="utf-8-sig")
+    flag = str(updates.updates_dir() / "install_failed.txt")
+    assert flag in body and str(root.parent / f"{root.name}.failed") in body
+    assert "exited with code" in body and str(updates.HEALTH_CHECK_S) in body
+    # the script reports a failure; the old build starts and absorbs it
+    (updates.updates_dir() / "install_failed.txt").write_text("could not move the installation aside: in use")
+    updates.finish_install()
+    failed = updates.load_state()["failed"]
+    assert failed["tag"] == f"v{newer}" and failed["attempts"] == 1 and "in use" in failed["reason"]
+    assert not (updates.updates_dir() / "install_failed.txt").exists()
+    assert updates.status()["failed"]["attempts"] == 1
+    monkey_problem = updates.install_problem
+    try:
+        updates.install_problem = lambda root=None: None  # as in a build
+        assert updates.install_staged_on_start([], now=failed["at"] + 60) is False  # not again at once
+        # a second failure an hour later counts as attempt 2; after MAX_ATTEMPTS the build is discarded
+        (updates.updates_dir() / "install_failed.txt").write_text("could not move the installation aside")
+        updates.finish_install()
+        st = updates.load_state()
+        assert st["failed"]["attempts"] == 2
+        st["failed"]["attempts"] = updates.MAX_ATTEMPTS
+        updates.save_state(st)
+        assert updates.install_staged_on_start([], now=st["failed"]["at"] + updates.RETRY_AFTER_S + 1) is False
+        assert not staged.exists() and "staged" not in updates.load_state()
+    finally:
+        updates.install_problem = monkey_problem
+
+
+def test_new_build_that_crashed_is_removed_and_its_notes_dropped(installed):
+    root = installed
+    broken = root.parent / f"{root.name}.failed"
+    (broken / "_internal").mkdir(parents=True)
+    # the crashed build had marked itself installed before it failed
+    updates.save_state({"installed": {"tag": "v9.9.9", "version": "9.9.9", "name": "N", "notes": "x",
+                                      "installed_at": 1.0}})
+    (updates.updates_dir() / "install_failed.txt").write_text(
+        "the new build exited with code 1 within 20 s of its start; the previous build was put back")
+    updates.finish_install()
+    st = updates.load_state()
+    assert not broken.exists() and "installed" not in st and "staged" not in st
+    assert st["failed"]["tag"] == "v9.9.9" and "exited with code 1" in st["failed"]["reason"]
+    assert updates.installed_notes() is None
+
+
+def test_check_skips_a_release_that_failed_too_often_unless_forced(installed, server):
+    root = installed
+    name = archive_basename("9.9.9") + ".zip"
+    data = _zip_build(Path(root.parent / "t.zip"), "9.9.9")
+    server["files"][name] = data
+    server["state"]["releases"] = [_release("v9.9.9", name, data, server["base"])]
+    updates.save_state({"failed": {"tag": "v9.9.9", "reason": "crashed", "at": 1.0, "attempts": updates.MAX_ATTEMPTS},
+                        "last_check": 1.0})
+    monkey_due = updates.due
+    try:
+        updates.due = lambda now=None: True
+        res = updates.check_and_stage(force=False, root=root)
+        assert res["result"] == "error" and "Check now" in res["reason"]
+    finally:
+        updates.due = monkey_due
+    assert updates.check_and_stage(force=True, root=root)["result"] == "staged"
+    assert "failed" not in updates.load_state()

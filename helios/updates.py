@@ -11,7 +11,10 @@ unpacked beside the installation (``<folder>.update``). The next time HELIOS-L1 
 hands over to a small script that waits for it to exit, renames the installation to
 ``<folder>.previous``, moves the new one into its place and starts it with the same
 command-line arguments; the new build then deletes the previous one. If a step fails,
-the old folder is put back and started.
+the old folder is put back and started; if the new build exits with an error within
+20 s of its start, the previous build is put back and started. A failed attempt is
+written to ``updates/install_failed.txt``; the old build then runs, and the installation
+is tried again at a start an hour later, three times at most for the same release.
 
 Only the installation folder is replaced. The cache, logs and settings.json live in
 other folders and are never touched; an installation that holds them (HELIOS_HOME inside
@@ -52,6 +55,15 @@ from helios.release_names import APP, platform_tag
 REPO = "jovian-explorer/HELIOS-L1"
 RELEASES_PAGE = f"https://github.com/{REPO}/releases"
 CHECK_EVERY_S = 7 * 24 * 3600
+# After an installation attempt failed (folder locked, new build crashed at start), the
+# next starts run the old build; the install is tried again at a start after this delay,
+# at most MAX_ATTEMPTS times for the same release (Check now resets the count).
+RETRY_AFTER_S = 3600
+MAX_ATTEMPTS = 3
+# How long the install script watches the new build: an exit with an error within this
+# time puts the previous build back. The previous folder is kept at least this long.
+HEALTH_CHECK_S = 20
+KEEP_PREVIOUS_S = 120
 TIMEOUT_S = 30.0
 
 _lock = threading.Lock()
@@ -341,6 +353,14 @@ def check_and_stage(force: bool = False, releases: Optional[List[Dict[str, Any]]
         save_state(st)
         return {"result": "latest", "tag": rel.get("tag_name") if rel else None}
     tag = rel["tag_name"]
+    failed = st.get("failed") or {}
+    if failed.get("tag") == tag:
+        if not force and int(failed.get("attempts") or 0) >= MAX_ATTEMPTS:
+            save_state(st)
+            return {"result": "error", "reason": f"{tag} could not be installed ({failed.get('reason')}); "
+                                                 f"use Check now to try again"}
+        if force:
+            st.pop("failed", None)  # Check now: a new series of attempts
     staged = st.get("staged") or {}
     if staged.get("tag") == tag and launcher(staged_dir(root)).is_file():
         save_state(st)
@@ -396,6 +416,7 @@ def status() -> Dict[str, Any]:
     return {"enabled": bool(config.ACTIVE_AUTO_UPDATE), "problem": install_problem(), "last_check": last,
             "next_check": (last + CHECK_EVERY_S) if last else None,
             "staged": None if not staged else {k: staged.get(k) for k in ("tag", "name", "version", "staged_at")},
+            "failed": st.get("failed"),
             "job": dict(_job), "version": __version__, "platform": platform_tag(), "releases": RELEASES_PAGE}
 
 
@@ -440,49 +461,141 @@ def scheduler() -> None:
 
 # ---------------------------------------------------------------- installing at start-up
 
-def finish_install() -> None:
-    """At start-up: when this build is the one that was staged, it has been installed:
-    keep its notes for "What's new" and remove the previous installation."""
+def _failure_marker() -> Path:
+    return updates_dir() / "install_failed.txt"
+
+
+def absorb_install_failure() -> Optional[Dict[str, Any]]:
+    """
+    At start-up: when the install script reported a failure (``install_failed.txt``), keep
+    it in the state (with the number of attempts for that release) and tidy up: a new build
+    that was put aside after crashing is deleted, and a staged build that is gone is
+    forgotten. Returns the failure, or None.
+    """
+    marker = _failure_marker()
+    if not marker.exists():
+        return None
+    try:
+        reason = marker.read_text(encoding="utf-8-sig").strip() or "unknown reason"
+        at = marker.stat().st_mtime
+    except OSError:
+        return None
     st = load_state()
-    staged = st.get("staged")
-    if not staged or staged.get("version") != __version__:
-        return
-    st["installed"] = {k: staged.get(k) for k in ("tag", "version", "name", "notes", "url")}
-    st["installed"]["installed_at"] = time.time()
-    st.pop("staged", None)
-    save_state(st)
+    staged = st.get("staged") or {}
+    installed = st.get("installed") or {}
+    tag = staged.get("tag") or installed.get("tag")
+    prev = st.get("failed") or {}
+    attempts = int(prev.get("attempts") or 0) + 1 if prev.get("tag") == tag else 1
+    st["failed"] = {"tag": tag, "reason": reason, "at": at, "attempts": attempts}
+    if installed.get("tag") == tag and installed.get("version") != __version__:
+        st.pop("installed", None)  # the new build was put back: its notes are not this version's
+        st["staged"] = st.get("staged") or {k: installed.get(k) for k in ("tag", "version", "name", "notes", "url")}
     root = install_root()
     if root is not None:
+        shutil.rmtree(root.parent / f"{root.name}.failed", ignore_errors=True)
+        if not launcher(staged_dir(root)).is_file():
+            st.pop("staged", None)
+    save_state(st)
+    try:
+        marker.unlink()
+    except OSError:
+        pass
+    return st["failed"]
+
+
+def finish_install() -> None:
+    """
+    At start-up: when this build is the one that was staged, it has been installed: keep
+    its notes for "What's new". The previous installation is removed only once this build
+    has run for KEEP_PREVIOUS_S (at a later start, or by remove_previous_later()), so the
+    install script can still put it back if this build crashes while starting.
+    """
+    absorb_install_failure()
+    st = load_state()
+    staged = st.get("staged")
+    root = install_root()
+    if staged and staged.get("version") == __version__:
+        st["installed"] = {k: staged.get(k) for k in ("tag", "version", "name", "notes", "url")}
+        st["installed"]["installed_at"] = time.time()
+        st.pop("staged", None)
+        if (st.get("failed") or {}).get("tag") == staged.get("tag"):
+            st.pop("failed", None)
+        save_state(st)
+        if root is not None:
+            shutil.rmtree(staged_dir(root), ignore_errors=True)
+        return
+    inst = st.get("installed") or {}
+    if root is not None and inst.get("version") == __version__ \
+            and time.time() - float(inst.get("installed_at") or 0) >= KEEP_PREVIOUS_S:
         shutil.rmtree(previous_dir(root), ignore_errors=True)
-        shutil.rmtree(staged_dir(root), ignore_errors=True)
+
+
+def remove_previous_later() -> None:
+    """In a running build: delete the previous installation once this one has run for KEEP_PREVIOUS_S."""
+    root = install_root()
+    if root is None or not previous_dir(root).exists():
+        return
+
+    def run():
+        if (load_state().get("installed") or {}).get("version") == __version__:
+            shutil.rmtree(previous_dir(root), ignore_errors=True)
+    t = threading.Timer(KEEP_PREVIOUS_S, run)
+    t.daemon = True
+    t.start()
 
 
 def helper_script(root: Path, staged: Path, previous: Path, args: List[str], pid: int) -> Tuple[Path, List[str]]:
-    """(script path, command) of the swap-and-restart script for this system."""
+    """
+    (script path, command) of the swap-and-restart script for this system. It waits for
+    HELIOS-L1 (``pid``) to exit, moves the installation aside and the new build in, starts
+    it with the same ``args`` and watches it for HEALTH_CHECK_S seconds; every failure puts
+    the old build back, writes the reason to install_failed.txt and starts the old build.
+    """
     updates_dir().mkdir(parents=True, exist_ok=True)
     log = updates_dir() / "install.log"
-    exe = launcher(root)
+    failed_flag = _failure_marker()
+    broken = root.parent / f"{root.name}.failed"
     if sys.platform == "win32":
         def q(p):
             return "'" + str(p).replace("'", "''") + "'"
         arglist = ", ".join(q(a) for a in args)
-        start = (f"Start-Process -FilePath {q(exe)} -WorkingDirectory {q(root)} -ArgumentList @({arglist})"
-                 if args else f"Start-Process -FilePath {q(exe)} -WorkingDirectory {q(root)}")
+        exe = launcher(root)
+        start = (f"Start-Process -FilePath {q(exe)} -WorkingDirectory {q(root)} -ArgumentList @({arglist}) -PassThru"
+                 if args else f"Start-Process -FilePath {q(exe)} -WorkingDirectory {q(root)} -PassThru")
         body = f"""$ErrorActionPreference = 'Stop'
 function Log($m) {{ Add-Content -LiteralPath {q(log)} -Value ("[" + (Get-Date -Format s) + "] " + $m) }}
-function Start-Helios {{ {start} }}
+function Fail($m) {{ Log $m; Set-Content -LiteralPath {q(failed_flag)} -Value $m -Encoding UTF8 }}
+function Start-Helios {{ $p = {start}; $null = $p.Handle; return $p }}
+function Move-Retry($from, $to) {{
+  for ($i = 0; $i -lt 60; $i++) {{
+    try {{ Move-Item -LiteralPath $from -Destination $to; return $null }} catch {{ $err = $_.Exception.Message; Start-Sleep -Milliseconds 500 }}
+  }}
+  return $err
+}}
 Log 'waiting for HELIOS-L1 (process {pid}) to exit'
 try {{ Wait-Process -Id {pid} -Timeout 120 -ErrorAction SilentlyContinue }} catch {{ }}
 if (Test-Path -LiteralPath {q(previous)}) {{ Remove-Item -LiteralPath {q(previous)} -Recurse -Force }}
-$moved = $false
-for ($i = 0; $i -lt 60 -and -not $moved; $i++) {{
-  try {{ Move-Item -LiteralPath {q(root)} -Destination {q(previous)}; $moved = $true }} catch {{ Start-Sleep -Milliseconds 500 }}
+$err = Move-Retry {q(root)} {q(previous)}
+if ($err) {{ Fail ('could not move the installation aside: ' + $err); $null = Start-Helios; exit 1 }}
+$err = Move-Retry {q(staged)} {q(root)}
+if ($err) {{
+  Fail ('could not move the new build in: ' + $err)
+  $back = Move-Retry {q(previous)} {q(root)}
+  if ($back) {{ Log ('could not put the old build back: ' + $back); exit 2 }}
+  $null = Start-Helios; exit 1
 }}
-if (-not $moved) {{ Log 'could not move the installation aside; starting the old build'; Start-Helios; exit 1 }}
-try {{ Move-Item -LiteralPath {q(staged)} -Destination {q(root)} }}
-catch {{ Log ('could not move the new build in: ' + $_); Move-Item -LiteralPath {q(previous)} -Destination {q(root)}; Start-Helios; exit 1 }}
 Log 'installed; starting the new build'
-Start-Helios
+$p = Start-Helios
+if ($p.WaitForExit({HEALTH_CHECK_S * 1000}) -and $p.ExitCode -ne 0) {{
+  Fail ('the new build exited with code ' + $p.ExitCode + ' within {HEALTH_CHECK_S} s of its start; the previous build was put back')
+  if (Test-Path -LiteralPath {q(broken)}) {{ Remove-Item -LiteralPath {q(broken)} -Recurse -Force }}
+  $err = Move-Retry {q(root)} {q(broken)}
+  if ($err) {{ Log ('could not move the new build aside: ' + $err); exit 2 }}
+  $back = Move-Retry {q(previous)} {q(root)}
+  if ($back) {{ Log ('could not put the old build back: ' + $back); exit 2 }}
+  $null = Start-Helios; exit 1
+}}
+Log 'the new build is running'
 """
         script = updates_dir() / "install_update.ps1"
         script.write_text(body, encoding="utf-8-sig")
@@ -491,19 +604,37 @@ Start-Helios
 
     def q(p):
         return "'" + str(p).replace("'", "'\\''") + "'"
-    start = f"nohup {q(exe)} {' '.join(q(a) for a in args)} >/dev/null 2>&1 &"
+    exe = launcher(root)
+    argstr = " ".join(q(a) for a in args)
     body = f"""#!/bin/sh
 log() {{ echo "[$(date '+%Y-%m-%dT%H:%M:%S')] $1" >> {q(log)}; }}
-start_helios() {{
-  cd {q(root)} && {start}
-}}
+fail() {{ log "$1"; printf '%s\\n' "$1" > {q(failed_flag)}; }}
+start_old() {{ cd {q(root)} && nohup {q(exe)} {argstr} >/dev/null 2>&1 & }}
+move_retry() {{ n=0; while [ $n -lt 60 ]; do mv "$1" "$2" 2>/dev/null && return 0; sleep 0.5; n=$((n+1)); done; return 1; }}
 log 'waiting for HELIOS-L1 (process {pid}) to exit'
 n=0; while kill -0 {pid} 2>/dev/null && [ $n -lt 240 ]; do sleep 0.5; n=$((n+1)); done
 rm -rf {q(previous)}
-if ! mv {q(root)} {q(previous)}; then log 'could not move the installation aside'; start_helios; exit 1; fi
-if ! mv {q(staged)} {q(root)}; then log 'could not move the new build in'; mv {q(previous)} {q(root)}; start_helios; exit 1; fi
+if ! move_retry {q(root)} {q(previous)}; then fail 'could not move the installation aside'; start_old; exit 1; fi
+if ! move_retry {q(staged)} {q(root)}; then
+  fail 'could not move the new build in'
+  if ! move_retry {q(previous)} {q(root)}; then log 'could not put the old build back'; exit 2; fi
+  start_old; exit 1
+fi
 log 'installed; starting the new build'
-start_helios
+cd {q(root)} && nohup {q(exe)} {argstr} >/dev/null 2>&1 &
+child=$!
+n=0; while kill -0 $child 2>/dev/null && [ $n -lt {HEALTH_CHECK_S * 2} ]; do sleep 0.5; n=$((n+1)); done
+if ! kill -0 $child 2>/dev/null; then
+  wait $child; rc=$?
+  if [ $rc -ne 0 ]; then
+    fail "the new build exited with code $rc within {HEALTH_CHECK_S} s of its start; the previous build was put back"
+    rm -rf {q(broken)}
+    if ! move_retry {q(root)} {q(broken)}; then log 'could not move the new build aside'; exit 2; fi
+    if ! move_retry {q(previous)} {q(root)}; then log 'could not put the old build back'; exit 2; fi
+    start_old; exit 1
+  fi
+fi
+log 'the new build is running'
 """
     script = updates_dir() / "install_update.sh"
     script.write_text(body, encoding="utf-8")
@@ -511,21 +642,33 @@ start_helios
     return script, ["/bin/sh", str(script)]
 
 
-def install_staged_on_start(args: List[str]) -> bool:
+def install_staged_on_start(args: List[str], now: Optional[float] = None) -> bool:
     """
     At start-up of a published build, before the server starts: when a newer build is
     staged and complete, start the swap script and return True (the caller exits at once;
-    the script starts the new build with the same ``args``).
+    the script starts the new build with the same ``args``). After a failed attempt for
+    the same release the old build keeps running: no new attempt before RETRY_AFTER_S,
+    none after MAX_ATTEMPTS (the staged build is then discarded until Check now).
     """
     if install_problem() is not None:
         return False
-    staged = load_state().get("staged")
+    st = load_state()
+    staged = st.get("staged")
     root = install_root()
     if not staged or root is None:
         return False
     path = staged_dir(root)
     if not is_newer(staged.get("tag", "")) or not launcher(path).is_file():
         return False
+    failed = st.get("failed") or {}
+    if failed.get("tag") == staged.get("tag"):
+        if int(failed.get("attempts") or 0) >= MAX_ATTEMPTS:
+            shutil.rmtree(path, ignore_errors=True)
+            st.pop("staged", None)
+            save_state(st)
+            return False
+        if (now or time.time()) - float(failed.get("at") or 0) < RETRY_AFTER_S:
+            return False
     _, cmd = helper_script(root, path, previous_dir(root), list(args), os.getpid())
     kw: Dict[str, Any] = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL,
                           "close_fds": True, "cwd": str(updates_dir())}

@@ -169,6 +169,7 @@ def launch_desktop(
     print(f"[+] Engine online: {url}")
     if not is_existing:
         updates.scheduler()  # weekly check of a published build; does nothing from source
+        updates.remove_previous_later()  # after an update: the old build, once this one has run a while
 
     if headless:
         print("[i] Running in headless server mode. Press Ctrl+C to terminate.")

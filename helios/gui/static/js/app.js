@@ -518,6 +518,7 @@ function describeUpdateStatus(st) {
   if (st.problem) parts.push(`This copy does not update itself: ${st.problem}. New builds: ${st.releases}`);
   else parts.push(`Last check: ${fmt(st.last_check)}` + (st.enabled && st.next_check ? `; next: ${fmt(st.next_check)}.` : '.'));
   if (st.staged) parts.push(`${st.staged.name || st.staged.tag} is downloaded and will be installed the next time HELIOS-L1 starts.`);
+  if (st.failed) parts.push(`Installing ${st.failed.tag} failed on ${fmt(st.failed.at)} (attempt ${st.failed.attempts} of 3): ${st.failed.reason}. The previous build is in use.`);
   const job = st.job || {};
   if (job.running) {
     const pct = job.total ? ` ${Math.round(100 * job.done / job.total)} %` : '';
