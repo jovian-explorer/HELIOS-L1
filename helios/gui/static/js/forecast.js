@@ -25,8 +25,9 @@ async function loadMLForecast() {
     const newellStateEl = document.getElementById('forecast-newell-state');
     const dstEstEl = document.getElementById('forecast-dst-val');
 
-    if (newellEl) newellEl.innerText = c.newell_coupling_rate.toLocaleString();
-    if (newellEl && c.newell_units) newellEl.title = c.newell_units;
+    // The unit was only in a tooltip; dΦ/dt has no common unit, so it is shown with the value.
+    if (newellEl) newellEl.innerHTML = `${escapeHtml(c.newell_coupling_rate.toLocaleString())}` +
+      (c.newell_units ? ` <span class="text-[10px] font-mono font-normal text-slate-400">${escapeHtml(c.newell_units)}</span>` : '');
     if (newellStateEl) newellStateEl.innerText = `${c.coupling_state}` + (c.newell_kp_now !== null && c.newell_kp_now !== undefined ? ` • Newell Kp ${c.newell_kp_now}` : '');
     if (dstEstEl) dstEstEl.innerText = `${c.estimated_dst_nt} nT`;
     const dstSrcEl = document.getElementById('forecast-dst-source');
