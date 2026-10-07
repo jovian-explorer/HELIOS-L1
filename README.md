@@ -141,6 +141,8 @@ Every telemetry record carries a `data_source` field and every API response a `p
 
 ## 🚀 How to Install and Run
 
+The [user guide](docs/USER_GUIDE.md) describes every tab, the methods and how they were checked, the uncertainties, the data sources and their terms of use, and troubleshooting.
+
 HELIOS-L1 runs on Windows, macOS and Linux. It starts a local science server and opens the dashboard in a desktop window, or in your web browser if no native window backend is available.
 
 ### Option 1: Download the standalone app (no Python needed)
