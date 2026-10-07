@@ -158,6 +158,8 @@ class TelemetryImporter:
                 "badge_color": p["badge_color"],
                 "satellite": p["satellite"],
                 "description": p["description"],
+                # data rows of the profile (the cards showed an empty "pts" without it)
+                "records_count": sum(1 for ln in p["csv_content"].strip().splitlines()[1:] if ln.strip()),
                 "data_kind": "synthetic",
                 "note": cls.PRESET_NOTE if p["id"] != "carrington_1859" else "Illustrative profile; no in-situ data exist for 1859."
             })

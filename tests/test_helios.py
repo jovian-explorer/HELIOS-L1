@@ -290,6 +290,9 @@ def test_telemetry_importer_direct():
     assert detail is not None
     assert "csv_content" in detail
     parsed_preset = TelemetryImporter.parse_csv_or_text(detail["csv_content"], detail["name"])
+    # The cards show the number of rows ("pts"); it was missing from the list.
+    listed = next(p for p in presets if p["id"] == "may2024_g5")
+    assert listed["records_count"] == parsed_preset["total_records"] > 0
     assert parsed_preset["status"] == "success"
     assert parsed_preset["summary"]["speed_max"] >= 800.0
     assert parsed_preset["summary"]["bz_min"] <= -40.0
