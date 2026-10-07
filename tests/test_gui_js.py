@@ -228,3 +228,43 @@ console.log(JSON.stringify(m));
     out = json.loads(res.stdout)
     assert out["name"] == "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;"
     assert out["status"] == "a&#39;b" and out["n"] == 3 and out["instruments"][0]["name"] == "&lt;b&gt;"
+
+
+def test_dialogs_are_not_nested_in_other_dialogs():
+    """
+    A missing </div> in the incident log dialog put the settings, about and time zone dialogs
+    inside it: opening them showed nothing (zero size inside a hidden parent).
+    Every top-level dialog must be a direct child of <body>.
+    """
+    from html.parser import HTMLParser
+    from pathlib import Path
+    html = (Path(__file__).parent.parent / "helios" / "gui" / "static" / "index.html").read_text(encoding="utf-8")
+    void = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.stack, self.parents = [], {}
+
+        def handle_starttag(self, tag, attrs):
+            if tag in void:
+                return
+            el_id = dict(attrs).get("id")
+            if el_id:
+                self.parents[el_id] = [i for _, i in self.stack]
+            self.stack.append((tag, el_id))
+
+        def handle_endtag(self, tag):
+            if tag in void:
+                return
+            while self.stack:
+                t, _ = self.stack.pop()
+                if t == tag:
+                    break
+
+    p = P()
+    p.feed(html)
+    for dialog in ("bulletin-modal", "modal-references", "modal-shortcuts", "modal-incidents",
+                   "modal-settings", "modal-about", "modal-timezone"):
+        ancestors = [i for i in p.parents[dialog] if i]
+        assert ancestors == [], f"{dialog} is inside {ancestors}"
