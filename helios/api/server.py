@@ -483,7 +483,10 @@ async def compare_missions(
         mission_b_name=name_b,
         parameter=parameter,
         position_a=pos_a,
-        position_b=pos_b
+        position_b=pos_b,
+        # An imported file carries no spacecraft position (its name used to be matched to a
+        # model orbit, e.g. "my_solar_wind.csv" to WIND, giving a 0 km baseline).
+        position_unknown="imported file without spacecraft position" if "CUSTOM" in (key_a, key_b) else ""
     )
     # A correlation between a measured and a simulated series says nothing about the
     # instruments; expose what each side actually is.

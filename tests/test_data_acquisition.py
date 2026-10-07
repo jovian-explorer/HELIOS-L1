@@ -452,7 +452,7 @@ def test_compare_imported_file_uses_archive_for_its_interval(monkeypatch):
 
     recs = [{"time_tag": f"2015-03-17 04:{m:02d}:00", "bz_gsm": -5.0 + 0.3 * m + (m % 4) * 0.2, "speed": 450.0}
             for m in range(40)]
-    monkeypatch.setattr(server, "latest_custom_dataset", {"mission_name": "my file", "records": recs})
+    monkeypatch.setattr(server, "latest_custom_dataset", {"mission_name": "my_solar_wind_2015", "records": recs})
     asked = {}
 
     async def fake_archive(self, mission_id, start, end, cadence_minutes=1):
@@ -468,6 +468,9 @@ def test_compare_imported_file_uses_archive_for_its_interval(monkeypatch):
     client = TestClient(server.app, base_url=LOCAL)
     comp = client.get("/api/compare?mission_a=WIND&mission_b=CUSTOM&parameter=bz_gsm").json()
     assert comp["status"] == "success" and comp["provenance_a"]["kind"] == "observed"
+    # The file has no position: no baseline (its name containing "wind" made it WIND's orbit, 0 km).
+    base = comp["spatial_baseline"]
+    assert base["distance_km"] is None and base["theoretical_delay_min"] is None and base["position_unknown"]
     assert asked["args"] == ("WIND", datetime(2015, 3, 17, 4, 0, tzinfo=timezone.utc),
                              datetime(2015, 3, 17, 4, 40, tzinfo=timezone.utc))
 

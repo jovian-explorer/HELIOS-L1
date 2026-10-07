@@ -1280,11 +1280,12 @@ async function runComparison() {
     const empLagEl = document.getElementById('baseline-empirical-lag');
     const fidelityEl = document.getElementById('baseline-fidelity-score');
 
-    if (distKmEl) distKmEl.innerText = `${base.distance_km !== undefined ? base.distance_km.toLocaleString() : '---'} km`;
-    if (distReEl) distReEl.innerText = `${base.distance_re !== undefined ? base.distance_re : '--'} R_E`;
-    if (vecGseEl) vecGseEl.innerText = `ΔX: ${base.dx_km || 0}, ΔY: ${base.dy_km || 0}, ΔZ: ${base.dz_km || 0}`;
-    if (vecGseEl) vecGseEl.title = `Positions: A from ${base.position_source_a || 'model orbit'}; B from ${base.position_source_b || 'model orbit'}`;
-    if (theoryDelayEl) theoryDelayEl.innerText = `${base.theoretical_delay_min !== undefined ? (base.theoretical_delay_min > 0 ? `+${base.theoretical_delay_min}` : base.theoretical_delay_min) : '--'} min`;
+    if (distKmEl) distKmEl.innerText = `${base.distance_km != null ? base.distance_km.toLocaleString() : '---'} km`;
+    if (distReEl) distReEl.innerText = `${base.distance_re != null ? base.distance_re : '--'} R_E`;
+    if (vecGseEl) vecGseEl.innerText = base.position_unknown ? `unknown: ${base.position_unknown}`
+      : `ΔX: ${base.dx_km || 0}, ΔY: ${base.dy_km || 0}, ΔZ: ${base.dz_km || 0}`;
+    if (vecGseEl) vecGseEl.title = base.position_unknown ? '' : `Positions: A from ${base.position_source_a || 'model orbit'}; B from ${base.position_source_b || 'model orbit'}`;
+    if (theoryDelayEl) theoryDelayEl.innerText = `${base.theoretical_delay_min != null ? (base.theoretical_delay_min > 0 ? `+${base.theoretical_delay_min}` : base.theoretical_delay_min) : '--'} min`;
     if (empLagEl) empLagEl.innerText = `${comp.lag_analysis?.optimal_lag_minutes !== undefined ? (comp.lag_analysis.optimal_lag_minutes > 0 ? `+${comp.lag_analysis.optimal_lag_minutes}` : comp.lag_analysis.optimal_lag_minutes) : '--'} min`;
     if (fidelityEl) {
       const score = m.fidelity_index_pct !== undefined ? m.fidelity_index_pct : 88.5;

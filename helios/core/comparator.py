@@ -272,11 +272,14 @@ class SatelliteComparator:
         mission_b_name: str,
         parameter: str = "bz_gsm",
         position_a: Optional[Dict[str, Any]] = None,
-        position_b: Optional[Dict[str, Any]] = None
+        position_b: Optional[Dict[str, Any]] = None,
+        position_unknown: str = ""
     ) -> Dict[str, Any]:
         """
         Full comparative analysis between two satellite telemetry sets.
         position_a / position_b: optional measured GSE positions (see compute_spatial_baseline).
+        position_unknown: why one side has no position (e.g. an imported file); the baseline is
+        then left empty instead of being guessed from the name.
         """
         aligned_df = cls.align_time_series(telemetry_a, telemetry_b, parameter=parameter)
         if aligned_df.empty or len(aligned_df) < 5:
@@ -297,8 +300,14 @@ class SatelliteComparator:
         # Estimate average solar wind speed in window for baseline delay
         speeds = [r["speed"] for r in telemetry_a if "speed" in r and isinstance(r["speed"], (int, float))]
         v_mean = float(np.mean(speeds)) if speeds else 450.0
-        spatial_baseline = cls.compute_spatial_baseline(mission_a_name, mission_b_name, v_sw_mean=v_mean,
-                                                        position_a=position_a, position_b=position_b)
+        if position_unknown:
+            spatial_baseline = {k: None for k in ("dx_km", "dy_km", "dz_km", "distance_km", "distance_re",
+                                                  "theoretical_delay_min")}
+            spatial_baseline.update(v_sw_assumed_kms=None, position_unknown=position_unknown,
+                                    position_source_a=None, position_source_b=None)
+        else:
+            spatial_baseline = cls.compute_spatial_baseline(mission_a_name, mission_b_name, v_sw_mean=v_mean,
+                                                            position_a=position_a, position_b=position_b)
 
         # Cross-calibration fidelity & coherence index (0 - 100%)
         r = metrics.get("correlation_r", 0.0)
@@ -311,7 +320,7 @@ class SatelliteComparator:
         # Discrepancy between theoretical transit delay and observed empirical lag
         optimal_lag = lag_analysis.get("optimal_lag_minutes", 0.0)
         theory_lag = spatial_baseline["theoretical_delay_min"]
-        spatial_baseline["lag_discrepancy_min"] = round(optimal_lag - theory_lag, 1)
+        spatial_baseline["lag_discrepancy_min"] = None if theory_lag is None else round(optimal_lag - theory_lag, 1)
 
         # Scatter samples for plotting
         sample_step = max(1, len(aligned_df) // 100)
