@@ -2839,6 +2839,22 @@
             <div id="settings-tz-preview" class="font-mono text-xs text-sky-400 px-3 py-1.5 rounded bg-slate-950 border border-slate-800">00:00:00 UTC</div>
           </div>
         </div>
+
+        <!-- Automatic updates (helios/updates.py) -->
+        <div class="space-y-2 pt-3 border-t border-slate-800/80">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-slate-200 text-xs flex items-center space-x-2">
+              <i class="fa-solid fa-rotate text-emerald-400"></i>
+              <span>Updates</span>
+            </label>
+            <button id="settings-update-check" onclick="checkForUpdateNow()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-semibold">Check now</button>
+          </div>
+          <label class="flex items-center space-x-2 text-xs text-slate-300">
+            <input type="checkbox" id="settings-auto-update" checked>
+            <span>Automatic updates: once a week, download a newer published build and install it at the next start</span>
+          </label>
+          <p id="settings-update-status" class="text-[11px] text-slate-400"></p>
+        </div>
       </div>
 
       <div class="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">

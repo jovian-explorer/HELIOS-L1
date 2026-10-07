@@ -25,6 +25,10 @@ Contents
 
 `python packaging/build.py` (after `pip install -e ".[build]"`) makes `dist/HELIOS-L1/` with the executable `HELIOS-L1` (`HELIOS-L1.exe` on Windows) and an archive of that folder. PyInstaller builds only for the system it runs on. Unzip the archive anywhere and run the executable; nothing else is needed. The builds are unsigned: on Windows choose *More info, Run anyway* if SmartScreen warns; on macOS right-click and *Open* the first time.
 
+### Automatic updates
+
+A standalone build checks once a week whether a newer build has been published on the project's GitHub releases page (Settings, *Updates*; on by default, *Check now* at any time). A newer build for your system is downloaded in the background, checked against the SHA-256 digest GitHub lists for it, and installed the next time you start HELIOS-L1: the program exits, a small script swaps the installation folder (the old one is kept as `<folder>.previous` until the new build runs, and put back if a step fails) and starts the new build with the same options. Your cache, logs and settings are in other folders and are not touched; after the update a dialog shows the release notes and any changes in the settings. Pre-releases are offered while you run a 0.x version. Copies run from source or installed with pip do not update themselves, nor does an installation that holds its own data folders (`HELIOS_HOME` inside it). While the repository is private, the check needs a GitHub token (`GITHUB_TOKEN`, `GH_TOKEN`, or a logged-in GitHub CLI); the token is sent only to api.github.com.
+
 ### From source (Python 3.10 or newer)
 
 ```bash
@@ -258,4 +262,5 @@ The mission cards in the Fleet Catalog repeat the data policies as the agencies 
 | An analysis says too few samples or poorly determined | Lengthen the window, check the plasma coverage, or read the warning: for example λ2/λ3 < 10 means an MVA normal that should not be used. |
 | Settings are not kept | The dialog says when `settings.json` could not be written (read-only or locked folder). Use `HELIOS_HOME` to point to a writable folder. |
 | Old or wrong cached data | Close HELIOS-L1 and delete the cache folder (section 1); it is filled again on demand. |
+| An update was not installed | Settings, *Updates* gives the reason (for example a download whose digest did not match, or a folder that is not writable). The install script writes `updates/install.log` in the settings folder. Deleting `<folder>.update` beside the installation discards a downloaded build. |
 | Anything else | The log file in the logs folder records failed downloads and errors. |

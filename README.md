@@ -154,7 +154,7 @@ From the [Releases](https://github.com/jovian-explorer/HELIOS-L1/releases) page,
 | macOS (Apple Silicon) | `HELIOS-L1-<version>-macos-arm64.tar.gz` | Extract, then run `HELIOS-L1/HELIOS-L1` |
 | Linux (x86_64) | `HELIOS-L1-<version>-linux-x86_64.tar.gz` | Extract, then run `HELIOS-L1/HELIOS-L1` |
 
-The builds are unsigned. On Windows, click **More info → Run anyway** if SmartScreen warns. On macOS, the first time, right-click the executable and choose **Open** (or run `xattr -dr com.apple.quarantine HELIOS-L1`).
+Builds update themselves once a week from the releases page (Settings, *Updates*; see the user guide). The builds are unsigned. On Windows, click **More info → Run anyway** if SmartScreen warns. On macOS, the first time, right-click the executable and choose **Open** (or run `xattr -dr com.apple.quarantine HELIOS-L1`).
 
 ### Option 2: Install with pip (Python 3.10+)
 ```bash
@@ -208,7 +208,7 @@ helios                      # run from source
 pip install -e ".[build]"
 python packaging/build.py
 ```
-This produces `dist/HELIOS-L1/` and an archive for the current OS. PyInstaller can't cross-compile, so every OS builds its own. Pushing a tag like `v0.0.1` runs `.github/workflows/release.yml`, which builds Windows, macOS and Linux and attaches them to a GitHub Release.
+This produces `dist/HELIOS-L1/` and an archive for the current OS (`--dist`/`--work` choose other folders); the archive name is the one the updater looks for (`helios/release_names.py`). PyInstaller can't cross-compile, so every OS builds its own. Pushing a tag like `v0.0.1` runs `.github/workflows/release.yml`, which builds Windows, macOS and Linux and attaches them to a GitHub Release.
 
 ### Project layout
 ```

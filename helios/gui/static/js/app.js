@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
   missionIncidentLogger = new MissionIncidentLogger();
   keepNavBelowHeader();
   keepUnitCase();
+  document.getElementById('settings-auto-update')?.addEventListener('change', e => { e.target.dataset.touched = '1'; });
   showSettingsReview();
 
   // Click on the dark backdrop closes a dialog (three of these ids were wrong, so the guide, shortcuts
@@ -505,6 +506,59 @@ function openSettingsModal() {
     modal.style.display = 'flex';
     modal.style.zIndex = '99999';
   }
+  refreshUpdateStatus();
+}
+
+// Automatic updates of a published build (GET /api/updates, POST /api/updates/check).
+let updatePollTimer = null;
+
+function describeUpdateStatus(st) {
+  const fmt = t => (t ? new Date(t * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : 'never');
+  const parts = [`This is HELIOS-L1 ${st.version} (${st.platform}).`];
+  if (st.problem) parts.push(`This copy does not update itself: ${st.problem}. New builds: ${st.releases}`);
+  else parts.push(`Last check: ${fmt(st.last_check)}` + (st.enabled && st.next_check ? `; next: ${fmt(st.next_check)}.` : '.'));
+  if (st.staged) parts.push(`${st.staged.name || st.staged.tag} is downloaded and will be installed the next time HELIOS-L1 starts.`);
+  const job = st.job || {};
+  if (job.running) {
+    const pct = job.total ? ` ${Math.round(100 * job.done / job.total)} %` : '';
+    parts.push(`${job.message}${pct}...`);
+  } else if (job.error) {
+    parts.push(`The last check failed: ${job.error}`);
+  } else if (job.message) {
+    parts.push(job.message);
+  }
+  return parts.join(' ');
+}
+
+async function refreshUpdateStatus() {
+  const el = document.getElementById('settings-update-status');
+  try {
+    const res = await fetch('/api/updates');
+    if (!res.ok) return;
+    const st = await res.json();
+    const box = document.getElementById('settings-auto-update');
+    if (box && !box.dataset.touched) box.checked = !!st.enabled;
+    if (el) el.innerText = describeUpdateStatus(st);
+    clearTimeout(updatePollTimer);
+    if (st.job && st.job.running) updatePollTimer = setTimeout(refreshUpdateStatus, 1000);
+  } catch (e) {
+    if (el) el.innerText = `Update status unavailable: ${e.message}`;
+  }
+}
+
+async function checkForUpdateNow() {
+  const el = document.getElementById('settings-update-status');
+  try {
+    const res = await fetch('/api/updates/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      if (el) el.innerText = `Check failed: ${apiErrorText(body, res)}`;
+      return;
+    }
+    refreshUpdateStatus();
+  } catch (e) {
+    if (el) el.innerText = `Check failed: ${e.message}`;
+  }
 }
 
 function closeSettingsModal() {
@@ -657,7 +711,8 @@ async function saveAndApplySettings() {
         processors: currentProcessors,
         theme: currentTheme,
         font_size: currentFontSize,
-        timezone: selectedTimezone
+        timezone: selectedTimezone,
+        auto_update: document.getElementById('settings-auto-update')?.checked ?? true
       })
     });
     if (!res.ok) {

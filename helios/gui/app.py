@@ -133,6 +133,16 @@ def launch_desktop(
         logging.error(str(exc))
         sys.exit(2)
 
+    # A published build installs an update downloaded in an earlier session: a script
+    # swaps the installation folder once this process has exited and starts the new
+    # build with the same arguments (helios/updates.py).
+    from helios import updates
+    updates.finish_install()
+    if updates.install_staged_on_start(sys.argv[1:]):
+        print("[+] Installing the downloaded update; HELIOS-L1 starts again in a few seconds.")
+        logging.info("Handing over to the update script.")
+        sys.exit(0)
+
     actual_port = find_available_port(host, port)
     is_existing = check_existing_helios(host, actual_port)
 
@@ -157,6 +167,8 @@ def launch_desktop(
         print(f"[+] Reconnecting to active HELIOS-L1 engine on {url}")
 
     print(f"[+] Engine online: {url}")
+    if not is_existing:
+        updates.scheduler()  # weekly check of a published build; does nothing from source
 
     if headless:
         print("[i] Running in headless server mode. Press Ctrl+C to terminate.")

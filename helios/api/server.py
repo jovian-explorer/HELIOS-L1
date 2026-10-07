@@ -22,7 +22,7 @@ from datetime import datetime, timezone, timedelta
 
 from helios import __version__
 from helios.api.guard import LocalRequestGuard
-from helios import settings_review
+from helios import settings_review, updates
 from helios.config import (
     MISSIONS, STATIC_DIR, DATA_PROVIDERS,
     SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
@@ -229,10 +229,22 @@ async def save_settings(req: SettingsUpdateRequest):
         raise HTTPException(status_code=422, detail=str(exc))
 
 
+@app.get("/api/updates")
+async def get_update_status():
+    """Automatic update: setting, last and next check, a build waiting to be installed, the running check."""
+    return updates.status()
+
+
+@app.post("/api/updates/check")
+async def check_for_update():
+    """Check now (also when automatic updates are off): download a newer build to install at the next start."""
+    return updates.start_check(force=True)
+
+
 @app.get("/api/settings/review")
 async def get_settings_review():
     """Settings added, removed, changed or not usable since the version the user last reviewed (shown once)."""
-    return settings_review.pending()
+    return settings_review.pending(release_notes=updates.installed_notes())
 
 
 @app.post("/api/settings/review")
