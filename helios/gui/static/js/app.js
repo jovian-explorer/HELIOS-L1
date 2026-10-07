@@ -610,13 +610,16 @@ function setTheme(themeName) {
   document.documentElement.setAttribute('data-theme', themeName);
   localStorage.setItem('helios_theme', themeName);
 
+  // Inactive buttons keep their own border tint (amber, emerald) or slate; only one border
+  // colour class at a time, so the result does not depend on the order of the CSS rules.
   document.querySelectorAll('.theme-option-btn').forEach(btn => {
-    btn.classList.remove('border-sky-500/50', 'bg-slate-800/80');
-    btn.classList.add('border-slate-800');
+    const idle = btn.dataset.idleBorder || 'border-slate-800';
+    btn.classList.remove('border-sky-500/50', 'bg-slate-800/80', 'border-slate-800', 'border-amber-900/40', 'border-emerald-900/40');
+    btn.classList.add(idle);
   });
   const activeBtn = document.getElementById(`theme-btn-${themeName}`);
   if (activeBtn) {
-    activeBtn.classList.remove('border-slate-800');
+    activeBtn.classList.remove(activeBtn.dataset.idleBorder || 'border-slate-800');
     activeBtn.classList.add('border-sky-500/50', 'bg-slate-800/80');
   }
 

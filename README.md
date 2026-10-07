@@ -203,6 +203,9 @@ python -m pytest            # full test suite
 helios                      # run from source
 ```
 
+### Styles
+The dashboard's Tailwind CSS utilities are built at development time into `helios/gui/static/css/tailwind.css` (committed, so the app needs neither Node.js nor a network connection). After adding or changing classes in `index.html` or a script, run `python scripts/build_css.py` (needs Node.js; it runs Tailwind CSS 3.4.17, MIT licence, with `packaging/tailwind.config.js`). The test suite fails while the file is out of date.
+
 ### Building the standalone app
 ```bash
 pip install -e ".[build]"

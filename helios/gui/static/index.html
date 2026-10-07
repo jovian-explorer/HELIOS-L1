@@ -9,43 +9,16 @@
   <link rel="apple-touch-icon" href="/static/img/helios_logo.png">
   <link rel="stylesheet" href="/static/css/font-awesome.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script src="/static/js/tailwind.min.js"></script>
-  <script>
-    if (typeof tailwind === 'undefined') {
-      document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
-    }
-  </script>
   <script src="/static/js/chart.min.js"></script>
   <script>
     if (typeof Chart === 'undefined') {
       document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>');
     }
   </script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            space: {
-              // 950 is used by about 90 elements (inputs, tickers, insets) but was never defined,
-              // so they had no background and the archive date fields were white with white text.
-              950: '#03060c',
-              900: '#060a12',
-              800: '#0b1329',
-              700: '#111e3e',
-              600: '#1b2d5a',
-              accent: '#38bdf8',
-              solar: '#f59e0b',
-              plasma: '#10b981',
-              danger: '#f43f5e'
-            }
-          }
-        }
-      }
-    }
-  </script>
   <link rel="stylesheet" href="/static/css/style.css">
+  <!-- Tailwind utilities built at development time (scripts/build_css.py); after style.css, as the
+       former in-browser Tailwind script placed them. -->
+  <link rel="stylesheet" href="/static/css/tailwind.css">
 </head>
 <body class="bg-space-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white">
 
@@ -2742,14 +2715,14 @@
               </div>
               <p class="text-[10px] text-slate-400">Pitch black OLED contrast with muted cyan highlights</p>
             </button>
-            <button onclick="setTheme('solar-amber')" id="theme-btn-solar-amber" class="theme-option-btn p-3 rounded-xl border text-left transition flex flex-col justify-between bg-[#120f0a] border-amber-900/40 hover:border-amber-700">
+            <button onclick="setTheme('solar-amber')" id="theme-btn-solar-amber" data-idle-border="border-amber-900/40" class="theme-option-btn p-3 rounded-xl border text-left transition flex flex-col justify-between bg-[#120f0a] border-amber-900/40 hover:border-amber-700">
               <div class="flex items-center justify-between w-full mb-2">
                 <span class="font-semibold text-slate-100">Solar Amber</span>
                 <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
               </div>
               <p class="text-[10px] text-slate-400">Warm graphite with golden solar chromosphere accents</p>
             </button>
-            <button onclick="setTheme('high-contrast')" id="theme-btn-high-contrast" class="theme-option-btn p-3 rounded-xl border text-left transition flex flex-col justify-between bg-black border-emerald-900/40 hover:border-emerald-700">
+            <button onclick="setTheme('high-contrast')" id="theme-btn-high-contrast" data-idle-border="border-emerald-900/40" class="theme-option-btn p-3 rounded-xl border text-left transition flex flex-col justify-between bg-black border-emerald-900/40 hover:border-emerald-700">
               <div class="flex items-center justify-between w-full mb-2">
                 <span class="font-semibold text-slate-100">Terminal</span>
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>

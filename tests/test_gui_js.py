@@ -268,3 +268,31 @@ def test_dialogs_are_not_nested_in_other_dialogs():
                    "modal-settings", "modal-about", "modal-timezone", "modal-review"):
         ancestors = [i for i in p.parents[dialog] if i]
         assert ancestors == [], f"{dialog} is inside {ancestors}"
+
+
+def test_tailwind_css_is_built_and_current():
+    """
+    The page used the in-browser Tailwind script (Play CDN), which warns that it is not for
+    production on every load. The utilities are now built at development time into
+    css/tailwind.css (scripts/build_css.py); it must match the page and scripts it was built from.
+    """
+    import importlib.util
+    from pathlib import Path
+    root = Path(__file__).parent.parent
+    static = root / "helios" / "gui" / "static"
+    html = (static / "index.html").read_text(encoding="utf-8")
+    assert "tailwind.min.js" not in html and "cdn.tailwindcss.com" not in html and "tailwind.config" not in html
+    assert '<link rel="stylesheet" href="/static/css/tailwind.css">' in html
+    assert html.index("/static/css/style.css") < html.index("/static/css/tailwind.css")
+    spec = importlib.util.spec_from_file_location("build_css", root / "scripts" / "build_css.py")
+    build_css = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build_css)
+    scanned = {p.name for p in build_css.content_files()}
+    ours = {p.name for p in (static / "js").glob("*.js") if p.name != "chart.min.js"}
+    assert scanned == ours | {"index.html"}, "every script must be in packaging/tailwind.config.js"
+    css = (static / "css" / "tailwind.css").read_text(encoding="utf-8")
+    assert "tailwindcss v3.4.17 | MIT License" in css
+    assert f"inputs-sha256: {build_css.inputs_digest()}" in css, \
+        "css/tailwind.css is out of date: run python scripts/build_css.py"
+    for cls in (".bg-space-950", ".border-amber-900\/40", ".gap-x-2", ".space-x-3\.5"):
+        assert cls in css
