@@ -137,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
   animateOrbits();
   initVisualizers();
   missionIncidentLogger = new MissionIncidentLogger();
+  keepNavBelowHeader();
 
   ['modal-settings', 'modal-about', 'modal-timezone', 'shortcuts-modal', 'modal-incident-log', 'references-modal'].forEach(id => {
     const el = document.getElementById(id);
@@ -147,6 +148,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// The header is sticky and wraps onto two or three lines in narrow windows, so the sticky
+// navigation bar is placed under its actual height (a fixed offset hid the domain buttons
+// behind the header after scrolling below about 1300 px).
+function keepNavBelowHeader() {
+  const header = document.querySelector('body > header');
+  const nav = document.querySelector('body > nav');
+  if (!header || !nav) return;
+  const place = () => { nav.style.top = header.offsetHeight + 'px'; };
+  place();
+  if (window.ResizeObserver) new ResizeObserver(place).observe(header);
+  else window.addEventListener('resize', place);
+}
 
 // Readable text for an API error: FastAPI answers {"detail": "..."} for our own errors and
 // {"detail": [{"loc": [...], "msg": "..."}]} for invalid parameters, which used to reach the

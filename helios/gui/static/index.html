@@ -159,7 +159,7 @@
   <!-- NAVIGATION COMMAND BAR (TWO-TIER HIERARCHICAL MISSION ARCHITECTURE) -->
   <nav class="bg-slate-900/95 border-b border-slate-800/80 sticky top-[57px] z-30">
     <!-- TIER 1: 4 MISSION SCIENTIFIC DOMAINS -->
-    <div class="px-6 py-1.5 flex items-center justify-between border-b border-slate-800/60 bg-slate-900/90">
+    <div class="px-6 py-1.5 flex flex-wrap items-center justify-between gap-y-1 border-b border-slate-800/60 bg-slate-900/90">
       <div class="flex items-center space-x-1.5 overflow-x-auto" id="domain-tabs">
         <button id="domain-btn-fleet" onclick="switchDomain('fleet')" data-domain="fleet" class="domain-btn active" title="L1 Fleet &amp; Spacecraft In-Situ Telemetry (Key: 1)">
           <i class="fa-solid fa-satellite-dish text-sky-400"></i>
@@ -213,7 +213,7 @@
     </div>
 
     <!-- TIER 2: ACTIVE DOMAIN SUB-VIEWS ROW -->
-    <div class="px-6 py-1.5 bg-slate-950/80 flex items-center justify-between text-xs">
+    <div class="px-6 py-1.5 bg-slate-950/80 flex flex-wrap items-center justify-between gap-y-1 text-xs">
       <div id="subnav-container" class="flex items-center space-x-1 overflow-x-auto py-0.5">
         <!-- Subnav buttons dynamically rendered by app.js based on active domain -->
       </div>
