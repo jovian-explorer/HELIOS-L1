@@ -1911,7 +1911,7 @@ function renderCustomIngestUI(data) {
   const tbody = document.getElementById('import-shocks-tbody');
   if (tbody) {
     if (shocks.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="py-3 text-center text-slate-500 font-mono">No supersonic interplanetary shocks identified (criteria: Δv ≥ 45 km/s, r ≥ 1.35).</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="py-3 text-center text-slate-500 font-mono">No shock-like jump found (ΔV ≥ 45 km/s with N2/N1 ≥ 1.5 and B2/B1 ≥ 1.35 over three samples).</td></tr>`;
     } else {
       tbody.innerHTML = shocks.map(s => `
         <tr class="hover:bg-slate-800/40 transition">

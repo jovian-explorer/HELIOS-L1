@@ -591,9 +591,10 @@ class SpaceWeatherPhysics:
         """
         Interplanetary Shock Detection using Rankine-Hugoniot jump proxies.
         A fast forward shock (driven by a CME or CIR) exhibits:
-        - Sudden velocity jump Delta V >= 40 km/s within <= 15 minutes
+        - Sudden velocity jump Delta V >= 45 km/s over three samples
         - Density compression ratio N2 / N1 >= 1.5
-        - Magnetic field magnitude jump B2 / B1 >= 1.3
+        - Magnetic field magnitude jump B2 / B1 >= 1.35
+        These are screening thresholds of this application, not a published criterion.
 
         Each record is compared with the one three samples earlier, so a single jump
         satisfies the criteria at up to three consecutive samples. Those detections are
