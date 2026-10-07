@@ -720,13 +720,19 @@ class DataDownloader:
 
     @staticmethod
     def parse_kp_forecast(rows: Optional[List[Any]]) -> List[Dict[str, Any]]:
-        """Predicted 3-hourly Kp of the NOAA SWPC planetary K-index forecast product."""
+        """
+        Forecast 3-hourly Kp of the NOAA SWPC planetary K-index forecast product: the rows
+        labelled "estimated" (the current UTC day, including its bins still to come) and
+        "predicted" (the following days). Keeping only "predicted" left the 12-hour chart
+        without NOAA's values for the rest of the current day.
+        """
         out = []
         for row in (rows or []):
-            if isinstance(row, dict) and row.get("observed") == "predicted" and row.get("time_tag"):
+            kind = row.get("observed") if isinstance(row, dict) else None
+            if kind in ("estimated", "predicted") and row.get("time_tag"):
                 kp = _num(row.get("kp"))
                 if kp is not None:
-                    out.append({"time_tag": _iso_space(row["time_tag"]), "kp": kp})
+                    out.append({"time_tag": _iso_space(row["time_tag"]), "kp": kp, "kind": kind})
         return out
 
     async def get_noaa_geomag_forecast(self) -> Dict[str, Any]:

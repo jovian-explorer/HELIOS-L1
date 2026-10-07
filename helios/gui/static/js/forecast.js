@@ -137,7 +137,7 @@ function renderForecastChart(timeline, noaaKp = []) {
           yAxisID: 'yKp'
         },
         {
-          label: 'NOAA SWPC predicted Kp',
+          label: 'NOAA SWPC Kp forecast (estimated today, predicted after)',
           data: noaaVals,
           borderColor: '#facc15',
           stepped: true,

@@ -614,7 +614,10 @@ NOAA Kp index forecast 04 Oct - 06 Oct
     rows = [{"time_tag": "2026-10-03T21:00:00", "kp": 3.0, "observed": "observed"},
             {"time_tag": "2026-10-04T00:00:00", "kp": 2.33, "observed": "estimated"},
             {"time_tag": "2026-10-04T03:00:00", "kp": 4.67, "observed": "predicted"}]
-    assert D.parse_kp_forecast(rows) == [{"time_tag": "2026-10-04 03:00:00", "kp": 4.67}]
+    # NOAA labels the whole current UTC day "estimated", its future bins too (product of
+    # 2026-10-07 07 UTC: 09-21 UTC "estimated"), so those are kept with their label.
+    assert D.parse_kp_forecast(rows) == [{"time_tag": "2026-10-04 00:00:00", "kp": 2.33, "kind": "estimated"},
+                                         {"time_tag": "2026-10-04 03:00:00", "kp": 4.67, "kind": "predicted"}]
 
 
 @pytest.mark.parametrize("kp, level", [
