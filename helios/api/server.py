@@ -436,31 +436,34 @@ async def compare_missions(
     key_a = mission_a.upper()
     key_b = mission_b.upper()
 
-    if key_a == "CUSTOM":
+    custom_span = None
+    if "CUSTOM" in (key_a, key_b):
         if not latest_custom_dataset or not latest_custom_dataset.get("records"):
             raise HTTPException(status_code=400, detail="No custom dataset imported for comparison.")
-        data_a = latest_custom_dataset["records"]
-        name_a = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
-        prov_a = {"kind": "imported", "description": f"User-imported file ({name_a})."}
-    else:
-        if key_a not in MISSIONS:
-            raise HTTPException(status_code=400, detail=f"Invalid mission ID '{key_a}' for comparison.")
-        bundle_a = await downloader.get_telemetry_bundle(key_a, span_days=span_days)
-        data_a, prov_a = bundle_a["records"], bundle_a["provenance"]
-        name_a = MISSIONS[key_a]["name"]
+        tags = [r["time_tag"] for r in latest_custom_dataset["records"] if r.get("time_tag")]
+        custom_span = (_parse_utc(min(tags), "time_tag"), _parse_utc(max(tags), "time_tag"))
 
-    if key_b == "CUSTOM":
-        if not latest_custom_dataset or not latest_custom_dataset.get("records"):
-            raise HTTPException(status_code=400, detail="No custom dataset imported for comparison.")
-        data_b = latest_custom_dataset["records"]
-        name_b = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
-        prov_b = {"kind": "imported", "description": f"User-imported file ({name_b})."}
-    else:
-        if key_b not in MISSIONS:
-            raise HTTPException(status_code=400, detail=f"Invalid mission ID '{key_b}' for comparison.")
-        bundle_b = await downloader.get_telemetry_bundle(key_b, span_days=span_days)
-        data_b, prov_b = bundle_b["records"], bundle_b["provenance"]
-        name_b = MISSIONS[key_b]["name"]
+    async def side(key):
+        """Records, provenance and display name of one side of the comparison."""
+        if key == "CUSTOM":
+            name = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
+            return latest_custom_dataset["records"], {"kind": "imported", "description": f"User-imported file ({name})."}, name
+        if key not in MISSIONS:
+            raise HTTPException(status_code=400, detail=f"Invalid mission ID '{key}' for comparison.")
+        name = MISSIONS[key]["name"]
+        # An imported file usually covers an interval in the past, which the live window
+        # (the last span_days) never overlaps: take the archive for the file's interval.
+        if custom_span and key in ARCHIVE_SOURCES:
+            t0, t1 = custom_span
+            live_start = datetime.now(timezone.utc) - timedelta(days=span_days)
+            if t1 < live_start:
+                t0 = max(t0, t1 - timedelta(days=ARCHIVE_MAX_DAYS))
+                bundle = await downloader.get_archive_bundle(key, t0, t1 + timedelta(minutes=1))
+                return bundle["records"], bundle["provenance"], name
+        bundle = await downloader.get_telemetry_bundle(key, span_days=span_days)
+        return bundle["records"], bundle["provenance"], name
+
+    (data_a, prov_a, name_a), (data_b, prov_b, name_b) = await asyncio.gather(side(key_a), side(key_b))
 
     # Observed RTSW data: place each side at the spacecraft that actually supplied it
     # (e.g. SOLAR1 for the operational "DSCOVR" stream) instead of the mission's model orbit.
@@ -486,6 +489,12 @@ async def compare_missions(
     # instruments; expose what each side actually is.
     comparison["provenance_a"] = prov_a
     comparison["provenance_b"] = prov_b
+    if comparison.get("status") != "success":
+        def cover(data):
+            tags = [r["time_tag"] for r in data if r.get("time_tag") and r.get(parameter) is not None]
+            return f"{min(tags)} to {max(tags)} UTC" if tags else "no values"
+        comparison["message"] = (f"Fewer than 5 common minutes with {parameter}: {name_a} has {cover(data_a)}, "
+                                 f"{name_b} has {cover(data_b)}.")
     return comparison
 
 @app.get("/api/compare/matrix")

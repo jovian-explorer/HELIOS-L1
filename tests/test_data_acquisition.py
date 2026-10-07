@@ -442,3 +442,39 @@ def test_solar_cycle_offline_is_labelled_model():
     from helios.api import server
     sc = TestClient(server.app, base_url=LOCAL).get("/api/solar_cycle").json()
     assert sc["data_kind"] == "model" and "approximation" in sc["source"]
+
+
+def test_compare_imported_file_uses_archive_for_its_interval(monkeypatch):
+    """An imported file from 2015 against WIND compared with WIND's last 24 h: never any overlap."""
+    from datetime import datetime, timezone
+    from fastapi.testclient import TestClient
+    from helios.api import server
+
+    recs = [{"time_tag": f"2015-03-17 04:{m:02d}:00", "bz_gsm": -5.0 + 0.3 * m + (m % 4) * 0.2, "speed": 450.0}
+            for m in range(40)]
+    monkeypatch.setattr(server, "latest_custom_dataset", {"mission_name": "my file", "records": recs})
+    asked = {}
+
+    async def fake_archive(self, mission_id, start, end, cadence_minutes=1):
+        asked["args"] = (mission_id, start, end)
+        shifted = [dict(r, bz_gsm=r["bz_gsm"] * 1.1) for r in recs]
+        return {"records": shifted, "provenance": {"kind": "observed", "description": "CDAWeb"}}
+
+    async def no_live(self, mission_id, span_days=1):
+        raise AssertionError("live window requested for a 2015 comparison")
+
+    monkeypatch.setattr(DataDownloader, "get_archive_bundle", fake_archive)
+    monkeypatch.setattr(DataDownloader, "get_telemetry_bundle", no_live)
+    client = TestClient(server.app, base_url=LOCAL)
+    comp = client.get("/api/compare?mission_a=WIND&mission_b=CUSTOM&parameter=bz_gsm").json()
+    assert comp["status"] == "success" and comp["provenance_a"]["kind"] == "observed"
+    assert asked["args"] == ("WIND", datetime(2015, 3, 17, 4, 0, tzinfo=timezone.utc),
+                             datetime(2015, 3, 17, 4, 40, tzinfo=timezone.utc))
+
+    async def empty_archive(self, mission_id, start, end, cadence_minutes=1):
+        return {"records": [], "provenance": {"kind": "unavailable", "description": "none"}}
+
+    monkeypatch.setattr(DataDownloader, "get_archive_bundle", empty_archive)
+    comp = client.get("/api/compare?mission_a=WIND&mission_b=CUSTOM&parameter=bz_gsm").json()
+    assert comp["status"] == "insufficient_data"
+    assert "has no values" in comp["message"] and "2015-03-17 04:00:00 to 2015-03-17 04:39:00 UTC" in comp["message"]

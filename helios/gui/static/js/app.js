@@ -1240,12 +1240,17 @@ async function runComparison() {
 
   try {
     const res = await fetch(`/api/compare?mission_a=${satA}&mission_b=${satB}&parameter=${param}&span_days=1`);
-    if (!res.ok) throw new Error('Failed to run comparison');
+    if (!res.ok) {
+      let body = null;
+      try { body = await res.json(); } catch (e) { body = null; }
+      alert(`Comparison failed: ${apiErrorText(body, res)}`);
+      return;
+    }
     const comp = await res.json();
 
     showComparisonProvenanceWarning(comp, satA, satB);
     if (comp.status !== 'success') {
-      alert('Insufficient overlapping telemetry data between selected spacecraft.');
+      alert(`Insufficient overlapping telemetry data between the selected spacecraft. ${comp.message || ''}`);
       return;
     }
 
