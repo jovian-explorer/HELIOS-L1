@@ -76,6 +76,8 @@ Keyboard shortcuts (not while typing in a field):
 
 **Settings** (key S): four dark colour themes (Mission Slate, Deep Space, Solar Amber, Terminal/high contrast; there is no light theme), three text sizes, the number of worker threads for heavy computations (archive decoding, spectra, comparisons), and the display time zone. *Apply & Save* writes `settings.json`; if the file cannot be written, the settings apply for the session and the dialog says why they were not saved. Times in data files, exports and the API are always UTC.
 
+After you start a different version of HELIOS-L1 with the same settings, a dialog lists once what changed in the settings: new settings with their defaults, settings whose allowed values or default changed, stored values this version cannot use, and stored settings it does not have. Nothing stored is changed: values this version cannot use stay in `settings.json` for the version that uses them, and the dialog lets you keep the values or pick others.
+
 **Incident log** (key L): entries made during the session when the live data cross fixed thresholds: magnetopause stand-off below 6.6 R_E, Bz at or below -8 nT (warning) or -15 nT (critical), dynamic pressure at or above 12 nPa, speed at or above 650 km/s. The same kind of event is not logged again within 12 minutes. The log is kept in the window's browser storage (up to 100 entries) and can be exported as JSON.
 
 ---

@@ -60,6 +60,10 @@ ACTIVE_FONT_SIZE = "normal"
 ACTIVE_TIMEZONE = "UTC"
 THEMES = ("mission-slate", "deep-space", "solar-amber", "high-contrast")
 FONT_SIZES = ("compact", "normal", "large")
+# Weekly check for a newer published build (helios/updates.py); only builds update themselves.
+ACTIVE_AUTO_UPDATE = True
+# The keys this version stores in settings.json, in the order they are written.
+SETTING_KEYS = ("processors", "theme", "font_size", "timezone", "auto_update")
 
 # Worker threads for CPU-heavy work (archive decoding, spectra, comparisons), sized by the
 # "processors" setting. Running it off the event loop keeps the server responsive, and
@@ -103,8 +107,12 @@ def _valid_timezone(tz: str) -> bool:
         return False
 
 
-def _validate_settings(processors=None, theme=None, font_size=None, timezone=None) -> None:
+def _validate_settings(processors=None, theme=None, font_size=None, timezone=None, auto_update=None) -> None:
     """Raise ValueError naming the first invalid setting."""
+    if processors is not None and (isinstance(processors, bool) or not isinstance(processors, (int, float, str))):
+        raise ValueError("processors must be a whole number.")
+    if auto_update is not None and not isinstance(auto_update, bool):
+        raise ValueError("auto_update must be true or false.")
     if processors is not None and not (1 <= int(processors) <= max(1, TOTAL_CPU_CORES * 2)):
         raise ValueError(f"processors must be between 1 and {max(1, TOTAL_CPU_CORES * 2)} (this machine has {TOTAL_CPU_CORES} logical cores).")
     if theme is not None and theme not in THEMES:
@@ -115,8 +123,8 @@ def _validate_settings(processors=None, theme=None, font_size=None, timezone=Non
         raise ValueError(f"Unknown time zone '{timezone}'. Use an IANA name such as 'Europe/Oslo' or 'UTC'.")
 
 
-def _apply_settings(processors=None, theme=None, font_size=None, timezone=None) -> None:
-    global ACTIVE_PROCESSOR_CORES, ACTIVE_THEME, ACTIVE_FONT_SIZE, ACTIVE_TIMEZONE
+def _apply_settings(processors=None, theme=None, font_size=None, timezone=None, auto_update=None) -> None:
+    global ACTIVE_PROCESSOR_CORES, ACTIVE_THEME, ACTIVE_FONT_SIZE, ACTIVE_TIMEZONE, ACTIVE_AUTO_UPDATE
     if processors is not None:
         ACTIVE_PROCESSOR_CORES = int(processors)
     if theme is not None:
@@ -125,17 +133,52 @@ def _apply_settings(processors=None, theme=None, font_size=None, timezone=None) 
         ACTIVE_FONT_SIZE = str(font_size)
     if timezone is not None:
         ACTIVE_TIMEZONE = str(timezone)
+    if auto_update is not None:
+        ACTIVE_AUTO_UPDATE = bool(auto_update)
 
 
-def _load_saved_settings() -> None:
-    """Restore saved preferences at start-up; unreadable files or invalid entries are ignored one by one."""
+def _current_values() -> Dict[str, Any]:
+    return {"processors": ACTIVE_PROCESSOR_CORES, "theme": ACTIVE_THEME, "font_size": ACTIVE_FONT_SIZE,
+            "timezone": ACTIVE_TIMEZONE, "auto_update": ACTIVE_AUTO_UPDATE}
+
+
+# Defaults of this version (before settings.json is read), for the settings review after an update.
+SETTING_DEFAULTS: Dict[str, Any] = _current_values()
+
+
+def setting_rules() -> Dict[str, Any]:
+    """Allowed values of each setting, as JSON: a list of choices, {"min", "max"} or a description."""
+    return {"processors": {"min": 1, "max": max(1, TOTAL_CPU_CORES * 2)}, "theme": list(THEMES),
+            "font_size": list(FONT_SIZES), "timezone": "IANA time zone name", "auto_update": [False, True]}
+
+
+def setting_is_valid(key: str, value: Any) -> bool:
+    if key not in SETTING_KEYS or value is None:
+        return False
+    try:
+        _validate_settings(**{key: value})
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def read_settings_file() -> Dict[str, Any]:
+    """settings.json as stored (an empty dict when missing or unreadable)."""
     try:
         saved = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return
-    if not isinstance(saved, dict):
-        return
-    for key in ("processors", "theme", "font_size", "timezone"):
+        return {}
+    return saved if isinstance(saved, dict) else {}
+
+
+def _load_saved_settings() -> None:
+    """
+    Restore saved preferences at start-up. Unreadable files or invalid entries are ignored
+    one by one; they stay in settings.json as they are (see update_system_settings), so a
+    newer or older version that can use them still finds them.
+    """
+    saved = read_settings_file()
+    for key in SETTING_KEYS:
         value = saved.get(key)
         if value is None:
             continue
@@ -158,21 +201,32 @@ def get_system_settings() -> Dict[str, Any]:
         "theme": ACTIVE_THEME,
         "font_size": ACTIVE_FONT_SIZE,
         "timezone": ACTIVE_TIMEZONE,
+        "auto_update": ACTIVE_AUTO_UPDATE,
         "python_version": sys.version.split()[0],
         "platform": sys.platform,
         "saved": SETTINGS_FILE.exists(),
         "settings_file": str(SETTINGS_FILE)
     }
 
-def update_system_settings(processors: int = None, theme: str = None, font_size: str = None, timezone: str = None) -> Dict[str, Any]:
+def update_system_settings(processors: int = None, theme: str = None, font_size: str = None, timezone: str = None,
+                           auto_update: bool = None) -> Dict[str, Any]:
     """
     Validate, apply and save settings. Raises ValueError for an invalid value (nothing is
     changed then); an out-of-range core count used to be ignored silently.
+
+    Entries of settings.json that this version does not know or cannot use are written
+    back unchanged (another version may use them); a stored value this version could not
+    use is kept until the user picks another value for that setting.
     """
-    _validate_settings(processors, theme, font_size, timezone)
-    _apply_settings(processors, theme, font_size, timezone)
-    data = {"processors": ACTIVE_PROCESSOR_CORES, "theme": ACTIVE_THEME,
-            "font_size": ACTIVE_FONT_SIZE, "timezone": ACTIVE_TIMEZONE}
+    _validate_settings(processors, theme, font_size, timezone, auto_update)
+    _apply_settings(processors, theme, font_size, timezone, auto_update)
+    given = {"processors": processors, "theme": theme, "font_size": font_size, "timezone": timezone,
+             "auto_update": auto_update}
+    stored = read_settings_file()
+    data = dict(stored)
+    for key, value in _current_values().items():
+        if given[key] is not None or key not in stored or setting_is_valid(key, stored[key]):
+            data[key] = value
     try:
         tmp = SETTINGS_FILE.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")

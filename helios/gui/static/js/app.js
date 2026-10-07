@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
   missionIncidentLogger = new MissionIncidentLogger();
   keepNavBelowHeader();
   keepUnitCase();
+  showSettingsReview();
 
   // Click on the dark backdrop closes a dialog (three of these ids were wrong, so the guide, shortcuts
   // and incident dialogs ignored backdrop clicks).
@@ -151,6 +152,122 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// What's new after an update and what changed in the settings since the version the user
+// last reviewed (GET /api/settings/review). Shown once per version; nothing stored is changed
+// until the user keeps or changes the values.
+const SETTING_LABELS = { processors: 'Worker threads', theme: 'Theme', font_size: 'Text size',
+  timezone: 'Time zone', auto_update: 'Automatic updates' };
+let settingsReview = null;
+
+function describeRule(rule) {
+  if (Array.isArray(rule)) return rule.map(v => (v === true ? 'on' : v === false ? 'off' : String(v))).join(', ');
+  if (rule && typeof rule === 'object' && 'min' in rule) return `${rule.min} to ${rule.max}`;
+  return String(rule ?? '');
+}
+
+function describeValue(v) {
+  if (v === true) return 'on';
+  if (v === false) return 'off';
+  if (v === null || v === undefined) return '(not stored)';
+  return typeof v === 'object' ? JSON.stringify(v) : String(v);
+}
+
+function reviewControl(key, rule, value) {
+  const id = `review-input-${key}`;
+  const cls = 'rounded px-2 py-1 text-xs font-mono bg-slate-950 border border-slate-700 text-slate-200';
+  if (Array.isArray(rule)) {
+    const opts = rule.map(v => `<option value="${escapeHtml(JSON.stringify(v))}" ${v === value ? 'selected' : ''}>${escapeHtml(describeValue(v))}</option>`).join('');
+    return `<select id="${id}" data-key="${key}" class="${cls} review-input">${opts}</select>`;
+  }
+  if (rule && typeof rule === 'object' && 'min' in rule) {
+    return `<input id="${id}" data-key="${key}" type="number" min="${rule.min}" max="${rule.max}" value="${escapeHtml(String(value))}" class="${cls} w-20 review-input">`;
+  }
+  return `<input id="${id}" data-key="${key}" type="text" value="${escapeHtml(String(value))}" class="${cls} w-48 review-input">`;
+}
+
+function renderSettingsReview(rev) {
+  const body = document.getElementById('review-body');
+  if (!body) return;
+  const cur = rev.settings || {};
+  const parts = [];
+  if (rev.whats_new) {
+    const n = rev.whats_new;
+    parts.push(`<section class="space-y-1.5"><h4 class="font-bold text-slate-100 text-sm">What's new in ${escapeHtml(n.name || n.tag || rev.version)}</h4>
+      <pre class="whitespace-pre-wrap font-sans text-[11px] text-slate-300 bg-slate-950 border border-slate-800 rounded-lg p-3 max-h-60 overflow-y-auto">${escapeHtml(n.notes || 'No release notes.')}</pre>
+      ${n.url ? `<div class="text-[11px] text-slate-500">${escapeHtml(n.url)}</div>` : ''}</section>`);
+  }
+  const ch = rev.changes || {};
+  const row = (cells) => `<tr>${cells.map(c => `<td class="py-1.5 pr-3 align-top">${c}</td>`).join('')}</tr>`;
+  const table = (title, note, head, rows) => rows.length ? `<section class="space-y-1.5"><h4 class="font-bold text-slate-100">${title}</h4>
+      <p class="text-[11px] text-slate-400">${note}</p>
+      <table class="w-full text-[11px]"><thead class="text-slate-500"><tr>${head.map(h => `<th class="text-left font-semibold pr-3">${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></section>` : '';
+  const label = k => escapeHtml(SETTING_LABELS[k] || k);
+  parts.push(table('New settings', 'Not in the version you used before; the default is used until you change it.',
+    ['Setting', 'Default', 'Allowed', 'Use'],
+    (ch.new || []).map(r => row([label(r.key), escapeHtml(describeValue(r.default)), escapeHtml(describeRule(r.rule)), reviewControl(r.key, r.rule, cur[r.key])]))));
+  parts.push(table('Changed settings', 'The allowed values or the default changed.',
+    ['Setting', 'Before', 'Now', 'Your value', 'Use'],
+    (ch.changed || []).map(r => row([label(r.key),
+      escapeHtml(`${describeRule(r.old_rule)} (default ${describeValue(r.old_default)})`),
+      escapeHtml(`${describeRule(r.rule)} (default ${describeValue(r.default)})`),
+      escapeHtml(describeValue(r.stored)) + (r.valid ? '' : ' <span class="text-amber-400">(not usable now)</span>'),
+      reviewControl(r.key, r.rule, cur[r.key])]))));
+  parts.push(table('Stored values this version cannot use', 'Kept in settings.json as they are; the value shown under Use applies until you pick another.',
+    ['Setting', 'Stored', 'Allowed', 'Use'],
+    (ch.invalid || []).map(r => row([label(r.key), escapeHtml(describeValue(r.stored)), escapeHtml(describeRule(r.rule)), reviewControl(r.key, r.rule, cur[r.key])]))));
+  parts.push(table('Settings this version does not have', 'Kept in settings.json as they are, for the version that uses them.',
+    ['Setting', 'Stored'],
+    (ch.removed || []).map(r => row([escapeHtml(r.key), escapeHtml(describeValue(r.stored))]))));
+  body.innerHTML = parts.filter(Boolean).join('');
+  const title = document.getElementById('review-title');
+  if (title) title.innerText = rev.whats_new ? `HELIOS-L1 ${rev.version}: what's new and what changed in the settings`
+    : `HELIOS-L1 ${rev.version}: what changed in the settings`;
+}
+
+async function showSettingsReview() {
+  try {
+    const res = await fetch('/api/settings/review');
+    if (!res.ok) return;
+    const rev = await res.json();
+    if (!rev.show) return;
+    settingsReview = rev;
+    renderSettingsReview(rev);
+    document.getElementById('modal-review')?.classList.remove('hidden');
+  } catch (e) {
+    console.warn('Settings review unavailable:', e);
+  }
+}
+
+function closeSettingsReview() {
+  document.getElementById('modal-review')?.classList.add('hidden');
+}
+
+async function acknowledgeSettingsReview() {
+  const cur = (settingsReview && settingsReview.settings) || {};
+  const patch = {};
+  document.querySelectorAll('#review-body .review-input').forEach(el => {
+    const key = el.dataset.key;
+    let v = el.value;
+    if (el.tagName === 'SELECT') v = JSON.parse(v);
+    else if (el.type === 'number') v = parseInt(v, 10);
+    if (v !== cur[key]) patch[key] = v;
+  });
+  const status = document.getElementById('review-status');
+  try {
+    const res = await fetch('/api/settings/review', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings: patch }) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) { if (status) status.innerText = `Not saved: ${apiErrorText(body, res)}`; return; }
+    if (body.theme) setTheme(body.theme);
+    if (body.font_size) setFontSize(body.font_size);
+    if (body.timezone) setTimezone(body.timezone);
+    if (body.active_processors) onSettingsCoresChange(body.active_processors);
+    closeSettingsReview();
+  } catch (e) {
+    if (status) status.innerText = `Not saved: ${e.message}`;
+  }
+}
 
 // Many form labels are styled in capitals (CSS text-transform), which also capitalised their
 // units and symbols: "1 mHz" read as "1 MHZ", "dB/dt" as "DB/DT" (decibels), "(s)" as "(S)",

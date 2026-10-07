@@ -22,6 +22,7 @@ from datetime import datetime, timezone, timedelta
 
 from helios import __version__
 from helios.api.guard import LocalRequestGuard
+from helios import settings_review
 from helios.config import (
     MISSIONS, STATIC_DIR, DATA_PROVIDERS,
     SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
@@ -192,6 +193,11 @@ class SettingsUpdateRequest(BaseModel):
     theme: Optional[str] = None
     font_size: Optional[str] = None
     timezone: Optional[str] = None
+    auto_update: Optional[bool] = None
+
+
+class SettingsReviewRequest(BaseModel):
+    settings: Dict[str, Any] = Field(default_factory=dict)
 
 @app.get("/api/status")
 async def get_status():
@@ -216,9 +222,25 @@ async def save_settings(req: SettingsUpdateRequest):
             processors=req.processors,
             theme=req.theme,
             font_size=req.font_size,
-            timezone=req.timezone
+            timezone=req.timezone,
+            auto_update=req.auto_update
         )
     except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.get("/api/settings/review")
+async def get_settings_review():
+    """Settings added, removed, changed or not usable since the version the user last reviewed (shown once)."""
+    return settings_review.pending()
+
+
+@app.post("/api/settings/review")
+async def acknowledge_settings_review(req: SettingsReviewRequest):
+    """The user has reviewed the changes: apply the values they picked and remember this version."""
+    try:
+        return settings_review.acknowledge(req.settings)
+    except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
 @app.get("/api/missions")

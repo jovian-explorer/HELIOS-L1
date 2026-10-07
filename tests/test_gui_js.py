@@ -265,6 +265,6 @@ def test_dialogs_are_not_nested_in_other_dialogs():
     p = P()
     p.feed(html)
     for dialog in ("bulletin-modal", "modal-references", "modal-shortcuts", "modal-incidents",
-                   "modal-settings", "modal-about", "modal-timezone"):
+                   "modal-settings", "modal-about", "modal-timezone", "modal-review"):
         ancestors = [i for i in p.parents[dialog] if i]
         assert ancestors == [], f"{dialog} is inside {ancestors}"

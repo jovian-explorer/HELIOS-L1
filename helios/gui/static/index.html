@@ -3241,6 +3241,28 @@
     </div>
   </footer>
 
+  <!-- ========================================================================= -->
+  <!-- MODAL: WHAT'S NEW AND SETTINGS REVIEW (once per version, see settings_review.py) -->
+  <!-- ========================================================================= -->
+  <div id="modal-review" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
+        <div>
+          <h3 class="font-tech font-bold text-slate-100 text-sm" id="review-title">What's new and what changed in the settings</h3>
+          <p class="text-[11px] text-slate-400" id="review-subtitle">Your stored settings are kept as they are; review them and keep or change them.</p>
+        </div>
+        <button onclick="closeSettingsReview(false)" class="text-slate-400 hover:text-white p-1" title="Close (shown again at the next start)">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="review-body" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-slate-300"></div>
+      <div class="p-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-2">
+        <span id="review-status" class="text-[11px] text-slate-400"></span>
+        <button onclick="acknowledgeSettingsReview()" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition">Keep these settings</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/js/audio.js"></script>
   <script src="/static/js/orbits.js"></script>
   <script src="/static/js/aurora.js"></script>
