@@ -525,6 +525,14 @@ def test_importer_reads_its_own_exports_json_and_headers_with_units():
     units = T.parse_csv_or_text("Time (UTC),Bz GSM (nT),Speed [km/s],Foo\n2024-05-10T00:00:00Z,-3,400,1\n", "x")
     assert units["records"][0]["bz_gsm"] == -3.0 and units["records"][0]["speed"] == 400.0
     assert any("Foo" in w for w in units["warnings"])
+    # ACE SWEPAM (Vp, Np, Tpr) and NOAA RTSW (proton_speed, proton_temperature) names: the speed
+    # column of such files was listed as "not used".
+    ace = T.parse_csv_or_text("Epoch (UTC),Vp [km/s],Np [cm^-3],Tpr [K]\n2015-03-17T00:00:00Z,421.8,12.79,51000\n", "x")
+    assert ace["records"][0]["speed"] == 421.8 and ace["records"][0]["temperature"] == 51000.0
+    assert not any("not used" in w for w in ace["warnings"])
+    rtsw = [{"time_tag": "2024-01-01T00:00:00", "proton_speed": 410, "proton_density": 3, "proton_temperature": 60000}]
+    r0 = T.parse_csv_or_text(json.dumps(rtsw), "x")["records"][0]
+    assert r0["speed"] == 410.0 and r0["density"] == 3.0 and r0["temperature"] == 60000.0
     err = T.parse_csv_or_text("time,foo,bar\n2024-01-01,1,2\n", "x")["error"]
     assert "No recognised solar wind column" in err and "bar, _t" not in err
 

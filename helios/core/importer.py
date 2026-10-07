@@ -19,9 +19,10 @@ class TelemetryImporter:
     """Parses, validates, normalizes, and classifies space weather telemetry files."""
 
     COLUMN_MAPPINGS = {
-        "speed": ["speed", "vsw", "v_sw", "velocity", "flow_speed", "bulk_speed", "v_bulk", "ion_speed"],
+        "speed": ["speed", "vsw", "v_sw", "velocity", "flow_speed", "bulk_speed", "v_bulk", "ion_speed",
+                  "vp", "v_p", "proton_speed"],  # ACE SWEPAM Vp, NOAA RTSW proton_speed
         "density": ["density", "np", "n_p", "proton_density", "ion_density", "plasma_density"],
-        "temperature": ["temperature", "temp", "tp", "t_p", "thermal_temp"],
+        "temperature": ["temperature", "temp", "tp", "t_p", "thermal_temp", "tpr", "proton_temperature"],
         "bx_gsm": ["bx_gsm", "bx", "b_x", "b_gsm_x"],
         "by_gsm": ["by_gsm", "by", "b_y", "b_gsm_y"],
         "bz_gsm": ["bz_gsm", "bz", "b_z", "b_gsm_z"],
