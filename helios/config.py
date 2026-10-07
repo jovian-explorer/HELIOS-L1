@@ -93,8 +93,12 @@ async def run_in_workers(fn, *args, **kwargs):
 
 
 def _valid_timezone(tz: str) -> bool:
-    """IANA time zone name known to the tz database ('UTC' always). Without a tz database, accept any name."""
-    if tz == "UTC":
+    """
+    IANA time zone name known to the tz database ('UTC' always), or 'LOCAL': the settings
+    dialog's "Station Local Time", the computer's own zone, which the interface applies.
+    Without a tz database, accept any name.
+    """
+    if tz in ("UTC", "LOCAL"):
         return True
     try:
         import zoneinfo
@@ -120,7 +124,7 @@ def _validate_settings(processors=None, theme=None, font_size=None, timezone=Non
     if font_size is not None and font_size not in FONT_SIZES:
         raise ValueError(f"Unknown font size '{font_size}'. Choose one of: {', '.join(FONT_SIZES)}.")
     if timezone is not None and not _valid_timezone(str(timezone)):
-        raise ValueError(f"Unknown time zone '{timezone}'. Use an IANA name such as 'Europe/Oslo' or 'UTC'.")
+        raise ValueError(f"Unknown time zone '{timezone}'. Use an IANA name such as 'Europe/Oslo', 'UTC' or LOCAL.")
 
 
 def _apply_settings(processors=None, theme=None, font_size=None, timezone=None, auto_update=None) -> None:
@@ -149,7 +153,7 @@ SETTING_DEFAULTS: Dict[str, Any] = _current_values()
 def setting_rules() -> Dict[str, Any]:
     """Allowed values of each setting, as JSON: a list of choices, {"min", "max"} or a description."""
     return {"processors": {"min": 1, "max": max(1, TOTAL_CPU_CORES * 2)}, "theme": list(THEMES),
-            "font_size": list(FONT_SIZES), "timezone": "IANA time zone name", "auto_update": [False, True]}
+            "font_size": list(FONT_SIZES), "timezone": "IANA time zone name or LOCAL", "auto_update": [False, True]}
 
 
 def setting_is_valid(key: str, value: Any) -> bool:

@@ -755,6 +755,8 @@ def test_settings_are_validated_and_saved(monkeypatch, tmp_path):
         r = client.post("/api/settings", json={"processors": 10_000})
         assert r.status_code == 422 and "logical cores" in r.json()["detail"]
         assert config.get_system_settings()["timezone"] == before["timezone"]
+        # "Station Local Time" in the settings dialog is stored as LOCAL (it was refused: 422)
+        assert client.post("/api/settings", json={"timezone": "LOCAL"}).json()["timezone"] == "LOCAL"
         ok = client.post("/api/settings", json={"timezone": "Europe/Oslo", "theme": "solar-amber"}).json()
         assert ok["saved"] and _json.loads((tmp_path / "settings.json").read_text())["timezone"] == "Europe/Oslo"
         # A restart restores them; a hand-edited invalid entry is skipped
