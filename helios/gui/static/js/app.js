@@ -3233,10 +3233,10 @@ function renderUserGuideTab(container) {
                 <span>Tier 1: Scientific Mission Domains</span>
               </div>
               <ul class="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
-                <li><strong class="text-slate-200">1: L1 Fleet &amp; Telemetry</strong> (DSCOVR, ACE, Aditya-L1 real-time IMF &amp; plasma)</li>
-                <li><strong class="text-slate-200">2: Solar &amp; Heliosphere</strong> (SDO AIA EUV, Parker Spiral, CME 3D Simulation)</li>
-                <li><strong class="text-slate-200">3: Geospace &amp; Hazards</strong> (Auroral Oval, Boteler GIC, D-RAP Absorption)</li>
-                <li><strong class="text-slate-200">4: Data Studio &amp; Science</strong> (NASA OMNI Ingestion, Storm Forecaster)</li>
+                <li><strong class="text-slate-200">1: L1 Fleet &amp; Telemetry</strong> (NOAA real-time solar wind and CDAWeb archive intervals, spacecraft comparator, orbits, fleet catalogue; Aditya-L1 and SOHO are simulated)</li>
+                <li><strong class="text-slate-200">2: Solar &amp; Heliosphere</strong> (SOHO LASCO and GOES SUVI images, NOAA active regions, CME arrival models, Parker spiral, turbulence spectra)</li>
+                <li><strong class="text-slate-200">3: Geospace &amp; Hazards</strong> (Starkov auroral oval and Dst models, storm forecast, D-RAP and GIC, solar cycle, storms archive)</li>
+                <li><strong class="text-slate-200">4: Data Studio &amp; Science</strong> (file import, event analysis on archive data, OMNI statistics, references)</li>
               </ul>
             </div>
 
@@ -3252,7 +3252,11 @@ function renderUserGuideTab(container) {
                 <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-indigo-300">B</kbd> Advisory Bulletin</div>
                 <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-emerald-300">P</kbd> DOI References</div>
                 <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-indigo-300">U</kbd> Operator Guide</div>
-                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-amber-300">T</kbd> Toggle UTC/Local</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-amber-300">T</kbd> Time Zone</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">S</kbd> Settings</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">L</kbd> Incident Log</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">O</kbd> About</div>
+                <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">?</kbd> All Shortcuts</div>
                 <div><kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-rose-300">ESC</kbd> Close Active Modal</div>
               </div>
             </div>
@@ -3333,7 +3337,7 @@ function renderUserGuideTab(container) {
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
               <span class="font-bold text-purple-300">Real-Time Acoustic Sonification</span>
               <p class="text-slate-400 text-[11px]">
-                The console features an integrated Web Audio sonification engine (toggle with key 'A'). Pitch maps to total magnetic field strength (Bt), pan position maps to By, and harmonic beeps trigger when dynamic pressure crosses storm thresholds.
+                The <em>Sonify Plasma</em> button plays the latest solar wind as sound (sound on or off with key 'A'): the pitch follows the speed (300-1000 km/s to 180-540 Hz), the second tone is a fifth above for northward and a tritone for southward Bz, and the tremolo rate follows the density (2-25 cm⁻³ to 3-12 Hz).
               </p>
             </div>
           </div>
@@ -3342,30 +3346,29 @@ function renderUserGuideTab(container) {
     },
     {
       id: 'guide-omni',
-      title: '4. NASA OMNI Ingestion Studio & Rankine-Hugoniot Shock Analysis',
+      title: '4. File Import & Shock Screening',
       icon: 'fa-file-import',
       color: 'text-purple-400',
-      summary: 'Historical space weather benchmarks, custom CSV telemetry ingestion, automated shock jump conditions, and satellite cross-calibration.',
+      summary: 'Your own CSV, text or JSON files, illustrative storm profiles, a simple screening for shock-like jumps, and comparison with the fleet.',
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
-            The OMNI Data Studio enables operators and heliophysicists to load historical space weather benchmarks or upload custom research datasets for instant full-suite processing.
+            The Custom Ingestion tab reads your own CSV, tab- or space-delimited text and JSON files (OMNI listings, CDAWeb text output, HELIOS exports) and computes the derived quantities. Measured OMNI data for any interval come from the dashboard's Archive Interval loader instead.
           </p>
           <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-2">
-            <div class="text-[11px] font-bold text-purple-300 uppercase tracking-wider">Historical Benchmark Presets:</div>
+            <div class="text-[11px] font-bold text-purple-300 uppercase tracking-wider">Illustrative profiles (hand-written, not measured data):</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
-              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-rose-400">May 2024 G5 Superstorm:</strong> Strongest geomagnetic storm in 20+ years, Dst -412 nT.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-rose-400">May 2024 G5 Superstorm:</strong> Strongest geomagnetic storm in about 20 years.</div>
               <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-amber-400">Bastille Day 2000:</strong> X5.7 solar flare with extreme CME shock wave, V &gt; 1,000 km/s.</div>
-              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-red-400">Carrington 1859 Event:</strong> The historic benchmark solar superstorm with telegraph fires.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-red-400">Carrington 1859 Event:</strong> The historic benchmark superstorm (no in-situ data exist).</div>
               <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-orange-400">Halloween 2003 Storms:</strong> Series of intense X-class flares and satellite failures.</div>
               <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-emerald-400">Quiet Interplanetary Wind:</strong> Baseline quiet heliosphere background conditions.</div>
             </div>
           </div>
           <div class="p-3 rounded-lg bg-space-950 border border-slate-800 text-xs space-y-1">
-            <span class="font-bold text-sky-300">Automated Rankine-Hugoniot MHD Shock Detection</span>
+            <span class="font-bold text-sky-300">Shock screening</span>
             <p class="text-slate-300 text-[11px] leading-relaxed">
-              Upon ingestion, the suite scans time series for discontinuous jumps satisfying conservation of mass, momentum, and magnetic flux:
-              Compression ratio r_c = N₂ / N₁, Shock propagation speed V_sh = (N₂V₂ - N₁V₁) / (N₂ - N₁), and Fast Magnetosonic Mach number M_ms.
+              Each sample is compared with the one three samples earlier; a jump with ΔV ≥ 45 km/s, N₂/N₁ ≥ 1.5 and B₂/B₁ ≥ 1.35 is listed with a rough Mach proxy (1 + ΔV / 70 km/s). These are screening thresholds, not a Rankine-Hugoniot solution: shock normals, speeds and Mach numbers with uncertainties are in Data Studio, Event Analysis.
             </p>
           </div>
         </div>
@@ -3380,11 +3383,11 @@ function renderUserGuideTab(container) {
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
-            Coronal observation combines multi-wavelength Extreme Ultraviolet (EUV) solar imagery with heliospheric magnetic modeling:
+            The tab shows the latest SOHO LASCO C2/C3 and GOES SUVI 195 Å images, the NOAA SWPC active regions on a schematic disk, and CME arrival models. The colour buttons of the disk are drawing styles named after these passbands:
           </p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
-              <span class="font-bold text-amber-300">SDO AIA EUV Spectral Passbands</span>
+              <span class="font-bold text-amber-300">EUV passbands (drawing styles of the schematic disk)</span>
               <ul class="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
                 <li><strong class="text-amber-200">193 Å (Fe XII, 1.2 MK):</strong> Coronal holes, high-speed wind source regions.</li>
                 <li><strong class="text-red-300">304 Å (He II, 50,000 K):</strong> Chromosphere, prominences, eruptive filaments.</li>
@@ -3426,16 +3429,29 @@ function renderUserGuideTab(container) {
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
               <span class="font-bold text-amber-300">Geomagnetically Induced Currents</span>
               <p class="text-slate-400 text-[11px]">
-                Boteler (2012) 1D plane-wave induction model: E = Z · H. Computes surface geoelectric field (V/km) and neutral transformer saturation currents based on underlying geology (Precambrian resistive shield vs sedimentary basin).
+                Plane-wave surface impedance model (Boteler &amp; Pirjola 2017): E = Z · H. Computes surface geoelectric field (V/km) and neutral transformer saturation currents based on underlying geology (Precambrian resistive shield vs sedimentary basin).
               </p>
             </div>
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
               <span class="font-bold text-rose-300">D-RAP HF Radio Blackout</span>
               <p class="text-slate-400 text-[11px]">
-                Sauer &amp; Wilkinson D-Region Absorption Predictions model. Computes Highest Affected Frequency (HAF) and multi-MHz decibel attenuation caused by solar X-ray flares and Solar Proton Events (SPEs) on commercial polar aviation routes.
+                NOAA SWPC D-Region Absorption Prediction flare relation: Highest Affected Frequency HAF = 10 log₁₀(Fx) + 65 MHz (reduced by cos^0.75 χ) and absorption (HAF/f)^1.5 dB on the sunlit side. The proton (polar cap) part of D-RAP (Sauer &amp; Wilkinson 2008) is not modelled.
               </p>
             </div>
           </div>
+        </div>
+      `
+    },
+    {
+      id: 'guide-analysis',
+      title: '7. Event Analysis & OMNI Statistics',
+      icon: 'fa-microscope',
+      color: 'text-indigo-400',
+      summary: 'Shock normals, minimum variance, deHoffmann-Teller, flux rope fits, magnetic cloud search, superposed epochs, storm selection and Dst model skill on NASA CDAWeb data.',
+      content: `
+        <div class="space-y-2 text-[11px] text-slate-300 leading-relaxed">
+          <p>Data Studio, Event Analysis works on WIND, ACE and DSCOVR data at the instruments' cadence and on OMNI: interplanetary shock normals (coplanarity and mixed-mode methods) with Monte Carlo uncertainties and multi-spacecraft timing; minimum variance analysis with Sonnerup &amp; Scheible (1998) errors; the deHoffmann-Teller frame and Walén test; Lundquist flux rope fits with the Lepping et al. (2003) error estimates; the Lepping et al. (2005) magnetic cloud search; coupling functions with uncertainties; superposed epoch analysis with bootstrap intervals; storm selection by Dst; ring current model skill over many storms; and hourly OMNI statistics since 1963 with intervals that allow for autocorrelation.</p>
+          <p>Every result can be saved as JSON with the CDAWeb datasets, requests and parameters behind it.</p>
         </div>
       `
     }
@@ -3464,7 +3480,7 @@ function renderUserGuideTab(container) {
         </h3>
         <p class="text-[11px] text-slate-400 mt-0.5">Comprehensive operating manual, physical formulations, operational hazard scales, and mission control workflows.</p>
       </div>
-      <span class="px-2.5 py-1 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 font-mono text-[11px]">6 Core Chapters • Rev 1.0</span>
+      <span class="px-2.5 py-1 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 font-mono text-[11px]">Full guide: docs/USER_GUIDE.md</span>
     </div>
 
     <div class="space-y-4">
