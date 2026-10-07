@@ -1812,7 +1812,7 @@
         <div id="ea-shock-status" class="text-xs text-slate-400"></div>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div id="ea-shock-table" class="overflow-x-auto text-xs"></div>
-          <div class="h-64"><canvas id="ea-shock-chart"></canvas></div>
+          <div class="h-64 hidden"><canvas id="ea-shock-chart"></canvas></div>
         </div>
         <div id="ea-timing-table" class="overflow-x-auto text-xs"></div>
       </div>
@@ -1884,7 +1884,7 @@
         <div id="ea-mc-status" class="text-xs text-slate-400"></div>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div id="ea-mc-table" class="overflow-x-auto text-xs"></div>
-          <div class="h-64"><canvas id="ea-mc-chart"></canvas></div>
+          <div class="h-64 hidden"><canvas id="ea-mc-chart"></canvas></div>
         </div>
       </div>
 
@@ -1927,7 +1927,7 @@
         <div class="flex items-center gap-2 text-xs"><label class="ea-label mb-0">Show</label>
           <select id="ea-sea-show" class="ea-input" onchange="eaDrawSea()"></select>
           <span id="ea-sea-status" class="text-slate-400"></span></div>
-        <div class="h-72"><canvas id="ea-sea-chart"></canvas></div>
+        <div class="h-72 hidden"><canvas id="ea-sea-chart"></canvas></div>
         <div id="ea-sea-table" class="overflow-x-auto text-xs"></div>
       </div>
 
@@ -1979,7 +1979,7 @@
           <button class="ea-chip" onclick="stPreset('distribution','bz_gsm',null,40,false,'dst<=-100')">Bz during intense storms</button>
         </div>
         <div id="st-status" class="text-xs text-slate-400"></div>
-        <div class="h-72"><canvas id="st-chart"></canvas></div>
+        <div class="h-72 hidden"><canvas id="st-chart"></canvas></div>
         <div id="st-summary" class="overflow-x-auto text-xs"></div>
         <div id="st-filters" class="overflow-x-auto text-xs"></div>
       </div>

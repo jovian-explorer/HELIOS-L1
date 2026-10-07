@@ -51,6 +51,9 @@
   function drawChart(id, config) {
     const ctx = el(id)?.getContext('2d');
     if (!ctx || typeof Chart === 'undefined') return;
+    // The chart areas stay hidden until there is something to draw (they left 250-290 px
+    // of empty space in every panel before the first result).
+    el(id).parentElement.classList.remove('hidden');
     if (charts[id]) charts[id].destroy();
     config.options = Object.assign({
       responsive: true, maintainAspectRatio: false, animation: false, parsing: false,

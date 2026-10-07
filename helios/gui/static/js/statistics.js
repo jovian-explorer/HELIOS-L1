@@ -40,9 +40,10 @@
     return { type, title: { display: true, text: title, color: '#94a3b8' }, ticks, grid: { color: 'rgba(148,163,184,0.12)' } };
   }
 
-  function resetCanvas() {
+  function resetCanvas(show = true) {
     if (chart) { chart.destroy(); chart = null; }
     const c = el('st-chart');
+    c.parentElement.classList.toggle('hidden', !show);  // no empty chart area without a chart
     const ctx = c.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c.width, c.height);
@@ -206,7 +207,7 @@
           num(r.median[i]), r.q25[i] !== null ? `${num(r.q25[i])} to ${num(r.q75[i])}` : '---'])) +
         table(['Correlation of the hourly values', 'Value'], corrRow(r.correlation));
     } else if (out.analysis === 'correlation') {
-      resetCanvas();
+      resetCanvas(false);
       el('st-summary').innerHTML = table(['Statistic', 'Value'], corrRow(r));
     } else {
       const per = r.periods.filter(p => p.mean !== null);
