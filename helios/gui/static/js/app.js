@@ -139,7 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
   missionIncidentLogger = new MissionIncidentLogger();
   keepNavBelowHeader();
 
-  ['modal-settings', 'modal-about', 'modal-timezone', 'shortcuts-modal', 'modal-incident-log', 'references-modal'].forEach(id => {
+  // Click on the dark backdrop closes a dialog (three of these ids were wrong, so the guide, shortcuts
+  // and incident dialogs ignored backdrop clicks).
+  ['modal-settings', 'modal-about', 'modal-timezone', 'modal-shortcuts', 'modal-incidents', 'modal-references', 'bulletin-modal'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('click', (e) => {
