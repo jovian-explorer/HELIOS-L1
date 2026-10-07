@@ -77,6 +77,9 @@ class CMESimulator {
     this.v0 = cme.initial_speed_kms || this.v0;
     if (cme.transit_to_l1_hours) this.transitL1Hrs = Number(cme.transit_to_l1_hours);
     if (cme.transit_to_earth_hours) this.transitEarthHrs = Number(cme.transit_to_earth_hours);
+    // The transit hours come rounded to 0.1 h, so their difference can be 6 min off the
+    // server's lead time (60 against 54.8 min); use the server's value.
+    this.leadMinutes = cme.l1_to_earth_lead_time_minutes ?? null;
     if (cme.ambient_wind_kms) this.vAmbient = Number(cme.ambient_wind_kms);
     if (cme.drag_parameter_gamma) this.gamma = Number(cme.drag_parameter_gamma);  // same DBM drag as the server
     this.maxHrs = Math.max(48, Math.ceil(this.transitEarthHrs * 1.25));
@@ -91,6 +94,7 @@ class CMESimulator {
   }
 
   recomputeTrajectory() {
+    this.leadMinutes = null;
     this.transitL1Hrs = this.solveTransitHours(this.l1Km);
     this.transitEarthHrs = this.solveTransitHours(this.earthKm);
     this.maxHrs = Math.max(48, Math.ceil(this.transitEarthHrs * 1.25));
@@ -420,7 +424,7 @@ class CMESimulator {
     ctx.fillText(`SHOCK VELOCITY: ${shock.vKms.toFixed(0)} km/s | a = ${shock.dragAccelMs2.toFixed(2)} m/s²`, hudX + 10, hudY + 66);
     
     ctx.fillStyle = '#34d399';
-    const leadMin = Math.max(0, (this.transitEarthHrs - this.transitL1Hrs) * 60).toFixed(0);
+    const leadMin = (this.leadMinutes ?? Math.max(0, (this.transitEarthHrs - this.transitL1Hrs) * 60)).toFixed(0);
     ctx.fillText(`TRANSIT: L1 ${this.transitL1Hrs.toFixed(1)}h | Earth ${this.transitEarthHrs.toFixed(1)}h (Lead ${leadMin}m)`, hudX + 10, hudY + 82);
     
     ctx.fillStyle = '#94a3b8';

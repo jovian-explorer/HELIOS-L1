@@ -95,6 +95,7 @@
 - Ephemeris engine: the analytical fallback for spacecraft and planets was one 407-line function with nine near-identical branches that each set up a Keplerian orbit. The orbital elements are now a table (`CONIC_TARGETS`, with the reference epoch and phase text of each body) and the L1 halo orbits a separate helper, so the function is half as long. The output was checked to be byte-identical for 18 identifiers, both frames and three epochs before and after the change.
 
 ### Interface and robustness
+- CME radar: the propagation radar printed its own L1-to-Earth lead time from the transit hours, which the server rounds to 0.1 h, so for the default CME it said "Lead 60m" next to the solver's 54.8 min. It now shows the solver's value.
 - Aurora tab: the region list said it gave "locations with sighting probability", but it has no probabilities: it picks one of four fixed lists from the equatorward boundary of the oval at magnetic midnight (≤42°, ≤50°, ≤58° or above, corrected geomagnetic latitude). The text now says that, with the current boundary.
 - Two icons were Font Awesome Pro icons that the bundled free set does not contain (`fa-sparkles` in the aurora visibility list, `fa-planet-ringed` in the Venus tooltip of the Parker spiral view) and drew nothing. Replaced with free icons; a check of every `fa-*` class in the page and scripts against the bundled stylesheet finds no other.
 - Storm forecast tab: the Newell coupling card showed a bare number (e.g. 1,861.9); its unit, (km/s)^4/3 nT^2/3, was only in a tooltip. It is now shown next to the value.
