@@ -234,7 +234,7 @@
       const yes = c => c ? 'pass' : '<span class="text-rose-400">fail</span>';
       setStatus('ea-mcd-status', `${r.accepted.length} of ${r.candidates.length} candidate regions pass all tests (${r.criteria} criteria). ${r.notes}`);
       el('ea-mcd-table').innerHTML = r.candidates.length ? table(
-        ['Start (UTC)', 'End (UTC)', 'Hours', '<B> (nT)', '<βp>', '<VTh> (km/s)', 'ΔθB (°)', 'χM/<B>', 'Bz', 'Tests', ''],
+        ['Start (UTC)', 'End (UTC)', 'Hours', '&lt;B&gt; (nT)', '&lt;βp&gt;', '&lt;VTh&gt; (km/s)', 'ΔθB (°)', 'χM/&lt;B&gt;', 'Bz', 'Tests', ''],
         r.candidates.map((c, i) => [c.start, c.end, fmt(c.duration_hours, 1), fmt(c.mean_b_nt, 1), fmt(c.mean_beta, 2),
           fmt(c.mean_thermal_speed_kms, 1), fmt(c.theta_b_range_deg, 0), fmt(c.chi_m_over_b, 2), c.bz_sense,
           Object.entries(c.tests).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${yes(v)}`).join('<br>'),
