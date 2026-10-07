@@ -28,6 +28,9 @@
         extend: {
           colors: {
             space: {
+              // 950 is used by about 90 elements (inputs, tickers, insets) but was never defined,
+              // so they had no background and the archive date fields were white with white text.
+              950: '#03060c',
               900: '#060a12',
               800: '#0b1329',
               700: '#111e3e',
