@@ -25,6 +25,13 @@ async function loadFleetMatrix() {
 
     const missions = data.missions;
     const matrix = data.matrix_r;
+    // Missions without measured data in the window are the operational stream with offsets and
+    // noise; their high r with DSCOVR says nothing about the instruments, so mark them.
+    const prov = data.provenance || {};
+    const notMeasured = m => prov[m] && prov[m] !== 'observed';
+    const kindTag = m => notMeasured(m)
+      ? `<span class="ml-1 text-[9px] px-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30" title="${escapeHtml(prov[m])}: not a measurement">${escapeHtml(String(prov[m]).toUpperCase())}</span>`
+      : '';
 
     let html = `
       <div class="overflow-x-auto">
@@ -33,7 +40,7 @@ async function loadFleetMatrix() {
             <tr>
               <th class="p-2.5 text-left text-slate-400 border-b border-slate-800 font-tech">SPACECRAFT</th>
               ${missions.map(m => `
-                <th class="p-2.5 text-center text-sky-400 border-b border-slate-800 font-bold">${m}</th>
+                <th class="p-2.5 text-center text-sky-400 border-b border-slate-800 font-bold">${m}${kindTag(m)}</th>
               `).join('')}
             </tr>
           </thead>
@@ -45,13 +52,14 @@ async function loadFleetMatrix() {
         <tr class="hover:bg-space-900/50 transition">
           <td class="p-2.5 font-bold text-slate-300 border-b border-slate-800/60 flex items-center space-x-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-            <span>${mRow}</span>
+            <span>${mRow}</span>${kindTag(mRow)}
           </td>
       `;
 
       missions.forEach((mCol, j) => {
         const r = matrix[i][j];
         const isDiag = i === j;
+        const sim = !isDiag && (notMeasured(mRow) || notMeasured(mCol));
 
         let bgStyle = '';
         let textColor = '';
@@ -78,8 +86,8 @@ async function loadFleetMatrix() {
             <div 
               onclick="selectMatrixPair('${mRow}', '${mCol}')" 
               style="${bgStyle}" 
-              class="rounded-lg py-1.5 px-2.5 cursor-pointer hover:scale-105 transition shadow-sm ${textColor}"
-              title="${isDiag ? 'Self-correlation' : `Click to cross-correlate ${mRow} vs ${mCol}`}"
+              class="rounded-lg py-1.5 px-2.5 cursor-pointer hover:scale-105 transition shadow-sm ${textColor} ${sim ? 'opacity-50 italic' : ''}"
+              title="${isDiag ? 'Self-correlation' : `${sim ? 'One side is not measured (simulated or synthetic), so r says nothing about the instruments. ' : ''}Click to cross-correlate ${mRow} vs ${mCol}`}"
             >
               ${isDiag ? '1.000' : r.toFixed(3)}
             </div>
@@ -95,6 +103,10 @@ async function loadFleetMatrix() {
         </table>
       </div>
     `;
+    const simulated = missions.filter(notMeasured);
+    if (simulated.length) {
+      html += `<p class="text-[11px] text-amber-300/90 mt-2 px-2">${simulated.map(escapeHtml).join(', ')}: no measured data in this window. Their values are the operational L1 stream with fixed offsets and noise (or the offline model), so their correlations (faded) are not instrument comparisons.</p>`;
+    }
 
     container.innerHTML = html;
 
