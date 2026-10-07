@@ -473,7 +473,7 @@ class ParkerSpiralRenderer {
       this.tooltip.innerHTML = `
         <div class="border-b border-amber-500/40 pb-1 mb-1.5 flex items-center justify-between">
           <strong class="text-amber-300 font-bold text-xs flex items-center space-x-1.5">
-            <i class="fa-solid fa-planet-ringed text-[10px]"></i>
+            <i class="fa-solid fa-circle-dot text-[10px]"></i>
             <span>Venus (Aphrodite)</span>
           </strong>
           <span class="text-[10px] text-amber-300 font-mono font-bold">${v.rAu.toFixed(4)} AU</span>

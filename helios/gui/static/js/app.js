@@ -1440,7 +1440,7 @@ async function loadAuroralForecast() {
     if (regList && b.visible_regions) {
       regList.innerHTML = b.visible_regions.map(r => `
         <li class="p-2.5 rounded-lg bg-space-900/80 border border-slate-700/60 flex items-center space-x-2">
-          <i class="fa-solid fa-sparkles text-emerald-400"></i>
+          <i class="fa-solid fa-location-dot text-emerald-400"></i>
           <span>${r}</span>
         </li>
       `).join('');
