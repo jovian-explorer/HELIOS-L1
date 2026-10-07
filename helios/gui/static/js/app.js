@@ -138,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initVisualizers();
   missionIncidentLogger = new MissionIncidentLogger();
   keepNavBelowHeader();
+  keepUnitCase();
 
   // Click on the dark backdrop closes a dialog (three of these ids were wrong, so the guide, shortcuts
   // and incident dialogs ignored backdrop clicks).
@@ -150,6 +151,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// Many form labels are styled in capitals (CSS text-transform), which also capitalised their
+// units and symbols: "1 mHz" read as "1 MHZ", "dB/dt" as "DB/DT" (decibels), "(s)" as "(S)",
+// "nT" as "NT" and the Greek α as "Α". The bracketed part of such a label and symbols with a
+// slash keep their case.
+function keepUnitCase(root = document.body) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const parent = n.parentElement;
+    if (!parent || !/\(|\//.test(n.textContent) || !/[a-zα-ωμ]/.test(n.textContent)) continue;
+    if (getComputedStyle(parent).textTransform !== 'uppercase') continue;
+    nodes.push(n);
+  }
+  nodes.forEach(n => {
+    const parts = n.textContent.split(/(\([^()]*\)|\S+\/\S+)/);
+    if (parts.length < 2) return;
+    const frag = document.createDocumentFragment();
+    parts.forEach((part, i) => {
+      if (!part) return;
+      if (i % 2 === 1) {
+        const span = document.createElement('span');
+        span.style.textTransform = 'none';
+        span.textContent = part;
+        frag.appendChild(span);
+      } else {
+        frag.appendChild(document.createTextNode(part));
+      }
+    });
+    n.parentNode.replaceChild(frag, n);
+  });
+}
 
 // The header is sticky and wraps onto two or three lines in narrow windows, so the sticky
 // navigation bar is placed under its actual height (a fixed offset hid the domain buttons
