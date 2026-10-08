@@ -154,7 +154,7 @@ def _fetch_live(cache_dir: Path) -> Optional[Dict[str, Any]]:
     if len(events) < 500:  # not the table we know (page redesigned): do not trust it
         return None
     return {"events": events, "revision": revision(page), "source": SOURCE_URL, "doi": DOI,
-            "licence": LICENCE, "citation": CITATION, "origin": "live page (cached for a week)"}
+            "licence": LICENCE, "citation": CITATION, "origin": "live page, cached for a week"}
 
 
 def load(cache_dir: Optional[Path] = None, live: bool = True) -> Dict[str, Any]:

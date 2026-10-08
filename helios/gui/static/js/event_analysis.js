@@ -265,12 +265,14 @@
     try {
       const body = await getJSON(`/api/catalogs/icme?${q}`);
       const c = body.catalog;
-      setStatus('ea-icme-status', `${body.count} ICMEs. ${c.name}, revision ${c.revision} (${c.origin}); ${c.licence}. ` +
-        `Cite: ${c.citation}.`);
+      setStatus('ea-icme-status', `${body.count} ICMEs. Source: ${c.name}, revision ${c.revision}, ${c.origin}. ` +
+        `Licence ${c.licence}. Cite: ${c.citation}.`);
+      const cloud = { 2: 'cloud (2)', 1: 'rotation only (1)', 0: 'none (0)' };
       el('ea-icme-table').innerHTML = body.count ? table(
         ['Disturbance (UTC)', 'ICME start', 'ICME end', 'Magnetic cloud', 'Shock', 'V (km/s)', '|B| (nT)', 'Dst (nT)', 'Quality'],
-        body.events.map(e => [`${e.disturbance}<br><span class="text-slate-500">${e.disturbance_source}</span>`, e.icme_start, e.icme_end,
-          e.magnetic_cloud ?? '---', e.fast_forward_shock ? 'yes' : '', fmt(e.v_icme_kms, 0), fmt(e.b_mean_nt, 0),
+        body.events.map(e => [e.disturbance + (e.disturbance_source === 'sudden commencement or disturbance arrival' ? '' :
+          `<br><span class="text-slate-500">${e.disturbance_source}</span>`), e.icme_start, e.icme_end,
+          cloud[e.magnetic_cloud] ?? '---', e.fast_forward_shock ? 'yes' : '', fmt(e.v_icme_kms, 0), fmt(e.b_mean_nt, 0),
           e.dst_min_nt === null ? '---' : `${e.dst_min_nt}${e.dst_kind !== 'final' ? ` (${e.dst_kind})` : ''}`,
           `${e.quality ?? '---'}${e.weak_signatures ? ' (weak)' : ''}`])) : '';
       const a = el('ea-icme-csv');
