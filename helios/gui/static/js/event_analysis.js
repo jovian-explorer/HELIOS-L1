@@ -33,20 +33,10 @@
 
   function utc(id) { return (el(id)?.value || '').trim(); }
 
-  // Gaps in the data behind an analysis (provenance.coverage, helios/core/coverage.py).
-  function gapLength(min) {
-    return min >= 1440 ? `${(min / 1440).toFixed(1)} days` : (min >= 60 ? `${(min / 60).toFixed(1)} h` : `${min} min`);
-  }
-  window.gapLength = gapLength;
-
+  // Gaps in the data behind an analysis (provenance.coverage; coverageText is in app.js).
   function coverageNote(prov) {
     const c = (prov && prov.coverage) || {};
-    const parts = Object.entries(c).filter(([, v]) => v).map(([k, v]) => {
-      const name = { field: 'field', plasma: 'plasma' }[k] || k;
-      const lg = v.longest_gap;
-      return `${name} ${(100 * v.covered_fraction).toFixed(1)} %` +
-        (lg ? ` (${v.gaps} gap${v.gaps > 1 ? 's' : ''}, longest ${gapLength(lg.minutes)} from ${lg.start})` : '');
-    });
+    const parts = Object.entries(c).filter(([, v]) => v).map(([k, v]) => coverageText(k, v));
     return parts.length ? ` Data coverage: ${parts.join('; ')}.` : '';
   }
 

@@ -110,7 +110,11 @@ def describe(cov: Optional[Dict[str, Any]]) -> str:
     if not cov:
         return ""
     lg = cov.get("longest_gap")
-    s = f"{100 * cov['covered_fraction']:.1f} % covered" if cov.get("covered_fraction") is not None else "no coverage"
+    frac = cov.get("covered_fraction")
+    if frac is None:
+        s = "no coverage"
+    else:  # never rounded up to 100.0 % while there are gaps
+        s = ("> 99.9" if cov.get("gaps") and frac > 0.9995 else f"{100 * frac:.1f}") + " % covered"
     if lg:
         m = lg["minutes"]
         length = f"{m / 1440:.1f} days" if m >= 1440 else (f"{m / 60:.1f} h" if m >= 60 else f"{m:g} min")

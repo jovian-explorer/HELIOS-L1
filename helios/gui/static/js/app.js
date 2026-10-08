@@ -1066,6 +1066,17 @@ function archiveQuery() {
   return { mission, qs: `start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&cadence_minutes=${cadence}` };
 }
 
+// One group of a data coverage report (helios/core/coverage.py): the covered fraction, never
+// rounded up to 100.0 % while there are gaps, and the number and the longest of the gaps.
+function coverageText(name, v) {
+  const pct = 100 * v.covered_fraction;
+  const lg = v.longest_gap;
+  const len = !lg ? '' : lg.minutes >= 1440 ? `${(lg.minutes / 1440).toFixed(1)} days`
+    : lg.minutes >= 60 ? `${(lg.minutes / 60).toFixed(1)} h` : `${lg.minutes} min`;
+  return `${name} ${v.gaps && pct > 99.95 ? '> 99.9' : pct.toFixed(1)} %` +
+    (lg ? ` (${v.gaps} gap${v.gaps > 1 ? 's' : ''}, longest ${len} from ${lg.start})` : '');
+}
+
 async function loadArchiveTelemetry() {
   const statusEl = document.getElementById('archive-status');
   const { mission, qs } = archiveQuery();
@@ -1077,9 +1088,8 @@ async function loadArchiveTelemetry() {
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const prov = data.provenance || {};
     const groups = (prov.coverage && prov.coverage.groups) || {};
-    const cov = Object.entries(groups).map(([k, v]) => `${k} ${(100 * v.covered_fraction).toFixed(1)} %` +
-      (v.longest_gap ? ` (longest gap ${typeof gapLength === 'function' ? gapLength(v.longest_gap.minutes) : v.longest_gap.minutes + ' min'} from ${v.longest_gap.start})` : '')).join('; ');
-    if (statusEl) statusEl.innerText = (prov.description || '') + (cov ? ` Coverage: ${cov}.` : '');
+    const cov = Object.entries(groups).map(([k, v]) => coverageText(k, v)).join('; ');
+    if (statusEl) statusEl.innerText = (prov.description || '') + (cov ? `\nCoverage: ${cov}.` : '');
     updateFeedStatus(data, Math.round(performance.now() - t0));
     if (!(data.records || []).length) return;
     // Archive intervals are historical: the live NOAA scale badges do not apply.

@@ -48,3 +48,15 @@ def test_frame_coverage_uses_the_native_cadence():
     assert r["nominal_cadence_s"] == 3.0 and r["gaps"] == 1
     assert r["longest_gap"]["start"] == "2015-03-17 03:55:10" and r["longest_gap"]["end"] == "2015-03-17 03:56:40"
     assert r["longest_gap"]["minutes"] == 1.5
+
+
+def test_a_short_gap_is_not_rounded_away():
+    # A 10-min gap in 29 days of 1-min data (WIND MFI, November 1997) is 99.98 % coverage,
+    # which was shown as "100.0 % covered, 1 gap(s)".
+    t1 = T0 + timedelta(days=29)
+    times = [T0 + timedelta(minutes=m) for m in range(29 * 1440) if not 100 <= m < 110]
+    r = cv.gap_report(times, T0, t1, threshold_s=300, nominal_s=60)
+    assert r["gaps"] == 1 and r["covered_fraction"] == 0.9998
+    assert cv.describe(r).startswith("> 99.9 % covered, 1 gap(s), longest 10 min")
+    full = cv.gap_report([T0 + timedelta(minutes=m) for m in range(60)], T0, T0 + timedelta(hours=1), 300, 60)
+    assert cv.describe(full) == "100.0 % covered"

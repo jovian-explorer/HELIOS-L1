@@ -296,3 +296,23 @@ def test_tailwind_css_is_built_and_current():
         "css/tailwind.css is out of date: run python scripts/build_css.py"
     for cls in (".bg-space-950", ".border-amber-900\/40", ".gap-x-2", ".space-x-3\.5"):
         assert cls in css
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_coverage_text_counts_gaps_and_never_shows_100_percent_with_a_gap():
+    script = _extract("coverageText") + """
+console.log(JSON.stringify([
+  coverageText('field', {covered_fraction: 0.9998, gaps: 1, longest_gap: {minutes: 10, start: '1997-11-03 00:50:00'}}),
+  coverageText('magnetic field', {covered_fraction: 0.566, gaps: 2, longest_gap: {minutes: 1874, start: '2019-06-27 16:46:00'}}),
+  coverageText('plasma', {covered_fraction: 0.839, gaps: 236, longest_gap: {minutes: 283, start: '1997-11-06 21:48:00'}}),
+  coverageText('plasma', {covered_fraction: 1.0, gaps: 0, longest_gap: null}),
+]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout) == [
+        "field > 99.9 % (1 gap, longest 10 min from 1997-11-03 00:50:00)",
+        "magnetic field 56.6 % (2 gaps, longest 1.3 days from 2019-06-27 16:46:00)",
+        "plasma 83.9 % (236 gaps, longest 4.7 h from 1997-11-06 21:48:00)",
+        "plasma 100.0 %",
+    ]
