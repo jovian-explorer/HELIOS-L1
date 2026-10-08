@@ -85,16 +85,31 @@ def api_base() -> str:
 # ---------------------------------------------------------------- versions and names
 
 def version_tuple(v: str) -> Tuple[int, ...]:
-    return tuple(int(x) for x in re.findall(r"\d+", v or "")[:3])
+    """"0.0.2" -> (0, 0, 2); missing parts count as 0 ("1.2" -> (1, 2, 0))."""
+    parts = [int(x) for x in re.findall(r"\d+", v or "")[:3]]
+    return tuple(parts + [0] * (3 - len(parts))) if parts else ()
+
+
+_TAG = re.compile(r"v?(\d+(?:\.\d+){0,2})(?:-build\.(\d+))?$")
 
 
 def parse_tag(tag: str) -> Tuple[int, ...]:
-    """"v0.0.2" -> (0, 0, 2); () for a tag that is not a version."""
-    m = re.match(r"v?(\d+(?:\.\d+){0,2})$", (tag or "").strip())
+    """"v0.0.2" (or "v0.0.2-build.7") -> (0, 0, 2); () for a tag that is not a version."""
+    m = _TAG.match((tag or "").strip())
     return version_tuple(m.group(1)) if m else ()
 
 
+def release_key(tag: str) -> Tuple[int, ...]:
+    """Order of release tags: version, then build number ("v0.0.2-build.7" -> (0, 0, 2, 7))."""
+    m = _TAG.match((tag or "").strip())
+    return version_tuple(m.group(1)) + (int(m.group(2) or 0),) if m else ()
+
+
 def is_newer(tag: str, version: str = __version__) -> bool:
+    """
+    Whether a release is newer than this copy. Copies carry their version but no build
+    number, so only a higher version counts (builds of the same version are not offered).
+    """
     rv = parse_tag(tag)
     return bool(rv) and rv > version_tuple(version)
 
@@ -216,15 +231,20 @@ def list_releases(token: Optional[str] = None) -> List[Dict[str, Any]]:
 
 
 def newest_release(releases: List[Dict[str, Any]], version: str = __version__) -> Optional[Dict[str, Any]]:
-    """The release with the highest version that this copy may install (see the module docstring)."""
+    """
+    The NEWEST release this copy may install: the highest version (then build number) in
+    the list, in whatever order GitHub returns it, never merely the next one after the
+    installed version, and whether or not the installed release is still listed (only the
+    two newest releases are kept on GitHub). See the module docstring for which count.
+    """
     allow_pre = version_tuple(version)[:1] == (0,)
-    best, best_v = None, ()
+    best, best_k = None, ()
     for rel in releases:
         if rel.get("draft") or (rel.get("prerelease") and not allow_pre):
             continue
-        v = parse_tag(rel.get("tag_name", ""))
-        if v and v > best_v:
-            best, best_v = rel, v
+        k = release_key(rel.get("tag_name", ""))
+        if k and k > best_k:
+            best, best_k = rel, k
     return best
 
 

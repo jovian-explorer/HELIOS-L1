@@ -362,3 +362,27 @@ def test_check_skips_a_release_that_failed_too_often_unless_forced(installed, se
         updates.due = monkey_due
     assert updates.check_and_stage(force=True, root=root)["result"] == "staged"
     assert "failed" not in updates.load_state()
+
+
+def test_the_newest_release_is_staged_not_the_next_one(installed, server):
+    """
+    Only the two newest releases are kept on GitHub, so the installed one may be gone:
+    an old build must still find and stage the newest release, whatever the list order.
+    """
+    root = installed
+    for v in ("9.0.5", "9.0.9"):
+        name = archive_basename(v) + ".zip"
+        data = _zip_build(Path(root.parent / f"{v}.zip"), v)
+        server["files"][name] = data
+        server["state"].setdefault("rel", {})[v] = _release(f"v{v}", name, data, server["base"], prerelease=False)
+    # newest last (not newest first as GitHub sorts), installed release absent from the list
+    server["state"]["releases"] = [server["state"]["rel"]["9.0.5"], server["state"]["rel"]["9.0.9"]]
+    assert updates.check_and_stage(force=True, root=root) == {"result": "staged", "tag": "v9.0.9"}
+    assert (updates.staged_dir(root) / EXE).read_text() == "build 9.0.9"
+    # build numbers order releases of one version; versions order everything else
+    rels = [{"tag_name": "v0.0.5-build.3"}, {"tag_name": "v0.0.5-build.12"}, {"tag_name": "v0.0.4-build.99"}]
+    assert updates.newest_release(rels, "0.0.1")["tag_name"] == "v0.0.5-build.12"
+    assert updates.newest_release([{"tag_name": "v0.0.2"}, {"tag_name": "v0.0.3"}], "0.0.1")["tag_name"] == "v0.0.3"
+    assert updates.newest_release([], "0.0.1") is None
+    assert updates.version_tuple("1.2") == (1, 2, 0) and updates.is_newer("v1.2.1", "1.2")
+    assert not updates.is_newer("v0.0.1-build.40", "0.0.1")  # same version: not offered
