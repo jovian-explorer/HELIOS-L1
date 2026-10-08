@@ -316,3 +316,25 @@ console.log(JSON.stringify([
         "plasma 83.9 % (236 gaps, longest 4.7 h from 1997-11-06 21:48:00)",
         "plasma 100.0 %",
     ]
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_omni_years_note_names_years_left_out_or_not_refreshed():
+    # The storm finder and the Dst model skill said nothing when a year could not be read:
+    # with CDAWeb failing for 1996, 1996-2006 at -100 nT gave 89 storms instead of 90, unmarked.
+    script = _extract("omniYearsNote") + """
+console.log(JSON.stringify([
+  omniYearsNote({years_without_data: [], years_not_refreshed: []}),
+  omniYearsNote({years_without_data: [1996], years_not_refreshed: [1996]}),
+  omniYearsNote({years_without_data: [2026], years_not_refreshed: [2003, 2004]}),
+  omniYearsNote(undefined),
+]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout) == [
+        "",
+        "; CDAWeb could not be reached for 1996 and nothing is cached: left out",
+        "; no OMNI data for 2026; CDAWeb not reached, cached data used for 2003, 2004",
+        "",
+    ]

@@ -1077,6 +1077,18 @@ function coverageText(name, v) {
     (lg ? ` (${v.gaps} gap${v.gaps > 1 ? 's' : ''}, longest ${len} from ${lg.start})` : '');
 }
 
+// Years of hourly OMNI that an answer of the statistics endpoints could not use or refresh
+// (provenance.years_without_data, years_not_refreshed), as a note for its status line.
+function omniYearsNote(prov) {
+  const missing = (prov && prov.years_without_data) || [];
+  const offline = (prov && prov.years_not_refreshed) || [];
+  const unreached = missing.filter(y => offline.includes(y)), empty = missing.filter(y => !offline.includes(y));
+  const stale = offline.filter(y => !missing.includes(y));
+  return (unreached.length ? `; CDAWeb could not be reached for ${unreached.join(', ')} and nothing is cached: left out` : '') +
+    (empty.length ? `; no OMNI data for ${empty.join(', ')}` : '') +
+    (stale.length ? `; CDAWeb not reached, cached data used for ${stale.join(', ')}` : '');
+}
+
 async function loadArchiveTelemetry() {
   const statusEl = document.getElementById('archive-status');
   const { mission, qs } = archiveQuery();

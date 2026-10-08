@@ -165,8 +165,7 @@
     const out = body.result, r = out.result, x = out.x, y = out.y;
     const prov = body.provenance;
     setStatus(`${out.hours_selected.toLocaleString()} of ${out.hours_in_interval.toLocaleString()} hours selected` +
-      (prov.years_without_data.length ? `; no data for ${prov.years_without_data.join(', ')}` : '') +
-      (prov.years_not_refreshed.length ? `; CDAWeb not reached, cached data used for ${prov.years_not_refreshed.join(', ')}` : '') + '.');
+      omniYearsNote(prov) + '.');
     el('st-filters').innerHTML = table(['Filter (applied in this order)', 'Hours remaining'],
       out.filters.map(f => [f.filter, f.hours_remaining.toLocaleString()]));
     const csv = el('st-csv'); csv.href = `${url}&format=csv`; csv.classList.remove('hidden');

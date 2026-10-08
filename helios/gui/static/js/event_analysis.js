@@ -369,17 +369,18 @@
     if (p.storm_floor_nt !== undefined) q.set('floor_nt', p.storm_floor_nt);
     setStatus('ea-storm-status', 'Selecting storms from hourly Dst...');
     try {
-      const r = (await getJSON(`/api/statistics/storms?${q}`)).result;
+      const body = await getJSON(`/api/statistics/storms?${q}`);
+      const r = body.result, years = omniYearsNote(body.provenance);
       const key = p.storm_epoch === 'minimum' ? 'minimum_time' : 'first_hour_below';
       const list = r.storms.map(st => st[key].replace(' ', 'T')).join('\n');
       el('ea-sea-onsets').value = list;
       stormSelection = r.storms.length ? { params: p, text: list } : null;
       const ic = r.icme_catalog || {};
       const n = ic.counts || {};
-      setStatus('ea-storm-status', `${r.storms.length} storms (${r.log.map(l => `${l.filter}: ${l.storms_remaining}`).join('; ')}).` +
+      setStatus('ea-storm-status', `${r.storms.length} storms (${r.log.map(l => `${l.filter}: ${l.storms_remaining}`).join('; ')}${years}).` +
         (r.storms.length > 60 ? ' The analysis takes at most 60: narrow the selection.' : '') +
         (ic.counts ? ` Dst minimum in a listed ICME ${n.ICME}, its sheath ${n.sheath}, the ${ic.after_hours} h after it ${n.after}, none ${n.none} ` +
-          `(${ic.name}, revision ${ic.revision}, ${ic.origin}; doi:${ic.doi}, ${ic.licence}).` : ''), r.storms.length > 60);
+          `(${ic.name}, revision ${ic.revision}, ${ic.origin}; doi:${ic.doi}, ${ic.licence}).` : ''), r.storms.length > 60 || years !== '');
       el('ea-storm-table').innerHTML = r.storms.length ? table(['Dst minimum (UTC)', 'Dst (nT)', 'Below threshold from', 'Bz 6 h before (nT)', 'V (km/s)', 'Plasma type', 'ICME list (Richardson & Cane)'],
         r.storms.map(st => [st.minimum_time, fmt(st.minimum_dst_nt, 0), st.first_hour_below, fmt(st.driver_bz_gsm_nt, 1),
           fmt(st.driver_speed_kms, 0), st.driver_type ? st.driver_type.replace('_', ' ') : '---', describeIcme(st.icme)])) : '';
@@ -402,7 +403,8 @@
       const cell = (m, k, d) => (m[k].mean === null ? '---' : `${fmt(m[k].mean, d)}${m[k].ci95 ? ` (${fmt(m[k].ci95[0], d)} to ${fmt(m[k].ci95[1], d)})` : ''}`);
       el('ea-skill-table').innerHTML = table(['Model', 'Storms', 'Mean r (95 %)', 'Mean RMSE nT (95 %)', 'Mean bias nT (95 %)', 'Minimum error nT (95 %)'],
         Object.values(r.models).map(m => [m.name, m.n_storms, cell(m, 'r', 2), cell(m, 'rmse_nt', 1), cell(m, 'bias_nt', 1), cell(m, 'minimum_error_nt', 1)]));
-      setStatus('ea-skill-status', `Scored against hourly Dst in each storm window (highest Dst in the 24 h before the minimum to recovery above -50 nT, after Ji et al. 2012); bias and minimum error are model minus observed. Intervals treat the storms as independent.`);
+      setStatus('ea-skill-status', `Scored against hourly Dst in each storm window (highest Dst in the 24 h before the minimum to recovery above -50 nT, after Ji et al. 2012); bias and minimum error are model minus observed. Intervals treat the storms as independent` +
+        `${omniYearsNote(body.provenance)}.`, omniYearsNote(body.provenance) !== '');
     } catch (e) {
       setStatus('ea-skill-status', e.message, true);
     }
