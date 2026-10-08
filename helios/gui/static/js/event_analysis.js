@@ -33,6 +33,23 @@
 
   function utc(id) { return (el(id)?.value || '').trim(); }
 
+  // Gaps in the data behind an analysis (provenance.coverage, helios/core/coverage.py).
+  function gapLength(min) {
+    return min >= 1440 ? `${(min / 1440).toFixed(1)} days` : (min >= 60 ? `${(min / 60).toFixed(1)} h` : `${min} min`);
+  }
+  window.gapLength = gapLength;
+
+  function coverageNote(prov) {
+    const c = (prov && prov.coverage) || {};
+    const parts = Object.entries(c).filter(([, v]) => v).map(([k, v]) => {
+      const name = { field: 'field', plasma: 'plasma' }[k] || k;
+      const lg = v.longest_gap;
+      return `${name} ${(100 * v.covered_fraction).toFixed(1)} %` +
+        (lg ? ` (${v.gaps} gap${v.gaps > 1 ? 's' : ''}, longest ${gapLength(lg.minutes)} from ${lg.start})` : '');
+    });
+    return parts.length ? ` Data coverage: ${parts.join('; ')}.` : '';
+  }
+
   // Where a time falls in the Richardson & Cane ICME list (helios/core/icme_catalog.py).
   function describeIcme(x) {
     if (!x) return 'none listed';
@@ -118,7 +135,8 @@
         `B2/B1 = ${fmt(r.field_ratio)}.` + (r.warnings.length ? ' Warnings: ' + r.warnings.join(' ') : '') +
         (r.icme_list ? ` Richardson & Cane ICME list: disturbance ${r.icme_list.disturbance} (${r.icme_list.disturbance_source}), ` +
           `${r.icme_list.delay_minutes} min after this shock; ICME ${r.icme_list.icme_start} to ${r.icme_list.icme_end}` +
-          `${r.icme_list.magnetic_cloud === 2 ? ', magnetic cloud' : ''}.` : ' No disturbance in the Richardson & Cane ICME list within 1 h before to 3 h after this shock.'));
+          `${r.icme_list.magnetic_cloud === 2 ? ', magnetic cloud' : ''}.` : ' No disturbance in the Richardson & Cane ICME list within 1 h before to 3 h after this shock.') +
+        coverageNote(body.provenance));
       const rows = Object.entries(r.methods).map(([k, v]) => [
         k + (k === pm ? ' *' : ''), vec(v.normal_gse), `${fmt(v.theta_bn_deg, 1)} ± ${fmt(v.theta_bn_sigma_deg, 1)}`,
         `${fmt(v.shock_speed_kms, 0)} ± ${fmt(v.shock_speed_sigma_kms, 0)}`, fmt(v.alfven_mach), fmt(v.fast_mach)]);
@@ -178,11 +196,12 @@
     const url = `/api/analysis/mva?${q}`;
     setStatus('ea-mva-status', 'Running...');
     try {
-      const r = (await getJSON(url)).result;
+      const body = await getJSON(url);
+      const r = body.result;
       const ev = r.eigenvectors, l = r.eigenvalues_nT2, er = r.angular_error_deg;
       setStatus('ea-mva-status', `${r.n_vectors} vectors; λ2/λ3 = ${fmt(r.ratio_intermediate_to_min, 1)}, λ1/λ2 = ${fmt(r.ratio_max_to_intermediate, 1)}` +
         (r.ratio_intermediate_to_min !== null && r.ratio_intermediate_to_min < 10 ? ' (λ2/λ3 < 10: normal poorly determined)' : '') +
-        `; <B>·n = ${fmt(r.mean_normal_field_nT)} ± ${fmt(r.mean_normal_field_error_nT)} nT (eq. 8.24).`);
+        `; <B>·n = ${fmt(r.mean_normal_field_nT)} ± ${fmt(r.mean_normal_field_error_nT)} nT (eq. 8.24).` + coverageNote(body.provenance));
       el('ea-mva-table').innerHTML = table(['Direction', 'Eigenvalue (nT²)', 'Eigenvector (GSE)', 'Angular error (°)'], [
         ['Maximum', fmt(l[0], 3), vec(ev.max), `${fmt(er.max_toward_intermediate, 2)} (toward intermediate)`],
         ['Intermediate', fmt(l[1], 3), vec(ev.intermediate), ''],
@@ -200,9 +219,10 @@
     const url = `/api/analysis/ht?${q}`;
     setStatus('ea-ht-status', 'Running...');
     try {
-      const r = (await getJSON(url)).result;
+      const body = await getJSON(url);
+      const r = body.result;
       setStatus('ea-ht-status', `${r.n_vectors} plasma samples; c(Ec, EHT) = ${fmt(r.correlation_ec_eht, 3)}, D(VHT)/D(0) = ${fmt(r.D.residual_ratio, 3)}` +
-        (r.walen ? `; Walén slope ${fmt(r.walen.slope, 2)} (|slope| ≈ 1: rotational, ≈ 0: tangential discontinuity)` : '') + '.');
+        (r.walen ? `; Walén slope ${fmt(r.walen.slope, 2)} (|slope| ≈ 1: rotational, ≈ 0: tangential discontinuity)` : '') + '.' + coverageNote(body.provenance));
       const row = (name, e) => [name, vec(e.v_ht_kms, 1), e.error_axes.map(a => fmt(a.sigma_kms, 1)).join(' / '),
         `${fmt(e.normal_velocity_kms, 1)} ± ${fmt(e.normal_velocity_error_kms, 1)}`];
       el('ea-ht-table').innerHTML = table(['Estimate', 'VHT (GSE, km/s)', 'Error semiaxes (km/s)', 'un along MVA normal (km/s)'], [
@@ -221,9 +241,10 @@
     setStatus('ea-cpl-status', 'Running...');
     el('ea-cpl-table').innerHTML = '';
     try {
-      const r = (await getJSON(url)).result;
+      const body = await getJSON(url);
+      const r = body.result;
       setStatus('ea-cpl-status', `${r.n_samples} plasma samples` +
-        (r.uncertainties_available ? '; archive 1-σ speed and density errors propagated.' : '; this archive gives no per-sample uncertainties (measurement errors not shown).'));
+        (r.uncertainties_available ? '; archive 1-σ speed and density errors propagated.' : '; this archive gives no per-sample uncertainties (measurement errors not shown).') + coverageNote(body.provenance));
       const names = { newell_dphi_dt: 'Newell dΦ/dt', akasofu_epsilon_gw: 'Akasofu ε (GW)', vbs_mv_m: 'V·Bs (mV/m)', dynamic_pressure_npa: 'P_dyn (nPa)' };
       const sig = v => (v === null || v === undefined ? '---' : Number(v).toPrecision(2));
       const rows = Object.entries(r.functions).map(([k, f]) => [names[k] || k, Number(f.mean).toPrecision(4),
@@ -268,9 +289,10 @@
     const url = `/api/analysis/mcdetect?${q}`;
     setStatus('ea-mcd-status', 'Fetching 1-min data and scanning (up to a minute for a month)...');
     try {
-      const r = (await getJSON(url)).result;
+      const body = await getJSON(url);
+      const r = body.result;
       const yes = c => c ? 'pass' : '<span class="text-rose-400">fail</span>';
-      setStatus('ea-mcd-status', `${r.accepted.length} of ${r.candidates.length} candidate regions pass all tests (${r.criteria} criteria). ${r.notes}`);
+      setStatus('ea-mcd-status', `${r.accepted.length} of ${r.candidates.length} candidate regions pass all tests (${r.criteria} criteria). ${r.notes}` + coverageNote(body.provenance));
       el('ea-mcd-table').innerHTML = r.candidates.length ? table(
         ['Start (UTC)', 'End (UTC)', 'Hours', '&lt;B&gt; (nT)', '&lt;βp&gt;', '&lt;VTh&gt; (km/s)', 'ΔθB (°)', 'χM/&lt;B&gt;', 'Bz', 'Tests', 'ICME list (R&amp;C)', ''],
         r.candidates.map((c, i) => [c.start, c.end, fmt(c.duration_hours, 1), fmt(c.mean_b_nt, 1), fmt(c.mean_beta, 2),
@@ -304,8 +326,9 @@
     const url = `/api/analysis/fluxrope?${q}`;
     setStatus('ea-mc-status', 'Fitting (a few seconds)...');
     try {
-      const r = (await getJSON(url)).result;
-      setStatus('ea-mc-status', `${r.n_averages} averages of ${r.average_minutes} min, cloud speed ${fmt(r.speed_kms, 0)} km/s. ${r.conventions}`);
+      const body = await getJSON(url);
+      const r = body.result;
+      setStatus('ea-mc-status', `${r.n_averages} averages of ${r.average_minutes} min, cloud speed ${fmt(r.speed_kms, 0)} km/s. ${r.conventions}` + coverageNote(body.provenance));
       const u = r.uncertainties || {};
       const pm = (v, d) => (v === undefined || v === null ? '' : ` ± ${fmt(v, d)}`);
       el('ea-mc-table').innerHTML = table(['Quantity', 'Value ± 1σ'], [
@@ -382,7 +405,8 @@
     setStatus('ea-skill-status', 'Running both models over every hour of the years...');
     el('ea-skill-table').innerHTML = '';
     try {
-      const r = (await getJSON(url)).result;
+      const body = await getJSON(url);
+      const r = body.result;
       const cell = (m, k, d) => (m[k].mean === null ? '---' : `${fmt(m[k].mean, d)}${m[k].ci95 ? ` (${fmt(m[k].ci95[0], d)} to ${fmt(m[k].ci95[1], d)})` : ''}`);
       el('ea-skill-table').innerHTML = table(['Model', 'Storms', 'Mean r (95 %)', 'Mean RMSE nT (95 %)', 'Mean bias nT (95 %)', 'Minimum error nT (95 %)'],
         Object.values(r.models).map(m => [m.name, m.n_storms, cell(m, 'r', 2), cell(m, 'rmse_nt', 1), cell(m, 'bias_nt', 1), cell(m, 'minimum_error_nt', 1)]));

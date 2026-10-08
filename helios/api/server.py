@@ -30,6 +30,7 @@ from helios.config import (
 )
 from helios import config as helios_config
 from helios.core import icme_catalog
+from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
 from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
@@ -449,6 +450,8 @@ async def get_archive(
             "retrieved_utc": prov.get("retrieved_utc"),
             "missing_values": "empty cell",
         }
+        for group, cov in (prov.get("coverage") or {}).get("groups", {}).items():
+            meta[f"coverage_{group.replace(' ', '_').lower()}"] = describe_coverage(cov)
         stamp = f"{t0:%Y%m%dT%H%M}_{t1:%Y%m%dT%H%M}"
         return Response(content=DataExporter.to_csv(data, metadata=meta), media_type="text/csv",
                         headers=attachment(f"HELIOS_{key}_archive_{stamp}.csv"))
@@ -637,6 +640,10 @@ def _analysis_provenance(key: str, data: Dict[str, Any], t0: datetime, t1: datet
         "parameters": parameters,
         "software": f"HELIOS-L1 {__version__}",
         "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        # Gaps in the data behind the analysis (native cadence): gaps longer than five
+        # sample intervals and at least a minute.
+        "coverage": {name: frame_coverage(data.get(name), t0, t1) for name in ("field", "plasma")
+                     if data.get(name) is not None},
     }
 
 

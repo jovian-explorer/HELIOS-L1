@@ -24,6 +24,7 @@ import httpx
 from helios.config import CACHE_DIR, NOAA_SWPC_ENDPOINTS, MISSIONS
 from helios.core.science import SpaceWeatherPhysics
 from helios.core.aurora_model import AuroralModel
+from helios.core.coverage import records_coverage
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER, INDEX_COLUMNS, ArchiveClient, frame_to_records
 from helios.core.omni_statistics import OmniHourlyClient
 from helios.core.event_analysis import EventDataClient
@@ -306,6 +307,10 @@ class DataDownloader:
             archive=HAPI_SERVER, datasets=res["datasets"], short_label=f"CDAWeb {name}",
             requested_start=start.strftime("%Y-%m-%d %H:%M:%S"),
             requested_end=end.strftime("%Y-%m-%d %H:%M:%S"))
+        if records:
+            # Which part of the interval the archive covers, and its gaps (data outages,
+            # instrument modes): field, plasma (and SYM-H for OMNI) separately.
+            prov["coverage"] = records_coverage(records, start, end, cadence_minutes)
         return {"records": records, "provenance": prov}
 
     # ------------------------------------------------------------------

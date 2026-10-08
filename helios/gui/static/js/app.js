@@ -1076,7 +1076,10 @@ async function loadArchiveTelemetry() {
     const data = await res.json();
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const prov = data.provenance || {};
-    if (statusEl) statusEl.innerText = prov.description || '';
+    const groups = (prov.coverage && prov.coverage.groups) || {};
+    const cov = Object.entries(groups).map(([k, v]) => `${k} ${(100 * v.covered_fraction).toFixed(1)} %` +
+      (v.longest_gap ? ` (longest gap ${typeof gapLength === 'function' ? gapLength(v.longest_gap.minutes) : v.longest_gap.minutes + ' min'} from ${v.longest_gap.start})` : '')).join('; ');
+    if (statusEl) statusEl.innerText = (prov.description || '') + (cov ? ` Coverage: ${cov}.` : '');
     updateFeedStatus(data, Math.round(performance.now() - t0));
     if (!(data.records || []).length) return;
     // Archive intervals are historical: the live NOAA scale badges do not apply.

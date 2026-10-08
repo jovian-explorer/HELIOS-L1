@@ -182,8 +182,12 @@ def test_archive_api_endpoint(monkeypatch, tmp_path):
     body = r.json()
     assert body["data_points"] == 6 and body["provenance"]["kind"] == "observed"
     assert body["latest"]["time_tag"] == "2024-05-10 17:05:00"
+    cov = body["provenance"]["coverage"]["groups"]
+    assert cov["magnetic field"]["samples"] == 6 and cov["magnetic field"]["covered_fraction"] == 1.0
+    assert set(cov) == {"magnetic field", "plasma", "SYM-H"}
     csv_text = client.get("/api/archive/OMNI?start=2024-05-10T17:00&end=2024-05-10T17:06&format=csv").text
     assert "# datasets: OMNI_HRO_1MIN" in csv_text and "713.7" in csv_text
+    assert "# coverage_magnetic_field: 100.0 % covered" in csv_text
     assert client.get("/api/archive/SOHO?start=2024-05-10&end=2024-05-11").status_code == 404
     assert client.get("/api/archive/OMNI?start=2024-05-10&end=2024-05-09").status_code == 422
     assert client.get("/api/archive/OMNI?start=2024-01-01&end=2024-03-01").status_code == 422
