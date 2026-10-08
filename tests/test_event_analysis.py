@@ -582,6 +582,29 @@ def test_magnetic_cloud_detection_api(monkeypatch):
     assert client.get("/api/analysis/mcdetect?mission=SOHO&start=1997-11-06&end=1997-11-07").status_code == 404
 
 
+def test_magnetic_cloud_search_reports_field_and_plasma_coverage(monkeypatch):
+    # The search gave the coverage of the merged 1-min table as "field", so plasma gaps were
+    # hidden wherever the field was present: for this WIND interval "field 100.0 %" and no
+    # word of the plasma, which covers 77.7 % with a 4.7-h gap from 21:48 on 6 November.
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    frame = _wind_1min_19971106()
+    frame.index = frame.index.tz_localize("UTC") if frame.index.tz is None else frame.index
+
+    async def fetch_mission(mission, start, end):
+        return {"frame": frame, "datasets": [{"id": "WI_H0_MFI@0"}, {"id": "WI_H1_SWE"}], "offline": False,
+                "failed_days": 0}
+
+    monkeypatch.setattr(server.downloader.archive, "fetch_mission", fetch_mission)
+    body = TestClient(server.app, base_url=LOCAL).get(
+        "/api/analysis/mcdetect?mission=WIND&start=1997-11-06T12:00&end=1997-11-09T12:00").json()
+    cov = body["provenance"]["coverage"]
+    assert set(cov) == {"field", "plasma"}
+    assert cov["field"]["covered_fraction"] == 1.0 and cov["field"]["gaps"] == 0
+    assert cov["plasma"]["covered_fraction"] == pytest.approx(0.777, abs=0.001) and cov["plasma"]["gaps"] == 13
+    assert cov["plasma"]["longest_gap"] == {"start": "1997-11-06 21:48:00", "end": "1997-11-07 02:31:00", "minutes": 283.0}
+
+
 def test_superposed_epoch_bootstrap_confidence_bands():
     from helios.core.event_analysis import superposed_epoch
     rng = np.random.default_rng(7)

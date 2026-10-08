@@ -840,7 +840,11 @@ async def detect_clouds(
         result = await run_in_workers(detect_magnetic_clouds, frame, criteria)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
-    prov = _analysis_provenance(key, {"field": frame, "datasets": res["datasets"]}, t0, t1, result["method"],
+    # Coverage of the field and of the plasma separately (the merged table hides plasma gaps).
+    field_cols = [c for c in frame.columns if c == "bt" or c[:2] in ("bx", "by", "bz")]
+    plasma_cols = [c for c in ("speed", "density", "temperature") if c in frame.columns]
+    prov = _analysis_provenance(key, {"field": frame[field_cols], "plasma": frame[plasma_cols] if plasma_cols else None,
+                                      "datasets": res["datasets"]}, t0, t1, result["method"],
                                 {"criteria": criteria, **MC_CRITERIA[criteria]})
     prov["cadence_seconds"] = 60
     cat = await _icme_catalog()
