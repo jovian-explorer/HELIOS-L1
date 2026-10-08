@@ -136,7 +136,9 @@ def installed_notes() -> Optional[Dict[str, Any]]:
     inst = load_state().get("installed") or {}
     if inst.get("version") == __version__:
         return {"tag": inst.get("tag"), "name": inst.get("name"), "notes": inst.get("notes") or "",
-                "url": inst.get("url")}
+                "url": inst.get("url"), "previous_version": inst.get("previous_version"),
+                "releases_behind": inst.get("releases_behind"), "compare_url": inst.get("compare_url"),
+                "changelog_url": inst.get("changelog_url")}
     return None
 
 
@@ -228,6 +230,45 @@ def list_releases(token: Optional[str] = None) -> List[Dict[str, Any]]:
         r.raise_for_status()
         data = r.json()
     return data if isinstance(data, list) else []
+
+
+def list_tags(token: Optional[str] = None, pages: int = 3) -> Optional[List[str]]:
+    """Tag names of the repository (tags stay when old releases are deleted); None when unavailable."""
+    names: List[str] = []
+    try:
+        with _client(token) as c:
+            for page in range(1, pages + 1):
+                r = c.get(f"{api_base()}/repos/{REPO}/tags", params={"per_page": 100, "page": page})
+                r.raise_for_status()
+                data = r.json()
+                if not isinstance(data, list):
+                    return None
+                names += [t.get("name", "") for t in data if isinstance(t, dict)]
+                if len(data) < 100:
+                    break
+    except Exception:  # offline, rate limited: the CHANGELOG link is used instead
+        return None
+    return names
+
+
+def releases_behind(new_tag: str, tags: Optional[List[str]], releases: List[Dict[str, Any]],
+                    version: str = __version__) -> Dict[str, Any]:
+    """
+    How many releases an update skips (those newer than this copy, up to and including the
+    new one) and where to read what changed: the GitHub comparison from this version's tag
+    to the new one when both tags exist, otherwise the new version's CHANGELOG. Tags are
+    counted when the tag list is available (they outlive the deleted releases), otherwise
+    the releases still listed.
+    """
+    here, new_key = version_tuple(version), release_key(new_tag)
+    names = tags if tags is not None else [r.get("tag_name", "") for r in releases if not r.get("draft")]
+    newer = {t for t in names if parse_tag(t) and parse_tag(t) > here and release_key(t) <= new_key}
+    old_tag = f"v{version}"
+    compare = (f"https://github.com/{REPO}/compare/{old_tag}...{new_tag}"
+               if tags is not None and old_tag in tags and new_tag in tags else None)
+    return {"previous_version": version, "releases_behind": max(1, len(newer)),
+            "counted_from": "tags" if tags is not None else "listed releases",
+            "compare_url": compare, "changelog_url": f"https://github.com/{REPO}/blob/{new_tag}/CHANGELOG.md"}
 
 
 def newest_release(releases: List[Dict[str, Any]], version: str = __version__) -> Optional[Dict[str, Any]]:
@@ -424,7 +465,8 @@ def check_and_stage(force: bool = False, releases: Optional[List[Dict[str, Any]]
     version = ".".join(str(x) for x in parse_tag(tag))
     st["staged"] = {"tag": tag, "version": version, "name": rel.get("name") or tag, "notes": rel.get("body") or "",
                     "url": rel.get("html_url"), "sha256": (asset.get("digest") or "").partition(":")[2],
-                    "size": asset.get("size"), "staged_at": time.time()}
+                    "size": asset.get("size"), "staged_at": time.time(),
+                    **releases_behind(tag, list_tags(token), rels)}
     save_state(st)
     return {"result": "staged", "tag": tag}
 
@@ -535,7 +577,8 @@ def finish_install() -> None:
     staged = st.get("staged")
     root = install_root()
     if staged and staged.get("version") == __version__:
-        st["installed"] = {k: staged.get(k) for k in ("tag", "version", "name", "notes", "url")}
+        st["installed"] = {k: staged.get(k) for k in ("tag", "version", "name", "notes", "url", "previous_version",
+                                                      "releases_behind", "compare_url", "changelog_url")}
         st["installed"]["installed_at"] = time.time()
         st.pop("staged", None)
         if (st.get("failed") or {}).get("tag") == staged.get("tag"):

@@ -59,6 +59,9 @@ def server(tmp_path):
             if self.path.startswith(f"/repos/{updates.REPO}/releases"):
                 body = json.dumps(state["releases"]).encode()
                 ctype = "application/json"
+            elif self.path.startswith(f"/repos/{updates.REPO}/tags") and state.get("tags") is not None:
+                body = json.dumps([{"name": t} for t in state["tags"]]).encode()
+                ctype = "application/json"
             elif self.path.startswith("/download/") and self.path[10:] in files:
                 body = files[self.path[10:]]
                 ctype = "application/octet-stream"
@@ -263,7 +266,10 @@ def test_installed_build_keeps_its_notes_and_cleans_up(installed, monkeypatch):
     updates.save_state(st)
     updates.finish_install()  # a later start
     assert not updates.previous_dir(root).exists()
-    assert updates.installed_notes() == {"tag": f"v{__version__}", "name": "N", "notes": "What changed.", "url": "u"}
+    notes = updates.installed_notes()
+    assert {k: notes[k] for k in ("tag", "name", "notes", "url")} == {
+        "tag": f"v{__version__}", "name": "N", "notes": "What changed.", "url": "u"}
+    assert notes["releases_behind"] is None  # staged before releases were counted
     # the settings review shows them once
     from helios import settings_review
     (Path(config.CONFIG_DIR) / "settings.json").write_text("{}")
@@ -386,3 +392,39 @@ def test_the_newest_release_is_staged_not_the_next_one(installed, server):
     assert updates.newest_release([], "0.0.1") is None
     assert updates.version_tuple("1.2") == (1, 2, 0) and updates.is_newer("v1.2.1", "1.2")
     assert not updates.is_newer("v0.0.1-build.40", "0.0.1")  # same version: not offered
+
+
+def test_skipped_releases_are_counted_with_a_compare_link(installed, server):
+    """
+    After an update that skips releases, "What's new" says how many and links the GitHub
+    comparison from the old tag to the new one (tags stay when old releases are deleted),
+    or the CHANGELOG when the tags cannot be read.
+    """
+    root = installed
+    old = __version__
+    name = archive_basename("9.0.9") + ".zip"
+    data = _zip_build(Path(root.parent / "n.zip"), "9.0.9")
+    server["files"][name] = data
+    # only the two newest releases are still listed; the tags of all of them remain
+    server["state"]["releases"] = [_release("v9.0.9", name, data, server["base"]),
+                                   _release("v9.0.5", name, data, server["base"])]
+    server["state"]["tags"] = [f"v{old}", "v9.0.1", "v9.0.5", "v9.0.9", "not-a-version"]
+    assert updates.check_and_stage(force=True, root=root)["result"] == "staged"
+    st = updates.load_state()["staged"]
+    assert st["releases_behind"] == 3 and st["counted_from"] == "tags" and st["previous_version"] == old
+    assert st["compare_url"] == f"https://github.com/{updates.REPO}/compare/v{old}...v9.0.9"
+    # the new build starts: the notes carry the count and the link
+    st = updates.load_state()
+    st["installed"] = {k: st["staged"].get(k) for k in ("tag", "version", "name", "notes", "url", "previous_version",
+                                                        "releases_behind", "compare_url", "changelog_url")}
+    st["installed"]["version"] = __version__  # as seen by that build
+    updates.save_state(st)
+    notes = updates.installed_notes()
+    assert notes["releases_behind"] == 3 and notes["compare_url"].endswith(f"v{old}...v9.0.9")
+    # without the tag list: the releases still listed are counted, and the CHANGELOG is linked
+    info = updates.releases_behind("v9.0.9", None, server["state"]["releases"], old)
+    assert info["releases_behind"] == 2 and info["compare_url"] is None
+    assert info["changelog_url"] == f"https://github.com/{updates.REPO}/blob/v9.0.9/CHANGELOG.md"
+    # the old tag is missing (e.g. a copy built from an untagged commit): CHANGELOG as well
+    assert updates.releases_behind("v9.0.9", ["v9.0.9"], [], old)["compare_url"] is None
+    assert updates.releases_behind("v9.0.9", [f"v{old}", "v9.0.9"], [], old)["releases_behind"] == 1

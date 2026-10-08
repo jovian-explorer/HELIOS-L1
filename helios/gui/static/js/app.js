@@ -196,7 +196,10 @@ function renderSettingsReview(rev) {
     const n = rev.whats_new;
     parts.push(`<section class="space-y-1.5"><h4 class="font-bold text-slate-100 text-sm">What's new in ${escapeHtml(n.name || n.tag || rev.version)}</h4>
       <pre class="whitespace-pre-wrap font-sans text-[11px] text-slate-300 bg-slate-950 border border-slate-800 rounded-lg p-3 max-h-60 overflow-y-auto">${escapeHtml(n.notes || 'No release notes.')}</pre>
-      ${n.url ? `<div class="text-[11px] text-slate-500">${escapeHtml(n.url)}</div>` : ''}</section>`);
+      ${n.url ? `<div class="text-[11px] text-slate-500">${escapeHtml(n.url)}</div>` : ''}
+      ${n.releases_behind > 1 ? `<p class="text-[11px] text-amber-300">You were ${n.releases_behind} releases behind (${escapeHtml(n.previous_version || '?')} to ${escapeHtml(rev.version)}); the notes above are those of the newest only. ` +
+        (n.compare_url ? `Everything that changed since your version: <a class="underline" href="${escapeHtml(n.compare_url)}" target="_blank" rel="noopener">${escapeHtml(n.compare_url)}</a>`
+          : `See the CHANGELOG for every change: <a class="underline" href="${escapeHtml(n.changelog_url || '')}" target="_blank" rel="noopener">${escapeHtml(n.changelog_url || 'CHANGELOG.md')}</a>`) + '</p>' : ''}</section>`);
   }
   const ch = rev.changes || {};
   const row = (cells) => `<tr>${cells.map(c => `<td class="py-1.5 pr-3 align-top">${c}</td>`).join('')}</tr>`;
