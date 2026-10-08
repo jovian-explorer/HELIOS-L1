@@ -36,7 +36,7 @@ version = { attr = "helios.__version__" }
 include = ["helios*"]
 
 [tool.setuptools.package-data]
-helios = ["gui/static/**/*", "data/spice_kernels/*"]
+helios = ["gui/static/**/*", "data/spice_kernels/*", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

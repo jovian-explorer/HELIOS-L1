@@ -28,6 +28,8 @@ from helios.config import (
     SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
+from helios import config as helios_config
+from helios.core import icme_catalog
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
 from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
@@ -690,6 +692,9 @@ async def analyse_shock(
     params = {"time": tc.strftime("%Y-%m-%d %H:%M:%S"), "upstream_minutes": upstream_minutes,
               "downstream_minutes": downstream_minutes, "exclude_minutes": exclude_minutes, "refine": refine}
     prov = _analysis_provenance(key, data, t0, t1, SHOCK_METHOD_TEXT, params)
+    cat = await _icme_catalog()
+    result["icme_list"] = _icme_disturbance_near(cat["events"], result.get("shock_time"))
+    result["icme_catalog"] = _icme_meta(cat)
     body = {"provenance": prov, "result": result, "series": _event_series(data["field"], data["plasma"])}
     return _analysis_answer(body, download, f"HELIOS_shock_{key}_{tc:%Y%m%dT%H%M}")
 
@@ -831,6 +836,10 @@ async def detect_clouds(
     prov = _analysis_provenance(key, {"field": frame, "datasets": res["datasets"]}, t0, t1, result["method"],
                                 {"criteria": criteria, **MC_CRITERIA[criteria]})
     prov["cadence_seconds"] = 60
+    cat = await _icme_catalog()
+    for c in result["candidates"]:
+        c["icme_list"] = _icme_overlaps(cat["events"], c["start"], c["end"])
+    result["icme_catalog"] = _icme_meta(cat)
     return _analysis_answer({"provenance": prov, "result": result}, download,
                             f"HELIOS_mc_candidates_{key}_{t0:%Y%m%d}_{t1:%Y%m%d}")
 
@@ -1188,6 +1197,11 @@ async def _select_storms(y0: int, y1: int, threshold: float, separation: float, 
     if df.empty:
         raise HTTPException(status_code=404, detail="No OMNI hourly data for these years.")
     result = await run_in_workers(omni_statistics.find_storms, df, threshold, separation, floor, drivers)
+    cat = await _icme_catalog()
+    counts = icme_catalog.annotate_storms(result["storms"], cat["events"])
+    result["icme_catalog"] = {**_icme_meta(cat), "after_hours": icme_catalog.DEFAULT_AFTER_HOURS, "counts": counts,
+                              "method": "Dst minimum (middle of its hour) in the sheath (disturbance to ICME start), "
+                                        f"the ICME, or the {icme_catalog.DEFAULT_AFTER_HOURS:g} h after its end"}
     prov.update({"method": "Runs of hourly Dst at or below the threshold, joined across shorter recoveries "
                            "(helios.core.omni_statistics.find_storms)",
                  "parameters": {"threshold_nt": threshold, "separation_hours": separation, "floor_nt": floor,
@@ -1195,6 +1209,84 @@ async def _select_storms(y0: int, y1: int, threshold: float, separation: float, 
                  "software": f"HELIOS-L1 {__version__}",
                  "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")})
     return {"provenance": prov, "result": result}
+
+
+# ----------------------------------------------------------------------------
+# Richardson & Cane list of near-Earth ICMEs (helios.core.icme_catalog)
+# ----------------------------------------------------------------------------
+async def _icme_catalog() -> Dict[str, Any]:
+    """The list: the live page (cached for a week) or the bundled snapshot when it cannot be read."""
+    return await run_in_workers(icme_catalog.load, helios_config.CACHE_DIR, True)
+
+
+def _icme_meta(cat: Dict[str, Any]) -> Dict[str, Any]:
+    return {"name": "Richardson & Cane list of near-Earth ICMEs since 1996", "origin": cat.get("origin"),
+            "revision": cat.get("revision"), "source": cat.get("source"), "doi": cat.get("doi"),
+            "licence": cat.get("licence"), "citation": cat.get("citation")}
+
+
+def _icme_overlaps(events: List[Dict[str, Any]], start: str, end: str) -> List[Dict[str, Any]]:
+    """Listed ICMEs overlapping [start, end] with the fraction of the interval inside the ICME body."""
+    a = datetime.strptime(start, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+    b = datetime.strptime(end, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+    out = []
+    for e in icme_catalog.events_between(events, a, b):
+        s, en = icme_catalog._dt(e["icme_start"]), icme_catalog._dt(e["icme_end"])
+        inside = max(0.0, (min(b, en) - max(a, s)).total_seconds())
+        out.append({**icme_catalog.summary(e),
+                    "fraction_inside_icme": round(inside / max(1.0, (b - a).total_seconds()), 2)})
+    return out
+
+
+def _icme_disturbance_near(events: List[Dict[str, Any]], shock_time: Optional[str]) -> Optional[Dict[str, Any]]:
+    """
+    The listed disturbance (usually the sudden commencement at Earth) 1 h before to 3 h
+    after a shock seen at L1, where the shock-driven disturbance is expected, nearest first.
+    """
+    if not shock_time:
+        return None
+    t = datetime.strptime(shock_time[:16], "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+    best = None
+    for e in events:
+        d = icme_catalog._dt(e["disturbance"])
+        dt_min = (d - t).total_seconds() / 60.0
+        if -60.0 <= dt_min <= 180.0 and (best is None or abs(dt_min) < abs(best["delay_minutes"])):
+            best = {**icme_catalog.summary(e), "disturbance_source": e["disturbance_source"],
+                    "delay_minutes": round(dt_min, 1)}
+    return best
+
+
+@app.get("/api/catalogs/icme")
+async def icme_list(
+    start: str = Query("1996-01-01", description="UTC start, ISO 8601"),
+    end: str = Query("2100-01-01", description="UTC end, ISO 8601"),
+    format: str = Query("json", pattern="^(json|csv)$"),
+):
+    """
+    The Richardson & Cane list of near-Earth ICMEs (disturbance, ICME start and end,
+    magnetic cloud, shock, Dst ...) overlapping an interval, with its source, revision,
+    DOI and licence (CC0).
+    """
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    cat = await _icme_catalog()
+    events = icme_catalog.events_between(cat["events"], t0, t1)
+    meta = _icme_meta(cat)
+    if format == "csv":
+        cols = ["disturbance", "disturbance_source", "icme_start", "icme_end", "quality", "weak_signatures",
+                "speed_jump_kms", "fast_forward_shock", "v_icme_kms", "v_max_kms", "b_mean_nt", "magnetic_cloud",
+                "dst_min_nt", "dst_kind", "v_transit_kms", "cme"]
+        out = io.StringIO()
+        for k in ("name", "source", "doi", "licence", "revision", "origin", "citation"):
+            out.write(f"# {k}: {meta[k]}\n")
+        w = csv.writer(out, lineterminator="\n")
+        w.writerow(cols)
+        for e in events:
+            w.writerow(["" if e.get(c) is None else e.get(c) for c in cols])
+        return Response(content=out.getvalue(), media_type="text/csv",
+                        headers=attachment(f"HELIOS_ICME_list_{t0:%Y%m%d}_{t1:%Y%m%d}.csv"))
+    return {"catalog": meta, "count": len(events), "events": events}
 
 
 @app.get("/api/statistics/storms")

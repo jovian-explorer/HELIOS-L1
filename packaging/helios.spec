@@ -13,6 +13,7 @@ a = Analysis(
     datas=[
         (str(PKG / "gui" / "static"), "helios/gui/static"),
         (str(PKG / "data" / "spice_kernels"), "helios/data/spice_kernels"),
+        (str(PKG / "data" / "icme_richardson_cane.json"), "helios/data"),
     ],
     hiddenimports=[
         "uvicorn.logging", "uvicorn.loops", "uvicorn.loops.auto",

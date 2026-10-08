@@ -33,6 +33,15 @@
 
   function utc(id) { return (el(id)?.value || '').trim(); }
 
+  // Where a time falls in the Richardson & Cane ICME list (helios/core/icme_catalog.py).
+  function describeIcme(x) {
+    if (!x) return 'none listed';
+    const where = { ICME: 'in the ICME', sheath: 'in the sheath of the ICME', after: 'just after the ICME' }[x.region] || x.region;
+    const mc = x.magnetic_cloud === 2 ? ', magnetic cloud' : '';
+    const dst = x.dst_min_nt !== null && x.dst_min_nt !== undefined ? `, listed Dst ${x.dst_min_nt}${x.dst_kind !== 'final' ? ` (${x.dst_kind})` : ''}` : '';
+    return `${where} ${x.icme_start} to ${x.icme_end}${mc}${dst}`;
+  }
+
   async function getJSON(url) {
     const res = await fetch(url);
     let body = null;
@@ -106,7 +115,10 @@
         `${r.shock_type} shock at ${r.shock_time} UTC${r.shock_time_refined ? ' (refined from ' + r.shock_time_requested + ')' : ''}; ` +
         `${pm}: n = ${vec(m.normal_gse)}, θBn = ${fmt(m.theta_bn_deg, 1)}° ± ${fmt(m.theta_bn_sigma_deg, 1)}, ` +
         `V_sh = ${fmt(m.shock_speed_kms, 0)} ± ${fmt(m.shock_speed_sigma_kms, 0)} km/s, N2/N1 = ${fmt(r.density_ratio)}, ` +
-        `B2/B1 = ${fmt(r.field_ratio)}.` + (r.warnings.length ? ' Warnings: ' + r.warnings.join(' ') : ''));
+        `B2/B1 = ${fmt(r.field_ratio)}.` + (r.warnings.length ? ' Warnings: ' + r.warnings.join(' ') : '') +
+        (r.icme_list ? ` Richardson & Cane ICME list: disturbance ${r.icme_list.disturbance} (${r.icme_list.disturbance_source}), ` +
+          `${r.icme_list.delay_minutes} min after this shock; ICME ${r.icme_list.icme_start} to ${r.icme_list.icme_end}` +
+          `${r.icme_list.magnetic_cloud === 2 ? ', magnetic cloud' : ''}.` : ' No disturbance in the Richardson & Cane ICME list within 1 h before to 3 h after this shock.'));
       const rows = Object.entries(r.methods).map(([k, v]) => [
         k + (k === pm ? ' *' : ''), vec(v.normal_gse), `${fmt(v.theta_bn_deg, 1)} ± ${fmt(v.theta_bn_sigma_deg, 1)}`,
         `${fmt(v.shock_speed_kms, 0)} ± ${fmt(v.shock_speed_sigma_kms, 0)}`, fmt(v.alfven_mach), fmt(v.fast_mach)]);
@@ -225,6 +237,29 @@
     }
   };
 
+  // ---------------------------------------------------------------- Richardson & Cane ICME list
+  window.eaListIcmes = async function () {
+    const q = new URLSearchParams({ start: utc('ea-icme-start'), end: utc('ea-icme-end') });
+    setStatus('ea-icme-status', 'Reading the ICME list...');
+    try {
+      const body = await getJSON(`/api/catalogs/icme?${q}`);
+      const c = body.catalog;
+      setStatus('ea-icme-status', `${body.count} ICMEs. ${c.name}, revision ${c.revision} (${c.origin}); ${c.licence}. ` +
+        `Cite: ${c.citation}.`);
+      el('ea-icme-table').innerHTML = body.count ? table(
+        ['Disturbance (UTC)', 'ICME start', 'ICME end', 'Magnetic cloud', 'Shock', 'V (km/s)', '|B| (nT)', 'Dst (nT)', 'Quality'],
+        body.events.map(e => [`${e.disturbance}<br><span class="text-slate-500">${e.disturbance_source}</span>`, e.icme_start, e.icme_end,
+          e.magnetic_cloud ?? '---', e.fast_forward_shock ? 'yes' : '', fmt(e.v_icme_kms, 0), fmt(e.b_mean_nt, 0),
+          e.dst_min_nt === null ? '---' : `${e.dst_min_nt}${e.dst_kind !== 'final' ? ` (${e.dst_kind})` : ''}`,
+          `${e.quality ?? '---'}${e.weak_signatures ? ' (weak)' : ''}`])) : '';
+      const a = el('ea-icme-csv');
+      a.href = `/api/catalogs/icme?${q}&format=csv`;
+      a.classList.remove('hidden');
+    } catch (e) {
+      setStatus('ea-icme-status', e.message, true);
+    }
+  };
+
   // ---------------------------------------------------------------- magnetic cloud search
   window.eaRunCloudSearch = async function () {
     const mission = el('ea-mcd-mission').value;
@@ -237,10 +272,12 @@
       const yes = c => c ? 'pass' : '<span class="text-rose-400">fail</span>';
       setStatus('ea-mcd-status', `${r.accepted.length} of ${r.candidates.length} candidate regions pass all tests (${r.criteria} criteria). ${r.notes}`);
       el('ea-mcd-table').innerHTML = r.candidates.length ? table(
-        ['Start (UTC)', 'End (UTC)', 'Hours', '&lt;B&gt; (nT)', '&lt;βp&gt;', '&lt;VTh&gt; (km/s)', 'ΔθB (°)', 'χM/&lt;B&gt;', 'Bz', 'Tests', ''],
+        ['Start (UTC)', 'End (UTC)', 'Hours', '&lt;B&gt; (nT)', '&lt;βp&gt;', '&lt;VTh&gt; (km/s)', 'ΔθB (°)', 'χM/&lt;B&gt;', 'Bz', 'Tests', 'ICME list (R&amp;C)', ''],
         r.candidates.map((c, i) => [c.start, c.end, fmt(c.duration_hours, 1), fmt(c.mean_b_nt, 1), fmt(c.mean_beta, 2),
           fmt(c.mean_thermal_speed_kms, 1), fmt(c.theta_b_range_deg, 0), fmt(c.chi_m_over_b, 2), c.bz_sense,
           Object.entries(c.tests).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${yes(v)}`).join('<br>'),
+          (c.icme_list || []).length ? c.icme_list.map(x => `${x.icme_start} to ${x.icme_end}, ${Math.round(100 * x.fraction_inside_icme)} % inside` +
+            `${x.magnetic_cloud === 2 ? ', magnetic cloud' : ''}`).join('<br>') : 'none listed',
           `<button class="ea-link" onclick="eaFitCandidate(${i})">Fit flux rope</button>`])) : '';
       window.eaCloudCandidates = { mission, list: r.candidates };
       showDownload('ea-mcd-download', url);
@@ -322,11 +359,15 @@
       const list = r.storms.map(st => st[key].replace(' ', 'T')).join('\n');
       el('ea-sea-onsets').value = list;
       stormSelection = r.storms.length ? { params: p, text: list } : null;
+      const ic = r.icme_catalog || {};
+      const n = ic.counts || {};
       setStatus('ea-storm-status', `${r.storms.length} storms (${r.log.map(l => `${l.filter}: ${l.storms_remaining}`).join('; ')}).` +
-        (r.storms.length > 60 ? ' The analysis takes at most 60: narrow the selection.' : ''), r.storms.length > 60);
-      el('ea-storm-table').innerHTML = r.storms.length ? table(['Dst minimum (UTC)', 'Dst (nT)', 'Below threshold from', 'Bz 6 h before (nT)', 'V (km/s)', 'Plasma type'],
+        (r.storms.length > 60 ? ' The analysis takes at most 60: narrow the selection.' : '') +
+        (ic.counts ? ` Dst minimum in a listed ICME ${n.ICME}, its sheath ${n.sheath}, the ${ic.after_hours} h after it ${n.after}, none ${n.none} ` +
+          `(${ic.name}, revision ${ic.revision}, ${ic.origin}; doi:${ic.doi}, ${ic.licence}).` : ''), r.storms.length > 60);
+      el('ea-storm-table').innerHTML = r.storms.length ? table(['Dst minimum (UTC)', 'Dst (nT)', 'Below threshold from', 'Bz 6 h before (nT)', 'V (km/s)', 'Plasma type', 'ICME list (Richardson & Cane)'],
         r.storms.map(st => [st.minimum_time, fmt(st.minimum_dst_nt, 0), st.first_hour_below, fmt(st.driver_bz_gsm_nt, 1),
-          fmt(st.driver_speed_kms, 0), st.driver_type ? st.driver_type.replace('_', ' ') : '---'])) : '';
+          fmt(st.driver_speed_kms, 0), st.driver_type ? st.driver_type.replace('_', ' ') : '---', describeIcme(st.icme)])) : '';
     } catch (e) {
       setStatus('ea-storm-status', e.message, true);
     }

@@ -172,7 +172,17 @@ After import the tab shows the summary, the time series and a **shock screening*
 
 Forms for each method (section 7), with example buttons for the checked events. Times are UTC (`YYYY-MM-DDTHH:MM`). Limits: field and plasma analyses up to 72 hours, magnetic cloud search up to 31 days, superposed epoch analysis up to 60 onsets and 180 days of data in total. Every panel has *Save JSON* (and CSV where it fits) with the datasets, HAPI requests, parameters and software version.
 
-### 6.3 References & Portals (key P)
+### 6.3 ICMEs: the Richardson & Cane list
+
+The Event Analysis tab lists the near-Earth interplanetary coronal mass ejections of the list kept by I. G. Richardson and H. V. Cane since 1996 (disturbance time, ICME start and end, magnetic cloud flag, reported shock, speed, |B| and the minimum Dst they attribute to the ICME), as a table or CSV. The live list is read when the network is available (kept for a week); otherwise the bundled snapshot is used, and every answer says which. The same list marks:
+
+* each storm of the storm finder: whether its Dst minimum (the middle of the hour) lies in an ICME, in its sheath (from the disturbance to the ICME start), or in the 3 h after the ICME end (the list attributes a storm to an ICME "or slightly thereafter");
+* each magnetic cloud candidate: the listed ICMEs it overlaps and the fraction of it inside the ICME;
+* a shock analysed at L1: the listed disturbance 1 h before to 3 h after it (typically the sudden commencement at Earth some 30-60 min later).
+
+Checks: the parser reads all 644 events of the July 23, 2026 revision exactly as the authors' spreadsheet on Harvard Dataverse lists them; 89 of the 98 WIND magnetic clouds (Lepping et al.) since 1996 lie inside a listed ICME, all flagged as magnetic clouds; for the 514 ICMEs with final Dst, the minimum of OMNI hourly Dst from the disturbance to the ICME end (or the next disturbance) plus 1 h equals the listed value for 79 % and is within 2 nT for 90 % (the rest are the authors' attributions when ICMEs overlap or Dst was already depressed). Of the 90 storms of 1996-2006 below -100 nT, 75 fall in a listed ICME or its sheath; all ten below -250 nT do. The list is the authors' judgement and "a work in progress": an unmatched storm may still have an ICME driver.
+
+### 6.4 References & Portals (key P)
 
 Equations with DOIs, data portals, licences, a parameter handbook, the in-app guide and an interactive solver for the boundary and coupling formulas.
 
@@ -233,6 +243,7 @@ Missing values stay empty. Rows with a non-zero RTSW quality flag are dropped. W
 | WDC for Geomagnetism, Kyoto: Dst, SYM-H, ASY-H, AE (via NOAA and OMNI) | Ring current, storms | Free for scientific use, **no commercial use**; acknowledge the data suppliers and WDC Kyoto and include the index DOIs in references. Real-time (quicklook) values: contact WDC Kyoto before using them in publications. |
 | WDC-SILSO, Royal Observatory of Belgium (via NOAA and OMNI) | Sunspot number | CC BY-NC 4.0; "Source: WDC-SILSO, Royal Observatory of Belgium, Brussels", doi:10.24414/qnza-ac80. |
 | SOHO LASCO (ESA/NASA), GOES SUVI (NOAA) | Images | Credit SOHO/LASCO (ESA & NASA) and NOAA GOES SUVI. |
+| Richardson & Cane list of near-Earth ICMEs since 1996 (izw1.caltech.edu/ACE/ASC/DATA/level3/icmetable2.htm; a snapshot of the July 23, 2026 revision is bundled) | ICME list panel; storms, shocks and cloud candidates marked with it | CC0 1.0 (Harvard Dataverse); cite doi:10.7910/DVN/C2MHTH with Cane & Richardson (2003, JGR 108, 1156) and Richardson & Cane (2010, Sol. Phys. 264, 189). |
 | Harvard-Smithsonian CfA Interplanetary Shock Database; WIND MFI magnetic cloud table and error program (wind.nasa.gov/mfi) | Validation of shocks and flux ropes | Cited in the CHANGELOG where used. |
 | NAIF generic kernels (`naif0012.tls`, `pck00010.tpc`, `gm_de431.tpc`), IGRF-14 coefficients (NOAA NCEI) | Ephemerides, GSE-GSM rotation | Public. |
 

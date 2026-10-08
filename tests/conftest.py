@@ -28,6 +28,9 @@ def _offline_downloader(monkeypatch):
         return None
 
     monkeypatch.setattr(DataDownloader, "fetch_json", _no_network)
+    # The ICME list is read from its bundled snapshot (no live page in tests).
+    from helios.core import icme_catalog
+    monkeypatch.setattr(icme_catalog, "_fetch_live", lambda cache_dir: None)
     monkeypatch.setattr(DataDownloader, "fetch_text", _no_text)
     yield
 

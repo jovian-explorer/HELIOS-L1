@@ -1931,6 +1931,20 @@
         <div id="ea-sea-table" class="overflow-x-auto text-xs"></div>
       </div>
 
+      <!-- Richardson & Cane ICME list -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Near-Earth ICMEs since 1996 (Richardson &amp; Cane list)</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">Start (UTC)</label><input id="ea-icme-start" type="text" class="ea-input w-32" value="2003-10-20"></div>
+          <div><label class="ea-label">End (UTC)</label><input id="ea-icme-end" type="text" class="ea-input w-32" value="2003-11-25"></div>
+          <button onclick="eaListIcmes()" class="ea-btn">List ICMEs</button>
+          <a id="ea-icme-csv" class="ea-link hidden" href="#">CSV</a>
+        </div>
+        <p class="text-[11px] text-slate-400">Disturbance (sudden commencement at Earth, or the shock at ACE/WIND), ICME start and end from plasma and field data (to about an hour), magnetic cloud (2 reported cloud, 1 rotation only, 0 none), reported fast shock, mean speed and |B|, and the minimum Dst the authors attribute to the ICME. The same list marks storms, shocks and cloud candidates in the panels above.</p>
+        <div id="ea-icme-status" class="text-xs text-slate-400"></div>
+        <div id="ea-icme-table" class="overflow-x-auto text-xs"></div>
+      </div>
+
       <!-- OMNI statistics -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">OMNI statistics (hourly, 1963 to the present)</h4>
