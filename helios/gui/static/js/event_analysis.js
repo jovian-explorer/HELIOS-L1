@@ -96,16 +96,26 @@
       time: utc('ea-shock-time'), upstream_minutes: el('ea-shock-up').value,
       downstream_minutes: el('ea-shock-down').value, exclude_minutes: el('ea-shock-gap').value,
     });
+    if (el('ea-shock-gap-after').value !== '') q.set('exclude_after_minutes', el('ea-shock-gap-after').value);
+    if (!el('ea-shock-refine').checked) q.set('refine', 'false');
     return q;
   }
 
-  window.eaShockPreset = function (mission, time, up, down, gap) {
+  window.eaShockPreset = function (mission, time, up, down, gap, gapAfter = '', refine = true) {
     el('ea-shock-mission').value = mission;
     el('ea-shock-time').value = time;
     el('ea-shock-up').value = up;
     el('ea-shock-down').value = down;
     el('ea-shock-gap').value = gap;
+    el('ea-shock-gap-after').value = gapAfter;
+    el('ea-shock-refine').checked = refine;
     window.eaRunShock();
+  };
+
+  // The windows of the IPShocks database at its listed time: 8 min on each side, leaving out
+  // 1 min before and 2 min after a fast forward shock (2 before and 1 after a fast reverse one).
+  window.eaIpshocksWindows = function (mission, time, type) {
+    window.eaShockPreset(mission, time.replace(' ', 'T'), 8, 8, type === 'FR' ? 2 : 1, type === 'FR' ? 1 : 2, false);
   };
 
   window.eaRunShock = async function () {
@@ -122,7 +132,7 @@
         `${r.shock_type} shock at ${r.shock_time} UTC${r.shock_time_refined ? ' (refined from ' + r.shock_time_requested + ')' : ''}; ` +
         `${pm}: n = ${vec(m.normal_gse)}, θBn = ${fmt(m.theta_bn_deg, 1)}° ± ${fmt(m.theta_bn_sigma_deg, 1)}, ` +
         `V_sh = ${fmt(m.shock_speed_kms, 0)} ± ${fmt(m.shock_speed_sigma_kms, 0)} km/s, N2/N1 = ${fmt(r.density_ratio)}, ` +
-        `B2/B1 = ${fmt(r.field_ratio)}.` + (r.warnings.length ? ' Warnings: ' + r.warnings.join(' ') : '') +
+        `B2/B1 = ${fmt(r.field_ratio)}.` + (r.warnings.length ? ' Warnings: ' + r.warnings.join(' ') : '') + ipshocksText(r) +
         (r.icme_list ? ` Richardson & Cane ICME list: disturbance ${r.icme_list.disturbance} (${r.icme_list.disturbance_source}), ` +
           `${r.icme_list.delay_minutes} min after this shock; ICME ${r.icme_list.icme_start} to ${r.icme_list.icme_end}` +
           `${r.icme_list.magnetic_cloud === 2 ? ', magnetic cloud' : ''}.` : ' No disturbance in the Richardson & Cane ICME list within 1 h before to 3 h after this shock.') +
@@ -153,6 +163,42 @@
       showDownload('ea-shock-download', url);
     } catch (e) {
       setStatus('ea-shock-status', e.message, true);
+    }
+  };
+
+  // The IPShocks entry of the analysed shock (result.ipshocks) next to the values found here.
+  function ipshocksText(r) {
+    const ip = r.ipshocks, m = r.methods[r.preferred_method] || {};
+    if (!ip) return ' Not in the IPShocks database within 5 min.';
+    const w = r.windows_minutes, theirs = ip.type === 'FR' ? [-10, -2, 1, 9] : [-9, -1, 2, 10];
+    const same = w.before[0] === theirs[0] && w.before[1] === theirs[1] && w.after[0] === theirs[2] && w.after[1] === theirs[3];
+    return ` IPShocks (University of Helsinki, ${ip.catalog.licence}): ${ip.type} at ${ip.time} UTC (${ip.offset_seconds > 0 ? '+' : ''}${ip.offset_seconds} s), ` +
+      `MX3 normal ${vec(ip.normal_gse, 2)}, ${fmt(ip.normal_angle_deg, 1)}° from the ${r.preferred_method} normal here; ` +
+      `θBn ${fmt(ip.theta_bn_deg, 1)} ± ${fmt(ip.theta_bn_error_deg, 1)}° (here ${fmt(m.theta_bn_deg, 1)}), ` +
+      `V_sh ${fmt(ip.shock_speed_kms, 0)} ± ${fmt(ip.shock_speed_error_kms, 0)} km/s (here ${fmt(m.shock_speed_kms, 0)}), ` +
+      `M_A ${fmt(ip.alfven_mach)} ± ${fmt(ip.alfven_mach_error)} (here ${fmt(m.alfven_mach)})` +
+      (same ? ', same windows.' : `; their windows are ${theirs[0]} to ${theirs[1]} and +${theirs[2]} to +${theirs[3]} min.`);
+  }
+
+  // ---------------------------------------------------------------- IPShocks database
+  window.eaListShocks = async function () {
+    const q = new URLSearchParams({ start: utc('ea-ips-start'), end: utc('ea-ips-end'), spacecraft: el('ea-ips-craft').value });
+    setStatus('ea-ips-status', 'Reading the shock list...');
+    try {
+      const body = await getJSON(`/api/catalogs/shocks?${q}`);
+      const c = body.catalog;
+      setStatus('ea-ips-status', `${body.count} shock${body.count === 1 ? '' : 's'}. ${c.name}, version ${c.version}, licence ${c.licence}. Cite: ${c.citation}.`);
+      el('ea-ips-table').innerHTML = body.count ? table(
+        ['Time (UTC)', 'Spacecraft', 'Type', 'θBn (°)', 'V_sh (km/s)', 'M_A', 'M_ms', 'N2/N1', 'B2/B1', 'ΔV (km/s)', 'V up (km/s)', ''],
+        body.events.map(e => [e.time, e.spacecraft, e.type, `${fmt(e.theta_bn_deg, 0)} ± ${fmt(e.theta_bn_error_deg, 0)}`,
+          `${fmt(e.shock_speed_kms, 0)} ± ${fmt(e.shock_speed_error_kms, 0)}`, fmt(e.alfven_mach, 1), fmt(e.magnetosonic_mach, 1),
+          fmt(e.density_ratio), fmt(e.field_ratio), fmt(e.speed_jump_kms, 0), fmt(e.upstream_speed_kms, 0),
+          `<button class="ea-link" onclick="eaIpshocksWindows('${e.spacecraft}','${e.time}','${e.type}')">Analyse</button>`])) : '';
+      const a = el('ea-ips-csv');
+      a.href = `/api/catalogs/shocks?${q}&format=csv`;
+      a.classList.remove('hidden');
+    } catch (e) {
+      setStatus('ea-ips-status', e.message, true);
     }
   };
 

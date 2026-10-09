@@ -656,11 +656,12 @@ def classify_shock(n_before: float, n_after: float, b_before: float, b_after: fl
 def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
                   upstream_minutes: float = 10.0, downstream_minutes: float = 10.0,
                   exclude_minutes: float = 1.0, refine: bool = True, n_draws: int = 400,
-                  seed: int = 1) -> Dict[str, Any]:
+                  seed: int = 1, exclude_after_minutes: Optional[float] = None) -> Dict[str, Any]:
     """
     Normals, theta_Bn, shock speed, jump ratios and upstream Mach numbers of a shock at
     `shock_time` from field and plasma frames (GSE). Averaging windows are taken on each
-    side, `exclude_minutes` away from the shock. Uncertainties come from `n_draws` Monte
+    side, `exclude_minutes` away from the shock (`exclude_after_minutes` after it, when given:
+    the IPShocks database leaves out 1 min before and 2 min after). Uncertainties come from `n_draws` Monte
     Carlo draws of the window means within their standard errors.
     """
     t_guess = _utc(shock_time)
@@ -668,7 +669,8 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
     t0 = t0 if t0 is not None else t_guess
 
     before = (-exclude_minutes - upstream_minutes, -exclude_minutes)
-    after = (exclude_minutes, exclude_minutes + downstream_minutes)
+    gap_after = exclude_minutes if exclude_after_minutes is None else exclude_after_minutes
+    after = (gap_after, gap_after + downstream_minutes)
     fcols, pcols = ["bx", "by", "bz"], ["vx", "vy", "vz", "n", "t"]
     bb, bb_e, kbb = _means(_window(field, t0, *before), fcols)
     ba, ba_e, kba = _means(_window(field, t0, *after), fcols)

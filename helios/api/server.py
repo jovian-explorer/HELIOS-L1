@@ -29,7 +29,7 @@ from helios.config import (
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios import config as helios_config
-from helios.core import icme_catalog
+from helios.core import icme_catalog, shock_catalog
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -658,11 +658,12 @@ def _analysis_answer(body: Dict[str, Any], download: bool, name: str):
 
 
 async def _run_shock(key: str, tc: datetime, upstream_minutes: float, downstream_minutes: float,
-                     exclude_minutes: float, refine: bool):
+                     exclude_minutes: float, refine: bool, exclude_after_minutes: Optional[float] = None):
     """Fetch native-cadence data around tc and analyse the shock: (data, result, t0, t1)."""
     margin = 12.0  # minutes of context, and room for the refined shock time
+    gap_after = exclude_minutes if exclude_after_minutes is None else exclude_after_minutes
     t0 = tc - timedelta(minutes=upstream_minutes + exclude_minutes + margin)
-    t1 = tc + timedelta(minutes=downstream_minutes + exclude_minutes + margin)
+    t1 = tc + timedelta(minutes=downstream_minutes + gap_after + margin)
     data = await downloader.events.fetch(key, t0, t1)
     if data["field"] is None or data["plasma"] is None:
         missing = "magnetic field" if data["field"] is None else "plasma"
@@ -671,7 +672,7 @@ async def _run_shock(key: str, tc: datetime, upstream_minutes: float, downstream
         raise HTTPException(status_code=404, detail=msg)
     try:
         result = await run_in_workers(analyze_shock, data["field"], data["plasma"], tc, upstream_minutes,
-                                      downstream_minutes, exclude_minutes, refine)
+                                      downstream_minutes, exclude_minutes, refine, exclude_after_minutes=gap_after)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return data, result, t0, t1
@@ -687,6 +688,8 @@ async def analyse_shock(
     upstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
     downstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
     exclude_minutes: float = Query(1.0, ge=0.0, le=15.0, description="Gap left out on each side of the shock"),
+    exclude_after_minutes: Optional[float] = Query(None, ge=0.0, le=15.0, description="Gap after the shock, if "
+                                                   "different (IPShocks: 1 min before, 2 min after)"),
     refine: bool = Query(True, description="Move the shock time to the |B| ramp within 10 minutes"),
     download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
 ):
@@ -697,13 +700,16 @@ async def analyse_shock(
     """
     key = _event_mission(mission)
     tc = _parse_utc(time, "time")
-    data, result, t0, t1 = await _run_shock(key, tc, upstream_minutes, downstream_minutes, exclude_minutes, refine)
+    data, result, t0, t1 = await _run_shock(key, tc, upstream_minutes, downstream_minutes, exclude_minutes, refine,
+                                            exclude_after_minutes)
     params = {"time": tc.strftime("%Y-%m-%d %H:%M:%S"), "upstream_minutes": upstream_minutes,
-              "downstream_minutes": downstream_minutes, "exclude_minutes": exclude_minutes, "refine": refine}
+              "downstream_minutes": downstream_minutes, "exclude_minutes": exclude_minutes,
+              "exclude_after_minutes": exclude_after_minutes, "refine": refine}
     prov = _analysis_provenance(key, data, t0, t1, SHOCK_METHOD_TEXT, params)
     cat = await _icme_catalog()
     result["icme_list"] = _icme_disturbance_near(cat["events"], result.get("shock_time"))
     result["icme_catalog"] = _icme_meta(cat)
+    result["ipshocks"] = _ipshocks_match(key, result)
     body = {"provenance": prov, "result": result, "series": _event_series(data["field"], data["plasma"])}
     return _analysis_answer(body, download, f"HELIOS_shock_{key}_{tc:%Y%m%dT%H%M}")
 
@@ -717,6 +723,7 @@ async def analyse_timing(
     upstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
     downstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
     exclude_minutes: float = Query(1.0, ge=0.0, le=15.0),
+    exclude_after_minutes: Optional[float] = Query(None, ge=0.0, le=15.0, description="Gap after the shock, if different"),
     search_minutes: float = Query(20.0, ge=2.0, le=60.0, description="Search for the observed jump around the prediction"),
     download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
 ):
@@ -731,7 +738,8 @@ async def analyse_timing(
     if method not in SHOCK_METHODS:
         raise HTTPException(status_code=422, detail=f"'method' must be one of {', '.join(SHOCK_METHODS)}.")
     tc = _parse_utc(time, "time")
-    data, result, t0, t1 = await _run_shock(key, tc, upstream_minutes, downstream_minutes, exclude_minutes, True)
+    data, result, t0, t1 = await _run_shock(key, tc, upstream_minutes, downstream_minutes, exclude_minutes, True,
+                                            exclude_after_minutes)
     if method not in result["methods"]:
         raise HTTPException(status_code=422, detail=f"The {method} normal is undefined for this shock.")
     t_ref = pd.Timestamp(result["shock_time"], tz="UTC")
@@ -762,7 +770,8 @@ async def analyse_timing(
     checks = await asyncio.gather(*(one(n) for n in names))
     params = {"time": tc.strftime("%Y-%m-%d %H:%M:%S"), "method": method, "targets": names,
               "upstream_minutes": upstream_minutes, "downstream_minutes": downstream_minutes,
-              "exclude_minutes": exclude_minutes, "search_minutes": search_minutes}
+              "exclude_minutes": exclude_minutes, "exclude_after_minutes": exclude_after_minutes,
+              "search_minutes": search_minutes}
     prov = _analysis_provenance(key, data, t0, t1, SHOCK_METHOD_TEXT + "; planar-shock timing t = t_ref + n.dr/V_sh",
                                 params)
     prov["datasets"] = prov["datasets"] + [dict(d, spacecraft=c["spacecraft"]) for c in checks for d in c["datasets"]]
@@ -1552,6 +1561,56 @@ async def icme_list(
             w.writerow(["" if e.get(c) is None else e.get(c) for c in cols])
         return Response(content=out.getvalue(), media_type="text/csv",
                         headers=attachment(f"HELIOS_ICME_list_{t0:%Y%m%d}_{t1:%Y%m%d}.csv"))
+    return {"catalog": meta, "count": len(events), "events": events}
+
+
+# IPShocks database, shocks at L1 (helios.core.shock_catalog)
+def _ipshocks_meta() -> Dict[str, Any]:
+    cat = shock_catalog.load()
+    return {"name": "IPShocks database (University of Helsinki): shocks at WIND, ACE and DSCOVR", "version": cat["version"],
+            "source": cat["source"], "doi": cat["doi"], "licence": cat["licence"], "citation": cat["citation"],
+            "windows_minutes": cat["windows_minutes"]}
+
+
+def _ipshocks_match(key: str, result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """The listed shock at the same spacecraft within 5 min of the analysed one, and its normal against ours."""
+    t = datetime.strptime(result["shock_time"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    e = shock_catalog.nearest(shock_catalog.load()["events"], key, t)
+    if e is None:
+        return None
+    ours = result["methods"].get(result.get("preferred_method")) or {}
+    angle = shock_catalog.angle_deg(ours["normal_gse"], e["normal_gse"]) if ours.get("normal_gse") else None
+    return {**e, "offset_seconds": round((shock_catalog.event_time(e) - t).total_seconds()),
+            "normal_angle_deg": None if angle is None else round(angle, 1), "catalog": _ipshocks_meta()}
+
+
+@app.get("/api/catalogs/shocks")
+async def shock_list(
+    start: str = Query("1994-01-01", description="UTC start, ISO 8601"),
+    end: str = Query("2100-01-01", description="UTC end, ISO 8601"),
+    spacecraft: str = Query("", description="WIND, ACE or DSCOVR; empty for all"),
+    format: str = Query("json", pattern="^(json|csv)$"),
+):
+    """Interplanetary shocks at L1 in the IPShocks database (normal, theta_Bn, speed, Mach numbers, jumps)."""
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    craft = spacecraft.strip().upper() or None
+    if craft and craft not in shock_catalog.SPACECRAFT.values():
+        raise HTTPException(status_code=422, detail="'spacecraft' must be WIND, ACE or DSCOVR.")
+    events = shock_catalog.events_between(shock_catalog.load()["events"], t0, t1, craft)
+    meta = _ipshocks_meta()
+    if format == "csv":
+        cols = [k for k in events[0]] if events else ["time", "spacecraft", "type"]
+        out = io.StringIO()
+        for k in ("name", "source", "doi", "licence", "version", "citation"):
+            out.write(f"# {k}: {meta[k]}\n")
+        w = csv.writer(out, lineterminator="\n")
+        w.writerow(cols)
+        for e in events:
+            w.writerow([" ".join(map(str, e[c])) if isinstance(e[c], list) else ("" if e[c] is None else e[c]) for c in cols])
+        return Response(content=out.getvalue(), media_type="text/csv",
+                        headers=attachment(f"HELIOS_IPShocks_{t0:%Y%m%d}_{t1:%Y%m%d}.csv"))
     return {"catalog": meta, "count": len(events), "events": events}
 
 

@@ -1798,7 +1798,9 @@
           <div><label class="ea-label">Shock time (UTC)</label><input id="ea-shock-time" type="text" class="ea-input w-40" value="2015-03-17T04:00"></div>
           <div><label class="ea-label">Upstream (min)</label><input id="ea-shock-up" type="number" min="1" max="60" step="0.5" class="ea-input w-20" value="28"></div>
           <div><label class="ea-label">Downstream (min)</label><input id="ea-shock-down" type="number" min="1" max="60" step="0.5" class="ea-input w-20" value="24"></div>
-          <div><label class="ea-label">Gap each side (min)</label><input id="ea-shock-gap" type="number" min="0" max="15" step="0.5" class="ea-input w-20" value="1"></div>
+          <div><label class="ea-label">Gap before (min)</label><input id="ea-shock-gap" type="number" min="0" max="15" step="0.5" class="ea-input w-20" value="1"></div>
+          <div><label class="ea-label">Gap after (blank: same)</label><input id="ea-shock-gap-after" type="number" min="0" max="15" step="0.5" class="ea-input w-20" value=""></div>
+          <label class="flex items-center gap-1 text-slate-300" title="Move the shock time to the largest |B| jump within 10 minutes"><input id="ea-shock-refine" type="checkbox" checked> refine time</label>
           <button onclick="eaRunShock()" class="ea-btn">Analyse shock</button>
           <button onclick="eaRunTiming()" class="ea-btn">Timing with the other spacecraft</button>
           <a id="ea-shock-download" class="ea-link hidden" href="#">Save JSON</a>
@@ -1978,6 +1980,22 @@
         <p class="text-[11px] text-slate-400">Disturbance: the storm sudden commencement at Earth or, where none was reported, the estimated arrival of the disturbance (to the hour); a note names the spacecraft where the list gives the shock time at ACE or WIND, or a SOHO shock candidate, instead. ICME start and end from plasma and field data, to about an hour. Magnetic cloud: reported cloud (the list's 2), field rotation only (1), none (0). Shock: a fast forward shock reported in the ACE list of disturbances or the CfA shock database. V and |B|: means over the ICME. Dst: the minimum from the disturbance to the ICME end, as listed, final unless marked provisional or quicklook. Quality: of the boundary times, 1 the most reliable; weak: particularly weak ICME signatures. The same list marks storms, shocks and cloud candidates in the panels above.</p>
         <div id="ea-icme-status" class="text-xs text-slate-400"></div>
         <div id="ea-icme-table" class="overflow-x-auto text-xs"></div>
+      </div>
+
+      <!-- IPShocks database -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Interplanetary shocks at L1 (IPShocks database, University of Helsinki)</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">Start (UTC)</label><input id="ea-ips-start" type="text" class="ea-input w-32" value="2015-03-01"></div>
+          <div><label class="ea-label">End (UTC)</label><input id="ea-ips-end" type="text" class="ea-input w-32" value="2015-07-01"></div>
+          <div><label class="ea-label">Spacecraft</label>
+            <select id="ea-ips-craft" class="ea-input"><option value="">all</option><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
+          <button onclick="eaListShocks()" class="ea-btn">List shocks</button>
+          <a id="ea-ips-csv" class="ea-link hidden" href="#">CSV</a>
+        </div>
+        <p class="text-[11px] text-slate-400">Fast forward (FF) and fast reverse (FR) shocks found at WIND, ACE and DSCOVR, with the database's own parameters: 8-minute averages 1-9 min before and 2-10 min after a fast forward shock (the other way round for a reverse one), the mixed-mode normal MX3, &theta;<sub>Bn</sub>, the shock speed from mass flux, Alfv&eacute;n and magnetosonic Mach numbers (sound speed with a fixed electron temperature of 146,277 K) and the jumps, with the database's errors. <em>Analyse</em> runs the shock analysis above with the same windows. A bundled copy of the version on Zenodo (CC BY 4.0); the shock analysis shows the listed values next to its own.</p>
+        <div id="ea-ips-status" class="text-xs text-slate-400"></div>
+        <div id="ea-ips-table" class="overflow-x-auto text-xs max-h-64 overflow-y-auto"></div>
       </div>
 
       <!-- OMNI statistics -->
