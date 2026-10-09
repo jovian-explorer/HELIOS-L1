@@ -40,6 +40,7 @@ from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARA
                                         fit_flux_rope, minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
 from helios.core import timeshift
+from helios.core import sudden_commencement as sc
 from helios.core import omni_statistics
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
@@ -1201,6 +1202,141 @@ async def analyse_timeshift(
         series["omni_delay_min"] = [None if not np.isfinite(v) else round(float(v) / 60, 2)
                                     for v in omni_col.to_numpy(dtype=float)]
     result = {"method": timeshift.METHOD, "summary": summary, "omni_comparison": comparison, "omni_note": note}
+    return _analysis_answer({"provenance": prov, "result": result, "series": series}, download, stamp)
+
+
+SC_MAX_DAYS = 366
+SC_WINDOW_MIN = (-60, 90)  # minutes around each onset drawn in the panel
+
+
+def _month_starts(a: datetime, b: datetime) -> List[datetime]:
+    """Starts of the calendar months from a's month to the month after b's (bounds of whole-month requests)."""
+    out, t = [], datetime(a.year, a.month, 1, tzinfo=timezone.utc)
+    while t <= b:
+        out.append(t)
+        t = datetime(t.year + (t.month == 12), t.month % 12 + 1, 1, tzinfo=timezone.utc)
+    return out + [t]
+
+
+@app.get("/api/analysis/sudden_commencements")
+async def analyse_sudden_commencements(
+    start: str = Query(..., description="UTC start, ISO 8601"),
+    end: str = Query(..., description=f"UTC end (exclusive), at most {SC_MAX_DAYS} days after the start"),
+    format: str = Query("json", pattern="^(json|csv)$"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Sudden commencements in OMNI 1-min SYM-H (a quiet record before, a persistent step and a
+    jump of the solar wind pressure; helios.core.sudden_commencement), compared with the lists
+    of the International Service on Rapid Magnetic Variations (Observatori de l'Ebre, for ISGI).
+    """
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    if t1 - t0 > timedelta(days=SC_MAX_DAYS):
+        raise HTTPException(status_code=422, detail=f"Intervals are limited to {SC_MAX_DAYS} days.")
+    a, b = t0 - timedelta(minutes=sc.MARGIN_BEFORE_MIN), t1 + timedelta(minutes=sc.MARGIN_AFTER_MIN)
+    months = _month_starts(a, b)
+    sem = asyncio.Semaphore(3)
+
+    async def month(m0, m1):  # whole months, so the cached requests serve any interval
+        async with sem:
+            return await downloader.events.fetch_dataset(sc.OMNI_SPEC, m0, m1, "indices")
+
+    got = await asyncio.gather(*(month(m0, m1) for m0, m1 in zip(months[:-1], months[1:])))
+    frames = [f for f, _, _, _ in got if f is not None]
+    data = pd.concat(frames).sort_index() if frames else pd.DataFrame(columns=["sym_h", "pressure"], dtype=float)
+    data = data[~data.index.duplicated()]
+    data = data[(data.index >= a) & (data.index < b)]
+    if not data["sym_h"].notna().any():
+        offline = not any(reached for _, _, reached, _ in got)
+        raise HTTPException(status_code=404, detail="No OMNI SYM-H for this interval"
+                            + (" (CDAWeb could not be reached)." if offline else "."))
+    events = await run_in_workers(sc.detect, data["sym_h"], data["pressure"])
+    events = events[(events["time"] >= t0) & (events["time"] < t1)].reset_index(drop=True)
+    years = range(t0.year, (t1 - timedelta(microseconds=1)).year + 1)
+    ebre = await sc.load_ebre(downloader.fetch_text, helios_config.CACHE_DIR, years)
+    tol = timedelta(minutes=sc.MATCH_TOLERANCE_MIN)
+    near = [e for e in ebre["events"] if t0 - tol <= e["time"] < t1 + tol]
+    matches, missed = sc.cross_match(events, near)
+    missed = [e for e in missed if t0 <= e["time"] < t1]
+    listed = [e for e in near if t0 <= e["time"] < t1 and not e["type"].endswith("-")]
+    found = len(listed) - len(missed)
+    comparison = {
+        "listed": len(listed), "found": found, "detections": int(len(events)),
+        "not_listed": sum(m is None for m in matches),
+        "years": {str(y): k for y, k in ebre["years"].items()},
+        "years_unread": [y for y, k in ebre["years"].items() if k is None],
+        "tolerance_minutes": sc.MATCH_TOLERANCE_MIN,
+    }
+    sym, prs = data["sym_h"], data["pressure"]
+
+    def num(v, d=2):
+        return None if v is None or not np.isfinite(v) else round(float(v), d)
+
+    def window(t):
+        idx = pd.date_range(t + timedelta(minutes=SC_WINDOW_MIN[0]), t + timedelta(minutes=SC_WINDOW_MIN[1]), freq="min")
+        return {"sym_h": [num(v, 0) for v in sym.reindex(idx).to_numpy(dtype=float)],
+                "pressure": [num(v) for v in prs.reindex(idx).to_numpy(dtype=float)]}
+
+    rows = []
+    for (_, e), m in zip(events.iterrows(), matches):
+        t = e["time"].to_pydatetime()
+        rows.append({"time": t.strftime("%Y-%m-%d %H:%M"), "detected": True, "amplitude_nt": num(e["amplitude_nt"], 0),
+                     "rise_minutes": int(e["rise_minutes"]), "max_step_nt": num(e["max_step_nt"], 0),
+                     "symh_nt": num(e["symh_nt"], 0), "quiet_nt": num(e["quiet_nt"]), "persistence": num(e["persistence"]),
+                     "pressure_before_npa": num(e["pressure_before_npa"]), "pressure_after_npa": num(e["pressure_after_npa"]),
+                     "pressure_ratio": num(e["pressure_ratio"]), "pressure_jump": e["pressure_jump"], "listed": m,
+                     "window": window(t)})
+    for e in missed:
+        t = e["time"].to_pydatetime()
+        rows.append({"time": t.strftime("%Y-%m-%d %H:%M"), "detected": False,
+                     "listed": {"time": t.strftime("%Y-%m-%d %H:%M:%S"), "type": e["type"],
+                                "amplitude_nt": e["amplitude_nt"], "offset_minutes": None},
+                     "window": window(t.replace(second=0))})
+    rows.sort(key=lambda r: r["time"])
+    prov = {
+        "kind": "observed", "archive": HAPI_SERVER, "datasets": [r for _, r, _, _ in got if r],
+        "requested_start": t0.strftime("%Y-%m-%d %H:%M:%S"), "requested_end": t1.strftime("%Y-%m-%d %H:%M:%S"),
+        "time_standard": "UTC, start of each minute", "method": sc.METHOD,
+        "parameters": {"rise_nt": sc.MIN_RISE_NT, "rise_window_min": sc.RISE_WINDOW_MIN, "max_step_nt": sc.MIN_MAX_STEP_NT,
+                       "quiet_nt": sc.MAX_QUIET_NT, "quiet_step_ratio": sc.QUIET_STEP_RATIO,
+                       "persistence": sc.MIN_PERSISTENCE, "pressure_ratio": sc.MIN_PRESSURE_RATIO},
+        "reference_list": {**sc.EBRE_SOURCE, "files": [sc.EBRE_URL.format(year=y, kind=k[0])
+                                                       for y, k in ebre["years"].items() if k]},
+        "software": f"HELIOS-L1 {__version__}",
+        "retrieved_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        "coverage": {"sym_h": frame_coverage(data[["sym_h"]].dropna(), t0, t1),
+                     "pressure": frame_coverage(data[["pressure"]].dropna(), t0, t1)},
+    }
+    stamp = f"HELIOS_sudden_commencements_{t0:%Y%m%d}_{t1:%Y%m%d}"
+    if format == "csv":
+        out = io.StringIO()
+        out.write(f"# title: HELIOS-L1 sudden commencements in OMNI SYM-H, {prov['requested_start']} to "
+                  f"{prov['requested_end']} UTC\n# method: {sc.METHOD}\n")
+        out.write(f"# reference list: {sc.EBRE_SOURCE['name']}, {sc.EBRE_SOURCE['url']} ({sc.EBRE_SOURCE['licence']}); "
+                  f"{found} of {len(listed)} listed SCs found, {comparison['not_listed']} of {len(events)} detections "
+                  f"not listed (onsets within {sc.MATCH_TOLERANCE_MIN:g} min)\n")
+        out.write(f"# datasets: OMNI_HRO_1MIN (Pressure, SYM_H)\n# software: {prov['software']}\n"
+                  f"# retrieved_utc: {prov['retrieved_utc']}\n")
+        cols = ["amplitude_nt", "rise_minutes", "max_step_nt", "symh_nt", "quiet_nt", "persistence",
+                "pressure_before_npa", "pressure_after_npa", "pressure_ratio"]
+        w = csv.writer(out, lineterminator="\n")
+        w.writerow(["onset", "detected"] + cols + ["listed_time", "listed_type", "listed_amplitude_nt", "offset_minutes"])
+        for r in rows:
+            lst = r["listed"] or {}
+            w.writerow([r["time"], int(r["detected"])] + ["" if r.get(c) is None else r[c] for c in cols]
+                       + [lst.get("time", ""), lst.get("type", ""), lst.get("amplitude_nt", ""),
+                          "" if lst.get("offset_minutes") is None else lst["offset_minutes"]])
+        return Response(content=out.getvalue(), media_type="text/csv", headers=attachment(f"{stamp}.csv"))
+    cadence = 1 if t1 - t0 <= timedelta(days=31) else 10
+    s = sym[(sym.index >= t0) & (sym.index < t1)]
+    if cadence > 1:
+        s = s.resample(f"{cadence}min").mean()
+    series = {"cadence_minutes": cadence, "time_tags": [t.strftime("%Y-%m-%d %H:%M") for t in s.index],
+              "sym_h": [num(v, 1) for v in s.to_numpy(dtype=float)],
+              "window_minutes": list(range(SC_WINDOW_MIN[0], SC_WINDOW_MIN[1] + 1))}
+    result = {"method": sc.METHOD, "events": rows, "comparison": comparison, "validation": sc.VALIDATION}
     return _analysis_answer({"provenance": prov, "result": result, "series": series}, download, stamp)
 
 

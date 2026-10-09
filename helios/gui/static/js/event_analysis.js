@@ -312,6 +312,78 @@
     }
   };
 
+  // ---------------------------------------------------------------- sudden commencements
+  let scResult = null;
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+  window.eaFindSc = async function () {
+    const q = new URLSearchParams({ start: utc('ea-sc-start'), end: utc('ea-sc-end') });
+    const url = `/api/analysis/sudden_commencements?${q}`;
+    setStatus('ea-sc-status', 'Fetching OMNI 1-min SYM-H and pressure by month (up to a minute for a year) and the Ebre lists...');
+    el('ea-sc-table').innerHTML = '';
+    try {
+      const body = await getJSON(url);
+      scResult = body;
+      const r = body.result, c = r.comparison, ser = body.series;
+      const lists = Object.entries(c.years).map(([y, k]) => `${y} ${k || 'not readable'}`).join(', ');
+      setStatus('ea-sc-status', `${plural(c.detections, 'sudden commencement')} detected. Ebre lists (${lists}): ${c.found} of ${plural(c.listed, 'listed SC')} found, ` +
+        `${plural(c.not_listed, 'detection')} not listed (onsets within ${c.tolerance_minutes} min).` +
+        (c.years_unread.length ? ` The list of ${c.years_unread.join(', ')} could not be read (offline, or not published yet).` : '') +
+        coverageNote(body.provenance), c.years_unread.length > 0);
+      const listed = x => !x ? 'not listed' : `${x.type} ${x.time.slice(0, 16)} (${fmt(x.amplitude_nt, 1)} nT` +
+        (x.offset_minutes === null ? ')' : `, ${x.offset_minutes > 0 ? '+' : ''}${fmt(x.offset_minutes, 1)} min)`);
+      el('ea-sc-table').innerHTML = r.events.length ? table(
+        ['Onset (UTC)', 'Amplitude (nT)', 'Rise (min)', 'Largest step (nT/min)', 'Quiet hour (nT/min)', 'Pressure before → after (nPa)', 'Ebre list', ''],
+        r.events.map((e, i) => e.detected ? [e.time, fmt(e.amplitude_nt, 0), e.rise_minutes, fmt(e.max_step_nt, 0), fmt(e.quiet_nt, 1),
+          e.pressure_jump === null ? 'no data' : `${fmt(e.pressure_before_npa, 1)} → ${fmt(e.pressure_after_npa, 1)} (×${fmt(e.pressure_ratio, 1)})`,
+          listed(e.listed), `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`]
+          : [e.time, '<span class="text-rose-400">not detected</span>', '', '', '', '', listed(e.listed),
+            `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`])) : '';
+      const t0 = Date.parse(ser.time_tags[0].replace(' ', 'T') + 'Z');
+      const days = ser.time_tags.length * ser.cadence_minutes > 2 * 1440;
+      const xOf = t => (Date.parse(t.replace(' ', 'T') + 'Z') - t0) / (days ? 864e5 : 36e5);
+      const marks = (pick) => r.events.filter(pick).map(e => ({ x: xOf(e.time), y: e.window.sym_h[60] }));
+      drawChart('ea-sc-chart', { type: 'line', data: { datasets: [
+        { label: `SYM-H (nT, ${ser.cadence_minutes}-min)`, data: ser.time_tags.map((t, i) => ({ x: xOf(t), y: ser.sym_h[i] })),
+          borderColor: '#38bdf8', borderWidth: 1, pointRadius: 0, order: 1 },
+        { label: 'Detected onset', data: marks(e => e.detected), showLine: false, pointRadius: 4, pointStyle: 'triangle',
+          borderColor: '#f59e0b', backgroundColor: '#f59e0b' },
+        { label: 'Listed, not detected', data: marks(e => !e.detected), showLine: false, pointRadius: 4, pointStyle: 'crossRot',
+          borderColor: '#f43f5e', backgroundColor: '#f43f5e', borderWidth: 2 },
+      ] }, options: { scales: { x: axis(`${days ? 'Days' : 'Hours'} from ${ser.time_tags[0]} UTC`, { min: 0, max: xOf(ser.time_tags[ser.time_tags.length - 1]) }),
+        y: axis('SYM-H (nT)') } } });
+      const a = el('ea-sc-csv');
+      a.href = `${url}&format=csv`;
+      a.classList.remove('hidden');
+      showDownload('ea-sc-download', url);
+      el('ea-sc-onsets').classList.toggle('hidden', !r.events.some(e => e.detected));
+      if (r.events.length) window.eaShowSc(0);
+    } catch (e) {
+      setStatus('ea-sc-status', e.message, true);
+    }
+  };
+
+  window.eaShowSc = function (i) {
+    const e = scResult && scResult.result.events[i];
+    if (!e) return;
+    const m = scResult.series.window_minutes;
+    const ys = e.window.sym_h.filter(v => v !== null);
+    drawChart('ea-sc-event-chart', { type: 'line', data: { datasets: [
+      { label: 'SYM-H (nT)', data: m.map((x, k) => ({ x, y: e.window.sym_h[k] })), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, yAxisID: 'y' },
+      { label: 'Flow pressure (nPa, OMNI)', data: m.map((x, k) => ({ x, y: e.window.pressure[k] })), borderColor: '#f59e0b', borderWidth: 1, pointRadius: 0, yAxisID: 'y1' },
+      { label: e.detected ? 'Onset' : 'Listed onset', data: ys.length ? [{ x: 0, y: Math.min(...ys) }, { x: 0, y: Math.max(...ys) }] : [],
+        borderColor: '#94a3b8', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
+    ] }, options: { scales: { x: axis(`Minutes from ${e.time} UTC`, { min: m[0], max: m[m.length - 1] }), y: axis('SYM-H (nT)'),
+      y1: axis('Pressure (nPa)', { position: 'right', grid: { drawOnChartArea: false } }) } } });
+  };
+
+  window.eaScToSea = function () {
+    const on = scResult ? scResult.result.events.filter(e => e.detected).map(e => e.time.replace(' ', 'T')) : [];
+    el('ea-sea-onsets').value = on.slice(0, 60).join('\n');
+    setStatus('ea-sc-status', `${plural(Math.min(on.length, 60), 'onset')} copied to the superposed epoch analysis below` +
+      (on.length > 60 ? ` (the first 60 of ${on.length}: it takes at most 60).` : '.'), on.length > 60);
+  };
+
   // ---------------------------------------------------------------- magnetic cloud search
   window.eaRunCloudSearch = async function () {
     const mission = el('ea-mcd-mission').value;
