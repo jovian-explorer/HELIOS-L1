@@ -238,10 +238,12 @@ helios/            application package
   core/            physics, telemetry, SPICE ephemeris engines
   gui/app.py       launcher (server + desktop window / browser)
   gui/static/      dashboard frontend (offline: vendored JS, fonts, images)
-  data/spice_kernels/  bundled NAIF generic kernels
+  data/            bundled NAIF generic kernels (spice_kernels/) and catalogue snapshots
+                   (Richardson & Cane ICME list, IPShocks shocks at L1)
 tests/             pytest suite
-packaging/         PyInstaller spec and build script
-scripts/make_icons.py  regenerates the logo and icon set
+packaging/         PyInstaller spec, build script, Tailwind config
+scripts/           icon set (make_icons.py), CSS build (build_css.py), catalogue snapshot
+                   updates (update_icme_catalog.py, update_shock_catalog.py)
 assets/            application icon used for the Windows build
 ```
 
@@ -262,5 +264,5 @@ assets/            application icon used for the Windows build
 ```bash
 python -m pytest
 ```
-The suite covers the physics models, telemetry pipeline, SPICE ephemeris engine and the REST API. CI runs it on Windows, macOS and Linux for every push to `main`.
+The suite covers the physics models, telemetry pipeline, SPICE ephemeris engine and the REST API. The workflow `.github/workflows/ci.yml` runs it on Windows, macOS and Linux for every push to `main` when GitHub Actions can start jobs for the repository; at present it cannot, so the suite is run locally before every push.
 
