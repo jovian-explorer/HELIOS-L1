@@ -212,13 +212,15 @@
     try {
       const body = await getJSON(url);
       const ref0 = body.reference;
-      const rows = body.targets.map(t => t.status !== 'ok' ? [t.spacecraft, t.status, '', '', '', '', ''] : [
-        t.spacecraft, t.predicted_time, t.observed_time || 'not found', fmt(t.predicted_delay_s, 0), fmt(t.observed_delay_s, 0),
-        fmt(t.residual_s, 0), fmt(t.implied_speed_kms, 0)]);
+      const listedAt = x => !x ? 'none' : x.time.slice(11) + (x.minus_observed_s === null ? '' :
+        ` (${x.minus_observed_s > 0 ? '+' : ''}${x.minus_observed_s} s)`);
+      const rows = body.targets.map(t => t.status !== 'ok' ? [t.spacecraft, t.status, '', '', '', '', '', ''] : [
+        t.spacecraft, t.predicted_time, t.observed_time || 'not found', listedAt(t.ipshocks), fmt(t.predicted_delay_s, 0),
+        fmt(t.observed_delay_s, 0), fmt(t.residual_s, 0), fmt(t.implied_speed_kms, 0)]);
       el('ea-timing-table').innerHTML =
         `<p class="text-slate-300 mb-1">Reference ${ref0.spacecraft} at ${ref0.shock_time} UTC, ${ref0.method} normal ${vec(ref0.normal_gse)}, ` +
         `V_sh ${fmt(ref0.shock_speed_kms, 0)} km/s. <a class="ea-link" href="${url}&download=true">Save JSON</a></p>` +
-        table(['Spacecraft', 'Predicted (UTC)', 'Observed (UTC)', 'Predicted delay (s)', 'Observed delay (s)', 'Residual (s)', 'Implied V along n (km/s)'], rows) +
+        table(['Spacecraft', 'Predicted (UTC)', 'Observed (UTC)', 'IPShocks (vs observed)', 'Predicted delay (s)', 'Observed delay (s)', 'Residual (s)', 'Implied V along n (km/s)'], rows) +
         `<p class="text-[10px] text-slate-500 mt-1">${body.note}</p>`;
     } catch (e) {
       el('ea-timing-table').innerHTML = `<p class="text-rose-400">${escapeHtml(e.message)}</p>`;

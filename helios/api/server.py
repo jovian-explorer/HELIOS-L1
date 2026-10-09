@@ -765,6 +765,14 @@ async def analyse_timing(
         cmp = await run_in_workers(timing_comparison, m["normal_gse"], m["shock_speed_kms"], t_ref, r_ref,
                                    tdata["field"], r, search_minutes)
         entry.update(cmp, status="ok", position_gse_km=r.tolist())
+        # The arrival listed in the IPShocks database at this spacecraft, as an independent observed time.
+        t_pred = datetime.strptime(cmp["predicted_time"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        listed = shock_catalog.nearest(shock_catalog.load()["events"], name, t_pred, search_minutes)
+        entry["ipshocks"] = None if listed is None else {
+            "time": listed["time"], "type": listed["type"],
+            "minus_predicted_s": round((shock_catalog.event_time(listed) - t_pred).total_seconds()),
+            "minus_observed_s": None if not cmp["observed_time"] else round((shock_catalog.event_time(listed) - datetime.strptime(
+                cmp["observed_time"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)).total_seconds())}
         return entry
 
     checks = await asyncio.gather(*(one(n) for n in names))
@@ -781,9 +789,12 @@ async def analyse_timing(
                       "method": method, "normal_gse": m["normal_gse"], "shock_speed_kms": m["shock_speed_kms"],
                       "shock_type": result["shock_type"], "warnings": result["warnings"]},
         "targets": [{k: v for k, v in c.items() if k != "datasets"} for c in checks],
-        "note": ("Residual = observed - predicted delay. Residuals of a minute or two over baselines of several "
-                 "hundred thousand km are common: interplanetary shocks are not planar on these scales and the "
-                 "single-spacecraft normal has an uncertainty of several degrees."),
+        "note": ("Residual = observed - predicted delay. Interplanetary shocks are not planar on these scales and the "
+                 "single-spacecraft normal has an uncertainty of several degrees: with the normals and speeds of the "
+                 "IPShocks database, planar timing between WIND and ACE (219 shocks seen by both, 1998-2021) is off by "
+                 "81 s on median for spacecraft less than 50 R_E apart across the Sun-Earth line, 137 s at 50-100 R_E, "
+                 "222 s at 100-200 R_E and 581 s further apart. IPShocks: the shock listed at that spacecraft within "
+                 "the search window."),
     }
     return _analysis_answer(body, download, f"HELIOS_timing_{key}_{tc:%Y%m%dT%H%M}")
 
