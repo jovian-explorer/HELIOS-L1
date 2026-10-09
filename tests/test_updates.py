@@ -111,6 +111,25 @@ def test_archive_names_match_the_build_script():
     assert archive_basename("1.2.3") == f"{APP}-1.2.3-{platform_tag()}"
 
 
+def test_every_bundled_data_file_is_packaged():
+    """
+    Each file under helios/data (catalogue snapshots, SPICE kernels) is read at run time, so it
+    must reach both the wheel (pyproject package-data) and the standalone build (PyInstaller
+    datas); a file missing from either fails only in that installation.
+    """
+    import fnmatch
+    import re
+    root = Path(__file__).parent.parent
+    data = root / "helios" / "data"
+    files = [p.relative_to(root / "helios").as_posix() for p in data.rglob("*") if p.is_file()]
+    assert len(files) >= 5
+    globs = re.findall(r'"([^"]+)"', re.search(r"helios\s*=\s*\[(.*?)\]", (root / "pyproject.toml").read_text(encoding="utf-8")).group(1))
+    assert [f for f in files if not any(fnmatch.fnmatch(f, g) for g in globs)] == []
+    spec = (root / "packaging" / "helios.spec").read_text(encoding="utf-8")
+    entries = {"data/" + m for m in re.findall(r'PKG / "data" / "([^"]+)"', spec)}
+    assert [f for f in files if not any(f == e or f.startswith(e + "/") for e in entries)] == []
+
+
 def test_which_release_counts():
     rels = [{"tag_name": "v0.0.3", "draft": True}, {"tag_name": "v0.0.2", "prerelease": True},
             {"tag_name": "v0.0.1"}, {"tag_name": "nightly"}]
