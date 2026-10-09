@@ -666,6 +666,27 @@ def test_coupling_functions_with_propagated_errors():
     lo, hi = f["dynamic_pressure_npa"]["sampling_ci95_of_mean"]
     assert hi - lo > 10 * f["dynamic_pressure_npa"]["measurement_sigma_of_mean"]
 
+    # Proton beta and Alfven Mach number, recomputed from SI constants, and their errors
+    # (thermal speed error as sigma_T / T = 2 sigma_W / W) against Monte Carlo draws.
+    assert {"sigma_t"} <= set(p.columns)
+    mu0, kb, mp = 4e-7 * math.pi, 1.380649e-23, 1.67262192e-27
+    bt = np.linalg.norm(b, axis=1) * 1e-9
+    t_k, st = p.t.to_numpy(), p.sigma_t.to_numpy()
+    beta = 2 * mu0 * n * 1e6 * kb * t_k / bt ** 2
+    ma = v * 1e3 * np.sqrt(mu0 * mp * n * 1e6) / bt
+    has_t = np.isfinite(t_k)  # spectra without a thermal speed have no beta
+    assert 0 < (~has_t).sum() < 5 and f["proton_beta"]["mean"] == pytest.approx(beta[has_t].mean(), rel=1e-6)
+    assert f["alfven_mach"]["mean"] == pytest.approx(ma.mean(), rel=1e-6)
+    draws_b, draws_m = [], []
+    for _ in range(4000):
+        vv = v + sv * rng.normal(size=len(v))
+        nn = n + sn * rng.normal(size=len(v))
+        tt = t_k + st * rng.normal(size=len(v))
+        draws_b.append((2 * mu0 * nn * 1e6 * kb * tt / bt ** 2)[has_t].mean())
+        draws_m.append((vv * 1e3 * np.sqrt(mu0 * mp * nn * 1e6) / bt).mean())
+    assert f["proton_beta"]["measurement_sigma_of_mean"] == pytest.approx(np.std(draws_b), rel=0.05)
+    assert f["alfven_mach"]["measurement_sigma_of_mean"] == pytest.approx(np.std(draws_m), rel=0.05)
+
 
 def test_coupling_api_without_archive_uncertainties(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient

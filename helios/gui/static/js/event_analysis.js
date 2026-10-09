@@ -235,7 +235,8 @@
       const r = body.result;
       setStatus('ea-cpl-status', `${r.n_samples} plasma samples` +
         (r.uncertainties_available ? '; archive 1-σ speed and density errors propagated.' : '; this archive gives no per-sample uncertainties (measurement errors not shown).') + coverageNote(body.provenance));
-      const names = { newell_dphi_dt: 'Newell dΦ/dt', akasofu_epsilon_gw: 'Akasofu ε (GW)', vbs_mv_m: 'V·Bs (mV/m)', dynamic_pressure_npa: 'P_dyn (nPa)' };
+      const names = { newell_dphi_dt: 'Newell dΦ/dt', akasofu_epsilon_gw: 'Akasofu ε (GW)', vbs_mv_m: 'V·Bs (mV/m)', dynamic_pressure_npa: 'P_dyn (nPa)',
+        proton_beta: 'Proton β', alfven_mach: 'Alfvén Mach M_A' };
       const sig = v => (v === null || v === undefined ? '---' : Number(v).toPrecision(2));
       const rows = Object.entries(r.functions).map(([k, f]) => [names[k] || k, Number(f.mean).toPrecision(4),
         `± ${sig(f.measurement_sigma_of_mean)}`,

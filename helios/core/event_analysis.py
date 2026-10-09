@@ -85,6 +85,8 @@ def _wind_swe(df: pd.DataFrame) -> pd.DataFrame:
         out["sigma_v"] = df["Proton_sigmaV_nonlin"]
     if "Proton_sigmaNp_nonlin" in df:
         out["sigma_n"] = df["Proton_sigmaNp_nonlin"]
+    if "Proton_sigmaW_nonlin" in df:  # T ~ W^2, so sigma_T / T = 2 sigma_W / W
+        out["sigma_t"] = out["t"] * 2.0 * df["Proton_sigmaW_nonlin"] / df["Proton_W_nonlin"]
     return out
 
 
@@ -120,7 +122,8 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
         "field": _ds("WI_H0_MFI@1", ["B3GSE"], _field("B3GSE"), "WIND MFI 3-s"),
         "field_coarse": _ds("WI_H0_MFI@0", ["BGSE"], _field("BGSE"), "WIND MFI 1-min"),
         "plasma": _ds("WI_H1_SWE", ["fit_flag", "Proton_sigmaV_nonlin", "Proton_VX_nonlin", "Proton_VY_nonlin",
-                                    "Proton_VZ_nonlin", "Proton_W_nonlin", "Proton_Np_nonlin", "Proton_sigmaNp_nonlin"],
+                                    "Proton_VZ_nonlin", "Proton_W_nonlin", "Proton_sigmaW_nonlin", "Proton_Np_nonlin",
+                                    "Proton_sigmaNp_nonlin"],
                       _wind_swe, "WIND SWE non-linear proton fits (92 s)"),
         "position": _ds("WI_H0_MFI@0", ["PGSE"], _wind_pos, "WIND position (MFI 1-min file, definitive orbit)"),
     },
@@ -442,6 +445,8 @@ COUPLING_FUNCTIONS = {
     "akasofu_epsilon_gw": "Perreault & Akasofu (1978) epsilon = (4 pi/mu0) V B^2 sin^4(theta/2) l0^2, l0 = 7 R_E [GW]",
     "vbs_mv_m": "Rectified dawn-dusk electric field V Bs, Bs = max(0, -Bz GSM) [mV/m]",
     "dynamic_pressure_npa": "Proton dynamic pressure m_p n V^2 [nPa]",
+    "proton_beta": "Proton plasma beta 2 mu0 n k T / B^2 (protons only; OMNI's beta adds alphas and electrons)",
+    "alfven_mach": "Alfven Mach number V / V_A, V_A = B / sqrt(mu0 m_p n) (proton mass density; OMNI's adds 4 % alphas)",
 }
 
 
@@ -451,8 +456,10 @@ def coupling_with_errors(field: pd.DataFrame, plasma: pd.DataFrame) -> Dict[str,
     GSE to GSM) and their interval means, with 1-sigma uncertainties propagated to first
     order from the archive's per-sample uncertainties of the bulk speed and density where it
     gives them (WIND SWE non-linear fits): relative errors (4/3) sV/V for dPhi/dt, sV/V for
-    epsilon and V Bs, sqrt((sn/n)^2 + (2 sV/V)^2) for the dynamic pressure. Field
-    uncertainties are not in the archive and are not included. Each mean carries two
+    epsilon and V Bs, sqrt((sn/n)^2 + (2 sV/V)^2) for the dynamic pressure,
+    sqrt((sn/n)^2 + (sT/T)^2) for the proton beta (sT/T = 2 sW/W from the thermal speed) and
+    sqrt((sV/V)^2 + (sn/2n)^2) for the Alfven Mach number. Field uncertainties are not in the
+    archive and are not included. Each mean carries two
     uncertainties: the propagated measurement error sqrt(sum s_i^2) / N (independent sample
     errors) and the 95 % sampling interval of the mean from the effective sample size.
     """
@@ -474,26 +481,33 @@ def coupling_with_errors(field: pd.DataFrame, plasma: pd.DataFrame) -> Dict[str,
     n = plasma["n"].to_numpy(float)
     sv = plasma["sigma_v"].to_numpy(float) if "sigma_v" in plasma else np.full(len(v), np.nan)
     sn = plasma["sigma_n"].to_numpy(float) if "sigma_n" in plasma else np.full(len(v), np.nan)
-    rv, rn = sv / v, sn / n
+    t_k = plasma["t"].to_numpy(float) if "t" in plasma else np.full(len(v), np.nan)
+    st = plasma["sigma_t"].to_numpy(float) if "sigma_t" in plasma else np.full(len(v), np.nan)
+    rv, rn, rt = sv / v, sn / n, st / t_k
+    n_m3, b_t = n * 1e6, btot * 1e-9
 
     values = {
         "newell_dphi_dt": np.array([swp.newell_coupling(vi, y, z) for vi, y, z in zip(v, by, bz)]),
         "akasofu_epsilon_gw": np.array([swp.akasofu_epsilon(vi, bt, y, z) for vi, bt, y, z in zip(v, btot, by, bz)]),
         "vbs_mv_m": v * np.maximum(0.0, -bz) * 1e-3,
         "dynamic_pressure_npa": PROTON_MASS_KG * n * 1e6 * (v * 1e3) ** 2 * 1e9,
+        "proton_beta": 2.0 * MU0 * n_m3 * BOLTZMANN_J_K * t_k / b_t ** 2,
+        "alfven_mach": v * 1e3 * np.sqrt(MU0 * PROTON_MASS_KG * n_m3) / b_t,
     }
     rel = {"newell_dphi_dt": 4.0 / 3.0 * rv, "akasofu_epsilon_gw": rv, "vbs_mv_m": rv,
-           "dynamic_pressure_npa": np.sqrt(rn ** 2 + (2.0 * rv) ** 2)}
+           "dynamic_pressure_npa": np.sqrt(rn ** 2 + (2.0 * rv) ** 2),
+           "proton_beta": np.sqrt(rn ** 2 + rt ** 2), "alfven_mach": np.sqrt(rv ** 2 + (rn / 2.0) ** 2)}
     out: Dict[str, Any] = {}
     for key, val in values.items():
         sig = np.abs(val) * rel[key]
         stats = mean_interval(val)
+        valid = np.isfinite(val)  # e.g. no temperature for a sample: no beta
         have = np.isfinite(sig)
         out[key] = {
             "definition": COUPLING_FUNCTIONS[key],
             "mean": stats["mean"],
-            "measurement_sigma_of_mean": (float(np.sqrt(np.sum(sig[have] ** 2)) / have.sum())
-                                          if have.all() else None),
+            "measurement_sigma_of_mean": (float(np.sqrt(np.sum(sig[valid] ** 2)) / valid.sum())
+                                          if valid.any() and have[valid].all() else None),
             "sampling_ci95_of_mean": list(stats["ci95"]) if stats["ci95"] else None,
             "n_eff": stats["n_eff"],
             "median_relative_sigma": float(np.median(rel[key][have])) if have.any() else None,

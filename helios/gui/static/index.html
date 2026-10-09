@@ -1838,7 +1838,7 @@
 
       <!-- Coupling functions with errors -->
       <div class="glass-panel p-4 space-y-3">
-        <h4 class="font-tech font-bold text-sm text-slate-100">Coupling functions with uncertainties</h4>
+        <h4 class="font-tech font-bold text-sm text-slate-100">Coupling functions, proton beta and Alfv&eacute;n Mach number with uncertainties</h4>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-cpl-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -1847,7 +1847,7 @@
           <button onclick="eaRunCoupling()" class="ea-btn">Compute</button>
           <a id="ea-cpl-download" class="ea-link hidden" href="#">Save JSON</a>
         </div>
-        <p class="text-[10px] text-slate-400">Interval means of Newell dΦ/dt, Akasofu ε, V·Bs and dynamic pressure (GSM). ±: measurement error propagated from the archive's 1-σ speed and density uncertainties (WIND SWE only; field errors are not in the archive). 95 % interval: sampling uncertainty of the mean from the effective number of independent samples.</p>
+        <p class="text-[10px] text-slate-400">Interval means of Newell dΦ/dt, Akasofu ε, V·Bs, dynamic pressure (GSM), proton beta 2μ<sub>0</sub>nkT/B² and Alfvén Mach number V/V<sub>A</sub> (protons only; OMNI's beta adds alphas and electrons, its V<sub>A</sub> 4 % alphas). ±: measurement error propagated from the archive's 1-σ speed, density and thermal speed uncertainties (WIND SWE only; field errors are not in the archive). 95 % interval: sampling uncertainty of the mean from the effective number of independent samples.</p>
         <div id="ea-cpl-status" class="text-xs text-slate-400"></div>
         <div id="ea-cpl-table" class="overflow-x-auto text-xs"></div>
       </div>
