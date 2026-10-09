@@ -1304,6 +1304,19 @@ async def analyse_sudden_commencements(
                                 "amplitude_nt": e["amplitude_nt"], "offset_minutes": None},
                      "window": window(t.replace(second=0))})
     rows.sort(key=lambda r: r["time"])
+    shocks = shock_catalog.load()["events"]
+    for r in rows:  # the fast forward shock at L1 (IPShocks) whose planar arrival is within 15 min
+        t = datetime.strptime((r["listed"] or {}).get("time") if not r["detected"] else r["time"] + ":00",
+                              "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        e = shock_catalog.driver_of(shocks, t)
+        a = shock_catalog.planar_arrival(e) if e else None
+        r["l1_shock"] = None if e is None else {
+            "time": e["time"], "spacecraft": e["spacecraft"], "shock_speed_kms": e["shock_speed_kms"],
+            "predicted_arrival": a.strftime("%Y-%m-%d %H:%M:%S"),
+            "onset_minus_predicted_minutes": round((t - a).total_seconds() / 60.0, 1)}
+    comparison["with_l1_shock"] = sum(1 for r in rows if r["detected"] and r["l1_shock"])
+    comparison["l1_shock_list"] = {**_ipshocks_meta(), "last_shock": shocks[-1]["time"],
+                                   "window_minutes": shock_catalog.DRIVER_MINUTES}
     prov = {
         "kind": "observed", "archive": HAPI_SERVER, "datasets": [r for _, r, _, _ in got if r],
         "requested_start": t0.strftime("%Y-%m-%d %H:%M:%S"), "requested_end": t1.strftime("%Y-%m-%d %H:%M:%S"),
@@ -1331,12 +1344,15 @@ async def analyse_sudden_commencements(
         cols = ["amplitude_nt", "rise_minutes", "max_step_nt", "symh_nt", "quiet_nt", "persistence",
                 "pressure_before_npa", "pressure_after_npa", "pressure_ratio"]
         w = csv.writer(out, lineterminator="\n")
-        w.writerow(["onset", "detected"] + cols + ["listed_time", "listed_type", "listed_amplitude_nt", "offset_minutes"])
+        w.writerow(["onset", "detected"] + cols + ["listed_time", "listed_type", "listed_amplitude_nt", "offset_minutes",
+                                                   "l1_shock_time", "l1_spacecraft", "l1_shock_speed_kms",
+                                                   "onset_minus_predicted_minutes"])
         for r in rows:
-            lst = r["listed"] or {}
+            lst, l1 = r["listed"] or {}, r["l1_shock"] or {}
             w.writerow([r["time"], int(r["detected"])] + ["" if r.get(c) is None else r[c] for c in cols]
                        + [lst.get("time", ""), lst.get("type", ""), lst.get("amplitude_nt", ""),
-                          "" if lst.get("offset_minutes") is None else lst["offset_minutes"]])
+                          "" if lst.get("offset_minutes") is None else lst["offset_minutes"]]
+                       + [l1.get(k, "") for k in ("time", "spacecraft", "shock_speed_kms", "onset_minus_predicted_minutes")])
         return Response(content=out.getvalue(), media_type="text/csv", headers=attachment(f"{stamp}.csv"))
     cadence = 1 if t1 - t0 <= timedelta(days=31) else 10
     s = sym[(sym.index >= t0) & (sym.index < t1)]

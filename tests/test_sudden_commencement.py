@@ -174,10 +174,15 @@ def test_api_finds_the_listed_commencements_of_17_march_2015_and_10_may_2024(mon
     assert (e["amplitude_nt"], e["rise_minutes"], e["max_step_nt"], e["quiet_nt"]) == (50, 3, 28, 0.0)
     assert e["pressure_ratio"] == pytest.approx(2.97, abs=0.01) and e["pressure_jump"] is True
     assert e["listed"] == {"time": "2015-03-17 04:45:00", "type": "SSC", "amplitude_nt": 39.9, "offset_minutes": 0.0}
+    # IPShocks: WIND 04:00:03, MX3 normal (-0.92, -0.17, 0.37), 561.7 km/s, at (252.85, 54.35, 12.57) R_E:
+    # |n.r| / V_sh = 44.6 min, so the planar front reaches the Earth at 04:44:37, 0.4 min before the onset.
+    assert e["l1_shock"] == {"time": "2015-03-17 04:00:03", "spacecraft": "WIND", "shock_speed_kms": 561.7,
+                             "predicted_arrival": "2015-03-17 04:44:37", "onset_minus_predicted_minutes": 0.4}
     assert len(e["window"]["sym_h"]) == len(body["series"]["window_minutes"]) == 151
     assert e["window"]["sym_h"][60] == 17 and e["window"]["sym_h"][63] == 67   # onset 17 nT, peak 3 min later
     c = body["result"]["comparison"]
     assert (c["listed"], c["found"], c["detections"], c["not_listed"], c["years"]) == (1, 1, 1, 0, {"2015": "definitive"})
+    assert c["with_l1_shock"] == 1 and c["l1_shock_list"]["window_minutes"] == 15
     assert body["series"]["cadence_minutes"] == 1 and len(body["series"]["sym_h"]) == 3 * 1440
     prov = body["provenance"]
     assert prov["reference_list"]["licence"] == "CC BY-NC 4.0" and prov["coverage"]["sym_h"]["gaps"] == 0
@@ -185,7 +190,8 @@ def test_api_finds_the_listed_commencements_of_17_march_2015_and_10_may_2024(mon
     lines = text.splitlines()
     assert lines[0].startswith("# title: HELIOS-L1 sudden commencements in OMNI SYM-H")
     assert "1 of 1 listed SCs found, 0 of 1 detections not listed" in text
-    assert lines[-1].startswith("2015-03-17 04:45,1,50.0,3,28.0,") and lines[-1].endswith(",2015-03-17 04:45:00,SSC,39.9,0.0")
+    assert lines[-1].startswith("2015-03-17 04:45,1,50.0,3,28.0,")
+    assert lines[-1].endswith(",2015-03-17 04:45:00,SSC,39.9,0.0,2015-03-17 04:00:03,WIND,561.7,0.4")
 
     # 10 May 2024: SYM-H was already disturbed (median 1-min change 1 nT); the 35-nT minute
     # passes as at least 20 times that. The 2024 list is preliminary.
@@ -193,6 +199,8 @@ def test_api_finds_the_listed_commencements_of_17_march_2015_and_10_may_2024(mon
     (e,) = body["result"]["events"]
     assert e["time"] == "2024-05-10 17:05" and e["quiet_nt"] == 1.0 and e["max_step_nt"] == 35
     assert e["listed"]["type"] == "SSC" and e["listed"]["offset_minutes"] == 0.0
+    assert e["l1_shock"] is None  # the database ends in March 2024
+    assert body["result"]["comparison"]["l1_shock_list"]["last_shock"] == "2024-03-25 10:04:50"
     assert body["result"]["comparison"]["years"] == {"2024": "preliminary"}
 
 

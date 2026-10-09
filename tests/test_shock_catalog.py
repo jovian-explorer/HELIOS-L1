@@ -3,7 +3,7 @@ The IPShocks database snapshot (helios.core.shock_catalog; Zenodo doi:10.5281/ze
 CC BY 4.0) and its use in the shock analysis.
 """
 import gzip
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -30,6 +30,9 @@ def test_snapshot_holds_the_l1_shocks_of_the_zenodo_version():
     assert e["time"] == "2015-03-17 04:00:03" and e["type"] == "FF"
     assert (e["shock_speed_kms"], e["shock_speed_error_kms"], e["theta_bn_deg"], e["alfven_mach"]) == (561.7, 39.1, 63.1, 3.53)
     assert sc.nearest(ev, "ACE", datetime(2015, 3, 17, 4, 1, tzinfo=timezone.utc)) is None  # not listed at ACE
+    arrival = sc.planar_arrival(e)  # |n.r| / V_sh = 44.6 min after 04:00:03
+    assert arrival.strftime("%H:%M:%S") == "04:44:37"
+    assert sc.driver_of(ev, arrival + timedelta(minutes=14)) is e and sc.driver_of(ev, arrival + timedelta(minutes=16)) is None
     assert sc.angle_deg([1, 0, 0], [-1, 0, 0]) == 0.0 and sc.angle_deg([1, 0, 0], [0, 1, 0]) == pytest.approx(90.0)
 
 

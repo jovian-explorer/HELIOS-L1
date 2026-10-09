@@ -375,15 +375,20 @@
       setStatus('ea-sc-status', `${plural(c.detections, 'sudden commencement')} detected. Ebre lists (${lists}): ${c.found} of ${plural(c.listed, 'listed SC')} found, ` +
         `${plural(c.not_listed, 'detection')} not listed (onsets within ${c.tolerance_minutes} min).` +
         (c.years_unread.length ? ` The list of ${c.years_unread.join(', ')} could not be read (offline, or not published yet).` : '') +
+        ` ${c.with_l1_shock} of the detections follow a fast forward shock at L1 in the IPShocks database (planar arrival within ` +
+        `${c.l1_shock_list.window_minutes} min; the database reaches ${c.l1_shock_list.last_shock.slice(0, 10)}).` +
         coverageNote(body.provenance), c.years_unread.length > 0);
-      const listed = x => !x ? 'not listed' : `${x.type} ${x.time.slice(0, 16)} (${fmt(x.amplitude_nt, 1)} nT` +
+      const listed = (x, onset) => !x ? 'not listed' : `${x.type} ${x.time.slice(0, 10) === onset.slice(0, 10) ? x.time.slice(11, 16) : x.time.slice(5, 16)} (${fmt(x.amplitude_nt, 1)} nT` +
         (x.offset_minutes === null ? ')' : `, ${x.offset_minutes > 0 ? '+' : ''}${fmt(x.offset_minutes, 1)} min)`);
+      // e.g. "WIND 04:00, 562 km/s, +0.4 min": the onset 0.4 min after the shock's planar arrival.
+      const l1 = (x, onset) => !x ? '' : `${x.spacecraft} ${x.time.slice(0, 10) === onset.slice(0, 10) ? x.time.slice(11, 16) : x.time.slice(5, 16)}, ` +
+        `${fmt(x.shock_speed_kms, 0)} km/s, ${x.onset_minus_predicted_minutes > 0 ? '+' : ''}${fmt(x.onset_minus_predicted_minutes, 1)} min`;
       el('ea-sc-table').innerHTML = r.events.length ? table(
-        ['Onset (UTC)', 'Amplitude (nT)', 'Rise (min)', 'Largest step (nT/min)', 'Quiet hour (nT/min)', 'Pressure before → after (nPa)', 'Ebre list', ''],
+        ['Onset (UTC)', 'Amplitude (nT)', 'Rise (min)', 'Largest step (nT/min)', 'Quiet hour (nT/min)', 'Pressure before → after (nPa)', 'Ebre list', 'Shock at L1 (onset − arrival)', ''],
         r.events.map((e, i) => e.detected ? [e.time, fmt(e.amplitude_nt, 0), e.rise_minutes, fmt(e.max_step_nt, 0), fmt(e.quiet_nt, 1),
           e.pressure_jump === null ? 'no data' : `${fmt(e.pressure_before_npa, 1)} → ${fmt(e.pressure_after_npa, 1)} (×${fmt(e.pressure_ratio, 1)})`,
-          listed(e.listed), `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`]
-          : [e.time, '<span class="text-rose-400">not detected</span>', '', '', '', '', listed(e.listed),
+          listed(e.listed, e.time), l1(e.l1_shock, e.time), `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`]
+          : [e.time, '<span class="text-rose-400">not detected</span>', '', '', '', '', listed(e.listed, e.time), l1(e.l1_shock, e.time),
             `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`])) : '';
       const t0 = Date.parse(ser.time_tags[0].replace(' ', 'T') + 'Z');
       const days = ser.time_tags.length * ser.cadence_minutes > 2 * 1440;
