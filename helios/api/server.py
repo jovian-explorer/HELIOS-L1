@@ -39,6 +39,7 @@ from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARA
                                         field_at_plasma_times, superposed_epoch,
                                         fit_flux_rope, minimum_variance, position_at, timing_comparison)
 from helios.core.comparator import SatelliteComparator
+from helios.core import timeshift
 from helios.core import omni_statistics
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
@@ -1083,6 +1084,124 @@ async def analyse_coupling(
     prov = _analysis_provenance(key, data, t0, t1, result["method"], {})
     prov["coordinates"] = "GSM (field rotated from GSE per sample)"
     return _analysis_answer({"provenance": prov, "result": result}, download, f"HELIOS_coupling_{key}_{t0:%Y%m%dT%H%M}")
+
+
+@app.get("/api/analysis/timeshift")
+async def analyse_timeshift(
+    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    start: str = Query(..., description="UTC start of the arrival times at the bow shock nose, ISO 8601"),
+    end: str = Query(..., description="UTC end (exclusive) of the arrival times"),
+    format: str = Query("json", pattern="^(json|csv)$"),
+    download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
+):
+    """
+    Upstream field and plasma shifted to the Earth's bow shock nose as NASA's High Resolution
+    OMNI does it (phase front normals by cross products or MVAB-0, Farris & Russell bow shock),
+    for arrival times over up to 48 h, with the flat (dX/Vx) delay and, for WIND and ACE, the
+    agreement with OMNI's own time shifts in the minutes OMNI took from the same spacecraft.
+    """
+    key = _event_mission(mission)
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    if t1 - t0 > timedelta(hours=timeshift.MAX_SHIFT_HOURS):
+        raise HTTPException(status_code=422, detail=f"Arrival intervals are limited to {timeshift.MAX_SHIFT_HOURS} hours.")
+    obs0 = t0 - timedelta(hours=timeshift.MAX_DELAY_HOURS)
+    data = await downloader.events.fetch(key, obs0, t1)
+    field, plasma, position = data["field"], data["plasma"], data["position"]
+    datasets = list(data["datasets"])
+    if key == "WIND":
+        # OMNI shifts WIND with the SWE key parameters, cleaned as in its appendix 3.
+        kp, rec, _, _ = await downloader.events.fetch_dataset(timeshift.WIND_KP_PLASMA, obs0, t1, "plasma")
+        datasets = [d for d in datasets if d["role"] != "plasma"] + ([rec] if rec else [])
+        plasma = timeshift.despike_plasma(kp) if kp is not None else None
+        field = timeshift.wind_field_limit(field) if field is not None else None
+    missing = [name for name, v in (("magnetic field", field), ("plasma", plasma), ("position", position)) if v is None]
+    if missing:
+        raise HTTPException(status_code=404, detail=f"No {key} {' or '.join(missing)} data for this interval"
+                            + (" (CDAWeb could not be reached)." if data["offline"] else "."))
+    try:
+        res = await run_in_workers(timeshift.shift_to_bow_shock, field, plasma, position, t0, t1)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    minutes = res["minutes"]
+    if minutes.empty:
+        raise HTTPException(status_code=422, detail="No vector could be shifted into this interval (data gaps, "
+                            "or no plasma velocity within an hour of the field).")
+    comparison, omni = None, None
+    if key in timeshift.OMNI_IDS:
+        om, rec, _, _ = await downloader.events.fetch_dataset(timeshift.OMNI_SHIFTS, t0, t1, "comparison")
+        if om is not None:
+            omni = om[om["IMF"] == timeshift.OMNI_IDS[key]][["Timeshift"]]
+            omni.index = omni.index.floor("min")
+            comparison = timeshift.compare_with_omni(minutes, omni)
+            datasets.append(rec)
+        note = (None if comparison else
+                f"OMNI HRO took no minute of this interval from {key}, or has no data for it yet." if om is not None
+                else "OMNI HRO could not be read for this interval.")
+    else:
+        note = (f"{key} is not among the spacecraft High Resolution OMNI is built from, so there is no OMNI "
+                "shift to compare with.")
+    delays = minutes["delay_s"].dropna() / 60.0
+    lag = timedelta(minutes=float(delays.median()))
+    prov = _analysis_provenance(key, {"field": field, "plasma": plasma, "datasets": datasets}, t0 - lag, t1 - lag,
+                                timeshift.METHOD, {"arrival_start": t0.strftime("%Y-%m-%d %H:%M:%S"),
+                                                   "arrival_end": t1.strftime("%Y-%m-%d %H:%M:%S"),
+                                                   "aberration_vy_kms": timeshift.ORBITAL_VY_KMS})
+    prov["time_convention"] = "arrival time at the bow shock nose (start of each minute), as in OMNI"
+    n_src = res["normal_sources"]
+    shifted = sum(n_src[k] for k in ("cross_product", "mvab0", "interpolated"))
+    summary = {
+        "minutes": int(len(minutes)), "vectors": res["vectors"], "cadence_s": round(res["cadence_s"], 1),
+        "delay_median_min": round(float(delays.median()), 1),
+        "delay_range_min": [round(float(delays.quantile(0.1)), 1), round(float(delays.quantile(0.9)), 1)],
+        "flat_delay_median_min": round(float(minutes["flat_delay_s"].dropna().median() / 60.0), 1),
+        "bow_shock_nose_x_re": round(float(minutes["bsn_x"].median()), 2),
+        "normals_percent": {k: round(100.0 * n_src[k] / shifted, 1) if shifted else None
+                            for k in ("cross_product", "mvab0", "interpolated")},
+        "vectors_not_shifted": n_src["not_shifted"],
+    }
+    omni_col = omni["Timeshift"].reindex(minutes.index) if omni is not None else None
+    stamp = f"HELIOS_timeshift_{key}_{t0:%Y%m%dT%H%M}"
+    if format == "csv":
+        out = io.StringIO()
+        out.write(f"# title: HELIOS-L1 {key} data shifted to the bow shock nose\n# method: {timeshift.METHOD}\n")
+        out.write("# time: arrival at the bow shock nose (UTC, start of the minute); delays in seconds\n")
+        out.write(f"# datasets: {', '.join(d['id'] for d in datasets)}\n")
+        if comparison:
+            pf = comparison["phase_front"]
+            out.write(f"# OMNI comparison: {pf['minutes']} minutes from {key}, median difference "
+                      f"{pf['median_difference_min']} min, {pf['within_1_min_percent']} % within 1 min\n")
+        out.write(f"# software: {prov['software']}\n# retrieved_utc: {prov['retrieved_utc']}\n")
+        cols = ["delay_s", "delay_rms_s", "flat_delay_s", "bsn_x", "bsn_y", "bsn_z", "bx", "by", "bz", "by_gsm",
+                "bz_gsm", "speed", "vx", "vy", "vz", "density", "temperature", "points", "cross_product", "mvab0",
+                "interpolated"]
+        cols = [c for c in cols if c in minutes]
+        w = csv.writer(out, lineterminator="\n")
+        w.writerow(["time"] + cols + (["omni_timeshift_s"] if omni_col is not None else []))
+        for t, row in minutes[cols].iterrows():
+            vals = ["" if not np.isfinite(v) else round(float(v), 3) for v in row.to_numpy(dtype=float)]
+            if omni_col is not None:
+                o = omni_col.get(t)
+                vals.append("" if o is None or not np.isfinite(o) else int(o))
+            w.writerow([t.strftime("%Y-%m-%d %H:%M")] + vals)
+        return Response(content=out.getvalue(), media_type="text/csv", headers=attachment(f"{stamp}.csv"))
+
+    def col(name, scale=1.0, digits=2):
+        if name not in minutes:
+            return [None] * len(minutes)
+        return [None if not np.isfinite(v) else round(float(v) * scale, digits)
+                for v in minutes[name].to_numpy(dtype=float)]
+
+    series = {"time_tags": [t.strftime("%Y-%m-%d %H:%M") for t in minutes.index],
+              "delay_min": col("delay_s", 1 / 60), "delay_rms_min": col("delay_rms_s", 1 / 60),
+              "flat_delay_min": col("flat_delay_s", 1 / 60), "bsn_x_re": col("bsn_x"),
+              "bz_gsm": col("bz_gsm"), "speed": col("speed", 1.0, 1), "density": col("density")}
+    if omni_col is not None:
+        series["omni_delay_min"] = [None if not np.isfinite(v) else round(float(v) / 60, 2)
+                                    for v in omni_col.to_numpy(dtype=float)]
+    result = {"method": timeshift.METHOD, "summary": summary, "omni_comparison": comparison, "omni_note": note}
+    return _analysis_answer({"provenance": prov, "result": result, "series": series}, download, stamp)
 
 
 def _omni_filters(where: str, bz_south_hours: int, bz_north_hours: int, sw_type: str,

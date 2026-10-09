@@ -169,6 +169,33 @@ class EventDataClient:
         os.replace(tmp, path)
         return text
 
+    async def fetch_dataset(self, spec: Dict[str, Any], start: datetime, end: datetime, role: str):
+        """
+        One dataset of `spec` (id, parameters, reduce, label): (frame or None, provenance record,
+        whether the server answered or a cached copy existed, raw HAPI frame or None).
+        """
+        url = hapi_data_url(spec["id"], spec["parameters"], start, end)
+        text = await self._get(url, end)
+        if text is None:
+            return None, None, False, None
+        try:
+            df = parse_hapi_csv(text)
+        except (HapiError, ValueError):
+            return None, None, True, None
+        if df.empty:
+            return None, None, True, None
+        try:
+            frame = spec["reduce"](df).dropna(how="all").sort_index()
+        except (KeyError, ValueError):
+            return None, None, True, df
+        if frame.empty:
+            return None, None, True, df
+        record = {"role": role, "id": spec["id"], "label": spec["label"], "hapi_url": url,
+                  "n_samples": int(len(frame)),
+                  "coverage_start": frame.index[0].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                  "coverage_end": frame.index[-1].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]}
+        return frame, record, True, df
+
     async def fetch(self, mission: str, start: datetime, end: datetime, coarse: bool = False) -> Dict[str, Any]:
         """
         {"field", "plasma", "position": DataFrame or None, "datasets": [...], "offline": bool}.
@@ -183,27 +210,13 @@ class EventDataClient:
         if isinstance(src["position"], dict):
             specs.append(("position", src["position"]))
         for kind, spec in specs:
-            url = hapi_data_url(spec["id"], spec["parameters"], start, end)
-            text = await self._get(url, end)
-            if text is None:
-                continue
-            out["offline"] = False
-            try:
-                df = parse_hapi_csv(text)
-                if df.empty:
-                    continue
+            frame, record, reached, df = await self.fetch_dataset(spec, start, end, kind)
+            out["offline"] = out["offline"] and not reached
+            if df is not None:
                 raw[kind] = df
-                frame = spec["reduce"](df).dropna(how="all").sort_index()
-            except (HapiError, KeyError, ValueError):
-                continue
-            if frame.empty:
-                continue
-            out[kind] = frame
-            out["datasets"].append({
-                "role": kind, "id": spec["id"], "label": spec["label"], "hapi_url": url,
-                "n_samples": int(len(frame)),
-                "coverage_start": frame.index[0].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                "coverage_end": frame.index[-1].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]})
+            if frame is not None:
+                out[kind] = frame
+                out["datasets"].append(record)
         if isinstance(src["position"], str) and src["position"] in raw:
             try:
                 out["position"] = src["position_reduce"](raw[src["position"]]).dropna().sort_index()

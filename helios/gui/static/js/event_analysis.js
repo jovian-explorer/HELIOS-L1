@@ -248,6 +248,44 @@
     }
   };
 
+  // ---------------------------------------------------------------- time shift to the bow shock nose
+  window.eaRunTimeshift = async function () {
+    const q = new URLSearchParams({ mission: el('ea-ts-mission').value, start: utc('ea-ts-start'), end: utc('ea-ts-end') });
+    const url = `/api/analysis/timeshift?${q}`;
+    setStatus('ea-ts-status', 'Fetching the field, plasma and positions (from 3 h before the first arrival) and shifting...');
+    try {
+      const body = await getJSON(url);
+      const r = body.result, s = r.summary, c = r.omni_comparison, n = s.normals_percent, ser = body.series;
+      const cmp = c && c.phase_front ? ` Against OMNI (${c.phase_front.minutes} minutes taken from this spacecraft): median difference ` +
+        `${fmt(c.phase_front.median_difference_min, 2)} min, ${fmt(c.phase_front.within_1_min_percent, 0)} % within 1 min and ` +
+        `${fmt(c.phase_front.within_2_min_percent, 0)} % within 2 min` +
+        (c.flat ? `; flat delay ${fmt(c.flat.within_1_min_percent, 0)} % and ${fmt(c.flat.within_2_min_percent, 0)} %.` : '.') : (r.omni_note ? ` ${r.omni_note}` : '');
+      setStatus('ea-ts-status', `${s.minutes} arrival minutes from ${s.vectors} field vectors (${fmt(s.cadence_s, 0)} s). Delay ${fmt(s.delay_median_min, 1)} min ` +
+        `(10-90 %: ${fmt(s.delay_range_min[0], 1)} to ${fmt(s.delay_range_min[1], 1)}), flat ${fmt(s.flat_delay_median_min, 1)} min; bow shock nose at ` +
+        `${fmt(s.bow_shock_nose_x_re, 1)} R_E. Normals: cross product ${fmt(n.cross_product, 0)} %, MVAB-0 ${fmt(n.mvab0, 0)} %, interpolated ${fmt(n.interpolated, 0)} %` +
+        (s.vectors_not_shifted ? `; ${s.vectors_not_shifted} vectors not shifted (no normal within 3 h, or no velocity within 1 h).` : '.') + cmp + coverageNote(body.provenance));
+      const t0 = Date.parse(ser.time_tags[0].replace(' ', 'T') + 'Z');
+      const hx = ser.time_tags.map(t => (Date.parse(t.replace(' ', 'T') + 'Z') - t0) / 3.6e6);
+      const pts = key => hx.map((x, i) => ({ x, y: ser[key][i] }));
+      const datasets = [
+        { label: 'Phase front delay (min)', data: pts('delay_min'), borderColor: '#38bdf8', borderWidth: 1, pointRadius: 0 },
+        { label: 'Flat delay ΔX/Vx (min)', data: pts('flat_delay_min'), borderColor: '#94a3b8', borderDash: [4, 3], borderWidth: 1, pointRadius: 0 },
+      ];
+      if (ser.omni_delay_min) {
+        datasets.push({ label: 'OMNI time shift (min)', data: pts('omni_delay_min'), borderColor: '#f59e0b', backgroundColor: '#f59e0b',
+          showLine: false, pointRadius: 1 });
+      }
+      drawChart('ea-ts-chart', { type: 'line', data: { datasets },
+        options: { scales: { x: axis(`Hours from ${ser.time_tags[0]} UTC (arrival at the bow shock nose)`), y: axis('Delay (min)') } } });
+      const a = el('ea-ts-csv');
+      a.href = `${url}&format=csv`;
+      a.classList.remove('hidden');
+      showDownload('ea-ts-download', url);
+    } catch (e) {
+      setStatus('ea-ts-status', e.message, true);
+    }
+  };
+
   // ---------------------------------------------------------------- Richardson & Cane ICME list
   window.eaListIcmes = async function () {
     const q = new URLSearchParams({ start: utc('ea-icme-start'), end: utc('ea-icme-end') });

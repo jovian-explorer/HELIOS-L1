@@ -1852,6 +1852,23 @@
         <div id="ea-cpl-table" class="overflow-x-auto text-xs"></div>
       </div>
 
+      <!-- Time shift to the bow shock nose -->
+      <div class="glass-panel p-4 space-y-3">
+        <h4 class="font-tech font-bold text-sm text-slate-100">Time shift to the bow shock nose (OMNI method)</h4>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <div><label class="ea-label">Spacecraft</label>
+            <select id="ea-ts-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
+          <div><label class="ea-label">Arrivals from (UTC)</label><input id="ea-ts-start" type="text" class="ea-input w-40" value="2018-09-01T00:00"></div>
+          <div><label class="ea-label">Arrivals to (UTC, up to 48 h)</label><input id="ea-ts-end" type="text" class="ea-input w-40" value="2018-09-02T00:00"></div>
+          <button onclick="eaRunTimeshift()" class="ea-btn">Shift</button>
+          <a id="ea-ts-csv" class="ea-link hidden" href="#">CSV</a>
+          <a id="ea-ts-download" class="ea-link hidden" href="#">Save JSON</a>
+        </div>
+        <p class="text-[10px] text-slate-400">Field and plasma moved to the bow shock nose as NASA's High Resolution OMNI does it: a phase front normal for every 15-16 s field vector (cross product of the field before and after it, else minimum variance with &lt;B&gt;&middot;n = 0, else interpolated over at most 3 h), the delay n&middot;(R<sub>bsn</sub> &minus; R<sub>sc</sub>) / n&middot;V with 29.8 km/s added to Vy, and the bow shock nose of Farris &amp; Russell (1994) with the Shue et al. (1997) magnetopause. Times are arrival times at the bow shock nose. The flat delay &Delta;X/Vx is drawn for comparison and, for WIND and ACE, OMNI's own shift in the minutes OMNI took from the same spacecraft. Planar phase fronts can place a shock several minutes off: on 7 Sep 2017 the WIND shock reaches the bow shock nose at 23:11 in OMNI and 23:12 here, while SYM-H jumps from 23:00. For shocks use the shock analysis and timing above.</p>
+        <div id="ea-ts-status" class="text-xs text-slate-400"></div>
+        <div class="h-64 hidden"><canvas id="ea-ts-chart"></canvas></div>
+      </div>
+
       <!-- Magnetic cloud search -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Magnetic cloud search (Lepping et al. 2005)</h4>
