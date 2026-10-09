@@ -41,6 +41,7 @@ from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARA
 from helios.core.comparator import SatelliteComparator
 from helios.core import timeshift
 from helios.core import sudden_commencement as sc
+from helios.core import gfz_indices
 from helios.core import omni_statistics
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
@@ -946,6 +947,24 @@ async def analyse_superposed_epoch(
                                                        t + timedelta(hours=after_hours), cadence_minutes=1)
 
     bundles = await asyncio.gather(*(one(t) for t in times))
+    gfz_keys = [p for p in params if p in gfz_indices.INDICES]
+    gfz_unread: List[int] = []
+    if gfz_keys:  # GFZ Kp / Hp30, held over their intervals minute by minute and merged into the OMNI records
+        years: Dict[Tuple[str, int], Optional[pd.Series]] = {}
+        for t, b in zip(times, bundles):
+            w0, w1 = t - timedelta(hours=before_hours), t + timedelta(hours=after_hours)
+            by_time = {r["time_tag"]: r for r in b["records"]}
+            for key in gfz_keys:
+                for y in range(w0.year, w1.year + 1):
+                    if (key, y) not in years:
+                        years[(key, y)] = await gfz_indices.year_series(downloader.fetch_text, helios_config.CACHE_DIR, key, y)
+                parts = [years[(key, y)] for y in range(w0.year, w1.year + 1) if years[(key, y)] is not None]
+                gfz_unread += [y for y in range(w0.year, w1.year + 1) if years[(key, y)] is None]
+                if not parts:
+                    continue
+                for rec in gfz_indices.step_records(pd.concat(parts).sort_index(), key, w0, w1):
+                    by_time.setdefault(rec["time_tag"], {"time_tag": rec["time_tag"]})[key] = rec[key]
+            b["records"] = sorted(by_time.values(), key=lambda r: r["time_tag"])
     result = await run_in_workers(superposed_epoch, [(t, b["records"]) for t, b in zip(times, bundles)],
                                   params, before_hours, after_hours, cadence_minutes)
     if not any(b["records"] for b in bundles):
@@ -962,6 +981,8 @@ async def analyse_superposed_epoch(
         "time_standard": "UTC",
         "note": "OMNI 1-min values are time-shifted to the bow shock nose; SYM-H, ASY-H, AE, AL and AU are WDC Kyoto.",
         "event_selection": selection or "onset times given by the user",
+        "geomagnetic_indices": ({**gfz_indices.SOURCE, "held_over_interval": True, "years_unread": sorted(set(gfz_unread))}
+                                if gfz_keys else None),
         "method": result["method"],
         "parameters": {"onsets": [t.strftime("%Y-%m-%d %H:%M:%S") for t in times], "parameters": params,
                        "before_hours": before_hours, "after_hours": after_hours, "cadence_minutes": cadence_minutes},

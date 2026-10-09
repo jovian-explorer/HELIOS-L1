@@ -490,8 +490,14 @@ def test_superposed_epoch_of_two_storms_from_omni(monkeypatch, tmp_path):
             "2024-05-11": "omni_hro_1min_20240511"}
     no_data = (Path(__file__).parent / "data" / "hapi" / "wi_h1_swe_nodata.csv").read_text()
 
+    gfz = Path(__file__).parent / "data" / "gfz"  # GFZ web service answers for the storm days
+
     async def fake(url, timeout=120.0):
         q = parse_qs(urlparse(url).query)
+        if url.startswith("https://kp.gfz.de/"):
+            name = {("Kp", "2015"): "kp_20150316", ("Hp30", "2015"): "hp30_20150316",
+                    ("Kp", "2024"): "kp_20240509", ("Hp30", "2024"): "hp30_20240509"}.get((q["index"][0], q["start"][0][:4]))
+            return (gfz / f"{name}.json").read_text() if name else None
         day = q["time.min"][0][:10]
         return _text(days[day]) if q["id"][0] == "OMNI_HRO_1MIN" and day in days else no_data
 
@@ -499,6 +505,7 @@ def test_superposed_epoch_of_two_storms_from_omni(monkeypatch, tmp_path):
     dl.fetch_text = fake
     dl.archive = ArchiveClient(lambda url: dl.fetch_text(url), tmp_path)
     monkeypatch.setattr(server, "downloader", dl)
+    monkeypatch.setattr(server.helios_config, "CACHE_DIR", tmp_path)
     client = TestClient(server.app, base_url=LOCAL)
     base = "/api/analysis/superposed?onsets=2015-03-17T04:45,2024-05-10T17:05&before_hours=2&after_hours=18.5"
     r = client.get(base + "&cadence_minutes=1&parameters=sym_h,bz_gsm")
@@ -525,7 +532,20 @@ def test_superposed_epoch_of_two_storms_from_omni(monkeypatch, tmp_path):
     assert "epoch_hours,sym_h_mean,sym_h_median,sym_h_q25,sym_h_q75,sym_h_n_events,speed_mean" in csv_text
     prov = r.json()["provenance"]
     assert prov["datasets"][0]["datasets"][0]["id"] == "OMNI_HRO_1MIN"
-    assert client.get(base + "&parameters=kp").status_code == 422
+    assert client.get(base + "&parameters=xyz").status_code == 422
+    # GFZ Kp and Hp30 held over their intervals: Kp 8- (7.667) from 12 UT on 17 March 2015 and 9o from
+    # 00 UT on 11 May 2024 (the first Kp 9 since 2003); Hp30, not capped at 9, 9- at 13:30 and 11- at 22:30.
+    gz = client.get(base + "&cadence_minutes=1&parameters=kp,hp30").json()
+    ev15, ev24 = gz["result"]["events"]
+    assert (ev15["kp"]["max"], ev15["kp"]["max_epoch_hours"]) == (7.667, pytest.approx(7.25))
+    assert (ev15["hp30"]["max"], ev15["hp30"]["max_epoch_hours"]) == (8.667, pytest.approx(8.75))
+    assert (ev24["kp"]["max"], ev24["kp"]["max_epoch_hours"]) == (9.0, pytest.approx(6 + 55 / 60))
+    assert (ev24["hp30"]["max"], ev24["hp30"]["max_epoch_hours"]) == (11.333, pytest.approx(5 + 25 / 60))
+    hp = gz["result"]["statistics"]["hp30"]["per_event"][1]
+    i = gz["result"]["epoch_hours"].index(5.5)  # 22:35, inside the 22:30-23:00 interval
+    assert hp[i] == 11.333 and hp[i - 6] != 11.333  # 22:29 belongs to the interval before
+    prov = gz["provenance"]["geomagnetic_indices"]
+    assert prov["licence"] == "CC BY 4.0" and prov["years_unread"] == []
     assert client.get("/api/analysis/superposed?onsets=yesterday").status_code == 422
 
 

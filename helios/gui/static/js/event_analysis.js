@@ -591,8 +591,11 @@
       sel.innerHTML = seaResult.parameters.map(p => `<option value="${p}">${p}</option>`).join('');
       setStatus('ea-sea-status', `${seaResult.n_events} events, ${seaResult.cadence_minutes}-min bins.`);
       const p0 = seaResult.parameters[0];
-      el('ea-sea-table').innerHTML = table(['Onset (UTC)', 'Records'].concat(seaResult.parameters.map(p => `${p} min (epoch h)`)),
-        seaResult.events.map(e => [e.onset, e.n_records].concat(seaResult.parameters.map(p => e[p] ? `${fmt(e[p].min, 1)} (${fmt(e[p].min_epoch_hours, 2)})` : '---'))));
+      // The extreme that marks activity: the minimum of SYM-H, AL and Bz, the maximum of the others (AE, Kp, Hp30, speed...).
+      const ext = p => (['sym_h', 'al', 'bz_gsm'].includes(p) ? 'min' : 'max');
+      el('ea-sea-table').innerHTML = table(['Onset (UTC)', 'Records'].concat(seaResult.parameters.map(p => `${p} ${ext(p)} (epoch h)`)),
+        seaResult.events.map(e => [e.onset, e.n_records].concat(seaResult.parameters.map(p => e[p] ?
+          `${fmt(e[p][ext(p)], 1)} (${fmt(e[p][`${ext(p)}_epoch_hours`], 2)})` : '---'))));
       const csv = el('ea-sea-csv');
       csv.href = url + '&format=csv';
       csv.classList.remove('hidden');
@@ -621,7 +624,7 @@
           { label: 'Mean 95 % CI low', data: pts(st.mean_ci95_low), borderColor: 'rgba(245,158,11,0.5)', borderWidth: 1, pointRadius: 0 },
         ] : []),
       ] },
-      options: { scales: { x: axis('Epoch time (hours from onset)'), y: axis(p) } },
+      options: { scales: { x: axis('Epoch time (hours from onset)', { min: x[0], max: x[x.length - 1] }), y: axis(p) } },
     });
   };
 })();

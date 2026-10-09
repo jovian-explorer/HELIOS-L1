@@ -1152,7 +1152,7 @@ def detect_magnetic_clouds(frame: pd.DataFrame, criteria: str = "loose") -> Dict
 # ----------------------------------------------------------------------------
 # Superposed epoch analysis
 # ----------------------------------------------------------------------------
-SEA_PARAMETERS = ("sym_h", "asy_h", "ae", "al", "au", "bz_gsm", "by_gsm", "bt", "speed", "density",
+SEA_PARAMETERS = ("sym_h", "asy_h", "ae", "al", "au", "kp", "hp30", "bz_gsm", "by_gsm", "bt", "speed", "density",
                   "temperature", "dynamic_pressure", "akasofu_gw")
 
 
