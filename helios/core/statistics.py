@@ -63,8 +63,11 @@ def fisher_interval(r: float, n_eff: float, z: float = Z95) -> Optional[Tuple[fl
 def student_t95(dof: float) -> float:
     """
     Two-sided 95 % point of Student's t (Cornish-Fisher expansion, Abramowitz & Stegun 26.7.5;
-    within 0.1 % of the exact value for dof >= 3 and 0.8 % at dof = 2).
+    within 0.1 % of the exact value for dof >= 3 and 0.8 % at dof = 2; exact tan(0.475 pi)
+    at dof = 1, where the series gives 11.3 instead of 12.71).
     """
+    if dof <= 1.0:
+        return math.tan(0.475 * math.pi)
     z = Z95
     g1 = (z ** 3 + z) / 4.0
     g2 = (5 * z ** 5 + 16 * z ** 3 + 3 * z) / 96.0

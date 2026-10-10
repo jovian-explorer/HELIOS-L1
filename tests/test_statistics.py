@@ -26,7 +26,7 @@ def test_fisher_interval_matches_reference_values():
 
 def test_student_t_quantile_against_tables():
     # Two-sided 95 % points of Student's t (standard tables).
-    for dof, t in ((3, 3.1824), (4, 2.7764), (10, 2.2281), (30, 2.0423), (100, 1.9840)):
+    for dof, t in ((1, 12.7062), (3, 3.1824), (4, 2.7764), (10, 2.2281), (30, 2.0423), (100, 1.9840)):
         assert st.student_t95(dof) == pytest.approx(t, rel=1.5e-3)
 
 
