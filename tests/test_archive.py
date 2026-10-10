@@ -270,3 +270,12 @@ def test_day_file_is_kept_for_good_only_if_written_after_the_day_was_complete(tm
     late = _utc("2024-05-20").timestamp()
     os.utime(path, (late, late))
     assert ArchiveClient._cache_is_fresh(str(path), day, True)
+
+
+def test_day_cache_key_changes_with_the_processing_version(tmp_path, monkeypatch):
+    from helios.core import archive
+    client = ArchiveClient(None, tmp_path)
+    spec, day = ARCHIVE_SOURCES["WIND"]["groups"][0][0], _utc("2024-05-10")
+    before = client._cache_path(spec, day)
+    monkeypatch.setattr(archive, "DAY_CACHE_VERSION", archive.DAY_CACHE_VERSION + 1)
+    assert client._cache_path(spec, day) != before

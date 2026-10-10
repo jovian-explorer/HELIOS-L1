@@ -41,6 +41,10 @@ BOLTZMANN_J_K = 1.380649e-23
 
 RECENT_TTL_SECONDS = 6 * 3600
 PERMANENT_AFTER_DAYS = 2
+# Part of the day-file cache key: raise it whenever the processing of a day changes (reduce
+# functions, quality flags, unit conversions, trimming), or old files are kept for good.
+# 2: day files cut to their own day (files from before kept a duplicated minute).
+DAY_CACHE_VERSION = 2
 
 STANDARD_COLUMNS = ("density", "speed", "temperature", "bt",
                     "bx_gsm", "by_gsm", "bz_gsm", "bx_gse", "by_gse", "bz_gse")
@@ -280,10 +284,11 @@ class ArchiveClient:
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def _cache_path(self, spec: Dict[str, Any], day: datetime) -> str:
-        # The parameter list is part of the key: adding parameters to a dataset must not
-        # serve day files cached (and kept for good) without them.
+        # The parameter list and DAY_CACHE_VERSION are part of the key: adding parameters or
+        # changing the processing must not serve day files cached (and kept for good) without it.
         safe = spec["id"].replace("@", "_at")
-        tag = hashlib.sha1(",".join(spec["parameters"]).encode("ascii")).hexdigest()[:8]
+        key = ",".join(spec["parameters"]) + f"|v{DAY_CACHE_VERSION}"
+        tag = hashlib.sha1(key.encode("ascii")).hexdigest()[:8]
         return os.path.join(self.cache_dir, f"{safe}_{tag}_{day:%Y%m%d}.json")
 
     @staticmethod
