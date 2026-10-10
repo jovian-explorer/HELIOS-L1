@@ -44,3 +44,10 @@ def test_year_cache_offline_copy_and_interval_holding(tmp_path):
     values = [r["hp30"] for r in recs]
     assert len(recs) == 34 and recs[2]["time_tag"] == "2024-05-10 22:30:00"
     assert values[:2] == [s["2024-05-10 22:00"]] * 2 and set(values[2:32]) == {11.333} and values[32] == s["2024-05-10 23:00"]
+
+
+def test_newest_value_is_not_held_past_its_interval():
+    s = gi.pd.Series([3.0], index=gi.pd.to_datetime(["2024-05-10 21:00"], utc=True))
+    recs = gi.step_records(s, "kp", datetime(2024, 5, 10, 22, 30, tzinfo=timezone.utc),
+                           datetime(2024, 5, 11, 3, 0, tzinfo=timezone.utc))
+    assert recs[-1]["time_tag"] == "2024-05-10 23:59:00" and len(recs) == 90

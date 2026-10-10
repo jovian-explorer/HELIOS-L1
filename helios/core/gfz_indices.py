@@ -67,7 +67,9 @@ def step_records(series: pd.Series, key: str, start: datetime, end: datetime) ->
     _, minutes = INDICES[key]
     t0 = pd.Timestamp(start).floor("min")
     grid = pd.date_range(t0, pd.Timestamp(end), freq="min", inclusive="left")
-    held = series.reindex(series.index.union(grid)).ffill(limit=minutes - 1).reindex(grid)
+    # Held by time, not by rows: a row limit counted from the first grid minute when the
+    # grid started inside an interval, holding the newest value up to an interval too long.
+    held = series.reindex(grid, method="ffill", tolerance=pd.Timedelta(minutes=minutes - 1))
     return [{"time_tag": t.strftime("%Y-%m-%d %H:%M:%S"), key: float(v)} for t, v in zip(grid, held.to_numpy()) if v == v]
 
 
