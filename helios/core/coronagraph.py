@@ -254,6 +254,7 @@ class CoronagraphAnalyzer:
             ],
             "predicted_l1_arrival": arrival_l1.strftime("%Y-%m-%d %H:%M:%S UTC"),
             "predicted_earth_arrival": arrival_earth.strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "start_height_rsun": r2_rsun,  # the trajectory and its transit times start here
             "measurement_span_solar_radii": round(r2_rsun - r1_rsun, 2),
             "measurement_dt_minutes": dt_minutes
         }

@@ -22,6 +22,7 @@ class CMESimulator {
     this.vAmbient = 420; // Ambient solar wind velocity [km/s]
     this.gamma = 1.0e-7; // DBM drag parameter [km^-1], the server default until a result arrives
     this.rSunKm = 696340;
+    this.r0Km = this.rSunKm; // start height of the trajectory; the server's r2 once a result arrives
     this.l1Km = 149597870.7 - 1496000.0; // same L1 distance as coronagraph.py
     this.earthKm = 149597870.7;
 
@@ -82,6 +83,8 @@ class CMESimulator {
     this.leadMinutes = cme.l1_to_earth_lead_time_minutes ?? null;
     if (cme.ambient_wind_kms) this.vAmbient = Number(cme.ambient_wind_kms);
     if (cme.drag_parameter_gamma) this.gamma = Number(cme.drag_parameter_gamma);  // same DBM drag as the server
+    // The server integrates from the second measured height and counts time from it.
+    if (cme.start_height_rsun) this.r0Km = Number(cme.start_height_rsun) * this.rSunKm;
     this.maxHrs = Math.max(48, Math.ceil(this.transitEarthHrs * 1.25));
     this.timeHrs = 0;
     this.isPlaying = true;
@@ -104,7 +107,7 @@ class CMESimulator {
     const w = this.vAmbient;
     const gamma = this.gamma;
     const u0 = this.v0 - w;
-    const r0 = this.rSunKm;
+    const r0 = this.r0Km;
     if (targetDistKm <= r0) return 0;
 
     // Initial guess based on arithmetic mean velocity
@@ -136,7 +139,7 @@ class CMESimulator {
     const w = this.vAmbient;
     const gamma = this.gamma;
     const u0 = this.v0 - w;
-    const r0 = this.rSunKm;
+    const r0 = this.r0Km;
 
     let v, distFromSunKm, dragA;
     if (Math.abs(u0) < 1e-4) {
@@ -434,7 +437,7 @@ class CMESimulator {
     if (shock.isEarthHit) {
       this.drawAlertBanner(ctx, 'GEOMAGNETIC SUDDEN COMMENCEMENT (SC) - EARTH IMPACT!', '#ef4444');
     } else if (shock.isL1Hit) {
-      const remainingMin = ((this.transitEarthHrs - this.timeHrs) * 60).toFixed(0);
+      const remainingMin = Math.max(0, (this.transitEarthHrs - this.timeHrs) * 60).toFixed(0);
       this.drawAlertBanner(ctx, `L1 INTERCEPTION - EARLY WARNING ACTIVE: +${remainingMin} MIN TO EARTH`, '#f59e0b');
     }
 

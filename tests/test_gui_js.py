@@ -338,3 +338,22 @@ console.log(JSON.stringify([
         "; no OMNI data for 2026; CDAWeb not reached, cached data used for 2003, 2004",
         "",
     ]
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_cme_animation_reaches_l1_at_the_server_transit_time():
+    """The animation started at 1 R_sun while the server's transit times start at the second height."""
+    from helios.core.coronagraph import CoronagraphAnalyzer
+    cme = CoronagraphAnalyzer.calculate_cme_kinematics(5.0, 20.0, 180.0, launch_time_iso="2024-05-09T09:24")
+    src = (APP_JS.parent / "cme_sim.js").read_text(encoding="utf-8")
+    script = "const window = {}; const document = {getElementById: () => null};\n" + src + f"""
+const s = Object.create(CMESimulator.prototype);
+Object.assign(s, {{rSunKm: 696340, r0Km: 696340, l1Km: 149597870.7 - 1496000.0, earthKm: 149597870.7, v0: 1000,
+                  vAmbient: 420, gamma: 1e-7}});
+s.updateFromBackendResult({json.dumps(cme)});
+console.log(JSON.stringify([s.getShockAtTime(s.transitL1Hrs).rKm, s.l1Km]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    r, l1 = json.loads(res.stdout)
+    assert r == pytest.approx(l1, rel=0.002)  # transit hours are rounded to 0.1 h
