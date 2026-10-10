@@ -1346,6 +1346,16 @@ async def analyse_sudden_commencements(
             "time": e["time"], "spacecraft": e["spacecraft"], "shock_speed_kms": e["shock_speed_kms"],
             "predicted_arrival": a.strftime("%Y-%m-%d %H:%M:%S"),
             "onset_minus_predicted_minutes": round((t - a).total_seconds() / 60.0, 1)}
+    # The strongest half-hourly activity (GFZ Hp30) over the 24 h from each onset.
+    hp_years = {y: await gfz_indices.year_series(downloader.fetch_text, helios_config.CACHE_DIR, "hp30", y)
+                for y in range(t0.year, (t1 + timedelta(hours=24)).year + 1)}
+    hp = [s for s in hp_years.values() if s is not None]
+    hp = pd.concat(hp).sort_index() if hp else None
+    for r in rows:
+        t = pd.Timestamp((r["listed"] or {}).get("time") if not r["detected"] else r["time"], tz="UTC")
+        w = hp[(hp.index + pd.Timedelta(minutes=30) > t) & (hp.index < t + pd.Timedelta(hours=24))] if hp is not None else []
+        r["hp30_max_24h"] = None if len(w) == 0 else {"value": float(w.max()), "interval_start": w.idxmax().strftime("%Y-%m-%d %H:%M")}
+    comparison["hp30_years_unread"] = [y for y, s in hp_years.items() if s is None]
     comparison["with_l1_shock"] = sum(1 for r in rows if r["detected"] and r["l1_shock"])
     comparison["l1_shock_list"] = {**_ipshocks_meta(), "last_shock": shocks[-1]["time"],
                                    "window_minutes": shock_catalog.DRIVER_MINUTES}
@@ -1378,13 +1388,14 @@ async def analyse_sudden_commencements(
         w = csv.writer(out, lineterminator="\n")
         w.writerow(["onset", "detected"] + cols + ["listed_time", "listed_type", "listed_amplitude_nt", "offset_minutes",
                                                    "l1_shock_time", "l1_spacecraft", "l1_shock_speed_kms",
-                                                   "onset_minus_predicted_minutes"])
+                                                   "onset_minus_predicted_minutes", "hp30_max_24h", "hp30_max_interval_start"])
         for r in rows:
-            lst, l1 = r["listed"] or {}, r["l1_shock"] or {}
+            lst, l1, h = r["listed"] or {}, r["l1_shock"] or {}, r["hp30_max_24h"] or {}
             w.writerow([r["time"], int(r["detected"])] + ["" if r.get(c) is None else r[c] for c in cols]
                        + [lst.get("time", ""), lst.get("type", ""), lst.get("amplitude_nt", ""),
                           "" if lst.get("offset_minutes") is None else lst["offset_minutes"]]
-                       + [l1.get(k, "") for k in ("time", "spacecraft", "shock_speed_kms", "onset_minus_predicted_minutes")])
+                       + [l1.get(k, "") for k in ("time", "spacecraft", "shock_speed_kms", "onset_minus_predicted_minutes")]
+                       + [h.get("value", ""), h.get("interval_start", "")])
         return Response(content=out.getvalue(), media_type="text/csv", headers=attachment(f"{stamp}.csv"))
     cadence = 1 if t1 - t0 <= timedelta(days=31) else 10
     s = sym[(sym.index >= t0) & (sym.index < t1)]

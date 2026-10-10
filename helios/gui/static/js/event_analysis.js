@@ -385,13 +385,14 @@
       // e.g. "WIND 04:00, 562 km/s, +0.4 min": the onset 0.4 min after the shock's planar arrival.
       const l1 = (x, onset) => !x ? '' : `${x.spacecraft} ${x.time.slice(0, 10) === onset.slice(0, 10) ? x.time.slice(11, 16) : x.time.slice(5, 16)}, ` +
         `${fmt(x.shock_speed_kms, 0)} km/s, ${x.onset_minus_predicted_minutes > 0 ? '+' : ''}${fmt(x.onset_minus_predicted_minutes, 1)} min`;
+      const hp30 = (x, onset) => !x ? '' : `${fmt(x.value, 1)} (${x.interval_start.slice(0, 10) === onset.slice(0, 10) ? x.interval_start.slice(11) : x.interval_start.slice(5)})`;
       el('ea-sc-table').innerHTML = r.events.length ? table(
-        ['Onset (UTC)', 'Amplitude (nT)', 'Rise (min)', 'Largest step (nT/min)', 'Quiet hour (nT/min)', 'Pressure before → after (nPa)', 'Ebre list', 'Shock at L1 (onset − arrival)', ''],
+        ['Onset (UTC)', 'Amplitude (nT)', 'Rise (min)', 'Step (nT/min)', 'Quiet (nT/min)', 'Pressure (nPa)', 'Ebre list', 'L1 shock (onset − arrival)', 'Hp30 max, 24 h', ''],
         r.events.map((e, i) => e.detected ? [e.time, fmt(e.amplitude_nt, 0), e.rise_minutes, fmt(e.max_step_nt, 0), fmt(e.quiet_nt, 1),
           e.pressure_jump === null ? 'no data' : `${fmt(e.pressure_before_npa, 1)} → ${fmt(e.pressure_after_npa, 1)} (×${fmt(e.pressure_ratio, 1)})`,
-          listed(e.listed, e.time), l1(e.l1_shock, e.time), `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`]
+          listed(e.listed, e.time), l1(e.l1_shock, e.time), hp30(e.hp30_max_24h, e.time), `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`]
           : [e.time, '<span class="text-rose-400">not detected</span>', '', '', '', '', listed(e.listed, e.time), l1(e.l1_shock, e.time),
-            `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`])) : '';
+            hp30(e.hp30_max_24h, e.time), `<button class="ea-link" onclick="eaShowSc(${i})">Show</button>`])) : '';
       const t0 = Date.parse(ser.time_tags[0].replace(' ', 'T') + 'Z');
       const days = ser.time_tags.length * ser.cadence_minutes > 2 * 1440;
       const xOf = t => (Date.parse(t.replace(' ', 'T') + 'Z') - t0) / (days ? 864e5 : 36e5);

@@ -147,6 +147,10 @@ def _client(monkeypatch, tmp_path, omni, ebre):
         asked.append(url)
         if url in ebre:
             return ebre[url]
+        if url.startswith("https://kp.gfz.de/"):  # GFZ Hp30 answers recorded for the storm days
+            year = parse_qs(urlparse(url).query)["start"][0][:4]
+            name = {"2015": "hp30_20150316", "2024": "hp30_20240509"}.get(year)
+            return (Path(__file__).parent / "data" / "gfz" / f"{name}.json").read_text() if name else None
         q = parse_qs(urlparse(url).query)
         return _text(omni[q["time.min"][0][:7]]) if q.get("id") == ["OMNI_HRO_1MIN"] and q["time.min"][0][:7] in omni else None
 
@@ -178,6 +182,7 @@ def test_api_finds_the_listed_commencements_of_17_march_2015_and_10_may_2024(mon
     # |n.r| / V_sh = 44.6 min, so the planar front reaches the Earth at 04:44:37, 0.4 min before the onset.
     assert e["l1_shock"] == {"time": "2015-03-17 04:00:03", "spacecraft": "WIND", "shock_speed_kms": 561.7,
                              "predicted_arrival": "2015-03-17 04:44:37", "onset_minus_predicted_minutes": 0.4}
+    assert e["hp30_max_24h"] == {"value": 8.667, "interval_start": "2015-03-17 13:30"}  # GFZ: 9- at 13:30
     assert len(e["window"]["sym_h"]) == len(body["series"]["window_minutes"]) == 151
     assert e["window"]["sym_h"][60] == 17 and e["window"]["sym_h"][63] == 67   # onset 17 nT, peak 3 min later
     c = body["result"]["comparison"]
@@ -191,7 +196,7 @@ def test_api_finds_the_listed_commencements_of_17_march_2015_and_10_may_2024(mon
     assert lines[0].startswith("# title: HELIOS-L1 sudden commencements in OMNI SYM-H")
     assert "1 of 1 listed SCs found, 0 of 1 detections not listed" in text
     assert lines[-1].startswith("2015-03-17 04:45,1,50.0,3,28.0,")
-    assert lines[-1].endswith(",2015-03-17 04:45:00,SSC,39.9,0.0,2015-03-17 04:00:03,WIND,561.7,0.4")
+    assert lines[-1].endswith(",2015-03-17 04:45:00,SSC,39.9,0.0,2015-03-17 04:00:03,WIND,561.7,0.4,8.667,2015-03-17 13:30")
 
     # 10 May 2024: SYM-H was already disturbed (median 1-min change 1 nT); the 35-nT minute
     # passes as at least 20 times that. The 2024 list is preliminary.
@@ -200,6 +205,7 @@ def test_api_finds_the_listed_commencements_of_17_march_2015_and_10_may_2024(mon
     assert e["time"] == "2024-05-10 17:05" and e["quiet_nt"] == 1.0 and e["max_step_nt"] == 35
     assert e["listed"]["type"] == "SSC" and e["listed"]["offset_minutes"] == 0.0
     assert e["l1_shock"] is None  # the database ends in March 2024
+    assert e["hp30_max_24h"] == {"value": 11.333, "interval_start": "2024-05-10 22:30"}  # GFZ: 11- at 22:30
     assert body["result"]["comparison"]["l1_shock_list"]["last_shock"] == "2024-03-25 10:04:50"
     assert body["result"]["comparison"]["years"] == {"2024": "preliminary"}
 
