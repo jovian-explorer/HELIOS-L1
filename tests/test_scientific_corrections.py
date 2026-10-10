@@ -495,6 +495,10 @@ def test_aurora_endpoint_uses_al_and_draws_starkov_oval(monkeypatch):
     b = client.get("/api/aurora?time=2024-05-10T22:00").json()["boundaries"]
     assert b["al_used_nt"] == pytest.approx(429.5) and b["al_source"].startswith("OMNI 1-min AL")
     assert b["hemispheric_power_gw"] is None
+    # Nothing live next to a past oval: no Bz, no Dst model or Kyoto Dst of today.
+    past = client.get("/api/aurora?time=2024-05-10T22:00").json()
+    assert past["bz_gsm"] is None and past["dst_evolution"] is None and past["dst_observed"] is None
+    assert "past oval time" in past["dst_note"]
 
 
 def test_gopalswamy_2001_empirical_arrival():

@@ -1708,6 +1708,15 @@ async function loadAuroralForecast() {
       if (skillEl) skillEl.innerText = describeDstSkill(data.dst_skill, 'Kyoto Dst (hourly)') +
         ' Drivers: L1 solar wind shifted to Earth by its travel time' + (data.dst_initial_observed_nt !== null && data.dst_initial_observed_nt !== undefined ? `; model started from observed ${data.dst_initial_observed_nt} nT.` : '; no observed start value, model starts quiet.');
     }
+    else if (chartDst && data.dst_note) {  // past oval time: no live Dst next to it
+      chartDst.data.labels = [];
+      chartDst.data.datasets.forEach(ds => { ds.data = []; });
+      chartDst.update();
+      const curDstEl = document.getElementById('dst-current-val');
+      if (curDstEl) curDstEl.innerText = 'n/a';
+      const skillEl = document.getElementById('dst-skill-text');
+      if (skillEl) skillEl.innerText = data.dst_note;
+    }
 
     // Feed real-time geomagnetic parameters to high-resolution Auroral Renderer
     if (auroralRenderer) {

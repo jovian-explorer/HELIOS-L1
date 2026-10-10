@@ -1852,8 +1852,9 @@ async def get_aurora(kp: Optional[float] = Query(None, ge=0.0, le=9.0),
     data = bundle["records"]
     latest_rec = latest_valid_record(data)
 
-    # Reported only (the Starkov oval does not use Bz); no value is no value, not -3 nT.
-    bz_val = float(bz_gsm) if bz_gsm is not None else latest_rec.get("bz_gsm")
+    # Reported only (the Starkov oval does not use Bz); no value is no value, not -3 nT. A past
+    # oval time gets no live Bz (it used to show today's value next to the 2003 oval).
+    bz_val = float(bz_gsm) if bz_gsm is not None else (None if historical else latest_rec.get("bz_gsm"))
 
     # Starkov (1994) is driven by AL: user value, else the OMNI 1-min AL averaged over the
     # hour before the oval time (OMNI lags real time by days or more), else Kp -> AL.
@@ -1892,7 +1893,7 @@ async def get_aurora(kp: Optional[float] = Query(None, ge=0.0, le=9.0),
     obs_window = [o for o in obs if t0 and t0[:13] <= o["time_tag"][:13] <= t1[:13]]
     initial = AuroralModel.observed_at(obs, t0) if t0 else None
     dst_sim = AuroralModel.simulate_dst_evolution(drivers, model=model_key, initial_dst=initial)
-    return {
+    out = {
         "kp": kp_val,
         "kp_source": kp_source,
         "al_nt": boundaries["al_used_nt"],
@@ -1910,6 +1911,11 @@ async def get_aurora(kp: Optional[float] = Query(None, ge=0.0, le=9.0),
         "drivers_provenance": bundle["provenance"],
         "drivers_time_shift": "L1 records shifted by their L1-to-Earth travel time (distance / speed)"
     }
+    if historical:  # the Dst model and Kyoto Dst are the last day of live data, not the oval's time
+        out.update({k: None for k in ("dst_initial_observed_nt", "dst_evolution", "dst_observed", "dst_skill",
+                                      "drivers_provenance")})
+        out["dst_note"] = "The Dst panel covers the last 24 h of live data; it is not shown for a past oval time."
+    return out
 
 @app.get("/api/magnetosphere/boundaries")
 async def get_magnetospheric_boundaries(
