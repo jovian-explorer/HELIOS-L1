@@ -1174,7 +1174,11 @@ def _bootstrap_bands(g: np.ndarray, n_boot: int, seed: int, min_events: int = 3)
         arrays = {"mean": means}
         if n_ev * n_bins <= 300_000:
             idx = np.array([np.repeat(np.arange(n_ev), c.astype(int)) for c in counts])  # [B, E]
-            arrays["median"] = np.nanmedian(g[idx], axis=1)
+            # In blocks of resamples: g[idx] at once is B x events x bins (2 GB for 60 events
+            # of 3 days at 1-minute bins).
+            step = max(1, 10_000_000 // (n_ev * n_bins))
+            arrays["median"] = np.concatenate([np.nanmedian(g[idx[i:i + step]], axis=1)
+                                               for i in range(0, len(idx), step)])
         enough = finite.sum(axis=0) >= min_events
         out: Dict[str, Any] = {}
         for name, arr in arrays.items():

@@ -784,3 +784,14 @@ def test_flux_rope_fit_reports_uncertainties():
     assert u["axis_cone_deg"] == pytest.approx(25, abs=2)
     from helios.core.lepping_errors import lepping_uncertainties
     assert lepping_uncertainties(15.0, 0.30, 10, 90, 0)["warnings"]  # beyond the 4 nT noise range
+
+
+def test_bootstrap_median_in_blocks_matches_all_at_once():
+    from helios.core.event_analysis import _bootstrap_bands
+    g = np.random.default_rng(3).normal(size=(40, 300))
+    g[::7, ::5] = np.nan
+    out = _bootstrap_bands(g, 1000, 1)  # 40 x 300 values: two blocks of resamples
+    counts = np.random.default_rng(1).multinomial(40, np.full(40, 1 / 40), size=1000)
+    idx = np.array([np.repeat(np.arange(40), c) for c in counts])
+    direct = np.nanpercentile(np.nanmedian(g[idx], axis=1), 2.5, axis=0)
+    assert out["median_ci95_low"] == [round(float(v), 3) for v in direct]
