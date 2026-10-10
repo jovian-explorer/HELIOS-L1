@@ -379,3 +379,18 @@ console.log(JSON.stringify([p.getPSPState().theta, p.getSolOState().theta]));
     for theta, key in zip(json.loads(res.stdout), ("PARKER_SOLAR_PROBE", "SOLAR_ORBITER")):
         want = fleet[key]["heliocentric"]["ecliptic_longitude_deg"] - earth
         assert (math.degrees(theta) - want + 180) % 360 - 180 == pytest.approx(0, abs=1e-6)
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_orbit_view_marks_missing_inputs_as_assumed():
+    """A missing Mach number kept the previous preset (e.g. 4.2) and was shown as measured."""
+    src = (APP_JS.parent / "orbits.js").read_text(encoding="utf-8")
+    script = "const window = {}; const document = {getElementById: () => null};\n" + src + """
+const o = Object.create(OrbitRenderer.prototype);
+o.setSolarWindConditions(920, 32.0, -28.0, 4.2, 0.3);
+o.setSolarWindConditions(450, 2.0, -3.0, null, undefined);
+console.log(JSON.stringify([o.machNumber, o.plasmaBeta, o.assumedMark('machNumber'), o.assumedMark('bz')]));
+"""
+    res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout) == [8.0, 2.0, " (assumed)", ""]

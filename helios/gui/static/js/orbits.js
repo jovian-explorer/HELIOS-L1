@@ -206,12 +206,21 @@ class OrbitRenderer {
     this.boundaryModel = model === 'shue' ? 'shue' : 'chao';
   }
 
+  // A missing input falls back to its typical value and is marked as assumed; it used to
+  // keep the previous value (a preset or the start-up default) and show it as measured.
   setSolarWindConditions(speed, pdyn, bz, mach, beta) {
-    if (speed !== undefined && speed !== null && !isNaN(speed)) this.solarWindSpeed = Number(speed);
-    if (pdyn !== undefined && pdyn !== null && !isNaN(pdyn)) this.dynamicPressure = Math.max(0.05, Number(pdyn));
-    if (bz !== undefined && bz !== null && !isNaN(bz)) this.bz = Number(bz);
-    if (mach !== undefined && mach !== null && !isNaN(mach)) this.machNumber = Math.max(1.15, Number(mach));
-    if (beta !== undefined && beta !== null && !isNaN(beta)) this.plasmaBeta = Math.max(0.0, Number(beta));
+    const ok = v => v !== undefined && v !== null && !isNaN(v);
+    const inputs = [['solarWindSpeed', speed, 450, 0], ['dynamicPressure', pdyn, 1.8, 0.05], ['bz', bz, 0.0, -Infinity],
+                    ['machNumber', mach, 8.0, 1.15], ['plasmaBeta', beta, 2.0, 0.0]];
+    this.assumedInputs = new Set();
+    for (const [key, v, typical, min] of inputs) {
+      this[key] = ok(v) ? Math.max(min, Number(v)) : typical;
+      if (!ok(v)) this.assumedInputs.add(key);
+    }
+  }
+
+  assumedMark(key) {
+    return this.assumedInputs && this.assumedInputs.has(key) ? ' (assumed)' : '';
   }
 
   calculateBoundaries() {
@@ -443,7 +452,7 @@ class OrbitRenderer {
         this.tooltip.innerHTML = `
           <div class="font-bold text-amber-300 border-b border-amber-500/30 pb-1 mb-1">The Sun (Sol)</div>
           <div class="text-slate-300 text-[11px]">Primary Driver of Heliospheric Space Weather</div>
-          <div class="text-amber-400 text-[10px] mt-1">V_sw Speed: ~${this.solarWindSpeed} km/s</div>
+          <div class="text-amber-400 text-[10px] mt-1">V_sw Speed: ~${this.solarWindSpeed} km/s${this.assumedMark('solarWindSpeed')}</div>
         `;
       } else if (found.type === 'magnetopause') {
         const b = found.data;
@@ -456,7 +465,7 @@ class OrbitRenderer {
           <div class="text-amber-300 text-[11px] font-mono mt-1.5 space-y-0.5">
             <div>Subsolar Standoff (r₀,mp): <strong>${b.r0_mp.toFixed(2)} R_E</strong> (~${Math.round(b.r0_mp * 6371).toLocaleString()} km)</div>
             <div>Flaring Parameter (α_mp): <strong>${b.alpha_mp.toFixed(3)}</strong></div>
-            <div>Dynamic Pressure: <strong>${this.dynamicPressure.toFixed(2)} nPa</strong> • Bz: <strong>${this.bz.toFixed(1)} nT</strong></div>
+            <div>Dynamic Pressure: <strong>${this.dynamicPressure.toFixed(2)} nPa</strong>${this.assumedMark('dynamicPressure')} • Bz: <strong>${this.bz.toFixed(1)} nT</strong>${this.assumedMark('bz')}</div>
             <div>GEO Clearance (r₀ - 6.6 R_E): <strong class="${b.insideGeo ? 'text-rose-400 font-bold' : 'text-emerald-400'}">${(b.r0_mp - 6.6).toFixed(2)} R_E</strong></div>
           </div>
           ${b.insideGeo ? '<div class="text-rose-400 text-[10px] font-bold mt-1.5 bg-rose-950/60 p-1 rounded border border-rose-700/60"><i class="fa-solid fa-triangle-exclamation mr-1"></i>SUB-GEO COMPRESSION: Geostationary satellites inside sheath!</div>' : ''}
@@ -473,7 +482,7 @@ class OrbitRenderer {
             <div>Subsolar Standoff (R₀,bs): <strong>${b.r0_bs.toFixed(2)} R_E</strong> (~${Math.round(b.r0_bs * 6371).toLocaleString()} km)</div>
             <div>Flaring Parameter (α_bs): <strong>${b.alpha_bs.toFixed(3)}</strong></div>
             <div>Eccentricity (ε): <strong>${b.eps_bs.toFixed(3)}</strong></div>
-            <div>Magnetosonic Mach (M_ms): <strong>${this.machNumber.toFixed(1)}</strong> • β: <strong>${this.plasmaBeta.toFixed(2)}</strong></div>
+            <div>Magnetosonic Mach (M_ms): <strong>${this.machNumber.toFixed(1)}</strong>${this.assumedMark('machNumber')} • β: <strong>${this.plasmaBeta.toFixed(2)}</strong>${this.assumedMark('plasmaBeta')}</div>
           </div>
         `;
       } else if (found.type === 'magnetosheath') {
