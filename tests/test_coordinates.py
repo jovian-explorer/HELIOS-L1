@@ -84,3 +84,11 @@ def test_importer_prefers_gsm_columns_when_both_are_present():
     r = res["records"][0]
     assert (r["bx_gsm"], r["by_gsm"], r["bz_gsm"]) == (9.01, 4.78, -15.64)
     assert not any("GSE to GSM" in w for w in res["warnings"])
+
+
+def test_leading_l4_and_stereo_a_are_on_the_minus_y_side_of_gse():
+    # Earth's orbital motion is towards -Y in GSE (+Y points to dusk).
+    from helios.core.orbital_mechanics import OrbitalMechanics
+    lp = OrbitalMechanics.get_lagrange_points()
+    assert lp["L4"]["y_mkm"] < 0 < lp["L5"]["y_mkm"]
+    assert all(p["y"] < 0 for p in OrbitalMechanics.get_satellite_orbits()["STEREO_A"]["path"])

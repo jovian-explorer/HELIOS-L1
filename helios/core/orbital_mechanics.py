@@ -38,14 +38,15 @@ class OrbitalMechanics:
             "L4": {
                 "name": "Sun-Earth L4",
                 "x_mkm": -74.8,
-                "y_mkm": 129.5,
+                # Earth moves towards -Y in GSE (+Y is dusk), so the leading point is at -Y.
+                "y_mkm": -129.5,
                 "z_mkm": 0.0,
                 "desc": "Leading triangular Lagrange point (60° ahead of Earth)."
             },
             "L5": {
                 "name": "Sun-Earth L5",
                 "x_mkm": -74.8,
-                "y_mkm": -129.5,
+                "y_mkm": 129.5,
                 "z_mkm": 0.0,
                 "desc": "Trailing triangular Lagrange point (60° behind Earth - early warning of solar active regions rotating into view)."
             }
@@ -216,7 +217,7 @@ class OrbitalMechanics:
         for i in range(num_points):
             phi = 2 * math.pi * (i / num_points) * 0.3 + 0.4
             x = -12000.0 + 1000.0 * math.cos(phi)
-            y = 35000.0 + 1500.0 * math.sin(phi)
+            y = -35000.0 - 1500.0 * math.sin(phi)  # ahead of Earth: -Y in GSE
             z = 500.0 * math.sin(phi)
             stereo_path.append({"x": round(x, 1), "y": round(y, 1), "z": round(z, 1)})
 
