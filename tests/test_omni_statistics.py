@@ -274,3 +274,12 @@ def test_conditional_average_keeps_values_on_the_top_edge():
     assert sum(res["n"]) == 400 and res["n"][-1] == 200
     res = conditional_average(x, x, bins=3, log_x=True, lo=1.0, hi=4.0, min_count=1)
     assert sum(res["n"]) == 400
+
+
+def test_storm_driver_tie_goes_to_the_type_nearest_the_minimum():
+    t = pd.date_range("2024-01-01", periods=12, freq="h", tz="UTC")
+    dst = [-20.0] * 6 + [-60.0, -120.0, -150.0, -90.0, -40.0, -20.0]
+    sw_type = [2.0] * 3 + [1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0]  # last 6 h to the minimum: 1 1 1 2 2 2
+    df = pd.DataFrame({"dst": dst, "sw_type": sw_type}, index=t)
+    storm = om.find_storms(df, -100.0)["storms"][0]
+    assert storm["driver_type_hours"] == 6 and storm["driver_type"] == "coronal_hole"  # was always ejecta

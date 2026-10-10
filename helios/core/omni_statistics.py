@@ -556,7 +556,10 @@ def find_storms(df: pd.DataFrame, threshold_nt: float = -100.0, separation_hours
         t_min = seg.idxmin()
         pre = df.loc[(df.index > t_min - pd.Timedelta(hours=DRIVER_HOURS)) & (df.index <= t_min)]
         types = pre["sw_type"].dropna() if "sw_type" in pre else pd.Series(dtype=float)
-        mode = SW_TYPES.get(int(types.mode().iloc[0])) if len(types) else None
+        # Most frequent type; a tie goes to the tied type nearest the minimum (pandas' mode
+        # sorts the tied codes, so ties always went to the lowest code, ejecta).
+        modes = set(types.mode())
+        mode = SW_TYPES.get(int(next(v for v in types.to_numpy()[::-1] if v in modes))) if len(types) else None
         mean = lambda col: (None if col not in pre or pre[col].dropna().empty else float(pre[col].mean()))
         storms.append({
             "minimum_time": t_min.strftime("%Y-%m-%d %H:%M"), "minimum_dst_nt": float(seg.min()),
