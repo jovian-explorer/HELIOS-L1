@@ -795,3 +795,14 @@ def test_bootstrap_median_in_blocks_matches_all_at_once():
     idx = np.array([np.repeat(np.arange(40), c) for c in counts])
     direct = np.nanpercentile(np.nanmedian(g[idx], axis=1), 2.5, axis=0)
     assert out["median_ci95_low"] == [round(float(v), 3) for v in direct]
+
+
+def test_superposed_epoch_onset_is_a_bin_edge():
+    from helios.core.event_analysis import superposed_epoch
+    onset = pd.Timestamp("2020-01-01", tz="UTC")
+    recs = [{"time_tag": (onset + pd.Timedelta(minutes=m)).strftime("%Y-%m-%d %H:%M:%S"), "x": float(m >= 0)}
+            for m in range(-75, 60)]
+    res = superposed_epoch([(onset, recs)], ["x"], 1.25, 1, cadence_minutes=10)
+    assert 0.0 in res["epoch_hours"] and res["epoch_hours"][0] == pytest.approx(-80 / 60)
+    i0 = res["epoch_hours"].index(0.0)
+    assert res["statistics"]["x"]["mean"][i0 - 1] == 0.0 and res["statistics"]["x"]["mean"][i0] == 1.0

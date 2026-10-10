@@ -1204,7 +1204,9 @@ def superposed_epoch(events: List[Tuple[pd.Timestamp, List[Dict[str, Any]]]], pa
     if not events:
         raise ValueError("No events.")
     cad = int(cadence_minutes)
-    offsets = np.arange(-int(round(before_hours * 60)), int(round(after_hours * 60)), cad)
+    # Bin edges on multiples of the cadence, so the onset is always a bin edge (a window of
+    # 1.25 h at 10-min bins used to put epoch zero inside the bin labelled -5 min).
+    offsets = np.arange(-math.ceil(round(before_hours * 60) / cad) * cad, int(round(after_hours * 60)), cad)
     grids = {p: np.full((len(events), len(offsets)), np.nan) for p in parameters}
     summaries = []
     for k, (onset, recs) in enumerate(events):
