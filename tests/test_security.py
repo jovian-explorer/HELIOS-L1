@@ -90,8 +90,8 @@ def test_interface_requests_still_work(client, restore_settings):
     assert client.get("/api/status", headers={"Sec-Fetch-Site": "none"}).status_code == 200
     assert client.get("/", headers={"Sec-Fetch-Site": "cross-site"}).status_code == 200
     for host in ("localhost:8765", "[::1]:8765"):
-        c = TestClient(server.app, base_url=f"http://{host}")
-        assert c.get("/api/status", headers={"Origin": f"http://{host}"}).status_code == 200
+        # Host header set directly: the test client cannot parse an IPv6 base URL.
+        assert client.get("/api/status", headers={"Host": host, "Origin": f"http://{host}"}).status_code == 200
 
 
 CSV = "time_tag,speed,density\n2024-05-10 00:00,400,5\n2024-05-10 00:01,410,6\n"
