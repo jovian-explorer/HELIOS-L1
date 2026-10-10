@@ -237,6 +237,13 @@ class ParkerSpiralRenderer {
     };
   }
 
+  // Tooltip note on where a position comes from: the positions are Keplerian orbits computed
+  // with SPICE's conic propagator, not spacecraft kernels ("State Vector Verified" was shown
+  // even for the animated schematic orbits).
+  orbitNote(fromEphemeris) {
+    return fromEphemeris ? 'Keplerian orbit from published elements' : 'Schematic orbit, not an ephemeris';
+  }
+
   // Angle of a spacecraft's perihelion from Earth's direction (rad), from the ephemeris
   // longitudes (longitude minus true anomaly); `fallback` for the schematic orbit.
   perihelionAngle(state, fallback) {
@@ -370,7 +377,7 @@ class ParkerSpiralRenderer {
           <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${p.phase}</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
-            <span class="text-slate-400 font-normal">State Vector Verified</span>
+            <span class="text-slate-400 font-normal">${this.orbitNote(p.isSpice)}</span>
           </div>
         </div>
       `;
@@ -398,7 +405,7 @@ class ParkerSpiralRenderer {
           <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">High-Latitude Solar Wind Probe (Inclination 24-33°)</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
-            <span class="text-slate-400 font-normal">State Vector Verified</span>
+            <span class="text-slate-400 font-normal">${this.orbitNote(s.isSpice)}</span>
           </div>
         </div>
       `;
@@ -473,7 +480,7 @@ class ParkerSpiralRenderer {
           <div>Role: <span class="text-slate-300">Side-view CME coronagraph stereoscopy</span></div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
-            <span class="text-slate-400 font-normal">State Vector Verified</span>
+            <span class="text-slate-400 font-normal">${this.orbitNote(true)}</span>
           </div>
         </div>
       `;
@@ -503,7 +510,7 @@ class ParkerSpiralRenderer {
           <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${v.phase}</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
-            <span class="text-slate-400 font-normal">State Vector Verified</span>
+            <span class="text-slate-400 font-normal">${this.orbitNote(v.isSpice)}</span>
           </div>
         </div>
       `;
@@ -532,7 +539,7 @@ class ParkerSpiralRenderer {
           <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${m.phase}</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
-            <span class="text-slate-400 font-normal">State Vector Verified</span>
+            <span class="text-slate-400 font-normal">${this.orbitNote(m.isSpice)}</span>
           </div>
         </div>
       `;
@@ -561,7 +568,7 @@ class ParkerSpiralRenderer {
           <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${mc.phase}</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
-            <span class="text-slate-400 font-normal">State Vector Verified</span>
+            <span class="text-slate-400 font-normal">${this.orbitNote(mc.isSpice)}</span>
           </div>
         </div>
       `;
