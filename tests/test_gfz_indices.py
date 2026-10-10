@@ -25,6 +25,11 @@ def test_year_cache_offline_copy_and_interval_holding(tmp_path):
     s = asyncio.run(gi.year_series(fetch, tmp_path, "hp30", 2015))
     assert asked == [gi.API.format(year=2015, index="Hp30")] and s.max() == 11.333
     assert asyncio.run(gi.year_series(fetch, tmp_path, "hp30", 2015)) is not None and len(asked) == 1  # kept for good
+    mid_2015 = datetime(2015, 6, 1, tzinfo=timezone.utc).timestamp()
+    os.utime(tmp_path / "gfz_indices" / "Hp30_2015.json", (mid_2015, mid_2015))
+    asyncio.run(gi.year_series(fetch, tmp_path, "hp30", 2015))  # a copy taken during its year is renewed
+    assert len(asked) == 2
+    asked.pop()
     this_year = datetime.now(timezone.utc).year
     asyncio.run(gi.year_series(fetch, tmp_path, "hp30", this_year))
     os.utime(tmp_path / "gfz_indices" / f"Hp30_{this_year}.json", (time.time() - 3 * 86400,) * 2)

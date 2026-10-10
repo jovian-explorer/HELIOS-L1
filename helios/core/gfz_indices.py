@@ -33,7 +33,9 @@ async def year_series(fetch_text: Callable, cache_dir, key: str, year: int) -> O
     """One calendar year of an index (values by interval start, UTC), or None when unreadable."""
     name, _ = INDICES[key]
     path = os.path.join(str(cache_dir), "gfz_indices", f"{name}_{year}.json")
-    old = year < datetime.now(timezone.utc).year - 1  # the indices are definitive within months
+    # The indices are definitive within months: a copy downloaded half a year after the year
+    # ended is kept for good (a copy taken during the year used to be kept for good too).
+    old = os.path.exists(path) and os.path.getmtime(path) > datetime(year + 1, 7, 1, tzinfo=timezone.utc).timestamp()
     body = None
     if os.path.exists(path) and (old or time.time() - os.path.getmtime(path) < RECENT_TTL_S):
         with open(path, encoding="utf-8") as f:

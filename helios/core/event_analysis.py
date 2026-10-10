@@ -145,8 +145,8 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
 class EventDataClient:
     """
     Native-cadence HAPI data for an event interval (up to MAX_EVENT_HOURS). One request per
-    dataset and interval; responses are cached by URL, for good once the interval ended
-    more than two days ago. `fetch_text(url)` returns the body or None.
+    dataset and interval; responses are cached by URL, for good when fetched more than two days
+    after the interval ended. `fetch_text(url)` returns the body or None.
     """
 
     def __init__(self, fetch_text: Callable, cache_dir: str):
@@ -156,7 +156,8 @@ class EventDataClient:
 
     async def _get(self, url: str, end: datetime) -> Optional[str]:
         path = os.path.join(self.cache_dir, hashlib.sha1(url.encode("utf-8")).hexdigest()[:20] + ".csv")
-        old = (datetime.now(timezone.utc) - end).total_seconds() > 2 * 86400
+        # For good only if fetched more than two days after the interval ended (complete then).
+        old = os.path.exists(path) and os.path.getmtime(path) - end.timestamp() > 2 * 86400
         if os.path.exists(path) and (old or time.time() - os.path.getmtime(path) < RECENT_TTL_SECONDS):
             with open(path, "r", encoding="utf-8") as f:
                 return f.read()

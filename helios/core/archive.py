@@ -288,8 +288,10 @@ class ArchiveClient:
 
     @staticmethod
     def _cache_is_fresh(path: str, day: datetime, has_rows: bool) -> bool:
-        age_days = (datetime.now(timezone.utc) - (day + timedelta(days=1))).total_seconds() / 86400.0
-        if has_rows and age_days > PERMANENT_AFTER_DAYS:
+        # Kept for good only if written when the day was complete: a file fetched while the
+        # day was still being filled used to become permanent once the day itself was old.
+        written_after_days = (os.path.getmtime(path) - (day + timedelta(days=1)).timestamp()) / 86400.0
+        if has_rows and written_after_days > PERMANENT_AFTER_DAYS:
             return True
         return (time.time() - os.path.getmtime(path)) < RECENT_TTL_SECONDS
 

@@ -258,3 +258,15 @@ def test_hapi_sample_before_the_day_does_not_duplicate_a_minute(tmp_path):
     df, failed = asyncio.run(dl.archive.fetch_dataset(spec, _utc("2024-05-20T00:00"), _utc("2024-05-22T00:00")))
     assert failed == 0 and df.index.is_unique
     assert df.loc[df.index == "2024-05-20 17:02:00+00:00", "density"].tolist() == [pytest.approx(4.03)]  # day 1 value
+
+
+def test_day_file_is_kept_for_good_only_if_written_after_the_day_was_complete(tmp_path):
+    path = tmp_path / "day.json"
+    path.write_text("{}")
+    day = _utc("2024-05-10")
+    early = _utc("2024-05-11T06:00").timestamp()  # fetched while the day was still being filled
+    os.utime(path, (early, early))
+    assert not ArchiveClient._cache_is_fresh(str(path), day, True)
+    late = _utc("2024-05-20").timestamp()
+    os.utime(path, (late, late))
+    assert ArchiveClient._cache_is_fresh(str(path), day, True)
