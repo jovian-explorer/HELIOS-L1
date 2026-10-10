@@ -82,6 +82,13 @@ def test_psd_is_one_sided_and_integrates_to_variance():
     assert res["dt_seconds"] == dt
 
 
+def test_psd_of_constant_series_reports_no_slope():
+    """A flat series has no power to fit: no slope, not a default Kolmogorov -5/3 with R^2 0.85."""
+    res = SpaceWeatherPhysics.power_spectral_density([4.0] * 256)
+    assert res["spectral_slope_alpha"] is None and res["r_squared"] is None
+    assert "No power-law fit" in res["cascade_regime"]
+
+
 def test_psd_gaps_are_interpolated_not_spliced():
     """Removing gap samples would shift the spectral peak; interpolation keeps it in place."""
     dt = 60.0

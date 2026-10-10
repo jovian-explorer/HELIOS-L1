@@ -679,8 +679,8 @@ class SpaceWeatherPhysics:
             return {
                 "frequencies_hz": [],
                 "power_density": [],
-                "spectral_slope_alpha": 0.0,
-                "r_squared": 0.0,
+                "spectral_slope_alpha": None,
+                "r_squared": None,
                 "cascade_regime": "Insufficient Data",
                 "fluctuation_rms": 0.0,
                 "taylor_scale_km_1mhz": 0.0,
@@ -719,11 +719,12 @@ class SpaceWeatherPhysics:
         p_arr = np.array(psd)
         valid_mask = (p_arr > 0) & (f_arr > 0)
 
-        alpha = 1.67
-        r2 = 0.85
+        # No fit (e.g. a constant series has no power): no slope rather than a made-up -5/3.
+        alpha = None
+        r2 = None
         kolmogorov_psd = []
         iroshnikov_psd = []
-        regime = "Kolmogorov Inertial Subrange (f⁻⁵/³)"
+        regime = "No power-law fit (flat or zero spectrum)"
 
         if np.sum(valid_mask) >= 8:
             log_f = np.log10(f_arr[valid_mask])
@@ -774,8 +775,8 @@ class SpaceWeatherPhysics:
             "power_density": [float(f"{p:.6g}") for p in psd],
             "dt_seconds": float(dt_seconds),
             "gap_fraction": round(gap_fraction, 4),
-            "spectral_slope_alpha": round(alpha, 3),
-            "r_squared": round(max(0.0, min(1.0, r2)), 3),
+            "spectral_slope_alpha": round(alpha, 3) if alpha is not None else None,
+            "r_squared": round(max(0.0, min(1.0, r2)), 3) if r2 is not None else None,
             "cascade_regime": regime,
             "fluctuation_rms": round(rms_val, 3),
             "taylor_scale_km_1mhz": round(taylor_km_1mhz, 1),

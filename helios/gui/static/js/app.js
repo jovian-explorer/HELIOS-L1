@@ -2576,13 +2576,13 @@ async function loadSpectralAnalysis() {
     const taylorKmEl = document.getElementById('psd-stat-taylor-km');
     const taylorReEl = document.getElementById('psd-stat-taylor-re');
 
-    if (alphaEl) alphaEl.innerText = psd.spectral_slope_alpha !== undefined ? psd.spectral_slope_alpha.toFixed(2) : '---';
+    if (alphaEl) alphaEl.innerText = psd.spectral_slope_alpha != null ? psd.spectral_slope_alpha.toFixed(2) : '---';
     if (regimeEl) {
       regimeEl.innerText = psd.cascade_regime || 'Inertial Cascade';
-      const a = psd.spectral_slope_alpha || 1.67;
-      regimeEl.className = `text-[11px] font-semibold mt-1 truncate ${a >= 1.55 && a <= 1.80 ? 'text-cyan-400' : (a >= 1.4 && a < 1.55 ? 'text-emerald-400' : 'text-amber-400')}`;
+      const a = psd.spectral_slope_alpha;
+      regimeEl.className = `text-[11px] font-semibold mt-1 truncate ${a == null ? 'text-slate-400' : (a >= 1.55 && a <= 1.80 ? 'text-cyan-400' : (a >= 1.4 && a < 1.55 ? 'text-emerald-400' : 'text-amber-400'))}`;
     }
-    if (r2El) r2El.innerText = psd.r_squared !== undefined ? psd.r_squared.toFixed(2) : '---';
+    if (r2El) r2El.innerText = psd.r_squared != null ? psd.r_squared.toFixed(2) : '---';
     if (rmsEl) rmsEl.innerText = psd.fluctuation_rms !== undefined ? psd.fluctuation_rms.toFixed(2) : '---';
     if (rmsUnitEl) {
       rmsUnitEl.innerText = param === 'speed' ? 'km/s' : (param === 'density' ? 'cm⁻³' : 'nT');
