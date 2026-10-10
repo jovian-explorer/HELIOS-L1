@@ -194,7 +194,9 @@ class ParkerSpiralRenderer {
 
     const rKm = rAu * this.auKm;
     const rSun = rKm / this.rSunKm;
-    const theta = trueAnomaly + 1.95; // orientation in heliocentric ecliptic plane
+    // Perihelion direction relative to Earth (drawn at angle 0): from the ephemeris, else schematic.
+    const orient = this.perihelionAngle(this.spiceFleetData && this.spiceFleetData.PARKER_SOLAR_PROBE, 1.95);
+    const theta = trueAnomaly + orient;
 
     // Rigorous Vis-Viva orbital speed: v = sqrt(mu * (2/r - 1/a)) [km/s]
     const vKms = (this.spiceFleetData && this.spiceFleetData.PARKER_SOLAR_PROBE && this.manualAnomalyDeg === null)
@@ -222,6 +224,7 @@ class ParkerSpiralRenderer {
       name: 'Parker Solar Probe (PSP)',
       aAu,
       ecc,
+      orient,
       rAu,
       rKm,
       rSun,
@@ -234,11 +237,21 @@ class ParkerSpiralRenderer {
     };
   }
 
+  // Angle of a spacecraft's perihelion from Earth's direction (rad), from the ephemeris
+  // longitudes (longitude minus true anomaly); `fallback` for the schematic orbit.
+  perihelionAngle(state, fallback) {
+    const earth = this.spiceFleetData && this.spiceFleetData.EARTH;
+    if (!state || !earth) return fallback;
+    return (state.heliocentric.ecliptic_longitude_deg - state.orbital_elements.true_anomaly_deg
+            - earth.heliocentric.ecliptic_longitude_deg) * Math.PI / 180.0;
+  }
+
   getSolOState() {
     // ESA/NASA Solar Orbiter (SolO) Ephemeris
     // Perihelion: ~0.28 AU, Aphelion: ~0.91 AU, a = 0.595 AU, e = 0.529
-    const aAu = 0.595;
-    const ecc = 0.529;
+    const el = this.spiceFleetData && this.spiceFleetData.SOLAR_ORBITER && this.spiceFleetData.SOLAR_ORBITER.orbital_elements;
+    const aAu = el ? el.semi_major_axis_au : 0.597;
+    const ecc = el ? el.eccentricity : 0.507;
     const muSun = 1.3271244e11;
     const aKm = aAu * this.auKm;
 
@@ -259,7 +272,8 @@ class ParkerSpiralRenderer {
 
     const rKm = rAu * this.auKm;
     const rSun = rKm / this.rSunKm;
-    const theta = trueAnomaly + 3.85;
+    const orient = this.perihelionAngle(this.spiceFleetData && this.spiceFleetData.SOLAR_ORBITER, 3.85);
+    const theta = trueAnomaly + orient;
     const vAuDay = (vKms * 86400.0) / this.auKm;
     const trueAnomalyDeg = ((trueAnomaly * 180.0 / Math.PI) + 360) % 360;
 
@@ -267,6 +281,7 @@ class ParkerSpiralRenderer {
       name: 'Solar Orbiter (SolO)',
       aAu,
       ecc,
+      orient,
       rAu,
       rKm,
       rSun,
@@ -963,8 +978,8 @@ class ParkerSpiralRenderer {
       const EA = (s / 64) * Math.PI * 2;
       const rA = psp.aAu * (1.0 - psp.ecc * Math.cos(EA));
       const ta = Math.atan2(Math.sqrt(1.0 - psp.ecc * psp.ecc) * Math.sin(EA), Math.cos(EA) - psp.ecc);
-      const px = cx + rA * scale * Math.cos(ta + 1.95);
-      const py = cy - rA * scale * Math.sin(ta + 1.95);
+      const px = cx + rA * scale * Math.cos(ta + psp.orient);
+      const py = cy - rA * scale * Math.sin(ta + psp.orient);
       if (s === 0) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
     }
@@ -1007,8 +1022,8 @@ class ParkerSpiralRenderer {
       const EA = (s / 64) * Math.PI * 2;
       const rA = solo.aAu * (1.0 - solo.ecc * Math.cos(EA));
       const ta = Math.atan2(Math.sqrt(1.0 - solo.ecc * solo.ecc) * Math.sin(EA), Math.cos(EA) - solo.ecc);
-      const px = cx + rA * scale * Math.cos(ta + 3.85);
-      const py = cy - rA * scale * Math.sin(ta + 3.85);
+      const px = cx + rA * scale * Math.cos(ta + solo.orient);
+      const py = cy - rA * scale * Math.sin(ta + solo.orient);
       if (s === 0) ctx.moveTo(px, py);
       else ctx.lineTo(px, py);
     }

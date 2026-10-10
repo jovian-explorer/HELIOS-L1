@@ -357,3 +357,25 @@ console.log(JSON.stringify([s.getShockAtTime(s.transitL1Hrs).rKm, s.l1Km]));
     assert res.returncode == 0, res.stderr
     r, l1 = json.loads(res.stdout)
     assert r == pytest.approx(l1, rel=0.002)  # transit hours are rounded to 0.1 h
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_parker_view_places_psp_and_solo_at_their_angle_from_earth():
+    """PSP and SolO were drawn at true anomaly + a fixed made-up perihelion direction."""
+    from helios.core.spice_engine import get_spice_engine
+    eng = get_spice_engine()
+    fleet = {k: eng.get_spacecraft_state(k, epoch_utc="2026-10-10T00:00:00")
+             for k in ("PARKER_SOLAR_PROBE", "SOLAR_ORBITER", "EARTH")}
+    src = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
+    script = "const window = {}; const document = {getElementById: () => null};\n" + src + f"""
+const p = Object.create(ParkerSpiralRenderer.prototype);
+Object.assign(p, {{auKm: 149597870.7, rSunKm: 696340, manualAnomalyDeg: null, pspOrbitSpeedMultiplier: 0.00075,
+                  time: 0, spiceFleetData: {json.dumps(fleet)}}});
+console.log(JSON.stringify([p.getPSPState().theta, p.getSolOState().theta]));
+"""
+    res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)  # too long for -e
+    assert res.returncode == 0, res.stderr
+    earth = fleet["EARTH"]["heliocentric"]["ecliptic_longitude_deg"]
+    for theta, key in zip(json.loads(res.stdout), ("PARKER_SOLAR_PROBE", "SOLAR_ORBITER")):
+        want = fleet[key]["heliocentric"]["ecliptic_longitude_deg"] - earth
+        assert (math.degrees(theta) - want + 180) % 360 - 180 == pytest.approx(0, abs=1e-6)
