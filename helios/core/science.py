@@ -511,7 +511,9 @@ class SpaceWeatherPhysics:
         g_color = "#10b981"
         # Kp 5- (4.67) is already G1: the scale used to start at Kp 5.0, one third too high.
         level = SpaceWeatherPhysics.noaa_g_level(kp)
-        if level:
+        if kp is None:
+            g_scale, g_color = "G-- (No Kp data)", "#64748b"
+        elif level:
             g_scale, g_level, g_color = {
                 5: ("G5 (Extreme)", 5, "#dc2626"), 4: ("G4 (Severe)", 4, "#ea580c"),
                 3: ("G3 (Strong)", 3, "#f59e0b"), 2: ("G2 (Moderate)", 2, "#eab308"),

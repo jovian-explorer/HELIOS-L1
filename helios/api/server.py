@@ -144,30 +144,32 @@ def propagate_to_earth(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 
-def kp_proxy_from_bz(bz: Optional[float]) -> float:
-    """Crude Kp estimate from IMF Bz, used only when no observed Kp can be fetched."""
-    if bz is None:
-        return 3.0
-    if bz < -15:
-        return 8.5
-    if bz < -10:
-        return 7.0
-    if bz < -5:
-        return 5.0
-    return 3.0
+def kp_from_solar_wind(rec: Dict[str, Any], drivers_kind: str = "observed") -> Tuple[Optional[float], str]:
+    """
+    Kp from the L1 solar wind with the Newell et al. (2008) fit, used only when no observed
+    Kp can be fetched (it replaced a Bz-only step function and an ad hoc speed/Bz blend).
+    (None, reason) without speed, density and Bz.
+    """
+    kp = SpaceWeatherForecaster.newell_2008_kp(rec.get("speed"), SpaceWeatherForecaster._density(rec),
+                                              rec.get("by_gsm"), rec.get("bz_gsm"))
+    if kp is None:
+        return None, "unavailable (no observed Kp and no solar wind to estimate it)"
+    src = "Estimated from L1 solar wind (Newell et al. 2008 fit; observed Kp unavailable)"
+    return round(kp, 2), src if drivers_kind == "observed" else src + f", {drivers_kind} drivers, not measured"
 
 
-async def classify_current_conditions(latest: Dict[str, Any]) -> Dict[str, Any]:
+async def classify_current_conditions(latest: Dict[str, Any], drivers_kind: str = "observed") -> Dict[str, Any]:
     """
     NOAA G/R/S classification from observed indices (planetary Kp, GOES 0.1-0.8 nm X-rays,
-    GOES >=10 MeV protons). Kp falls back to a Bz-based estimate, flagged as such; missing
-    X-ray or proton data is reported as missing, never replaced by a default.
+    GOES >=10 MeV protons). Kp falls back to the Newell et al. (2008) solar wind estimate,
+    flagged as such (with the kind of drivers); missing data is reported as missing, never
+    replaced by a default.
     """
     indices = await downloader.get_space_weather_indices()
     if indices.get("kp") is not None:
         kp, kp_source = indices["kp"], f"Observed planetary Kp (NOAA SWPC, {indices.get('kp_time')} UTC)"
     else:
-        kp, kp_source = kp_proxy_from_bz(latest.get("bz_gsm")), "Estimated from IMF Bz (observed Kp unavailable)"
+        kp, kp_source = kp_from_solar_wind(latest, drivers_kind)
     cls = SpaceWeatherPhysics.classify_noaa_scales(
         kp=kp,
         bz_gsm=latest.get("bz_gsm"),
@@ -361,7 +363,7 @@ async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
     data = bundle["records"]
 
     latest = latest_valid_record(data)
-    classification = await classify_current_conditions(latest)
+    classification = await classify_current_conditions(latest, bundle["provenance"]["kind"])
 
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
 
@@ -1847,11 +1849,8 @@ async def get_aurora(kp: Optional[float] = Query(None, ge=0.0, le=9.0),
     data = bundle["records"]
     latest_rec = latest_valid_record(data)
 
-    if bz_gsm is None:
-        bz_val = latest_rec.get("bz_gsm")
-        bz_val = float(bz_val) if bz_val is not None else -3.0
-    else:
-        bz_val = float(bz_gsm)
+    # Reported only (the Starkov oval does not use Bz); no value is no value, not -3 nT.
+    bz_val = float(bz_gsm) if bz_gsm is not None else latest_rec.get("bz_gsm")
 
     # Starkov (1994) is driven by AL: user value, else the OMNI 1-min AL averaged over the
     # hour before the oval time (OMNI lags real time by days or more), else Kp -> AL.
@@ -1869,16 +1868,17 @@ async def get_aurora(kp: Optional[float] = Query(None, ge=0.0, le=9.0),
         if indices.get("kp") is not None:
             kp_val, kp_source = float(indices["kp"]), "observed planetary Kp (NOAA SWPC)"
         else:
-            speed_val = latest_rec.get("speed")
-            speed_val = float(speed_val) if speed_val is not None else 420.0
-            kp_est = max(0.5, min(9.0, 2.0 + max(0.0, (speed_val - 400.0) / 80.0) + max(0.0, -bz_val) * 0.35))
-            kp_val, kp_source = round(kp_est, 1), "estimated from solar wind speed and Bz"
+            kp_val, kp_source = kp_from_solar_wind(latest_rec, bundle["provenance"]["kind"])
+            if kp_val is None:
+                if al_val is None:
+                    raise HTTPException(status_code=503, detail="No observed Kp, AL or solar wind to draw the auroral oval.")
+                kp_val, kp_source = 0.0, "not used (OMNI AL drives the oval)"
     else:
         kp_val = float(kp)
 
     boundaries = AuroralModel.calculate_auroral_boundaries(kp_val, bz_val, al_nt=al_val, al_source=al_source)
     oval_polygon = AuroralModel.generate_auroral_oval_coordinates(kp_val, bz_val, al_nt=al_val, when=oval_time)
-    if historical and kp is None:
+    if kp_source.startswith("not used"):
         boundaries["hemispheric_power_gw"] = None  # the Kp-based estimate has no Kp to use
     # The L1 drivers reach Earth ~45-60 min later: time-shift them before comparing with
     # observed Kyoto Dst over the same window. The model starts from the observed value.
@@ -2141,9 +2141,10 @@ async def get_html_report(mission_id: str = "DSCOVR", download: bool = False):
     bundle = await downloader.get_telemetry_bundle(mission_key, span_days=1)
     data = bundle["records"]
     latest = latest_valid_record(data)
-    classification = await classify_current_conditions(latest)
+    classification = await classify_current_conditions(latest, bundle["provenance"]["kind"])
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
-    auroral_data = AuroralModel.calculate_auroral_boundaries(classification["kp"], latest.get("bz_gsm") or 0.0)
+    auroral_data = (AuroralModel.calculate_auroral_boundaries(classification["kp"], latest.get("bz_gsm"))
+                    if classification["kp"] is not None else {})
 
     html = ScientificReportGenerator.generate_html_bulletin(
         mission_name=MISSIONS[mission_key]["name"],
@@ -2164,9 +2165,10 @@ async def get_markdown_report(mission_id: str = "DSCOVR", download: bool = False
     bundle = await downloader.get_telemetry_bundle(mission_key, span_days=1)
     data = bundle["records"]
     latest = latest_valid_record(data)
-    classification = await classify_current_conditions(latest)
+    classification = await classify_current_conditions(latest, bundle["provenance"]["kind"])
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
-    auroral_data = AuroralModel.calculate_auroral_boundaries(classification["kp"], latest.get("bz_gsm") or 0.0)
+    auroral_data = (AuroralModel.calculate_auroral_boundaries(classification["kp"], latest.get("bz_gsm"))
+                    if classification["kp"] is not None else {})
 
     md = ScientificReportGenerator.generate_markdown_executive_summary(
         mission_name=MISSIONS[mission_key]["name"],

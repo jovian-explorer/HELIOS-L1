@@ -98,6 +98,7 @@ class ScientificReportGenerator:
       <span class="badge" style="background: {classification.get('g_color', '#10b981')}22; color: {classification.get('g_color', '#10b981')}; border: 1px solid {classification.get('g_color', '#10b981')}66;">
         {classification.get('g_scale', 'G0 Quiet')}
       </span>
+      <span style="font-size: 11px; color: #94a3b8;">Kp {classification.get('kp', '---')}: {html_lib.escape(str(classification.get('kp_source', '---')))}</span>
       <span class="badge" style="background: {s_color}22; color: {s_color}; border: 1px solid {s_color}66;">
         {s_scale}
       </span>
@@ -238,7 +239,7 @@ class ScientificReportGenerator:
 ---
 
 ## 1. OPERATIONAL ALERT POSTURE & NOAA SCALES
-- **Geomagnetic Storm Activity (G-Scale):** `{g_scale}`
+- **Geomagnetic Storm Activity (G-Scale):** `{g_scale}` (Kp {classification.get('kp', '---')}: {classification.get('kp_source', '---')})
 - **Solar Radiation Storm Activity (S-Scale):** `{s_scale}` (Proton Flux ≥ 10 MeV: **{proton_pfu} pfu**)
 - **HF Radio Blackout Activity (R-Scale):** `{r_scale}` (X-ray Flare Class: **{flare_cls}**)
 - **Interplanetary Reconnection State:** **{reconn_status}**

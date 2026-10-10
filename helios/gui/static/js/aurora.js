@@ -113,7 +113,7 @@ class AuroralMapRenderer {
   setConditions(kp, bz, power, eqMidnightLat, ovalBoundaries, alUsed, mapTimeUtc) {
     // kp / power are null when the oval comes from OMNI AL for a past time (no Kp used)
     this.kpIndex = (kp === null || kp === undefined) ? null : Math.max(0, Math.min(9, kp));
-    this.imfBz = bz || 0;
+    this.imfBz = bz ?? null;
     this.hemisphericPower = (power === null || power === undefined) ? null : power;
     this.alUsed = (alUsed === null || alUsed === undefined) ? null : Number(alUsed);
     // Terminator, subsolar point and MLT follow the oval time when a past time was chosen
@@ -606,7 +606,7 @@ class AuroralMapRenderer {
     const kpText = this.kpIndex === null ? 'n/a' : this.kpIndex.toFixed(1);
     const alText = this.alUsed === null || this.alUsed === undefined ? '' : `|AL| ${this.alUsed.toFixed(0)} nT • `;
     ctx.fillText(`${alText}KP: ${kpText} • HPI: ${this.hemisphericPower === null ? 'n/a' : this.hemisphericPower + ' GW'}` +
-      (this.mapTime ? ` • ${this.mapTime.toISOString().slice(0, 16).replace('T', ' ')} UTC` : ` • IMF BZ: ${this.imfBz.toFixed(1)} nT`), 18, 54);
+      (this.mapTime ? ` • ${this.mapTime.toISOString().slice(0, 16).replace('T', ' ')} UTC` : ` • IMF BZ: ${this.imfBz === null ? 'n/a' : this.imfBz.toFixed(1) + ' nT'}`), 18, 54);
 
     // Bottom-Right Mouse Geo Readout
     if (this.mouseGeo) {

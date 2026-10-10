@@ -649,3 +649,16 @@ def test_dst_model_does_not_count_an_unreadable_time_stamp_twice():
     bad[3]["time_tag"] = "not a time"
     good = AuroralModel.simulate_dst_evolution(rows)[-1]["dst_predicted_nt"]
     assert AuroralModel.simulate_dst_evolution(bad)[-1]["dst_predicted_nt"] == good
+
+
+def test_kp_fallback_is_the_newell_fit_and_says_so():
+    """Without observed Kp: Newell et al. (2008) from the drivers, never a default (Bz -> Kp 3 or 7)."""
+    from helios.api.server import kp_from_solar_wind
+    from helios.core.ml_forecast import SpaceWeatherForecaster as F
+    rec = {"speed": 650.0, "density": 12.0, "by_gsm": 3.0, "bz_gsm": -15.0}
+    kp, src = kp_from_solar_wind(rec)
+    assert kp == round(F.newell_2008_kp(650.0, 12.0, 3.0, -15.0), 2) and "Newell" in src
+    assert "simulated" in kp_from_solar_wind(rec, "simulated")[1]
+    assert kp_from_solar_wind({"bz_gsm": -15.0})[0] is None  # no speed: no estimate
+    from helios.core.science import SpaceWeatherPhysics
+    assert SpaceWeatherPhysics.classify_noaa_scales(kp=None, bz_gsm=None, xray_flux=None)["g_scale"].startswith("G--")

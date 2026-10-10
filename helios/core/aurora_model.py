@@ -100,7 +100,6 @@ class AuroralModel:
         model depends on AL (or Kp) and magnetic local time only.
         """
         kp_eff = max(0.0, min(9.0, float(kp)))
-        bz_eff = float(bz_gsm) if bz_gsm is not None else 0.0
         if al_nt is not None:
             al_raw, source = abs(float(al_nt)), al_source or "observed AL"
         else:
@@ -134,7 +133,7 @@ class AuroralModel:
         return {
             "model": "Starkov (1994)",
             "kp_used": round(kp_eff, 1),
-            "bz_used": round(bz_eff, 1),
+            "bz_used": round(float(bz_gsm), 1) if bz_gsm is not None else None,
             "al_used_nt": round(al_used, 1),
             "al_source": source,
             "al_capped": al_used != al_raw,
