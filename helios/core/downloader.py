@@ -876,7 +876,7 @@ class DataDownloader:
             },
             "bastille_2000": {
                 "title": "Bastille Day Superstorm (July 14, 2000)",
-                "summary": "Major solar eruptive event during Solar Cycle 23 maximum. An X5.7 flare accompanied a full-halo CME (1674 km/s in the SOHO/LASCO CDAW catalogue; about 1140 km/s at L1 in OMNI). Triggered an S5 extreme solar radiation storm which blinded SOHO star trackers and degraded geostationary solar panels. Dst plunged to -301 nT.",
+                "summary": "Major solar eruptive event during Solar Cycle 23 maximum. An X5.7 flare accompanied a full-halo CME (1674 km/s in the SOHO/LASCO CDAW catalogue; about 1140 km/s at L1 in OMNI). Triggered an S4 severe solar radiation storm (>=10 MeV protons peaking at 24,000 pfu on 15 July, NOAA SWPC event list) which blinded SOHO star trackers and degraded geostationary solar panels. Dst plunged to -301 nT.",
                 "peak_kp": 9.0,
                 "min_bz": -58.8,
                 "peak_speed": 1136.0,
