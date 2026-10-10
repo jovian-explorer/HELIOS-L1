@@ -158,6 +158,15 @@ def kp_from_solar_wind(rec: Dict[str, Any], drivers_kind: str = "observed") -> T
     return round(kp, 2), src if drivers_kind == "observed" else src + f", {drivers_kind} drivers, not measured"
 
 
+def kp_interval(start: Optional[str]) -> str:
+    """'2026-10-10 06:00-09:00 UTC' for a Kp time stamp, which marks the start of its 3-hour interval."""
+    try:
+        t0 = datetime.fromisoformat(str(start).replace("T", " ")[:19])
+    except ValueError:
+        return f"{start} UTC"
+    return f"{t0:%Y-%m-%d %H:%M}-{t0 + timedelta(hours=3):%H:%M} UTC"
+
+
 async def classify_current_conditions(latest: Dict[str, Any], drivers_kind: str = "observed") -> Dict[str, Any]:
     """
     NOAA G/R/S classification from observed indices (planetary Kp, GOES 0.1-0.8 nm X-rays,
@@ -167,7 +176,7 @@ async def classify_current_conditions(latest: Dict[str, Any], drivers_kind: str 
     """
     indices = await downloader.get_space_weather_indices()
     if indices.get("kp") is not None:
-        kp, kp_source = indices["kp"], f"Observed planetary Kp (NOAA SWPC, {indices.get('kp_time')} UTC)"
+        kp, kp_source = indices["kp"], f"Observed planetary Kp (NOAA SWPC, {kp_interval(indices.get('kp_time'))})"
     else:
         kp, kp_source = kp_from_solar_wind(latest, drivers_kind)
     cls = SpaceWeatherPhysics.classify_noaa_scales(

@@ -666,3 +666,9 @@ def test_kp_fallback_is_the_newell_fit_and_says_so():
     assert kp_from_solar_wind({"bz_gsm": -15.0})[0] is None  # no speed: no estimate
     from helios.core.science import SpaceWeatherPhysics
     assert SpaceWeatherPhysics.classify_noaa_scales(kp=None, bz_gsm=None, xray_flux=None)["g_scale"].startswith("G--")
+
+
+def test_kp_time_is_shown_as_its_three_hour_interval():
+    from helios.api.server import kp_interval
+    assert kp_interval("2026-10-10 06:00:00") == "2026-10-10 06:00-09:00 UTC"
+    assert kp_interval("2026-10-10T21:00:00") == "2026-10-10 21:00-00:00 UTC"
