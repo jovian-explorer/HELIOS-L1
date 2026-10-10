@@ -121,3 +121,13 @@ def test_lag_keeps_gaps_on_the_time_grid():
     lag = SatelliteComparator.compare_satellites(a, b, "A", "B", position_unknown="test")["lag_analysis"]
     assert lag["optimal_lag_minutes"] == 15.0 and lag["max_correlation"] > 0.99
     assert lag["lag_ci95_minutes"] == [15.0, 15.0]
+
+
+def test_fleet_matrix_has_no_correlation_without_common_data():
+    from helios.core.comparator import SatelliteComparator
+    a = [{"time_tag": f"2024-05-10 12:{m:02d}:00", "bz_gsm": float(m % 7)} for m in range(60)]
+    b = [{"time_tag": f"2024-05-11 12:{m:02d}:00", "bz_gsm": float(m % 5)} for m in range(60)]  # another day
+    flat = [{"time_tag": f"2024-05-10 12:{m:02d}:00", "bz_gsm": 2.0} for m in range(60)]
+    m = SatelliteComparator.compute_fleet_matrix({"A": a, "B": b, "C": flat})
+    assert m["matrix_r"][0][1] is None  # was 0.000, read as "measured to disagree"
+    assert m["matrix_r"][0][2] is None  # a constant series has no correlation

@@ -1495,11 +1495,11 @@ async function runComparison() {
     }
 
     const m = comp.metrics;
-    document.getElementById('stat-r').innerText = m.correlation_r;
+    document.getElementById('stat-r').innerText = m.correlation_r ?? 'n/a';
     document.getElementById('stat-r').title = m.correlation_ci95
       ? `95 % interval ${m.correlation_ci95[0]} to ${m.correlation_ci95[1]} (Fisher z, ~${m.n_eff} independent samples)`
       : `Too few independent samples for an interval (~${m.n_eff ?? '?'})`;
-    document.getElementById('stat-r2').innerText = m.r_squared;
+    document.getElementById('stat-r2').innerText = m.r_squared ?? 'n/a';
     document.getElementById('stat-rmse').innerText = m.rmse;
     document.getElementById('stat-bias').innerText = (m.bias > 0 ? `+${m.bias}` : `${m.bias}`);
     const lagCi = comp.lag_analysis?.lag_ci95_minutes;

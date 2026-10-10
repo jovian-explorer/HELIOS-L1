@@ -64,7 +64,7 @@ async function loadFleetMatrix() {
         let bgStyle = '';
         let textColor = '';
 
-        if (isDiag) {
+        if (isDiag || r === null || r === undefined) {  // no common data: n/a, not r = 0
           bgStyle = 'background: rgba(15, 23, 42, 0.6);';
           textColor = 'text-slate-500';
         } else if (r >= 0.85) {
@@ -89,7 +89,7 @@ async function loadFleetMatrix() {
               class="rounded-lg py-1.5 px-2.5 cursor-pointer hover:scale-105 transition shadow-sm ${textColor} ${sim ? 'opacity-50 italic' : ''}"
               title="${isDiag ? 'Self-correlation' : `${sim ? 'One side is not measured (simulated or synthetic), so r says nothing about the instruments. ' : ''}Click to cross-correlate ${mRow} vs ${mCol}`}"
             >
-              ${isDiag ? '1.000' : r.toFixed(3)}
+              ${isDiag ? '1.000' : (r === null || r === undefined ? 'n/a' : r.toFixed(3))}
             </div>
           </td>
         `;

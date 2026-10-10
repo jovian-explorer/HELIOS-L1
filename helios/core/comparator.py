@@ -97,8 +97,9 @@ class SatelliteComparator:
 
         # Pearson r
         corr_matrix = np.corrcoef(series_a, series_b)
-        r = float(corr_matrix[0, 1]) if not np.isnan(corr_matrix[0, 1]) else 0.0
-        r2 = float(r ** 2)
+        # A constant series has no correlation: None, not 0 (which reads as "measured to disagree").
+        r = float(corr_matrix[0, 1]) if not np.isnan(corr_matrix[0, 1]) else None
+        r2 = float(r ** 2) if r is not None else None
 
         # Linear regression calibration: A = slope * B + intercept
         p = np.polyfit(series_b, series_a, 1)
@@ -107,10 +108,10 @@ class SatelliteComparator:
 
         corr = correlation(series_a, series_b)  # 95 % interval allowing for autocorrelation
         return {
-            "correlation_r": round(r, 4),
+            "correlation_r": round(r, 4) if r is not None else None,
             "correlation_ci95": [round(v, 4) for v in corr["ci95"]] if corr["ci95"] else None,
             "n_eff": round(corr["n_eff"], 1) if corr["n_eff"] is not None else None,
-            "r_squared": round(r2, 4),
+            "r_squared": round(r2, 4) if r2 is not None else None,
             "rmse": round(rmse, 3),
             "mae": round(mae, 3),
             "bias": round(bias, 3),
@@ -322,7 +323,7 @@ class SatelliteComparator:
                                                             position_a=position_a, position_b=position_b)
 
         # Cross-calibration fidelity & coherence index (0 - 100%)
-        r = metrics.get("correlation_r", 0.0)
+        r = metrics.get("correlation_r") or 0.0
         rmse = metrics.get("rmse", 0.0)
         mean_mag = float(np.mean(np.abs(arr_a))) if len(arr_a) > 0 else 1.0
         rel_err = min(1.0, rmse / max(1.0, mean_mag))
@@ -392,9 +393,9 @@ class SatelliteComparator:
                     met = cls.compute_metrics(arr_a, arr_b)
                     r_val = met["correlation_r"]
                     rmse_val = met["rmse"]
-                else:
-                    r_val = 0.0
-                    rmse_val = 0.0
+                else:  # no common data: nothing to show, not r = 0
+                    r_val = None
+                    rmse_val = None
 
                 matrix_r[i][j] = r_val
                 matrix_r[j][i] = r_val
