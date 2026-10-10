@@ -117,11 +117,15 @@ def block_average(records: List[Dict[str, Any]], minutes: int = 5,
     for c in cols:
         df[c] = pd.to_numeric(df[c], errors="coerce")
     binned = df.set_index("_t")[cols].resample(f"{int(minutes)}min").mean().dropna(how="all")
-    template = {k: v for k, v in records[0].items()
-                if k not in PRIMARY_FIELDS and k != "time_tag" and isinstance(v, str)}
+    # Text fields (mission, data source, source spacecraft) per bin, from its last record: the
+    # first record's labels used to be stamped on every bin, e.g. after a change of the
+    # operational spacecraft or on the RTSW tail after archive bins.
+    str_cols = [c for c in df.columns if c not in cols and c not in ("time_tag", "_t")
+                and df[c].map(lambda v: isinstance(v, str)).any()]
+    labels = df.set_index("_t")[str_cols].resample(f"{int(minutes)}min").last()
     out = []
     for t, row in binned.iterrows():
-        rec = dict(template)
+        rec = {c: v for c, v in labels.loc[t].items() if isinstance(v, str)} if str_cols else {}
         rec["time_tag"] = t.strftime("%Y-%m-%d %H:%M:%S")
         for c in cols:
             v = row[c]

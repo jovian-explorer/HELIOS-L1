@@ -514,3 +514,11 @@ def test_old_rtsw_copy_is_cut_to_the_window_and_flagged(monkeypatch):
     assert recs[-1]["time_tag"] == newest.strftime("%Y-%m-%d %H:%M:%S")
     assert recs[0]["time_tag"] >= (newest - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
     assert "not current conditions" in prov["description"] and prov["newest_record_age_hours"] > 47
+
+
+def test_block_average_keeps_each_bins_spacecraft():
+    from helios.core.downloader import block_average
+    recs = [{"time_tag": f"2026-10-02 18:0{m}:00", "speed": 400.0, "source_spacecraft": "ACE" if m < 5 else "SOLAR1",
+             "data_source": "observed"} for m in range(10)]
+    out = block_average(recs, 5)
+    assert [r["source_spacecraft"] for r in out] == ["ACE", "SOLAR1"]  # was ACE for both
