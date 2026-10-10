@@ -639,3 +639,13 @@ def test_noaa_g_scale_counts_minus_kp_with_its_integer(kp, level):
     """
     assert SpaceWeatherPhysics.noaa_g_level(kp) == level
     assert SpaceWeatherPhysics.classify_noaa_scales(kp, 0.0, None)["g_level"] == level
+
+
+def test_dst_model_does_not_count_an_unreadable_time_stamp_twice():
+    from helios.core.aurora_model import AuroralModel
+    rows = [{"time_tag": f"2024-05-10 12:{m:02d}:00", "speed": 700.0, "bz_gsm": -20.0, "dynamic_pressure": 5.0}
+            for m in range(0, 60, 10)]
+    bad = [dict(r) for r in rows]
+    bad[3]["time_tag"] = "not a time"
+    good = AuroralModel.simulate_dst_evolution(rows)[-1]["dst_predicted_nt"]
+    assert AuroralModel.simulate_dst_evolution(bad)[-1]["dst_predicted_nt"] == good

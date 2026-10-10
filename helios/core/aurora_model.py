@@ -262,6 +262,10 @@ class AuroralModel:
             if prev_t is not None and t is not None:
                 # Equal stamps (e.g. after shifting L1 data to Earth) are no time step.
                 dt_hours = max(0.0, (t - prev_t).total_seconds() / 3600.0)
+            elif prev_t is not None:
+                # Unreadable stamp: no step of its own, the next readable row steps from prev_t
+                # (a default 5 min here counted that time twice).
+                dt_hours = 0.0
             else:
                 dt_hours = default_dt_hours
             if t is not None and (prev_t is None or t > prev_t):
