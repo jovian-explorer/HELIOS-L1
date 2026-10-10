@@ -410,9 +410,10 @@ function formatTimestampToTimezone(isoStr) {
     const iso = String(isoStr).trim().replace(' ', 'T');
     const raw = /([zZ]|[+-]\d\d:?\d\d)$/.test(iso) ? iso : iso + 'Z';
     const d = new Date(raw);
-    if (isNaN(d.getTime())) return isoStr.slice(5, 16);
-    if (selectedTimezone === 'UTC') {
-      return isoStr.slice(5, 16);
+    // Every chart takes its time labels from here, so all follow the selected zone (some
+    // used to slice the UTC string and stayed in UTC next to converted ones).
+    if (isNaN(d.getTime()) || selectedTimezone === 'UTC') {
+      return iso.slice(5, 16).replace('T', ' ');
     } else if (selectedTimezone === 'LOCAL') {
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
@@ -1547,7 +1548,7 @@ function renderCompOverlayChart(comp) {
   if (!ctx) return;
   if (chartCompOverlay) chartCompOverlay.destroy();
 
-  const labels = comp.scatter_points.map(p => p.time.slice(11, 16));
+  const labels = comp.scatter_points.map(p => formatTimestampToTimezone(p.time));
   const dataA = comp.scatter_points.map(p => p.y);
   const dataB = comp.scatter_points.map(p => p.x);
 
@@ -1635,7 +1636,7 @@ function renderCompResidualChart(comp) {
   if (!ctx) return;
   if (chartCompResidual) chartCompResidual.destroy();
 
-  const labels = comp.times.map(t => t.slice(11, 16));
+  const labels = comp.times.map(t => formatTimestampToTimezone(t));
   chartCompResidual = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -1690,7 +1691,7 @@ async function loadAuroralForecast() {
     }
 
     if (chartDst && data.dst_evolution) {
-      const times = data.dst_evolution.map(d => d.time_tag.slice(11, 16));
+      const times = data.dst_evolution.map(d => formatTimestampToTimezone(d.time_tag));
       const dstVals = data.dst_evolution.map(d => d.dst_predicted_nt);
       chartDst.data.labels = times;
       chartDst.data.datasets[0].data = dstVals;
@@ -2461,7 +2462,7 @@ async function selectEvent(eventId) {
     if (!ctx) return;
     if (chartEventTelemetry) chartEventTelemetry.destroy();
 
-    const labels = ev.telemetry.map(r => r.time_tag.slice(11, 16));
+    const labels = ev.telemetry.map(r => formatTimestampToTimezone(r.time_tag));
     const bzVals = ev.telemetry.map(r => r.bz_gsm);
     const vVals = ev.telemetry.map(r => r.speed);
 

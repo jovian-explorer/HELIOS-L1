@@ -33,12 +33,14 @@ let selectedTimezone = 'Asia/Kolkata';
 const out = [formatTimestampToTimezone('2026-10-02 18:40:00'),
              formatTimestampToTimezone('2026-10-02T18:40:00Z')];
 selectedTimezone = 'UTC';
-out.push(formatTimestampToTimezone('2026-10-02 18:40:00'));
+out.push(formatTimestampToTimezone('2026-10-02 18:40:00'), formatTimestampToTimezone('2026-10-02T18:40:00'));
 console.log(JSON.stringify(out));
 """
     res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
     assert res.returncode == 0, res.stderr
-    assert json.loads(res.stdout) == ["10-03 00:10", "10-03 00:10", "10-02 18:40"]
+    assert json.loads(res.stdout) == ["10-03 00:10", "10-03 00:10", "10-02 18:40", "10-02 18:40"]
+    # No chart slices UTC stamps itself: they all go through the zone formatter.
+    assert not re.search(r"time(_tag)?\.slice\(11, ?16\)", APP_JS.read_text(encoding="utf-8"))
 
 
 @pytest.mark.skipif(NODE is None, reason="Node.js not installed")
