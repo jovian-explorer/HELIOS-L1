@@ -1136,6 +1136,35 @@
             <div id="ia-credit" class="text-slate-500 text-[10px]"></div>
           </div>
         </div>
+        <label class="flex items-center gap-2 text-xs text-slate-300"><input id="ia-diff" type="checkbox" onchange="showArchiveFrame(archiveIndex)"> Running difference (each frame minus the previous one)</label>
+
+        <!-- Height-time map (J-map) along a position angle, front tracking and fit -->
+        <div class="border-t border-slate-800 pt-3 space-y-2">
+          <div class="text-sm font-semibold text-slate-100">Height-time map and CME front</div>
+          <p class="text-[11px] text-slate-400">Difference brightness along a radial line at a position angle (degrees from solar north through east; east is left) for the frames of the interval above. Click the map to add front points, or take the automatic track; then fit speed and acceleration and send the result to the CME arrival solver.</p>
+          <div class="flex flex-wrap items-end gap-2 text-xs">
+            <label class="flex flex-col gap-1 text-slate-400">PA (deg)<input id="jm-pa" type="number" value="270" min="0" max="359" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+            <label class="flex flex-col gap-1 text-slate-400">From (R☉)<input id="jm-rmin" type="number" value="4" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+            <label class="flex flex-col gap-1 text-slate-400">To (R☉)<input id="jm-rmax" type="number" value="29" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+            <label class="flex flex-col gap-1 text-slate-400">Difference
+              <select id="jm-mode" class="rounded-lg px-2 py-1.5 bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="running">running</option><option value="base">base (first frame)</option><option value="direct">none</option></select></label>
+            <button onclick="buildJmap()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Build J-map</button>
+            <button onclick="useAutoTrack()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Use automatic track</button>
+            <button onclick="clearTrack()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Clear points</button>
+          </div>
+          <div class="relative bg-black rounded-lg border border-slate-800 h-[300px]">
+            <canvas id="jm-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+          </div>
+          <div class="flex flex-wrap items-end gap-2 text-xs">
+            <label class="flex flex-col gap-1 text-slate-400">Fit
+              <select id="jm-order" class="rounded-lg px-2 py-1.5 bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="1">constant speed</option><option value="2">constant acceleration</option></select></label>
+            <label class="flex flex-col gap-1 text-slate-400">Source lon (° W+, from Earth)<input id="jm-lon" type="number" step="1" placeholder="optional" class="w-28 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+            <label class="flex flex-col gap-1 text-slate-400">Source lat (°)<input id="jm-lat" type="number" step="1" placeholder="optional" class="w-24 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+            <button onclick="fitTrack()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Fit</button>
+            <button onclick="sendTrackToSolver()" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-semibold">Send to CME solver</button>
+          </div>
+          <div id="jm-result" class="text-[11px] text-slate-300"></div>
+        </div>
       </div>
 
       <!-- Interactive Multi-Wavelength Solar Disk & Active Region Scanner -->
@@ -1236,6 +1265,10 @@
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Time Elapsed (Δt in minutes)</label>
             <input type="number" id="cme-dt" value="35" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Time of the second height (UTC, empty: now)</label>
+            <input type="datetime-local" id="cme-t2" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Ambient wind w (km/s, DBM)</label>

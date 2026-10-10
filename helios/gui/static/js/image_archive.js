@@ -61,7 +61,11 @@ function showArchiveFrame(i) {
   archiveIndex = Math.max(0, Math.min(archiveFrames.length - 1, i));
   const f = archiveFrames[archiveIndex];
   const img = document.getElementById('ia-image');
-  img.src = f.image_url;
+  const diff = document.getElementById('ia-diff')?.checked && archiveIndex > 0;
+  img.src = diff
+    ? `/api/coronagraph/difference?instrument=${encodeURIComponent(archiveMeta.instrument)}` +
+      `&date=${encodeURIComponent(f.date)}&previous=${encodeURIComponent(archiveFrames[archiveIndex - 1].date)}&size=${f.size_px}`
+    : f.image_url;
   img.classList.remove('hidden');
   document.getElementById('ia-placeholder').classList.add('hidden');
   document.getElementById('ia-slider').value = archiveIndex;
@@ -105,4 +109,164 @@ async function searchArchiveFits(download) {
   }
 }
 
+// ---- Height-time map (J-map), front points, fit -------------------------------------
+let jmapData = null;
+let jmapImage = null;
+let trackPoints = [];
+let trackFit = null;
+
+async function buildJmap() {
+  const out = document.getElementById('jm-result');
+  out.innerText = 'Building the J-map (the first time, every frame is fetched)...';
+  const v = id => document.getElementById(id).value;
+  try {
+    const res = await fetch('/api/coronagraph/jmap', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instrument: v('ia-instrument'), start: v('ia-start'), end: v('ia-end'),
+        n: Math.max(3, parseInt(v('ia-n')) || 24), pa_deg: parseFloat(v('jm-pa')), r_min: parseFloat(v('jm-rmin')),
+        r_max: parseFloat(v('jm-rmax')), mode: v('jm-mode') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(apiErrorText(data, res));
+    jmapData = data;
+    trackPoints = [];
+    trackFit = null;
+    jmapImage = new Image();
+    jmapImage.onload = drawJmap;
+    jmapImage.src = data.png_data_url;
+    out.innerText = `${data.label}, PA ${data.pa_deg}°, ${data.n_frames} frames; automatic track: ${data.auto_track.length} points. ${data.method}.`;
+  } catch (err) {
+    out.innerText = `J-map unavailable: ${err.message}`;
+  }
+}
+
+function jmapTimeMs(s) { return Date.parse(String(s).replace(' ', 'T') + 'Z'); }
+
+// Plot geometry: time to the right (one column per frame), height up, inside axis margins.
+function jmapAxes(canvas) {
+  const m = { l: 46, r: 10, t: 8, b: 26 };
+  const w = canvas.width - m.l - m.r, h = canvas.height - m.t - m.b;
+  const r = jmapData.r_rsun, t = jmapData.times;
+  const nCols = t.length;
+  const col = time => t.indexOf(time);
+  return {
+    m, w, h, r, t, nCols,
+    x: time => m.l + (Math.max(0, col(time)) + 0.5) * w / nCols,
+    y: rr => m.t + h * (1 - (rr - r[0]) / (r[r.length - 1] - r[0]))
+  };
+}
+
+function drawJmap() {
+  const canvas = document.getElementById('jm-canvas');
+  if (!canvas || !jmapData) return;
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  const ctx = canvas.getContext('2d');
+  const A = jmapAxes(canvas);
+  const { m, w, h, r, t } = A;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = false;
+  if (jmapImage) ctx.drawImage(jmapImage, m.l, m.t, w, h);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10px "JetBrains Mono", monospace';
+  for (let k = 0; k <= 4; k++) {
+    const rr = r[0] + (r[r.length - 1] - r[0]) * k / 4;
+    ctx.fillText(rr.toFixed(1), 4, A.y(rr) + 3);
+  }
+  ctx.fillText('R☉', 4, m.t + 10);
+  ctx.fillText(`${t[0].slice(5, 16)} UTC`, m.l, canvas.height - 8);
+  ctx.textAlign = 'right';
+  ctx.fillText(t[t.length - 1].slice(5, 16), m.l + w, canvas.height - 8);
+  ctx.textAlign = 'left';
+  const dot = (p, color) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(A.x(p.time), A.y(p.r_rsun), 3.5, 0, 2 * Math.PI);
+    ctx.fill();
+  };
+  jmapData.auto_track.forEach(p => dot(p, 'rgba(250, 204, 21, 0.6)'));
+  trackPoints.forEach(p => dot(p, '#22d3ee'));
+  if (trackFit) {
+    // Fitted curve through the columns of the fitted interval.
+    const f = trackFit.fit;
+    const te = jmapTimeMs(f.time_end), a = (f.acceleration_ms2 || 0) / 1000;
+    ctx.strokeStyle = '#f472b6';
+    ctx.beginPath();
+    let started = false;
+    t.forEach(time => {
+      const ms = jmapTimeMs(time);
+      if (ms < jmapTimeMs(f.time_start) || ms > te) return;
+      const dtSec = (ms - te) / 1000;
+      const rr = f.height_end_rsun + (f.speed_kms * dtSec + 0.5 * a * dtSec * dtSec) / 696340;
+      if (!started) { ctx.moveTo(A.x(time), A.y(rr)); started = true; } else ctx.lineTo(A.x(time), A.y(rr));
+    });
+    ctx.stroke();
+  }
+  canvas.onclick = ev => {
+    const rect = canvas.getBoundingClientRect();
+    const px = ev.clientX - rect.left, py = ev.clientY - rect.top;
+    if (px < m.l || px > m.l + w || py < m.t || py > m.t + h) return;
+    const col = Math.max(0, Math.min(A.nCols - 1, Math.floor((px - m.l) / w * A.nCols)));
+    const rr = r[0] + (1 - (py - m.t) / h) * (r[r.length - 1] - r[0]);
+    trackPoints = trackPoints.filter(p => p.time !== t[col]).concat([{ time: t[col], r_rsun: Math.round(rr * 1000) / 1000 }]);
+    trackPoints.sort((p, q) => jmapTimeMs(p.time) - jmapTimeMs(q.time));
+    drawJmap();
+  };
+}
+
+function useAutoTrack() {
+  if (!jmapData) return;
+  trackPoints = jmapData.auto_track.slice();
+  drawJmap();
+}
+
+function clearTrack() {
+  trackPoints = [];
+  trackFit = null;
+  drawJmap();
+}
+
+async function fitTrack() {
+  const out = document.getElementById('jm-result');
+  const v = id => document.getElementById(id).value;
+  const num = id => (v(id) === '' ? null : parseFloat(v(id)));
+  try {
+    const res = await fetch('/api/coronagraph/fit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ points: trackPoints, order: parseInt(v('jm-order')), instrument: v('ia-instrument'),
+        source_lon_deg: num('jm-lon'), source_lat_deg: num('jm-lat') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(apiErrorText(data, res));
+    trackFit = data;
+    drawJmap();
+    const f = data.fit;
+    const acc = f.acceleration_ms2 === null ? '' : `, acceleration ${f.acceleration_ms2} ± ${f.acceleration_err_ms2} m/s²`;
+    const p = data.projection;
+    const proj = !p ? 'No source position given: plane-of-sky speed only.'
+      : (p.radial_speed_kms === null ? p.note
+        : `Radial speed ${p.radial_speed_kms} km/s (ψ = ${p.psi_deg}° from the line of sight of ${data.observer.spacecraft}; ${p.method}).`);
+    out.innerText = `Plane-of-sky speed ${f.speed_kms} ± ${f.speed_err_kms} km/s${acc} from ${f.n_points} points; ` +
+      `front at ${f.height_end_rsun} R☉ at ${f.time_end} UTC (RMS residual ${f.rms_residual_rsun} R☉). ${proj}`;
+  } catch (err) {
+    out.innerText = `Fit failed: ${err.message}`;
+  }
+}
+
+function sendTrackToSolver() {
+  if (!trackFit) {
+    document.getElementById('jm-result').innerText = 'Fit the front first.';
+    return;
+  }
+  const s = trackFit.solver_inputs;
+  document.getElementById('cme-r1').value = s.r1_rsun;
+  document.getElementById('cme-r2').value = s.r2_rsun;
+  document.getElementById('cme-dt').value = s.dt_minutes;
+  document.getElementById('cme-t2').value = s.launch_time;
+  calculateCMEKinematics();
+  document.getElementById('cme-r1').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+window.addEventListener('resize', () => { if (jmapData) drawJmap(); });
 document.addEventListener('DOMContentLoaded', initImageArchive);

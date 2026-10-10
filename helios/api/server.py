@@ -30,7 +30,7 @@ from helios.config import (
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios import config as helios_config
-from helios.core import icme_catalog, shock_catalog, solar_images
+from helios.core import cme_tracking, icme_catalog, shock_catalog, solar_images
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -203,6 +203,29 @@ class CMEKinematicsRequest(BaseModel):
     launch_time_iso: Optional[str] = Field(None, max_length=64)
     ambient_wind_kms: float = Field(420.0, ge=100.0, le=1500.0, allow_inf_nan=False)
     gamma_drag: float = Field(1.0e-7, gt=0.0, le=1.0e-5, allow_inf_nan=False)
+
+class JmapRequest(BaseModel):
+    instrument: str = Field("lasco_c3", max_length=32)
+    start: str = Field(..., max_length=40)
+    end: str = Field(..., max_length=40)
+    n: int = Field(24, ge=3, le=48)
+    pa_deg: float = Field(270.0, ge=0.0, lt=360.0, allow_inf_nan=False)
+    width_deg: float = Field(3.0, gt=0.0, le=30.0, allow_inf_nan=False)
+    r_min: float = Field(2.5, gt=0.0, le=100.0, allow_inf_nan=False)
+    r_max: float = Field(30.0, gt=0.0, le=100.0, allow_inf_nan=False)
+    mode: str = Field("running", max_length=10)
+    k_sigma: float = Field(3.0, gt=0.0, le=20.0, allow_inf_nan=False)
+
+class TrackPoint(BaseModel):
+    time: str = Field(..., max_length=40)
+    r_rsun: float = Field(..., gt=0.0, le=300.0, allow_inf_nan=False)
+
+class FrontFitRequest(BaseModel):
+    points: List[TrackPoint] = Field(..., max_length=500)
+    order: int = Field(1, ge=1, le=2)
+    instrument: str = Field("lasco_c3", max_length=32)
+    source_lon_deg: Optional[float] = Field(None, ge=-180.0, le=180.0, allow_inf_nan=False)
+    source_lat_deg: Optional[float] = Field(None, ge=-90.0, le=90.0, allow_inf_nan=False)
 
 class CustomImportRequest(BaseModel):
     content: str
@@ -2076,6 +2099,67 @@ async def get_solar_image_fits(instrument: str = Query("lasco_c2"), start: str =
         raise HTTPException(status_code=501, detail="Science FITS files need SunPy: pip install \"helios-l1[solar]\".")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.get("/api/coronagraph/difference")
+async def get_running_difference(instrument: str = Query("lasco_c2"), date: str = Query(...),
+                                 previous: str = Query(...), size: int = Query(512)):
+    """Running-difference picture: the image closest to `date` minus the one closest to `previous`."""
+    try:
+        cur, prev = await asyncio.gather(solar_image_client.image(instrument, _parse_utc(date, "date"), size),
+                                         solar_image_client.image(instrument, _parse_utc(previous, "previous"), size))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if cur is None or prev is None:
+        raise HTTPException(status_code=503, detail="The Helioviewer image service could not be reached.")
+    return Response(content=await run_in_workers(cme_tracking.difference_png, cur, prev), media_type="image/png")
+
+
+@app.post("/api/coronagraph/jmap")
+async def post_jmap(req: JmapRequest):
+    """Height-time map along a position angle from the archive images, with an automatic front track."""
+    t0, t1 = _parse_utc(req.start, "start"), _parse_utc(req.end, "end")
+    try:
+        listing = await solar_image_client.frames(req.instrument, t0, t1, req.n, 512)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    sem = asyncio.Semaphore(4)
+
+    async def picture(f):
+        async with sem:
+            return await solar_image_client.image(req.instrument, _parse_utc(f["date"], "date"), 512)
+    pngs = await asyncio.gather(*(picture(f) for f in listing["frames"]))
+    frames = [dict(f, png=p) for f, p in zip(listing["frames"], pngs) if p is not None]
+    try:
+        jm = await run_in_workers(cme_tracking.jmap, frames, req.pa_deg, req.r_min, req.r_max, 200, req.width_deg, req.mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=422 if frames else 503,
+                            detail=str(exc) if frames else "The Helioviewer image service could not be reached.")
+    track = cme_tracking.auto_track(jm.pop("values"), jm["r_rsun"], jm["times"], req.k_sigma)
+    return {**jm, "instrument": req.instrument, "label": listing["label"], "n_frames": len(frames),
+            "auto_track": track, "field_half_width_rsun": listing["half_width_rsun"], "credit": listing["credit"],
+            "method": "Sheeley et al. (1999) J-map of difference brightness (display images, not calibrated radiance)"}
+
+
+@app.post("/api/coronagraph/fit")
+async def post_front_fit(req: FrontFitRequest):
+    """Height-time fit of front points, projection-corrected speed and inputs for the CME arrival solver."""
+    pts = [p.model_dump() for p in req.points]
+    try:
+        fit = cme_tracking.fit_height_time(pts, req.order)
+        when = cme_tracking._t(fit["time_end"])
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    out = {"fit": fit, "projection": None, "observer": None}
+    speed = fit["speed_kms"]
+    if req.source_lon_deg is not None and req.source_lat_deg is not None:
+        obs = cme_tracking.observer_longitude(req.instrument, when)
+        proj = cme_tracking.projection(speed, req.source_lon_deg, req.source_lat_deg, obs["longitude_deg"])
+        out.update(observer=obs, projection=proj)
+        if proj["radial_speed_kms"] is not None:
+            speed = proj["radial_speed_kms"]
+    out["solver_inputs"] = cme_tracking.solver_inputs(fit, speed)
+    return out
 
 
 @app.get("/api/coronagraph/feeds")
