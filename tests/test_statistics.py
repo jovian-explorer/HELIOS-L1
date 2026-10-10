@@ -103,3 +103,21 @@ def test_comparator_correlation_interval():
     m = SatelliteComparator.compute_metrics(a + 0.5 * rng.normal(size=500), a)
     lo, hi = m["correlation_ci95"]
     assert lo < m["correlation_r"] < hi and m["n_eff"] < 500
+
+
+def test_lag_keeps_gaps_on_the_time_grid():
+    """Rows dropped for gaps used to be packed together, so a shift of k samples spanned the gaps."""
+    import pandas as pd
+    from helios.core.comparator import SatelliteComparator
+    rng = np.random.default_rng(4)
+    n = 600
+    x = np.convolve(rng.normal(size=n + 50), np.ones(6) / 6, "same")
+    t = pd.date_range("2024-05-10", periods=n, freq="5min", tz="UTC")
+    keep = np.ones(n, bool)
+    for g in range(20, n - 20, 15):
+        keep[g:g + 5] = False  # 25-minute gaps every 75 minutes
+    a = [{"time_tag": str(tt), "bz_gsm": float(v)} for tt, v, k in zip(t, x[10:10 + n], keep) if k]
+    b = [{"time_tag": str(tt), "bz_gsm": float(v)} for tt, v, k in zip(t, x[7:7 + n], keep) if k]  # 15 min later
+    lag = SatelliteComparator.compare_satellites(a, b, "A", "B", position_unknown="test")["lag_analysis"]
+    assert lag["optimal_lag_minutes"] == 15.0 and lag["max_correlation"] > 0.99
+    assert lag["lag_ci95_minutes"] == [15.0, 15.0]

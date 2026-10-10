@@ -137,17 +137,22 @@ class SatelliteComparator:
         if len(series_a) < max_lags * 2 or len(series_b) < max_lags * 2:
             return {"lags_minutes": [], "correlation": [], "optimal_lag_minutes": 0.0, "max_correlation": 0.0}
 
-        a_norm = (series_a - np.mean(series_a)) / (np.std(series_a) if np.std(series_a) > 0 else 1.0)
-        b_norm = (series_b - np.mean(series_b)) / (np.std(series_b) if np.std(series_b) > 0 else 1.0)
+        # Missing samples (NaN) keep their place on the time grid, so a shift of L samples is
+        # always L * dt minutes.
+        a_norm = (series_a - np.nanmean(series_a)) / (np.nanstd(series_a) or 1.0)
+        b_norm = (series_b - np.nanmean(series_b)) / (np.nanstd(series_b) or 1.0)
 
-        # corr[k] = sum_n b[n + L] a[n] with L = lags[k]: peaks at L > 0 when B lags A.
-        corr = np.correlate(b_norm, a_norm, mode="full") / len(series_a)
-        lags = np.arange(-len(series_a) + 1, len(series_a))
-
-        # Filter within [-max_lags, +max_lags]
-        mask = (lags >= -max_lags) & (lags <= max_lags)
-        sub_lags = lags[mask]
-        sub_corr = corr[mask]
+        # corr[k]: Pearson r of the pairs (a[n], b[n + L]) with both present, L = lags[k];
+        # peaks at L > 0 when B lags A.
+        n = len(series_a)
+        lags = np.arange(-max_lags, max_lags + 1)
+        corr = np.zeros(len(lags))
+        for k, lag in enumerate(lags):
+            x, y = (series_a[:n - lag], series_b[lag:]) if lag >= 0 else (series_a[-lag:], series_b[:n + lag])
+            ok = np.isfinite(x) & np.isfinite(y)
+            if ok.sum() > 2 and np.std(x[ok]) > 0 and np.std(y[ok]) > 0:
+                corr[k] = np.corrcoef(x[ok], y[ok])[0, 1]
+        sub_lags, sub_corr = lags, corr
 
         best_idx = np.argmax(sub_corr)
         optimal_lag_min = float(sub_lags[best_idx] * dt_minutes)
@@ -174,13 +179,17 @@ class SatelliteComparator:
         """
         n = len(a_norm)
         lags = np.asarray(lags, dtype=int)
-        prod = np.zeros((len(lags), n))
+        prod = np.full((len(lags), n), np.nan)
         for k, lag in enumerate(lags):
             if lag >= 0:
                 prod[k, :n - lag] = a_norm[:n - lag] * b_norm[lag:]
             else:
                 prod[k, -lag:] = a_norm[-lag:] * b_norm[:n + lag]
-        n_eff = effective_sample_size(a_norm, b_norm)
+        # Missing pairs (gaps, ends) are left out: the mean product over the pairs present.
+        valid = np.isfinite(prod)
+        prod = np.where(valid, prod, 0.0)
+        ok = np.isfinite(a_norm) & np.isfinite(b_norm)
+        n_eff = effective_sample_size(a_norm[ok], b_norm[ok])
         block = int(min(max(int(np.max(np.abs(lags))), math.ceil(n / max(n_eff, 1.0))), max(1, n // 4)))
         rng = np.random.default_rng(seed)
         n_blocks = int(math.ceil(n / block))
@@ -188,7 +197,7 @@ class SatelliteComparator:
         idx = (starts[:, :, None] + np.arange(block)[None, None, :]).reshape(n_boot, -1)[:, :n]
         counts = np.zeros((n_boot, n))
         np.add.at(counts, (np.repeat(np.arange(n_boot), n), idx.ravel()), 1.0)
-        boot_lags = lags[np.argmax(counts @ prod.T, axis=1)] * dt_minutes
+        boot_lags = lags[np.argmax((counts @ prod.T) / np.maximum(counts @ valid.T, 1.0), axis=1)] * dt_minutes
         lo, hi = np.percentile(boot_lags, [2.5, 97.5])
         return {
             "lag_ci95_minutes": [round(float(lo), 1), round(float(hi), 1)],
@@ -295,7 +304,10 @@ class SatelliteComparator:
         arr_b = aligned_df["val_b"].to_numpy()
 
         metrics = cls.compute_metrics(arr_a, arr_b)
-        lag_analysis = cls.cross_correlation_lag(arr_a, arr_b)
+        # The lag needs the regular time grid: rows dropped for gaps would make a shift of
+        # k samples span more than k bins.
+        gridded = aligned_df.asfreq("5min")
+        lag_analysis = cls.cross_correlation_lag(gridded["val_a"].to_numpy(), gridded["val_b"].to_numpy())
 
         # Estimate average solar wind speed in window for baseline delay
         speeds = [r["speed"] for r in telemetry_a if "speed" in r and isinstance(r["speed"], (int, float))]
