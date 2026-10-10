@@ -565,6 +565,17 @@ async def get_comparison_matrix(
     result["provenance"] = {k: b["provenance"]["kind"] for k, b in zip(fleet_keys, bundles)}
     return result
 
+def recent_dst(obs: List[Dict[str, Any]], max_age_hours: float = 3.0) -> Optional[float]:
+    """
+    Latest Kyoto Dst if its hour ended less than max_age_hours ago, else None (the model is
+    used): a cached copy from days ago used to start the 12 h trajectory as "observed".
+    """
+    if not obs:
+        return None
+    end = _parse_utc(obs[-1]["time_tag"], "time_tag") + timedelta(hours=1)
+    return obs[-1]["dst"] if datetime.now(timezone.utc) - end < timedelta(hours=max_age_hours) else None
+
+
 @app.get("/api/forecast/ml")
 async def get_ml_forecast(mission_id: str = Query("DSCOVR")):
     mission_key = mission_id.upper()
@@ -572,9 +583,8 @@ async def get_ml_forecast(mission_id: str = Query("DSCOVR")):
         mission_key = "DSCOVR"
     data, kyoto, noaa = await asyncio.gather(downloader.get_satellite_telemetry(mission_key, span_days=1),
                                              downloader.get_kyoto_dst(), downloader.get_noaa_geomag_forecast())
-    obs = kyoto["records"]
     out = SpaceWeatherForecaster.forecast_geomagnetic_storm(
-        data, observed_dst=obs[-1]["dst"] if obs else None, noaa_forecast=noaa)
+        data, observed_dst=recent_dst(kyoto["records"]), noaa_forecast=noaa)
     if out.get("status") == "error":
         raise HTTPException(status_code=503, detail=out["message"])
     return out

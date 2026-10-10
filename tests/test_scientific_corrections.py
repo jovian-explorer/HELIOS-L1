@@ -672,3 +672,12 @@ def test_kp_time_is_shown_as_its_three_hour_interval():
     from helios.api.server import kp_interval
     assert kp_interval("2026-10-10 06:00:00") == "2026-10-10 06:00-09:00 UTC"
     assert kp_interval("2026-10-10T21:00:00") == "2026-10-10 21:00-00:00 UTC"
+
+
+def test_forecast_starts_from_kyoto_dst_only_when_it_is_recent():
+    from datetime import datetime, timedelta, timezone
+    from helios.api.server import recent_dst
+    hour = lambda h: (datetime.now(timezone.utc) - timedelta(hours=h)).strftime("%Y-%m-%d %H:00:00")
+    assert recent_dst([{"time_tag": hour(1), "dst": -40.0}]) == -40.0
+    assert recent_dst([{"time_tag": hour(50), "dst": -40.0}]) is None  # an old cached copy
+    assert recent_dst([]) is None
