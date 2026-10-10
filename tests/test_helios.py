@@ -43,6 +43,9 @@ def test_space_weather_physics_equations():
     cls_quiet = SpaceWeatherPhysics.classify_noaa_scales(kp=1.0, bz_gsm=2.0, xray_flux=1e-7)
     assert "Quiet" in cls_quiet["g_scale"]
     assert "Northward" in cls_quiet["bz_alert"]
+    assert cls_quiet["r_scale"] == "R0 (None)"
+    # No X-ray measurement: no R level, as for missing proton data.
+    assert SpaceWeatherPhysics.classify_noaa_scales(kp=1.0, bz_gsm=2.0, xray_flux=None)["r_scale"].startswith("R--")
 
     cls_storm = SpaceWeatherPhysics.classify_noaa_scales(kp=9.0, bz_gsm=-25.0, xray_flux=1.5e-4)
     assert "G5" in cls_storm["g_scale"]

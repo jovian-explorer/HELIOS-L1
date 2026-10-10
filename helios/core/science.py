@@ -536,10 +536,12 @@ class SpaceWeatherPhysics:
 
         # 3. Solar Flare Radio Blackout (R-Scale based on GOES X-ray W/m^2)
         # Thresholds: R1 >= M1, R2 >= M5, R3 >= X1, R4 >= X10, R5 >= X20.
-        r_scale = "R0 (None)"
+        # Like the S scale: no X-ray measurement is no classification, not "R0 (None)".
+        r_scale = "R-- (No X-ray data)"
         r_level = 0
         flare_class = "No data"
         if xray_flux is not None and xray_flux > 0:
+            r_scale = "R0 (None)"
             flare_class = f"{SpaceWeatherPhysics.goes_flare_class(xray_flux)} ({xray_flux:.1e} W/m^2)"
             if xray_flux >= 2e-3:
                 r_scale, r_level = "R5 (Extreme)", 5
