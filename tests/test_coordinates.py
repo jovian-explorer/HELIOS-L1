@@ -130,3 +130,10 @@ def test_moon_matches_horizons():
     r = np.array([-3.804776e5, -5.576749e4, -2.202699e4])
     assert np.degrees(np.arccos(m @ r / np.linalg.norm(m) / np.linalg.norm(r))) < 0.3
     assert np.linalg.norm(m) == pytest.approx(np.linalg.norm(r), rel=0.005)
+
+
+def test_orbit_positions_say_where_they_come_from():
+    from helios.core.orbital_mechanics import OrbitalMechanics
+    orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc="2026-10-10T00:00:00")
+    assert "Schematic L1 halo" in orbits["DSCOVR"]["position_note"]
+    assert "Horizons" in orbits["STEREO_A"]["position_note"] and "75.2" in orbits["GOES_16"]["position_note"]

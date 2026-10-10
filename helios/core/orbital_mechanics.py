@@ -285,4 +285,14 @@ class OrbitalMechanics:
             "spice_telemetry": solo_st
         }
 
+        # Where each position comes from, for the tooltip (it showed every one as GSE fact).
+        for key, orb in orbits.items():
+            if not orb["spice_telemetry"]:
+                orb["position_note"] = "Schematic track, no ephemeris available"
+            elif key == "GOES_16":
+                orb["position_note"] = "Geostationary over 75.2° W"
+            elif "display_pos" in orb:
+                orb["position_note"] = "Keplerian orbit from JPL Horizons elements; marker drawn on a schematic track"
+            else:
+                orb["position_note"] = "Schematic L1 halo orbit: typical size and period, not the spacecraft's measured position"
         return orbits

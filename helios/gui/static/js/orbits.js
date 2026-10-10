@@ -418,8 +418,9 @@ class OrbitRenderer {
           ${s.current_pos ? `<div class="text-slate-400 text-[10px] mt-1 font-mono">
             GSE X: ${(-s.current_pos.x).toLocaleString()}k km<br>
             GSE Y: ${s.current_pos.y.toLocaleString()}k km<br>
-            GSE Z: ${(s.current_pos.z || 0).toLocaleString()}k km${s.display_pos ? '<br>(marker on a schematic track)' : ''}
+            GSE Z: ${(s.current_pos.z || 0).toLocaleString()}k km
           </div>` : ''}
+          ${s.position_note ? `<div class="text-slate-500 text-[10px] mt-0.5">${s.position_note}</div>` : ''}
           ${spiceBlock}
         `;
       } else if (found.type === 'earth') {
