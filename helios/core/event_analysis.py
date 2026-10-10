@@ -1145,7 +1145,7 @@ def detect_magnetic_clouds(frame: pd.DataFrame, criteria: str = "loose") -> Dict
                   "are bridged (an addition: the paper gives no rule). Lepping et al. found 88 % of the visually "
                   "identified WIND clouds with the loose set, and about twice as many cloud-like regions."),
         "references": ["Lepping, R. P., C.-C. Wu and D. B. Berdichevsky (2005), Automatic identification of "
-                       "magnetic clouds and cloud-like regions at 1 AU, Ann. Geophys. 23, 2687, "
+                       "magnetic clouds and cloud-like regions at 1 AU: occurrence rate and other properties, Ann. Geophys. 23, 2687, "
                        "doi:10.5194/angeo-23-2687-2005"],
     }
 
