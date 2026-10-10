@@ -46,20 +46,26 @@ def _psp_phase(engine, pos_km) -> str:
 # Analytical (Keplerian) fallback orbits: (accepted IDs, elements). Angles in degrees;
 # "epoch" is the reference time of m0 (None: J2000). Geocentric orbits give a_km.
 CONIC_TARGETS = [
+    # Spacecraft: osculating heliocentric elements (ecliptic and equinox J2000) for
+    # 2026-01-01 00:00 TDB from JPL Horizons (ssd.jpl.nasa.gov). Checked against Horizons
+    # positions for 2026-10-10: within 1 degree of heliocentric longitude.
     (("PARKER_SOLAR_PROBE", "PSP", "PARKER"), {
-        # Perihelion 9.85 R_sun, aphelion 0.730 AU, period 88.2 d; reference: perihelion 18 (29 Dec 2023).
+        # Perihelion 9.86 R_sun, aphelion 0.73 AU, period 88 d (final orbit since the
+        # Venus flyby of November 2024).
         "name": "Parker Solar Probe (PSP)", "orbit_type": "Inner Heliosphere Elliptic Orbit", "primary": "SUN",
-        "a_au": 0.3879, "e": 0.8819, "inc": 3.4, "raan": 100.0, "argp": 50.0, "m0": 0.0,
-        "epoch": "2023-12-29T00:00:00", "phase": _psp_phase}),
+        "a_au": 0.38850, "e": 0.88193, "inc": 3.391, "raan": 76.485, "argp": 68.624, "m0": 76.138,
+        "epoch": "2026-01-01T00:00:00", "phase": _psp_phase}),
     (("SOLAR_ORBITER", "SOLO"), {
-        # Perihelion 0.28 AU, aphelion 0.91 AU.
+        # Perihelion 0.29 AU, aphelion 0.90 AU, 12.6 deg to the ecliptic (17 deg to the solar
+        # equator); valid until the Venus flyby of 24 December 2026 tilts the orbit further.
         "name": "Solar Orbiter (SolO)", "orbit_type": "Heliocentric Polar-Inclined Orbit", "primary": "SUN",
-        "a_au": 0.595, "e": 0.529, "inc": 24.0, "raan": 75.0, "argp": 110.0, "m0": 0.0,
-        "epoch": "2022-03-26T00:00:00", "phase": "High-latitude heliospheric science orbit"}),
+        "a_au": 0.59708, "e": 0.50732, "inc": 12.617, "raan": 322.350, "argp": 306.385, "m0": 228.292,
+        "epoch": "2026-01-01T00:00:00", "phase": "High-latitude heliospheric science orbit"}),
     (("STEREO_A", "STEREOA", "STEREO"), {
-        "name": "STEREO-A", "orbit_type": "Heliocentric Orbit (~21° ahead of Earth)", "primary": "SUN",
-        "a_au": 0.962, "e": 0.006, "inc": 0.12, "raan": 40.0, "argp": 80.0, "m0": 15.0,
-        "epoch": "2007-01-01T00:00:00", "phase": "Leading heliospheric monitor ahead of Sun-Earth line"}),
+        # Period 344 d: gains about 22 deg a year on Earth (lapped it in August 2023).
+        "name": "STEREO-A", "orbit_type": "Heliocentric Orbit (gaining ~22° a year on Earth)", "primary": "SUN",
+        "a_au": 0.96075, "e": 0.006757, "inc": 0.128, "raan": 212.327, "argp": 77.877, "m0": 221.368,
+        "epoch": "2026-01-01T00:00:00", "phase": "Heliospheric monitor off the Sun-Earth line"}),
     (("VENUS", "299"), {
         "name": "Venus", "orbit_type": "Planetary Orbit", "primary": "SUN",
         "a_au": 0.723332, "e": 0.00677, "inc": 3.394, "raan": 76.68, "argp": 54.88, "m0": 50.11,

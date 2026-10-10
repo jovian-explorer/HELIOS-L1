@@ -701,7 +701,7 @@ def test_spice_engine_spacecraft_fleet():
     assert solo["name"] == "Solar Orbiter (SolO)"
     assert 0.25 < solo["heliocentric"]["distance_au"] < 0.95
     assert 20.0 < solo["velocity"]["speed_kms"] < 75.0
-    assert 0.52 < solo["orbital_elements"]["eccentricity"] < 0.54
+    assert 0.50 < solo["orbital_elements"]["eccentricity"] < 0.52
 
 def test_spice_rest_api_endpoints():
     # 1. SPICE status endpoint

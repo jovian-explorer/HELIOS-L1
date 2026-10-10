@@ -453,7 +453,7 @@ class ParkerSpiralRenderer {
           <span class="text-[10px] text-purple-300 font-mono font-bold">0.962 AU</span>
         </div>
         <div class="text-[11px] font-mono space-y-1 text-slate-200">
-          <div>Heliocentric Orbit: <span class="text-slate-100 font-bold">~21° Ahead of Earth</span></div>
+          <div>Heliocentric Orbit: <span class="text-slate-100 font-bold">${this.stereoAheadDeg.toFixed(0)}° ahead of Earth</span></div>
           <div>Orbital Velocity: <span class="text-purple-400 font-bold">30.4 km/s</span></div>
           <div>Role: <span class="text-slate-300">Side-view CME coronagraph stereoscopy</span></div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
@@ -927,18 +927,26 @@ class ParkerSpiralRenderer {
     ctx.fillText('L1 (DSCOVR/Aditya)', l1X - 35, l1Y - 12);
 
     // 3. STEREO-Ahead (Leading Earth in heliocentric orbit ~0.96 AU)
-    const stereoAngle = 0.35; // ~20° ahead
-    const stereoX = cx + 0.96 * scale * Math.cos(stereoAngle);
-    const stereoY = cy - 0.96 * scale * Math.sin(stereoAngle);
-    this.stereoScreenPos = { x: stereoX, y: stereoY };
-
-    ctx.fillStyle = '#a855f7';
-    ctx.beginPath();
-    ctx.arc(stereoX, stereoY, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#d8b4fe';
-    ctx.font = '9px "JetBrains Mono", monospace';
-    ctx.fillText('STEREO-A (0.96 AU)', stereoX + 8, stereoY);
+    // Angle ahead of Earth from the ephemeris longitudes (Earth is drawn at angle 0).
+    const fleet = this.spiceFleetData;
+    const stereoAngle = (fleet && fleet.STEREO_A && fleet.EARTH)
+      ? (fleet.STEREO_A.heliocentric.ecliptic_longitude_deg - fleet.EARTH.heliocentric.ecliptic_longitude_deg) * Math.PI / 180.0
+      : null;
+    this.stereoAheadDeg = stereoAngle === null ? null : ((stereoAngle * 180.0 / Math.PI) % 360 + 360) % 360;
+    if (stereoAngle !== null) {
+      const stereoX = cx + 0.96 * scale * Math.cos(stereoAngle);
+      const stereoY = cy - 0.96 * scale * Math.sin(stereoAngle);
+      this.stereoScreenPos = { x: stereoX, y: stereoY };
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.arc(stereoX, stereoY, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#d8b4fe';
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillText('STEREO-A (0.96 AU)', stereoX + 8, stereoY);
+    } else {
+      this.stereoScreenPos = null;  // no ephemeris: not drawn at a made-up place
+    }
 
     // 4. Parker Solar Probe (NASA Keplerian Ephemeris & Vis-Viva Speed)
     const psp = this.getPSPState();

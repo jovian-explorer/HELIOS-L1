@@ -226,7 +226,7 @@ class OrbitalMechanics:
 
         orbits["STEREO_A"] = {
             "name": "STEREO-A",
-            "type": "Heliocentric Orbit (~21° ahead)",
+            "type": "Heliocentric Orbit (ahead of Earth, schematic track)",
             "path": stereo_path,
             "current_pos": stereo_cur,
             "color": "#f97316",

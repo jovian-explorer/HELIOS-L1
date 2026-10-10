@@ -92,3 +92,16 @@ def test_leading_l4_and_stereo_a_are_on_the_minus_y_side_of_gse():
     lp = OrbitalMechanics.get_lagrange_points()
     assert lp["L4"]["y_mkm"] < 0 < lp["L5"]["y_mkm"]
     assert all(p["y"] < 0 for p in OrbitalMechanics.get_satellite_orbits()["STEREO_A"]["path"])
+
+
+@pytest.mark.parametrize("craft, horizons_km", [
+    # JPL Horizons heliocentric positions (ecliptic J2000) for 2026-10-10 00:00 TDB
+    ("STEREO_A", (7.506836e6, 1.444236e8, -2.637573e5)),
+    ("PARKER_SOLAR_PROBE", (8.173084e7, -6.804421e7, -5.651294e6)),
+    ("SOLAR_ORBITER", (5.753385e7, 1.018136e8, 2.591187e7)),
+])
+def test_heliocentric_spacecraft_orbits_match_horizons(craft, horizons_km):
+    from helios.core.spice_engine import get_spice_engine
+    p = get_spice_engine().get_spacecraft_state(craft, epoch_utc="2026-10-10T00:00:00")["position"]
+    m, r = np.array([p["x_km"], p["y_km"], p["z_km"]]), np.array(horizons_km)
+    assert np.degrees(np.arccos(m @ r / np.linalg.norm(m) / np.linalg.norm(r))) < 0.5

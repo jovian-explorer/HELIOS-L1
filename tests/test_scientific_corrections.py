@@ -268,9 +268,9 @@ def test_l1_halo_gse_z_maps_to_ecliptic_north():
 def test_spice_trajectory_spans_the_orbit():
     """Trajectory points used to be identical: the ET float was passed as a string and parsed to a fixed epoch."""
     from helios.core.spice_engine import get_spice_engine
-    pts = get_spice_engine().get_orbit_trajectory("PARKER_SOLAR_PROBE", num_points=8, epoch_utc="2026-01-01T00:00:00")
+    pts = get_spice_engine().get_orbit_trajectory("PARKER_SOLAR_PROBE", num_points=64, epoch_utc="2026-01-01T00:00:00")
     radii = [p["r_au"] for p in pts]
-    assert len({(p["x_au"], p["y_au"]) for p in pts}) == 8
+    assert len({(p["x_au"], p["y_au"]) for p in pts}) >= 63  # the last point closes the orbit
     assert min(radii) < 0.2 and max(radii) > 0.6
 
 
