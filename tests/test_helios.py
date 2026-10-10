@@ -164,7 +164,7 @@ def test_report_generator():
     assert "HELIOS-L1 SPACE WEATHER EXECUTIVE SUMMARY" in md
     assert "OPERATIONAL ALERT POSTURE" in md
     assert "24-HOUR SYNOPTIC TELEMETRY EXTREMA" in md
-    assert "Rankine-Hugoniot" in md
+    assert "SHOCK CANDIDATES" in md
 
 def test_api_endpoints():
     # 1. Status
@@ -776,3 +776,15 @@ def test_desktop_window_keeps_its_browser_storage():
     from pathlib import Path
     src = (Path(__file__).resolve().parents[1] / "helios" / "gui" / "app.py").read_text(encoding="utf-8")
     assert "private_mode=False" in src and "storage_path=" in src
+
+
+def test_bulletins_show_missing_values_as_dashes_not_none():
+    from helios.core.report_generator import ScientificReportGenerator as R
+    latest = {"time_tag": "2026-10-10 12:00:00", "speed": 450.0, "bz_gsm": -3.0, "density": None,
+              "dynamic_pressure": None, "magnetopause_re": None, "akasofu_gw": None, "l1_travel_time_min": None}
+    cls = {"g_scale": "G-- (No Kp data)", "kp": None, "kp_source": "unavailable"}
+    md = R.generate_markdown_executive_summary("DSCOVR", [latest], cls, [], {})
+    html = R.generate_html_bulletin("DSCOVR", [latest], cls, [], {})
+    for text in (md, html):
+        assert "None" not in text.replace("R0 (None)", "")
+    assert "unavailable (no Kp)" in md and "Mach Number" not in md

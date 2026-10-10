@@ -25,6 +25,11 @@ def _provenance_text(provenance: Optional[Dict[str, Any]]) -> str:
     return f"{kind} - {provenance.get('description', '')}".strip(" -")
 
 
+def _v(x: Any) -> Any:
+    """'---' for a missing value (a value present but None used to print as "None")."""
+    return "---" if x is None else x
+
+
 class ScientificReportGenerator:
     """Generates structured scientific bulletins and analysis summaries."""
 
@@ -98,7 +103,7 @@ class ScientificReportGenerator:
       <span class="badge" style="background: {classification.get('g_color', '#10b981')}22; color: {classification.get('g_color', '#10b981')}; border: 1px solid {classification.get('g_color', '#10b981')}66;">
         {classification.get('g_scale', 'G0 Quiet')}
       </span>
-      <span style="font-size: 11px; color: #94a3b8;">Kp {classification.get('kp', '---')}: {html_lib.escape(str(classification.get('kp_source', '---')))}</span>
+      <span style="font-size: 11px; color: #94a3b8;">Kp {_v(classification.get('kp'))}: {html_lib.escape(str(classification.get('kp_source', '---')))}</span>
       <span class="badge" style="background: {s_color}22; color: {s_color}; border: 1px solid {s_color}66;">
         {s_scale}
       </span>
@@ -111,41 +116,41 @@ class ScientificReportGenerator:
   <div class="grid">
     <div class="card">
       <div class="card-label">Solar Wind Velocity</div>
-      <div class="card-value">{latest.get('speed', '---')} <span style="font-size: 12px; color: #94a3b8;">km/s</span></div>
+      <div class="card-value">{_v(latest.get('speed'))} <span style="font-size: 12px; color: #94a3b8;">km/s</span></div>
     </div>
     <div class="card">
       <div class="card-label">IMF Bz (GSM)</div>
-      <div class="card-value" style="color: {classification.get('bz_color', '#10b981')}">{latest.get('bz_gsm', '---')} <span style="font-size: 12px; color: #94a3b8;">nT</span></div>
+      <div class="card-value" style="color: {classification.get('bz_color', '#10b981')}">{_v(latest.get('bz_gsm'))} <span style="font-size: 12px; color: #94a3b8;">nT</span></div>
     </div>
     <div class="card">
       <div class="card-label">Dynamic Pressure</div>
-      <div class="card-value">{latest.get('dynamic_pressure', '---')} <span style="font-size: 12px; color: #94a3b8;">nPa</span></div>
+      <div class="card-value">{_v(latest.get('dynamic_pressure'))} <span style="font-size: 12px; color: #94a3b8;">nPa</span></div>
     </div>
     <div class="card">
       <div class="card-label">Magnetopause Standoff (R_mp)</div>
-      <div class="card-value" style="color: #f59e0b;">{latest.get('magnetopause_re', '---')} <span style="font-size: 12px; color: #94a3b8;">R_E</span></div>
+      <div class="card-value" style="color: #f59e0b;">{_v(latest.get('magnetopause_re'))} <span style="font-size: 12px; color: #94a3b8;">R_E</span></div>
     </div>
     <div class="card">
       <div class="card-label">Akasofu Energy Coupling (ε)</div>
-      <div class="card-value" style="color: #a855f7;">{latest.get('akasofu_gw', '---')} <span style="font-size: 12px; color: #94a3b8;">GW</span></div>
+      <div class="card-value" style="color: #a855f7;">{_v(latest.get('akasofu_gw'))} <span style="font-size: 12px; color: #94a3b8;">GW</span></div>
     </div>
     <div class="card">
       <div class="card-label">L1-to-Earth Propagation Delay</div>
-      <div class="card-value" style="color: #06b6d4;">{latest.get('l1_travel_time_min', '---')} <span style="font-size: 12px; color: #94a3b8;">min</span></div>
+      <div class="card-value" style="color: #06b6d4;">{_v(latest.get('l1_travel_time_min'))} <span style="font-size: 12px; color: #94a3b8;">min</span></div>
     </div>
   </div>
 
   <h3 style="color: #38bdf8; font-size: 14px; margin-top: 20px;">Auroral Oval Equatorward Reach & Potential Visibility</h3>
   <div style="background: #111e3e; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; font-size: 12px;">
-    <div>Equatorward Midnight Magnetic Latitude: <strong>{auroral_data.get('equatorward_midnight_lat', '---')}°</strong></div>
-    <div style="margin-top: 4px;">Estimated Hemispheric Power Index: <strong>{auroral_data.get('hemispheric_power_gw', '---')} GW</strong></div>
+    <div>Equatorward Midnight Magnetic Latitude: <strong>{_v(auroral_data.get('equatorward_midnight_lat'))}°</strong></div>
+    <div style="margin-top: 4px;">Estimated Hemispheric Power Index: <strong>{_v(auroral_data.get('hemispheric_power_gw'))} GW</strong></div>
     <div style="margin-top: 8px; font-weight: bold; color: #94a3b8;">Geographic Regions with Auroral Sighting Probability:</div>
     <ul style="margin: 4px 0 0 16px; padding: 0;">
       {regions_html}
     </ul>
   </div>
 
-  <h3 style="color: #38bdf8; font-size: 14px; margin-top: 20px;">Rankine-Hugoniot Interplanetary Shock Transients</h3>
+  <h3 style="color: #38bdf8; font-size: 14px; margin-top: 20px;">Interplanetary Shock Candidates (jump screening)</h3>
   <table>
     <thead>
       <tr>
@@ -154,7 +159,7 @@ class ScientificReportGenerator:
         <th>Velocity Jump (ΔV)</th>
         <th>Density Jump (N2/N1)</th>
         <th>Magnetic Jump (B2/B1)</th>
-        <th>Mach Proxy</th>
+        <th>ΔV proxy (1 + ΔV/70 km/s, not a Mach number)</th>
       </tr>
     </thead>
     <tbody>
@@ -220,15 +225,15 @@ class ScientificReportGenerator:
 
         shocks_table = ""
         if shocks:
-            shocks_table = "| Timestamp (UTC) | Shock Type | Velocity Jump (ΔV) | Density Ratio (N₂/N₁) | Field Ratio (B₂/B₁) | Mach Number |\n"
+            shocks_table = "| Timestamp (UTC) | Shock Type | Velocity Jump (ΔV) | Density Ratio (N₂/N₁) | Field Ratio (B₂/B₁) | ΔV proxy (not M_ms) |\n"
             shocks_table += "|---|---|---|---|---|---|\n"
             for s in shocks:
-                shocks_table += f"| `{s.get('time', '---')}` | **{s.get('classification', 'Shock')}** | +{s.get('delta_speed_kms', 0)} km/s | {s.get('density_ratio', 1.0)}x | {s.get('magnetic_ratio', 1.0)}x | M = {s.get('mach_proxy', 1.0)} |\n"
+                shocks_table += f"| `{s.get('time', '---')}` | **{s.get('classification', 'Shock')}** | +{s.get('delta_speed_kms', 0)} km/s | {s.get('density_ratio', 1.0)}x | {s.get('magnetic_ratio', 1.0)}x | {s.get('mach_proxy', 1.0)} |\n"
         else:
-            shocks_table = "_No Rankine-Hugoniot interplanetary shock discontinuities detected in the current 24-hour observation window._\n"
+            shocks_table = "_No shock candidates (speed, density and field jumps together) in the current 24-hour observation window._\n"
 
         regions = auroral_data.get("visible_regions", [])
-        regions_str = ", ".join(regions) if regions else "Polar caps only (> 75° Magnetic Latitude)"
+        regions_str = (", ".join(regions) if regions else "Polar caps only (> 75° Magnetic Latitude)") if auroral_data             else "unavailable (no Kp)"
 
         md = f"""# HELIOS-L1 SPACE WEATHER EXECUTIVE SUMMARY
 **Mission Platform:** {mission_name}  
@@ -239,47 +244,46 @@ class ScientificReportGenerator:
 ---
 
 ## 1. OPERATIONAL ALERT POSTURE & NOAA SCALES
-- **Geomagnetic Storm Activity (G-Scale):** `{g_scale}` (Kp {classification.get('kp', '---')}: {classification.get('kp_source', '---')})
+- **Geomagnetic Storm Activity (G-Scale):** `{g_scale}` (Kp {_v(classification.get('kp'))}: {classification.get('kp_source', '---')})
 - **Solar Radiation Storm Activity (S-Scale):** `{s_scale}` (Proton Flux ≥ 10 MeV: **{proton_pfu} pfu**)
 - **HF Radio Blackout Activity (R-Scale):** `{r_scale}` (X-ray Flare Class: **{flare_cls}**)
 - **Interplanetary Reconnection State:** **{reconn_status}**
-- **Magnetopause Subsolar Standoff ($R_{{mp}}$):** **{latest.get('magnetopause_re', '---')} $R_E$** (Nominal ~ 10–11 $R_E$)
-- **Akasofu Energy Coupling (ε / \\epsilon):** **{latest.get('akasofu_gw', '---')} GW**
+- **Magnetopause Subsolar Standoff ($R_{{mp}}$):** **{_v(latest.get('magnetopause_re'))} $R_E$** (Nominal ~ 10–11 $R_E$)
+- **Akasofu Energy Coupling (ε / \\epsilon):** **{_v(latest.get('akasofu_gw'))} GW**
 
 ---
 
 ## 2. 24-HOUR SYNOPTIC TELEMETRY EXTREMA
 | Observable Parameter | Current Reading | 24h Minimum | 24h Mean | 24h Maximum | Units |
 |---|---|---|---|---|---|
-| Bulk Solar Wind Velocity ($v_{{sw}}$) | **{latest.get('speed', '---')}** | {v_min} | {v_avg} | {v_max} | km/s |
-| Interplanetary Field $B_z$ (GSM) | **{latest.get('bz_gsm', '---')}** | {bz_min} | {bz_avg} | {bz_max} | nT |
-| Total Magnetic Field ($|B|$) | **{latest.get('bt', '---')}** | {bt_min} | {bt_avg} | {bt_max} | nT |
-| Proton Plasma Density ($n_p$) | **{latest.get('density', '---')}** | {n_min} | {n_avg} | {n_max} | cm⁻³ |
-| Solar Wind Dynamic Pressure ($P_{{dyn}}$) | **{latest.get('dynamic_pressure', '---')}** | {p_min} | {p_avg} | {p_max} | nPa |
-| L1 $\\rightarrow$ Earth Propagation Lead Time | **{latest.get('l1_travel_time_min', '---')}** | {lead_min} | {lead_avg} | {lead_max} | minutes |
+| Bulk Solar Wind Velocity ($v_{{sw}}$) | **{_v(latest.get('speed'))}** | {v_min} | {v_avg} | {v_max} | km/s |
+| Interplanetary Field $B_z$ (GSM) | **{_v(latest.get('bz_gsm'))}** | {bz_min} | {bz_avg} | {bz_max} | nT |
+| Total Magnetic Field ($|B|$) | **{_v(latest.get('bt'))}** | {bt_min} | {bt_avg} | {bt_max} | nT |
+| Proton Plasma Density ($n_p$) | **{_v(latest.get('density'))}** | {n_min} | {n_avg} | {n_max} | cm⁻³ |
+| Solar Wind Dynamic Pressure ($P_{{dyn}}$) | **{_v(latest.get('dynamic_pressure'))}** | {p_min} | {p_avg} | {p_max} | nPa |
+| L1 $\\rightarrow$ Earth Propagation Lead Time | **{_v(latest.get('l1_travel_time_min'))}** | {lead_min} | {lead_avg} | {lead_max} | minutes |
 
 ---
 
-## 3. RANKINE-HUGONIOT INTERPLANETARY SHOCK TRANSIENTS
+## 3. INTERPLANETARY SHOCK CANDIDATES (JUMP SCREENING)
 {shocks_table}
 
 ---
 
 ## 4. GEOSPACE HAZARD & AURORAL REACH ASSESSMENT
-- **Equatorward Midnight Magnetic Latitude:** **{auroral_data.get('equatorward_midnight_lat', '---')}° MLAT**
-- **Estimated Hemispheric Power Index (HPI):** **{auroral_data.get('hemispheric_power_gw', '---')} GW**
+- **Equatorward Midnight Magnetic Latitude:** **{_v(auroral_data.get('equatorward_midnight_lat'))}° MLAT**
+- **Estimated Hemispheric Power Index (HPI):** **{_v(auroral_data.get('hemispheric_power_gw'))} GW**
 - **Potential Visual Auroral Sighting Sectors:** {regions_str}
 
 ---
 
 ## 5. REFERRED SCIENTIFIC FORMULATIONS & CITATIONS
-1. **Rankine-Hugoniot Magnetohydrodynamic Shock Jump Conditions:** Viñas, A. F., & Scudder, J. D. (1986). *JGR Space Physics*, 91(A1), 39–58.
-2. **Dynamic Drag Deceleration CME Model:** Gopalswamy, N., et al. (2001). *JGR Space Physics*, 106(A12), 29207–29217.
-3. **Akasofu Energy Coupling Function (ε / \\epsilon):** Perreault, P., & Akasofu, S.-I. (1978). *Geophysical Journal International*, 54(3), 547–573.
-4. **Shue et al. Magnetopause Standoff ($R_{{mp}}$):** Shue, J.-H., et al. (1998). *JGR Space Physics*, 103(A8), 17691–17700.
+1. **Empirical CME arrival model:** Gopalswamy, N., et al. (2001). *JGR Space Physics*, 106(A12), 29207–29217.
+2. **Akasofu Energy Coupling Function (ε / \\epsilon):** Perreault, P., & Akasofu, S.-I. (1978). *Geophysical Journal International*, 54(3), 547–573.
+3. **Shue et al. Magnetopause Standoff ($R_{{mp}}$):** Shue, J.-H., et al. (1998). *JGR Space Physics*, 103(A8), 17691–17700.
 
 ---
-*Report autonomously generated by HELIOS-L1 (Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite) v1.0.*
+*Report autonomously generated by HELIOS-L1 (Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite) v{__version__}.*
 """
         return md
 

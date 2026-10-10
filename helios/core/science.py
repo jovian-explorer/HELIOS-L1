@@ -629,7 +629,7 @@ class SpaceWeatherPhysics:
 
             # Shock identification criteria
             if delta_v >= 45.0 and ratio_b >= 1.35 and ratio_n >= 1.5:
-                # Estimate Mach number: M_ms ~ delta_v / v_fast ~ delta_v / 60 km/s + 1
+                # Speed-jump proxy 1 + delta_v / 70 km/s (not a Mach number: that needs the upstream fast-mode speed)
                 mach_proxy = round(1.0 + (delta_v / 70.0), 2)
                 event = {
                     "time": curr.get("time_tag", ""),

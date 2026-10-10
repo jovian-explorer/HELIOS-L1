@@ -2139,7 +2139,7 @@ function renderCustomIngestUI(data) {
           <td class="py-2 px-2 text-slate-300">${s.upstream_speed} → ${s.downstream_speed} km/s</td>
           <td class="py-2 px-2 text-cyan-400 font-bold">+${s.delta_speed_kms} km/s</td>
           <td class="py-2 px-2 text-amber-300">${s.density_ratio}x</td>
-          <td class="py-2 px-2 text-purple-300 font-bold">M_A ~ ${s.mach_proxy || '1.8'}</td>
+          <td class="py-2 px-2 text-purple-300 font-bold">ΔV proxy ${s.mach_proxy ?? '---'}</td>
         </tr>
       `).join('');
     }
