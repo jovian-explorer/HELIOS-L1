@@ -52,6 +52,20 @@ class OrbitalMechanics:
             }
         }
 
+    @staticmethod
+    def _far_position(state: Optional[Dict[str, Any]], marker: Dict[str, float]) -> Dict[str, Any]:
+        """
+        Heliocentric spacecraft: current_pos is the orbit model's GSE position (1000 km, Sun at
+        -X like the other tracks); display_pos is the marker on the schematic near-Earth track,
+        which cannot show positions an AU away (current_pos used to be that marker).
+        """
+        if not state:
+            return {"current_pos": None, "display_pos": marker}
+        g = state["gse_coordinates"]
+        return {"current_pos": {"x": round(-g["x_km"] / 1000.0, 1), "y": round(g["y_km"] / 1000.0, 1),
+                                "z": round(g["z_km"] / 1000.0, 1)},
+                "display_pos": marker}
+
     @classmethod
     def get_satellite_orbits(cls, num_points: int = 60, epoch_utc: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
         """
@@ -198,7 +212,7 @@ class OrbitalMechanics:
 
         goes_st = spice_engine.get_spacecraft_state("GOES_16", epoch_utc=epoch_utc) if spice_engine else None
         goes_cur = {
-            "x": round(goes_st["gse_coordinates"]["x_km"] / 1000.0, 1),
+            "x": round(-goes_st["gse_coordinates"]["x_km"] / 1000.0, 1),  # Sun at -X here, as for the others
             "y": round(goes_st["gse_coordinates"]["y_km"] / 1000.0, 1),
             "z": round(goes_st["gse_coordinates"]["z_km"] / 1000.0, 1),
         } if goes_st else goes_path[int(num_points * 0.75)]
@@ -222,13 +236,11 @@ class OrbitalMechanics:
             stereo_path.append({"x": round(x, 1), "y": round(y, 1), "z": round(z, 1)})
 
         stereo_st = spice_engine.get_spacecraft_state("STEREO_A", epoch_utc=epoch_utc) if spice_engine else None
-        stereo_cur = stereo_path[0]
-
         orbits["STEREO_A"] = {
             "name": "STEREO-A",
             "type": "Heliocentric Orbit (ahead of Earth, schematic track)",
             "path": stereo_path,
-            "current_pos": stereo_cur,
+            **cls._far_position(stereo_st, stereo_path[0]),
             "color": "#f97316",
             "spice_telemetry": stereo_st
         }
@@ -248,7 +260,7 @@ class OrbitalMechanics:
             "name": "Parker Solar Probe (PSP)",
             "type": "Inner Heliosphere Perihelion Orbit",
             "path": psp_path,
-            "current_pos": psp_path[0],
+            **cls._far_position(psp_st, psp_path[0]),
             "color": "#ef4444",
             "spice_telemetry": psp_st
         }
@@ -268,7 +280,7 @@ class OrbitalMechanics:
             "name": "Solar Orbiter (SolO)",
             "type": "High-Latitude Heliospheric Science Orbit",
             "path": solo_path,
-            "current_pos": solo_path[0],
+            **cls._far_position(solo_st, solo_path[0]),
             "color": "#a855f7",
             "spice_telemetry": solo_st
         }

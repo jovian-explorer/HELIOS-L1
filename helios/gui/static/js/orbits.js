@@ -331,7 +331,7 @@ class OrbitRenderer {
     // Check spacecraft current positions
     for (const [key, sat] of Object.entries(this.orbitsData)) {
       if (this.visibleSatellites && !this.visibleSatellites.has(key)) continue;
-      const pos = sat.current_pos;
+      const pos = sat.display_pos || sat.current_pos;
       if (!pos) continue;
 
       let cx, cy;
@@ -415,11 +415,11 @@ class OrbitRenderer {
             <strong class="text-sky-300 font-bold">${s.name}</strong>
           </div>
           <div class="text-slate-300 text-[11px]">${s.type}</div>
-          <div class="text-slate-400 text-[10px] mt-1 font-mono">
-            GSE X: ${s.current_pos.x.toLocaleString()}k km<br>
+          ${s.current_pos ? `<div class="text-slate-400 text-[10px] mt-1 font-mono">
+            GSE X: ${(-s.current_pos.x).toLocaleString()}k km<br>
             GSE Y: ${s.current_pos.y.toLocaleString()}k km<br>
-            GSE Z: ${(s.current_pos.z || 0).toLocaleString()}k km
-          </div>
+            GSE Z: ${(s.current_pos.z || 0).toLocaleString()}k km${s.display_pos ? '<br>(marker on a schematic track)' : ''}
+          </div>` : ''}
           ${spiceBlock}
         `;
       } else if (found.type === 'earth') {
@@ -973,7 +973,7 @@ class OrbitRenderer {
         ctx.stroke();
 
         // Current Spacecraft Bead
-        const cur = sat.current_pos;
+        const cur = sat.display_pos || sat.current_pos;
         if (cur) {
           let px, py;
           if (key === 'GOES_16') {

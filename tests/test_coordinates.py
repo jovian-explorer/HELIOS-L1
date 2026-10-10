@@ -105,3 +105,18 @@ def test_heliocentric_spacecraft_orbits_match_horizons(craft, horizons_km):
     p = get_spice_engine().get_spacecraft_state(craft, epoch_utc="2026-10-10T00:00:00")["position"]
     m, r = np.array([p["x_km"], p["y_km"], p["z_km"]]), np.array(horizons_km)
     assert np.degrees(np.arccos(m @ r / np.linalg.norm(m) / np.linalg.norm(r))) < 0.5
+
+
+def test_goes_and_heliocentric_spacecraft_have_real_gse_positions():
+    from helios.core.orbital_mechanics import OrbitalMechanics
+    from helios.core.spice_engine import get_spice_engine
+    eng = get_spice_engine()
+    # 17:00 UT is about local noon at 75.2 W: GOES is on the dayside, +X in GSE.
+    goes = eng.get_spacecraft_state("GOES_16", epoch_utc="2026-10-10T17:00:00")["gse_coordinates"]
+    assert goes["x_km"] > 41000 and np.hypot(goes["y_km"], goes["z_km"]) < 6000
+    # Heliocentric craft: GSE no longer zero in the default frame.
+    sta = eng.get_spacecraft_state("STEREO_A", epoch_utc="2026-10-10T00:00:00")["gse_coordinates"]
+    assert sta["y_km"] < -1e8
+    orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc="2026-10-10T17:00:00")
+    assert orbits["GOES_16"]["current_pos"]["x"] < -41  # visualizer convention: Sun at -X
+    assert orbits["STEREO_A"]["current_pos"]["y"] < -1e5 and orbits["STEREO_A"]["display_pos"]["y"] < 0

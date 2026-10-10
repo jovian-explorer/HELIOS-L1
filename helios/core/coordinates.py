@@ -58,27 +58,22 @@ def dipole_coefficients(decimal_year: np.ndarray) -> Tuple[np.ndarray, np.ndarra
     return g10 + IGRF_SV[0] * late, g11 + IGRF_SV[1] * late, h11 + IGRF_SV[2] * late
 
 
-def dipole_axis_gse(times: TimesLike) -> np.ndarray:
+def geo_to_gse(times: TimesLike, x, y, z) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Unit vector of the northern geomagnetic dipole axis in GSE, shape (n, 3).
-    Hapgood (1992): Q_e = T2 T1^-1 Q_g with T1 = <theta, Z> (GEI -> GEO) and
-    T2 = <lambda_sun, Z> * <epsilon, X> (GEI -> GSE).
+    Rotate GEO vectors to GSE (Hapgood 1992): T2 T1^-1 with T1 = <theta, Z> (GEI -> GEO)
+    and T2 = <lambda_sun, Z> * <epsilon, X> (GEI -> GSE). Inputs broadcast against the times.
     """
     mjd = _mjd(times)
     mjd0 = np.floor(mjd)
     hours = (mjd - mjd0) * 24.0
     t0 = (mjd0 - 51544.5) / 36525.0  # Julian centuries from J2000 to 0h UT
-
-    # Dipole axis in GEO from IGRF degree 1: the northern pole lies along -(g11, h11, g10).
-    g10, g11, h11 = dipole_coefficients(2000.0 + (mjd - 51544.0) / 365.25)
-    norm = np.sqrt(g10 ** 2 + g11 ** 2 + h11 ** 2)
-    qx, qy, qz = -g11 / norm, -h11 / norm, -g10 / norm
+    qx, qy, qz = (np.asarray(v, dtype=float) for v in (x, y, z))
 
     # GEO -> GEI: rotate by -theta (Greenwich mean sidereal time) about Z.
     theta = np.radians(100.461 + 36000.770 * t0 + 15.04107 * hours)
     xi = np.cos(theta) * qx - np.sin(theta) * qy
     yi = np.sin(theta) * qx + np.cos(theta) * qy
-    zi = qz
+    zi = qz + 0.0 * theta
 
     # GEI -> GSE: obliquity of the ecliptic, then the Sun's ecliptic longitude.
     eps = np.radians(23.439 - 0.013 * t0)
@@ -87,9 +82,15 @@ def dipole_axis_gse(times: TimesLike) -> np.ndarray:
                      + (1.915 - 0.0048 * t0) * np.sin(m) + 0.020 * np.sin(2.0 * m))
     ye_ecl = np.cos(eps) * yi + np.sin(eps) * zi
     ze = -np.sin(eps) * yi + np.cos(eps) * zi
-    xe = np.cos(lam) * xi + np.sin(lam) * ye_ecl
-    ye = -np.sin(lam) * xi + np.cos(lam) * ye_ecl
-    return np.column_stack([xe, ye, ze])
+    return np.cos(lam) * xi + np.sin(lam) * ye_ecl, -np.sin(lam) * xi + np.cos(lam) * ye_ecl, ze
+
+
+def dipole_axis_gse(times: TimesLike) -> np.ndarray:
+    """
+    Unit vector of the northern geomagnetic dipole axis in GSE, shape (n, 3): the IGRF
+    degree-1 pole in GEO (along -(g11, h11, g10)) rotated with geo_to_gse.
+    """
+    return np.column_stack(geo_to_gse(times, *dipole_axis_geo(times).T))
 
 
 def gse_gsm_angle(times: TimesLike) -> np.ndarray:

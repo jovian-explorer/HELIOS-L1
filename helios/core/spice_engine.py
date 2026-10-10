@@ -17,6 +17,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple, Union
 import numpy as np
+import pandas as pd
+
+from helios.core.coordinates import geo_to_gse
 
 try:
     import spiceypy as spice
@@ -84,7 +87,9 @@ CONIC_TARGETS = [
         "epoch": None, "phase": "Natural satellite of Earth"}),
     (("GOES_16", "GOES16", "GOES"), {
         "name": "GOES-16", "orbit_type": "Geostationary Orbit (GEO ~35,786 km alt)", "primary": "EARTH",
+        # Placed by its geographic longitude (geo_lon): a conic cannot keep it over one meridian.
         "a_km": 42164.14, "rp_km": 42164.14, "e": 0.0001, "inc": 0.05, "raan": 0.0, "argp": 0.0, "m0": 0.0,
+        "geo_lon": -75.2,
         "epoch": None, "phase": "Geostationary East (75.2° W) Space Weather Monitor"}),
 ]
 
@@ -434,6 +439,12 @@ class SpiceEphemerisEngine:
             t0_et=t0_j2000, target_et=target_et, primary_gm=mu_sun
         )
 
+        # GSE axes in ECLIPJ2000 (rows): X to the Sun, Z to the ecliptic north pole, Y = Z x X.
+        x_ax = -pos_earth / np.linalg.norm(pos_earth)
+        z_ax = np.array([0.0, 0.0, 1.0]) - x_ax[2] * x_ax
+        z_ax /= np.linalg.norm(z_ax)
+        gse_axes = np.vstack([x_ax, np.cross(z_ax, x_ax), z_ax])
+
         conic = next((c for ids, c in CONIC_TARGETS if target_id in ids), None)
         gse_pos_km = np.zeros(3)
         gse_vel_kms = np.zeros(3)
@@ -442,13 +453,21 @@ class SpiceEphemerisEngine:
             semi_major_axis_km = conic["a_au"] * self.AU_KM if "a_au" in conic else conic["a_km"]
             eccentricity, inclination_deg = conic["e"], conic["inc"]
             et_ref = self.epoch_to_et(conic["epoch"]) if conic["epoch"] else t0_j2000
-            pos_km, vel_kms = self.compute_conics(
-                rp_km=conic.get("rp_km", semi_major_axis_km * (1.0 - eccentricity)), ecc=eccentricity, inc_deg=inclination_deg,
-                raan_deg=conic["raan"], argp_deg=conic["argp"], m0_deg=conic["m0"],
-                t0_et=et_ref, target_et=target_et, primary_gm=mu_earth if primary_body == "EARTH" else mu_sun
-            )
-            if primary_body == "EARTH":  # geocentric conic: heliocentric state via Earth
-                gse_pos_km, gse_vel_kms = pos_km, vel_kms
+            if "geo_lon" in conic:  # geostationary: GEO position over its longitude, rotated to GSE
+                lon = math.radians(conic["geo_lon"])
+                t_utc = pd.Timestamp(target_iso)
+                g0, g1 = (np.array(geo_to_gse([t], semi_major_axis_km * math.cos(lon),
+                                              semi_major_axis_km * math.sin(lon), 0.0)).ravel()
+                          for t in (t_utc, t_utc + pd.Timedelta(seconds=1)))
+                pos_km, vel_kms = gse_axes.T @ g0, gse_axes.T @ (g1 - g0)
+            else:
+                pos_km, vel_kms = self.compute_conics(
+                    rp_km=conic.get("rp_km", semi_major_axis_km * (1.0 - eccentricity)), ecc=eccentricity, inc_deg=inclination_deg,
+                    raan_deg=conic["raan"], argp_deg=conic["argp"], m0_deg=conic["m0"],
+                    t0_et=et_ref, target_et=target_et, primary_gm=mu_earth if primary_body == "EARTH" else mu_sun
+                )
+            if primary_body == "EARTH":  # geocentric (ecliptic) state: GSE by rotation, heliocentric via Earth
+                gse_pos_km, gse_vel_kms = gse_axes @ pos_km, gse_axes @ vel_kms
                 pos_km, vel_kms = pos_earth + pos_km, vel_earth + vel_kms
             phase_desc = conic["phase"](self, pos_km) if callable(conic["phase"]) else conic["phase"]
 
@@ -479,26 +498,11 @@ class SpiceEphemerisEngine:
             gse_pos_km = np.array([1496000.0, 0.0, 0.0])
             gse_vel_kms = np.array([0.0, 0.0, 0.0])
 
-        # Coordinate frame transformation if GSE requested
-        if frame.upper() == "GSE" and np.linalg.norm(gse_pos_km) == 0:
-            # Transform heliocentric pos_km to GSE relative to Earth
-            rel_earth = pos_km - pos_earth
-            r_earth_mag = np.linalg.norm(pos_earth)
-            u_sun = -pos_earth / r_earth_mag
-            u_orbit = vel_earth / np.linalg.norm(vel_earth)
-            u_norm = np.cross(u_orbit, u_sun)  # ecliptic north (right-handed GSE)
-
-            gse_pos_km = np.array([
-                np.dot(rel_earth, u_sun),
-                np.dot(rel_earth, -u_orbit),
-                np.dot(rel_earth, u_norm)
-            ])
-            rel_vel = vel_kms - vel_earth
-            gse_vel_kms = np.array([
-                np.dot(rel_vel, u_sun),
-                np.dot(rel_vel, -u_orbit),
-                np.dot(rel_vel, u_norm)
-            ])
+        # GSE position and velocity relative to Earth for heliocentric bodies (computed for
+        # every frame: the GSE coordinates used to be zero unless frame="GSE" was asked for).
+        if np.linalg.norm(gse_pos_km) == 0 and target_id not in ("EARTH", "399"):
+            gse_pos_km = gse_axes @ (pos_km - pos_earth)
+            gse_vel_kms = gse_axes @ (vel_kms - vel_earth)
 
         # Heliocentric metrics
         r_sun_km = float(np.linalg.norm(pos_km))
