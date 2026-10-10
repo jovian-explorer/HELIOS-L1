@@ -10,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 import logging
 import os
+import importlib.util
 import io
 import asyncio
 import csv
@@ -29,7 +30,7 @@ from helios.config import (
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios import config as helios_config
-from helios.core import icme_catalog, shock_catalog
+from helios.core import icme_catalog, shock_catalog, solar_images
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -112,6 +113,8 @@ app.add_middleware(LocalRequestGuard, body_limits={"/api/custom/import": MAX_IMP
                    default_body_limit=MAX_FORM_BYTES)
 
 downloader = DataDownloader()
+solar_image_client = solar_images.SolarImageClient(lambda u: downloader.fetch_text(u), lambda u: downloader.fetch_bytes(u),
+                                                   downloader.cache_dir)
 latest_custom_dataset: Optional[Dict[str, Any]] = None
 
 def latest_valid_record(records: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -2026,6 +2029,54 @@ async def get_geospace_coupling(
 async def get_solar_regions():
     """Observed numbered active regions (NOAA SWPC solar region summary, latest day)."""
     return await downloader.get_solar_regions()
+
+@app.get("/api/solar_images/sources")
+async def get_solar_image_sources():
+    """Instruments whose images can be had by time (Helioviewer Project)."""
+    return {"instruments": solar_images.catalog(), "credit": solar_images.CREDIT,
+            "fits_available": importlib.util.find_spec("sunpy") is not None}
+
+
+@app.get("/api/solar_images/frames")
+async def get_solar_image_frames(instrument: str = Query("lasco_c2"), start: str = Query(...), end: str = Query(...),
+                                 n: int = Query(12, ge=1, le=solar_images.MAX_FRAMES),
+                                 size: int = Query(512)):
+    """Images of one instrument between start and end (closest to n evenly spaced times), Sun-centred."""
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    try:
+        res = await solar_image_client.frames(instrument, t0, t1, n, size)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not res["frames"] and res["unreachable_requests"]:
+        raise HTTPException(status_code=503, detail="The Helioviewer image service could not be reached.")
+    return res
+
+
+@app.get("/api/solar_images/image")
+async def get_solar_image(instrument: str = Query("lasco_c2"), date: str = Query(...), size: int = Query(512)):
+    """Sun-centred PNG of the image of `instrument` closest to `date`."""
+    try:
+        png = await solar_image_client.image(instrument, _parse_utc(date, "date"), size)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if png is None:
+        raise HTTPException(status_code=503, detail="No image: the Helioviewer image service could not be reached.")
+    return Response(content=png, media_type="image/png")
+
+
+@app.get("/api/solar_images/fits")
+async def get_solar_image_fits(instrument: str = Query("lasco_c2"), start: str = Query(...), end: str = Query(...),
+                               download: int = Query(0, ge=0, le=10, description="files to download (0: list only)")):
+    """Science FITS files through SunPy Fido (optional dependency: pip install helios-l1[solar])."""
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    folder = os.path.join(str(helios_config.CACHE_DIR), "fits", instrument) if download else None
+    try:  # network-bound: a thread, not the worker pool
+        return await asyncio.to_thread(solar_images.fits_search, instrument, t0, t1, download or 20, folder)
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Science FITS files need SunPy: pip install \"helios-l1[solar]\".")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
 
 @app.get("/api/coronagraph/feeds")
 async def get_coronagraph_feeds():

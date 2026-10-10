@@ -13,8 +13,8 @@ Shared pytest configuration.
   - If these folders are deleted while the suite runs (a cleanup elsewhere), they are
     created again before the next test. Before, every later test that used tmp_path failed
     in setup (the one-off "287 passed, 19 errors").
-* Blocks network access by default: DataDownloader.fetch_json and fetch_text (CDAWeb
-  HAPI) return None, which exercises the documented offline path. Tests that need
+* Blocks network access by default: DataDownloader.fetch_json, fetch_text (CDAWeb
+  HAPI) and fetch_bytes (images) return None, which exercises the documented offline path. Tests that need
   specific archive payloads patch them themselves.
 """
 import os
@@ -72,6 +72,7 @@ def _offline_downloader(monkeypatch):
     from helios.core import icme_catalog
     monkeypatch.setattr(icme_catalog, "_fetch_live", lambda cache_dir: None)
     monkeypatch.setattr(DataDownloader, "fetch_text", _no_text)
+    monkeypatch.setattr(DataDownloader, "fetch_bytes", _no_text)
     yield
 
 

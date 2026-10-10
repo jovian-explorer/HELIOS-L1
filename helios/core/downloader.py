@@ -256,6 +256,17 @@ class DataDownloader:
             logging.getLogger("helios.download").info("%s failed: %s", url, exc)
         return None
 
+    async def fetch_bytes(self, url: str, timeout: float = 120.0) -> Optional[bytes]:
+        """Body of a GET request as bytes (images), or None on a network error or non-200 status."""
+        try:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=_ssl_context()) as client:
+                resp = await client.get(url)
+            if resp.status_code == 200:
+                return resp.content
+        except (httpx.HTTPError, OSError) as exc:
+            logging.getLogger("helios.download").info("%s failed: %s", url, exc)
+        return None
+
     @staticmethod
     def _provenance(kind: str, description: str, sources: List[str],
                     records: List[Dict[str, Any]], **extra) -> Dict[str, Any]:

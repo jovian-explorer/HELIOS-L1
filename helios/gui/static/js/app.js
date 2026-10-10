@@ -3593,11 +3593,14 @@ function renderUserGuideTab(container) {
       title: '5. Solar EUV Corona, CME Kinematics & Parker Spiral Dynamics',
       icon: 'fa-sun',
       color: 'text-yellow-400',
-      summary: 'GOES SUVI and SOHO LASCO images, NOAA active regions, CME drag-based and empirical arrival models, and Parker spiral magnetic field connectivity.',
+      summary: 'GOES SUVI and SOHO LASCO images, the solar image archive (SDO, SOHO, STEREO-A, Solar Orbiter; FITS through SunPy), NOAA active regions, CME drag-based and empirical arrival models, and Parker spiral magnetic field connectivity.',
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
             The tab shows the latest SOHO LASCO C2/C3 and GOES SUVI 195 Å images, the NOAA SWPC active regions on a schematic disk, and CME arrival models. The colour buttons of the disk are drawing styles named after these passbands:
+          </p>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            <strong class="text-sky-300">Solar image archive.</strong> Choose an instrument (SDO/AIA and HMI, SOHO/LASCO C2, C3 and EIT, STEREO-A/SECCHI EUVI, COR1 and COR2, Solar Orbiter/EUI FSI), an interval and a number of frames: the images taken closest to that many evenly spaced times are listed once each and played as a sequence. They come from the Helioviewer Project, which renders each image centred on the Sun at a fixed field of view per instrument (e.g. ±6.5 R☉ for C2, ±30 R☉ for C3), so the scale in arcsec per pixel and the solar radius in pixels shown next to each frame hold for every frame of the sequence. These are display images (processed and colour-scaled by Helioviewer), not calibrated data: <em>List FITS</em> and <em>Download FITS</em> find and fetch the science files of the same instrument and interval through SunPy's Fido (VSO, JSOC), into the cache folder named in the panel. SunPy is an optional dependency (pip install "helios-l1[solar]"). Solar Orbiter EUI images are on Helioviewer up to January 2025.
           </p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1.5">

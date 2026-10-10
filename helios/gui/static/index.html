@@ -1099,6 +1099,45 @@
         </div>
       </div>
 
+      <!-- Solar image archive by time and instrument (Helioviewer Project; FITS through SunPy) -->
+      <div class="glass-panel p-5 space-y-3" id="image-archive-panel">
+        <div class="border-b border-sky-500/20 pb-2.5">
+          <h3 class="font-tech font-bold text-base text-slate-100">Solar Image Archive</h3>
+          <p class="text-xs text-slate-400">SDO, SOHO, STEREO-A and Solar Orbiter images for any interval, Sun-centred at a fixed scale per instrument (Helioviewer Project). The science FITS files of the same interval can be listed and downloaded through SunPy.</p>
+        </div>
+        <div class="flex flex-wrap items-end gap-2 text-xs">
+          <label class="flex flex-col gap-1 text-slate-400">Instrument
+            <select id="ia-instrument" class="rounded-lg px-2 py-1.5 bg-space-950/80 border border-slate-700/60 text-slate-200"></select></label>
+          <label class="flex flex-col gap-1 text-slate-400">Start (UTC)
+            <input id="ia-start" type="datetime-local" value="2024-05-09T06:00" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">End (UTC)
+            <input id="ia-end" type="datetime-local" value="2024-05-09T14:00" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Frames
+            <input id="ia-n" type="number" min="1" max="48" value="12" class="w-16 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <button onclick="loadImageArchive()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Load images</button>
+          <button onclick="searchArchiveFits(0)" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200 hover:bg-slate-800">List FITS</button>
+          <button onclick="searchArchiveFits(3)" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200 hover:bg-slate-800">Download 3 FITS</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-2 space-y-2">
+            <div class="relative aspect-square max-h-[520px] mx-auto bg-black rounded-lg overflow-hidden border border-slate-800 flex items-center justify-center">
+              <img id="ia-image" alt="Archive image" class="w-full h-full object-contain hidden">
+              <span id="ia-placeholder" class="text-slate-500 text-xs">Choose an instrument and interval, then Load images.</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <button id="ia-play" onclick="toggleImageArchivePlay()" class="px-2.5 py-1 rounded bg-space-900 border border-slate-700 text-slate-200">Play</button>
+              <input id="ia-slider" type="range" min="0" max="0" value="0" oninput="showArchiveFrame(+this.value)" class="flex-1">
+              <span id="ia-frame-label" class="font-mono text-slate-300"></span>
+            </div>
+          </div>
+          <div class="bg-space-900/80 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-2">
+            <div id="ia-info">No images loaded.</div>
+            <div id="ia-fits" class="text-slate-400"></div>
+            <div id="ia-credit" class="text-slate-500 text-[10px]"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- Interactive Multi-Wavelength Solar Disk & Active Region Scanner -->
       <div class="glass-panel p-5 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
@@ -3326,6 +3365,7 @@
   <script src="/static/js/parker.js"></script>
   <script src="/static/js/cme_sim.js"></script>
   <script src="/static/js/solar_viewer.js"></script>
+  <script src="/static/js/image_archive.js"></script>
   <script src="/static/js/matrix.js"></script>
   <script src="/static/js/forecast.js"></script>
   <script src="/static/js/event_analysis.js"></script>

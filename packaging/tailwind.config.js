@@ -11,6 +11,7 @@ module.exports = {
       '../helios/gui/static/js/cme_sim.js',
       '../helios/gui/static/js/event_analysis.js',
       '../helios/gui/static/js/forecast.js',
+      '../helios/gui/static/js/image_archive.js',
       '../helios/gui/static/js/matrix.js',
       '../helios/gui/static/js/orbits.js',
       '../helios/gui/static/js/parker.js',
