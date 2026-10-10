@@ -55,9 +55,18 @@ class SolarCycleEngine:
         smoothed_months = [m for m in obs_months if val(by_month[m].get("smoothed_ssn")) is not None]
         sm = by_month[smoothed_months[-1]] if smoothed_months else None
 
-        cyc = [(m, val(by_month[m].get("smoothed_ssn"))) for m in sorted(by_month) if m >= start25]
+        # Peak so far as of the target month (a past date used to get the later maximum).
+        cyc = [(m, val(by_month[m].get("smoothed_ssn"))) for m in smoothed_months if m >= start25]
         cyc = [(m, v) for m, v in cyc if v is not None]
         peak_m, peak_v = max(cyc, key=lambda x: x[1]) if cyc else (None, None)
+        if peak_m is None:
+            phase = None
+        elif smoothed_months[-1] > peak_m + 6:  # six smoothed months below the peak
+            phase = "Declining phase"
+        elif peak_m == smoothed_months[-1]:
+            phase = "Ascending phase"  # still at a new high: a maximum is known only once passed
+        else:
+            phase = "Near maximum"
 
         def tag(m):
             return f"{m // 12}-{m % 12 + 1:02d}"
@@ -93,7 +102,7 @@ class SolarCycleEngine:
             "f107_radio_flux_sfu": val(sm.get("smoothed_f10.7")) if sm else None,
             "cycle_progress_percent": round(progress, 1),
             "cycle_progress_basis": "months since the December 2019 minimum over a nominal 11-year cycle",
-            "current_phase": "Declining phase" if peak_m is not None and target > peak_m + 6 else "Near maximum",
+            "current_phase": phase,
             "peak_sunspot_number": peak_v,
             "peak_month": tag(peak_m) if peak_m is not None else None,
             "peak_year": round(peak_m / 12.0, 2) if peak_m is not None else None,
@@ -112,8 +121,7 @@ class SolarCycleEngine:
         t0 = SolarCycleEngine.CYCLE_25_START_YEAR
         dt = max(0.01, current_year_float - t0)
 
-        # Hathaway 2015 empirical parameters for Cycle 25
-        # Cycle 25 has exceeded initial consensus predictions, peaking near SSN ~ 160-180
+        # Shape parameters of this approximation (cycle 25 peaked near smoothed SSN 160)
         amplitude = 172.0
         rise_time = 4.8  # years to peak
 
@@ -164,7 +172,8 @@ class SolarCycleEngine:
                 "year_month": f"{int(t)}-{int((t % 1) * 12) + 1:02d}",
                 "ssn_smoothed": round(ssn_val, 1),
                 "f107_sfu": round(f107_val, 1),
-                "cycle_24_comparison_ssn": round(ssn_val * 0.68, 1)  # Cycle 24 was ~32% weaker
+                # No cycle 24 data offline (this used to be the model times 0.68, shown as cycle 24)
+                "cycle_24_comparison_ssn": None
             })
 
         return {

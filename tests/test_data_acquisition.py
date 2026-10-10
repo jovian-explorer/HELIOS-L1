@@ -421,7 +421,9 @@ def test_solar_cycle_uses_noaa_observed_indices(monkeypatch):
     from helios.core.downloader import DataDownloader
     obs = [{"time-tag": "2008-12", "ssn": 1.7, "smoothed_ssn": 2.2, "f10.7": 69.0, "smoothed_f10.7": 69.5},
            {"time-tag": "2019-12", "ssn": 1.5, "smoothed_ssn": 1.8, "f10.7": 70.9, "smoothed_f10.7": 71.0},
+           {"time-tag": "2021-12", "ssn": 67.6, "smoothed_ssn": 59.0, "f10.7": 102.0, "smoothed_f10.7": 95.0},
            {"time-tag": "2024-10", "ssn": 166.3, "smoothed_ssn": 160.9, "f10.7": 210.0, "smoothed_f10.7": 200.0},
+           {"time-tag": "2025-12", "ssn": 110.0, "smoothed_ssn": 120.0, "f10.7": 150.0, "smoothed_f10.7": 145.0},
            {"time-tag": "2026-09", "ssn": 60.3, "smoothed_ssn": -1.0, "f10.7": 105.4, "smoothed_f10.7": -1.0}]
     pred = [{"time-tag": "2026-10", "predicted_ssn": 80.0, "low_ssn": 70.0, "high_ssn": 90.0}]
 
@@ -431,10 +433,13 @@ def test_solar_cycle_uses_noaa_observed_indices(monkeypatch):
     sc = TestClient(server.app, base_url=LOCAL).get("/api/solar_cycle?year=2026.8").json()
     assert sc["data_kind"] == "observed"
     assert sc["monthly_sunspot_number"] == 60.3 and sc["month"] == "2026-09"
-    assert sc["smoothed_sunspot_number"] == 160.9 and sc["smoothed_month"] == "2024-10"  # -1 = not yet smoothed
+    assert sc["smoothed_sunspot_number"] == 120.0 and sc["smoothed_month"] == "2025-12"  # -1 = not yet smoothed
     assert sc["peak_sunspot_number"] == 160.9 and sc["peak_month"] == "2024-10"
     t = {r["year_month"]: r for r in sc["timeline"]}
     assert t["2019-12"]["cycle_24_comparison_ssn"] == 2.2 and t["2026-10"]["ssn_predicted"] == 80.0
+    assert sc["current_phase"] == "Declining phase"
+    early = TestClient(server.app, base_url=LOCAL).get("/api/solar_cycle?year=2022.5").json()
+    assert early["peak_month"] == "2021-12" and early["current_phase"] == "Ascending phase"  # not the 2024 peak
 
 
 def test_solar_cycle_offline_is_labelled_model():
@@ -442,6 +447,7 @@ def test_solar_cycle_offline_is_labelled_model():
     from helios.api import server
     sc = TestClient(server.app, base_url=LOCAL).get("/api/solar_cycle").json()
     assert sc["data_kind"] == "model" and "approximation" in sc["source"]
+    assert all(t["cycle_24_comparison_ssn"] is None for t in sc["timeline"])
 
 
 def test_compare_imported_file_uses_archive_for_its_interval(monkeypatch):
