@@ -120,3 +120,13 @@ def test_goes_and_heliocentric_spacecraft_have_real_gse_positions():
     orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc="2026-10-10T17:00:00")
     assert orbits["GOES_16"]["current_pos"]["x"] < -41  # visualizer convention: Sun at -X
     assert orbits["STEREO_A"]["current_pos"]["y"] < -1e5 and orbits["STEREO_A"]["display_pos"]["y"] < 0
+
+
+def test_moon_matches_horizons():
+    # JPL Horizons geocentric Moon (ecliptic J2000) for 2026-10-10 00:00 TDB, two days from new moon.
+    from helios.core.spice_engine import moon_geocentric_ecliptic
+    import pandas as pd
+    m = moon_geocentric_ecliptic(pd.Timestamp("2026-10-10"))
+    r = np.array([-3.804776e5, -5.576749e4, -2.202699e4])
+    assert np.degrees(np.arccos(m @ r / np.linalg.norm(m) / np.linalg.norm(r))) < 0.3
+    assert np.linalg.norm(m) == pytest.approx(np.linalg.norm(r), rel=0.005)

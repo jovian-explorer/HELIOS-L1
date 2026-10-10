@@ -83,8 +83,10 @@ CONIC_TARGETS = [
         "epoch": None, "phase": "Outer terrestrial planet / magnetotail observatory"}),
     (("MOON", "301"), {
         "name": "Moon", "orbit_type": "Geocentric Lunar Orbit", "primary": "EARTH",
+        # Placed by the low-precision lunar series (lunar=True): a fixed conic drifts by its
+        # node and perigee precession (it was 100 deg off by 2026).
         "a_km": 384400.0, "e": 0.0549, "inc": 5.145, "raan": 125.08, "argp": 318.15, "m0": 135.0,
-        "epoch": None, "phase": "Natural satellite of Earth"}),
+        "epoch": None, "phase": "Natural satellite of Earth", "lunar": True}),
     (("GOES_16", "GOES16", "GOES"), {
         "name": "GOES-16", "orbit_type": "Geostationary Orbit (GEO ~35,786 km alt)", "primary": "EARTH",
         # Placed by its geographic longitude (geo_lon): a conic cannot keep it over one meridian.
@@ -92,6 +94,26 @@ CONIC_TARGETS = [
         "geo_lon": -75.2,
         "epoch": None, "phase": "Geostationary East (75.2° W) Space Weather Monitor"}),
 ]
+
+def moon_geocentric_ecliptic(t: pd.Timestamp) -> np.ndarray:
+    """
+    Geocentric Moon (km, ecliptic and equinox J2000) from the low-precision series of the
+    Astronomical Almanac (section D, about 0.3 deg in longitude and 0.2 deg in latitude),
+    precessed from the equinox of date to J2000.
+    """
+    tc = (t.to_julian_date() - 2451545.0) / 36525.0
+    d = lambda a, b: math.radians(a + b * tc)
+    lam = (218.32 + 481267.881 * tc + 6.29 * math.sin(d(135.0, 477198.87)) - 1.27 * math.sin(d(259.3, -413335.36))
+           + 0.66 * math.sin(d(235.7, 890534.22)) + 0.21 * math.sin(d(269.9, 954397.74))
+           - 0.19 * math.sin(d(357.5, 35999.05)) - 0.11 * math.sin(d(186.5, 966404.03)) - 1.397 * tc)
+    beta = (5.13 * math.sin(d(93.3, 483202.03)) + 0.28 * math.sin(d(228.2, 960400.87))
+            - 0.28 * math.sin(d(318.3, 6003.18)) - 0.17 * math.sin(d(217.6, -407332.20)))
+    parallax = (0.9508 + 0.0518 * math.cos(d(135.0, 477198.87)) + 0.0095 * math.cos(d(259.3, -413335.38))
+                + 0.0078 * math.cos(d(235.7, 890534.23)) + 0.0028 * math.cos(d(269.9, 954397.70)))
+    r = 6378.14 / math.sin(math.radians(parallax))
+    lam, beta = math.radians(lam), math.radians(beta)
+    return r * np.array([math.cos(beta) * math.cos(lam), math.cos(beta) * math.sin(lam), math.sin(beta)])
+
 
 # Schematic L1 halo orbits (amplitudes in km, period ~178 days).
 L1_HALO_IDS = ("ADITYA_L1", "ADITYAL1", "ADITYA", "DSCOVR", "ACE", "WIND", "SOHO")
@@ -453,7 +475,11 @@ class SpiceEphemerisEngine:
             semi_major_axis_km = conic["a_au"] * self.AU_KM if "a_au" in conic else conic["a_km"]
             eccentricity, inclination_deg = conic["e"], conic["inc"]
             et_ref = self.epoch_to_et(conic["epoch"]) if conic["epoch"] else t0_j2000
-            if "geo_lon" in conic:  # geostationary: GEO position over its longitude, rotated to GSE
+            if conic.get("lunar"):
+                t_utc = pd.Timestamp(target_iso)
+                pos_km = moon_geocentric_ecliptic(t_utc)
+                vel_kms = (moon_geocentric_ecliptic(t_utc + pd.Timedelta(seconds=60)) - pos_km) / 60.0
+            elif "geo_lon" in conic:  # geostationary: GEO position over its longitude, rotated to GSE
                 lon = math.radians(conic["geo_lon"])
                 t_utc = pd.Timestamp(target_iso)
                 g0, g1 = (np.array(geo_to_gse([t], semi_major_axis_km * math.cos(lon),
