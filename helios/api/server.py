@@ -31,7 +31,7 @@ from helios.config import (
 from helios import config as helios_config
 from helios.core import icme_catalog, shock_catalog
 from helios.core.coverage import frame_coverage, describe as describe_coverage
-from helios.core.downloader import DataDownloader, infer_cadence_seconds, regular_series
+from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
 from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
                                         MC_CRITERIA, analyze_shock, coupling_with_errors, dehoffmann_teller,
@@ -1745,7 +1745,10 @@ async def get_events():
 @app.get("/api/event/{event_id}")
 @app.get("/api/events/{event_id}")
 async def get_event(event_id: str):
-    return await downloader.get_historical_event(event_id)
+    try:
+        return await downloader.get_historical_event(event_id)
+    except UnknownEventError:
+        raise HTTPException(status_code=404, detail=f"Unknown event '{event_id}'; see /api/events.")
 
 def check_epoch(epoch: Optional[str]) -> None:
     """422 for an epoch the ephemeris engine cannot read (it used to fall back to a fixed date)."""

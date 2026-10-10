@@ -279,3 +279,10 @@ def test_day_cache_key_changes_with_the_processing_version(tmp_path, monkeypatch
     before = client._cache_path(spec, day)
     monkeypatch.setattr(archive, "DAY_CACHE_VERSION", archive.DAY_CACHE_VERSION + 1)
     assert client._cache_path(spec, day) != before
+
+
+def test_unknown_event_id_is_404_not_another_event():
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    r = TestClient(server.app, base_url=LOCAL).get("/api/events/may_2042_g9")
+    assert r.status_code == 404 and "Unknown event" in r.json()["detail"]

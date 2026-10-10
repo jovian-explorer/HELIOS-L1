@@ -47,6 +47,10 @@ SIMULATION_OFFSETS = {
 # Missions that have their own "source"-tagged rows in the NOAA RTSW feed.
 RTSW_SOURCES = {"DSCOVR": "DSCOVR", "ACE": "ACE"}
 
+class UnknownEventError(LookupError):
+    """No historical event with that id."""
+
+
 # UTC windows (48 h around the shock arrival) for historical events covered by OMNI.
 EVENT_WINDOWS = {
     "may_2024_g5": ("2024-05-10 06:00", "2024-05-12 06:00"),
@@ -908,8 +912,8 @@ class DataDownloader:
             }
         }
 
-        if event_id not in descriptions:
-            event_id = "may_2024_g5"
+        if event_id not in descriptions:  # used to answer with the May 2024 storm
+            raise UnknownEventError(event_id)
         event_meta = descriptions[event_id]
 
         # Real data first: OMNI 1-minute data (5-minute means) for events since 1981 that it covers.
