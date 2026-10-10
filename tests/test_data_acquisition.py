@@ -495,3 +495,22 @@ def test_compare_imported_file_uses_archive_for_its_interval(monkeypatch):
     comp = client.get("/api/compare?mission_a=WIND&mission_b=CUSTOM&parameter=bz_gsm").json()
     assert comp["status"] == "insufficient_data"
     assert "has no values" in comp["message"] and "2015-03-17 04:00:00 to 2015-03-17 04:39:00 UTC" in comp["message"]
+
+
+def test_old_rtsw_copy_is_cut_to_the_window_and_flagged(monkeypatch):
+    """A cached feed from days ago read as current conditions, and a feed longer than the window was kept whole."""
+    import asyncio
+    from datetime import datetime, timedelta, timezone
+    newest = datetime.now(timezone.utc).replace(second=0, microsecond=0) - timedelta(days=2)
+    ts = [newest - timedelta(minutes=10 * k) for k in range(300)]  # 50 h of data, newest first
+    mag = [_mag(t.strftime("%Y-%m-%dT%H:%M:%S"), "DSCOVR", True, -3.0) for t in ts]
+    wind = [_wind(t.strftime("%Y-%m-%dT%H:%M:%S"), "DSCOVR", True, 450.0) for t in ts]
+
+    async def fake_rtsw(self):
+        return mag, wind
+    monkeypatch.setattr(DataDownloader, "_fetch_rtsw", fake_rtsw)
+    out = asyncio.run(DataDownloader().get_telemetry_bundle("DSCOVR", span_days=1))
+    recs, prov = out["records"], out["provenance"]
+    assert recs[-1]["time_tag"] == newest.strftime("%Y-%m-%d %H:%M:%S")
+    assert recs[0]["time_tag"] >= (newest - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+    assert "not current conditions" in prov["description"] and prov["newest_record_age_hours"] > 47

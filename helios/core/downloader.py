@@ -47,6 +47,10 @@ SIMULATION_OFFSETS = {
 # Missions that have their own "source"-tagged rows in the NOAA RTSW feed.
 RTSW_SOURCES = {"DSCOVR": "DSCOVR", "ACE": "ACE"}
 
+# RTSW records older than this are flagged as not current (the feed normally lags minutes).
+STALE_AFTER_HOURS = 0.5
+
+
 class UnknownEventError(LookupError):
     """No historical event with that id."""
 
@@ -451,6 +455,18 @@ class DataDownloader:
                         kind = "observed"
                         description = ("NOAA SWPC RTSW operational L1 stream. DSCOVR itself is not in the feed; "
                                        f"source spacecraft: {', '.join(sources)}.")
+            if kind == "observed":
+                # The feed can hold more than the window, and after a failed request the last
+                # cached copy is used however old: keep span_days up to the newest record and
+                # say when that record is not recent (it used to read as current conditions).
+                newest = datetime.strptime(records[-1]["time_tag"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                start_tag = (min(newest, now) - timedelta(days=span_days)).strftime("%Y-%m-%d %H:%M:%S")
+                records = [r for r in records if r["time_tag"] >= start_tag]
+                age_h = (now - newest).total_seconds() / 3600.0
+                if age_h > STALE_AFTER_HOURS:
+                    description += (f" The newest record is from {records[-1]['time_tag']} UTC, {age_h:.1f} h ago "
+                                    "(the feed could not be refreshed): not current conditions.")
+                    extra["newest_record_age_hours"] = round(age_h, 2)
             if span_days > 1:
                 # Archive data for the longer window; RTSW only after the last archive sample.
                 arch = await self.get_archive_bundle(mission_id, window_start, now, cadence_minutes=5)
