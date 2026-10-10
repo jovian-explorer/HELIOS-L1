@@ -784,6 +784,8 @@ def test_flux_rope_fit_reports_uncertainties():
     assert u["axis_cone_deg"] == pytest.approx(25, abs=2)
     from helios.core.lepping_errors import lepping_uncertainties
     assert lepping_uncertainties(15.0, 0.30, 10, 90, 0)["warnings"]  # beyond the 4 nT noise range
+    # Cone angle 27 deg: below the 30 deg of the error study, extrapolated (no warning below 25 only).
+    assert any("cone angles" in w for w in lepping_uncertainties(15.0, 0.1, 10, 27, 0)["warnings"])
 
 
 def test_bootstrap_median_in_blocks_matches_all_at_once():

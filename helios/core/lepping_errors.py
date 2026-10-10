@@ -98,7 +98,7 @@ def lepping_uncertainties(b0_nt: float, chi_r: float, closest_approach_percent: 
     if noise > MAX_NOISE_NT:
         warnings.append(f"chi_R {chi_r:.3f} means a noise level of {noise:.1f} nT, above the 4 nT range of the "
                         "error study (Lepping et al. 2006 rate such fits poor): the errors are extrapolated.")
-    if cone < 25.0:
+    if cone < CONE_ANGLES_DEG[-1]:  # below 30 deg the table is extrapolated
         warnings.append(f"The axis is within {cone:.0f} deg of the Sun-Earth line, outside the cone angles of the "
                         "error study (30-90 deg): the errors are extrapolated.")
     if ca > 0.9:
