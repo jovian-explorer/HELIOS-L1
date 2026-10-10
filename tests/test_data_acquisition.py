@@ -248,6 +248,14 @@ def test_importer_reads_omni_year_doy_columns():
     assert res["records"][0]["bz_gsm"] == -30.5 and res["records"][0]["speed"] == 740.5
 
 
+def test_importer_reads_year_month_day_columns():
+    """With a month column, DAY is the day of the month (it was read as day of year: 10 January)."""
+    from helios.core.importer import TelemetryImporter
+    text = "year,month,day,hour,minute,bz_gsm\n2024,5,10,17,5,-30.5\n2024,5,10,17,10,-32.0\n"
+    res = TelemetryImporter.parse_csv_or_text(text, "custom")
+    assert [r["time_tag"] for r in res["records"]] == ["2024-05-10 17:05:00", "2024-05-10 17:10:00"]
+
+
 def test_csv_export_handles_mixed_keys_and_carries_metadata():
     import io
     import pandas as pd

@@ -226,18 +226,29 @@ class TelemetryImporter:
     def _parse_times(cls, df: pd.DataFrame, time_col: Optional[str]) -> pd.Series:
         """
         UTC time stamps for every row. Accepts one time column (ISO 8601, with or without
-        'Z'/offset; offsets are converted to UTC) or OMNI-style YEAR, DOY, HR, MN columns.
+        'Z'/offset; offsets are converted to UTC), OMNI-style YEAR, DOY, HR, MN columns, or
+        YEAR, MONTH, DAY (day of month), HR, MN columns.
         Unparseable rows become NaT.
         """
         lower = {c.lower().strip(): c for c in df.columns}
         year_c = lower.get("year") or lower.get("yyyy") or lower.get("yr")
-        doy_c = lower.get("doy") or lower.get("day") or lower.get("ddd")
-        if year_c and doy_c and (time_col is None or time_col in (year_c, doy_c)):
+        month_c = lower.get("month") or lower.get("mon") or lower.get("mo")
+        # With a month column, "day" is the day of the month (it used to be read as the day
+        # of the year, putting every row in January).
+        dom_c = (lower.get("day") or lower.get("dd") or lower.get("dom")) if month_c else None
+        doy_c = lower.get("doy") or lower.get("ddd") or (None if month_c else lower.get("day"))
+        day_c = dom_c or doy_c
+        if year_c and day_c and (time_col is None or time_col in (year_c, day_c)):
             hour_c = lower.get("hr") or lower.get("hour")
             min_c = lower.get("mn") or lower.get("min") or lower.get("minute")
-            base = pd.to_datetime(pd.to_numeric(df[year_c], errors="coerce").astype("Int64").astype(str),
-                                  format="%Y", errors="coerce", utc=True)
-            offset = pd.to_timedelta(pd.to_numeric(df[doy_c], errors="coerce") - 1, unit="D")
+            num = lambda c: pd.to_numeric(df[c], errors="coerce")
+            if dom_c:
+                base = pd.to_datetime(pd.DataFrame({"year": num(year_c), "month": num(month_c), "day": num(dom_c)}),
+                                      errors="coerce", utc=True)
+                offset = pd.to_timedelta(pd.Series(0, index=df.index), unit="D")
+            else:
+                base = pd.to_datetime(num(year_c).astype("Int64").astype(str), format="%Y", errors="coerce", utc=True)
+                offset = pd.to_timedelta(num(doy_c) - 1, unit="D")
             if hour_c:
                 offset = offset + pd.to_timedelta(pd.to_numeric(df[hour_c], errors="coerce").fillna(0), unit="h")
             if min_c:
