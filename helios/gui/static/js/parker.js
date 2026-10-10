@@ -427,7 +427,7 @@ class ParkerSpiralRenderer {
         <div class="text-[11px] font-mono space-y-1 text-slate-200">
           <div>Distance from Sun: <span class="text-slate-100 font-bold">1.00 AU</span> (149.6M km)</div>
           <div>Orbital Velocity: <span class="text-emerald-400 font-bold">29.78 km/s</span></div>
-          <div>Magnetic Connectivity: <span class="text-amber-300 font-bold">Footpoint ~50°-60° W</span></div>
+          <div>Magnetic Connectivity: <span class="text-amber-300 font-bold">Footpoint ${(this.omegaSun * this.auKm / this.speedKms * 180 / Math.PI).toFixed(0)}° W at ${this.speedKms} km/s</span></div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
             <span class="text-slate-400 font-normal">Geocenter Reference</span>
@@ -815,12 +815,15 @@ class ParkerSpiralRenderer {
     const numLines = 8;
     const sunRot = (this.time * 0.002);
 
-    // Calculate which line connects directly to Earth (at phi = 0, 1 AU)
+    // Footpoint angle of the line through Earth (phi = 0 at 1 AU)
     const earthTransitTheta = (this.omegaSun * 1.0 * this.auKm) / this.speedKms;
 
-    for (let i = 0; i < numLines; i++) {
-      const phi_0 = sunRot + (i * Math.PI * 2) / numLines;
-      const isEarthConnected = i === 0;
+    // The rotating lines are background; the highlighted line is the one through Earth
+    // (angle 0 at 1 AU), so its footpoint is the connection longitude of the HUD (it used to
+    // be one of the rotating lines and swept past Earth).
+    for (let i = 0; i <= numLines; i++) {
+      const isEarthConnected = i === numLines;
+      const phi_0 = isEarthConnected ? earthTransitTheta : sunRot + (i * Math.PI * 2) / numLines;
 
       ctx.beginPath();
       const maxR = 1.55;
