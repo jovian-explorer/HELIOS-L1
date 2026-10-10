@@ -263,3 +263,14 @@ def test_dst_model_skill_over_storms(monkeypatch, tmp_path):
     assert body["result"]["models"]["obrien"]["n_storms"] == len(storms)
     assert body["provenance"]["filters"][0]["filter"].startswith("storms: Dst <= -150")
     assert client.get("/api/statistics/dst_models?start_year=1970&end_year=2010").status_code == 422
+
+
+def test_conditional_average_keeps_values_on_the_top_edge():
+    """Discrete values (Kp) at the upper limit fell outside every bin; np.histogram counts them."""
+    from helios.core.omni_statistics import conditional_average
+    t = pd.date_range("2024-01-01", periods=400, freq="h", tz="UTC")
+    x = pd.Series(np.tile([1.0, 2.0, 3.0, 4.0], 100), index=t)
+    res = conditional_average(x, x * 2, bins=3, lo=1.0, hi=4.0, min_count=1)
+    assert sum(res["n"]) == 400 and res["n"][-1] == 200
+    res = conditional_average(x, x, bins=3, log_x=True, lo=1.0, hi=4.0, min_count=1)
+    assert sum(res["n"]) == 400

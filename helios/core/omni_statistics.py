@@ -338,7 +338,9 @@ def _edges(values: np.ndarray, bins: int, log: bool, lo: Optional[float], hi: Op
     if log:
         if lo <= 0:
             raise ValueError("A logarithmic axis needs positive limits.")
-        return np.logspace(math.log10(lo), math.log10(hi), bins + 1)
+        e = np.logspace(math.log10(lo), math.log10(hi), bins + 1)
+        e[0], e[-1] = lo, hi  # exact limits: values equal to them must fall inside
+        return e
     return np.linspace(lo, hi, bins + 1)
 
 
@@ -384,6 +386,7 @@ def conditional_average(x: pd.Series, y: pd.Series, bins: int = 15, log_x: bool 
     edges = _edges(xv, bins, log_x, lo, hi)
     rho_all, _ = lag1_hourly(yv, both.index)
     which = np.digitize(xv, edges) - 1
+    which[xv == edges[-1]] = len(edges) - 2  # the last bin includes its upper edge, as in np.histogram
     out = {k: [] for k in ("x_center", "n", "mean", "mean_ci95_low", "mean_ci95_high", "median", "q25", "q75", "n_eff")}
     for i in range(len(edges) - 1):
         sel = which == i
