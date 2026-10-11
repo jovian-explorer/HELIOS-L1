@@ -90,7 +90,7 @@ After you start a different version of HELIOS-L1 with the same settings, a dialo
 
 ### L1 Telemetry (dashboard)
 
-Cards and charts of the solar wind at L1: speed, IMF Bz (GSM) with the clock angle, |B|, proton density, dynamic pressure (P = 1.6726e-6 n V² nPa) and the travel time from the spacecraft to Earth, with the minimum, mean and maximum of the window. Charts: the field components, speed and density, the magnetopause stand-off (Shue et al. 1998) and the Akasofu ε. Below them a table of shock-like jumps (see 6.1 for the thresholds).
+Cards and charts of the solar wind at L1: speed, IMF Bz (GSM) with the clock angle, |B|, proton density, flow pressure (OMNI definition with 5 % alphas: P = 2.0e-6 n V² nPa) and the travel time from the spacecraft to Earth, with the minimum, mean and maximum of the window. Charts: the field components, speed and density, the magnetopause stand-off (Shue et al. 1998) and the Akasofu ε. Below them a table of shock-like jumps (see 6.1 for the thresholds).
 
 * **Active spacecraft:** DSCOVR and ACE show the NOAA Real-Time Solar Wind (RTSW) 1-minute feed. The "DSCOVR" view is NOAA's operational stream; the spacecraft that supplied it (for example SOLAR1) is named in the header and stored per record. The ACE view uses the RTSW rows tagged ACE. Aditya-L1, SOHO, GOES-16 and STEREO-A have no public real-time solar wind feed here, and WIND only through the archive: their views are **simulated** and labelled so (section 9).
 * **Observation horizon:** the last 24 hours (RTSW keeps about one day), the last 7 days (archive where it has data, RTSW after its last sample, as 5-minute means), or **Archive Interval**.

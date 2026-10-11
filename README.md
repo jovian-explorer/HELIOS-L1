@@ -36,7 +36,7 @@ HELIOS-L1 is engineered to ingest, cross-calibrate, and analyze data from the sp
 HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formulations:
 
 1. **Solar Wind Dynamic Pressure ($P_{dyn}$):**
-   $$P_{dyn} = 1.6726 \times 10^{-6} \cdot n_p \cdot v_{sw}^2 \quad [\text{nPa}]$$
+   $$P_{dyn} = 2.0 \times 10^{-6} \cdot n_p \cdot v_{sw}^2 \quad [\text{nPa}]$$ (OMNI flow pressure, 5 % alphas assumed)
    Quantifies solar wind momentum flux compressing Earth's magnetosphere.
 
 2. **Magnetopause & Bow Shock Boundaries (Shue et al., 1998 / Chao et al., 2002 / Farris & Russell, 1994):**
