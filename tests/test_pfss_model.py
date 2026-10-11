@@ -62,3 +62,9 @@ def test_api_without_the_optional_packages(monkeypatch):
     r = c.post("/api/pfss", json={"time": "2024-05-09T12:00"})
     assert r.status_code == 501 and "sunkit-magex" in r.json()["detail"]
     assert c.post("/api/pfss", json={"time": "2024-05-09T12:00", "points": [{"r_rsun": 3.5, "lon": 0, "lat": 0}]}).status_code == 422
+
+
+def test_plot_draws_without_pyplot(dipole_solution):
+
+    url = pm.plot(dipole_solution, pm.hcs_lines(dipole_solution), [])
+    assert url.startswith("data:image/png;base64,") and len(url) > 1000

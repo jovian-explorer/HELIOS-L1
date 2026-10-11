@@ -208,16 +208,15 @@ def earth_connection(when: datetime, speed_kms: float, rss: float) -> Dict[str, 
 
 def plot(out, hcs: List[np.ndarray], traced: List[Dict[str, Any]], earth: Optional[Dict[str, float]] = None) -> str:
     """PNG (data URL) of the photospheric B_r with the current sheet, footpoints and seeds."""
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure  # not pyplot: its global state is not safe in worker threads
     from sunpy.map import all_coordinates_from_map
     m = out.input_map
     coords = all_coordinates_from_map(m)
     lon = coords.lon.to_value("deg")[0] % 360.0
     lat = coords.lat.to_value("deg")[:, 0]
     order = np.argsort(lon)
-    fig, ax = plt.subplots(figsize=(9, 4.6), dpi=110)
+    fig = Figure(figsize=(9, 4.6), dpi=110)
+    ax = fig.subplots()
     lim = max(10.0, float(np.nanpercentile(np.abs(m.data), 98)))
     pc = ax.pcolormesh(lon[order], lat, np.asarray(m.data)[:, order], cmap="gray", vmin=-lim, vmax=lim, shading="auto")
     fig.colorbar(pc, ax=ax, label="B_r at the photosphere (G)", fraction=0.03)
@@ -240,7 +239,6 @@ def plot(out, hcs: List[np.ndarray], traced: List[Dict[str, Any]], earth: Option
     fig.tight_layout()
     buf = io.BytesIO()
     fig.savefig(buf, format="png")
-    plt.close(fig)
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
