@@ -22,9 +22,9 @@ class ParkerSpiralRenderer {
 
     // Simulation Parameters
     this.speedKms = 440; // Solar wind speed [km/s]
-    this.omegaSun = 2.865e-6; // Solar sidereal rotation rate [rad/s], 25.38 d (same as parker_spiral.py)
+    this.omegaSun = 2 * Math.PI / (25.38 * 86400); // sidereal Carrington rate [rad/s] (constants.py)
     this.auKm = 149597870.7; // 1 AU in km
-    this.rSunKm = 696340; // Solar radius in km
+    this.rSunKm = 695700; // IAU 2015 nominal solar radius (constants.py)
 
     // Animation & View State
     this.time = 0;

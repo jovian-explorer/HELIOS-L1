@@ -5,12 +5,13 @@ and magnetic connectivity between solar active regions, L1 spacecraft, and Earth
 """
 import math
 from typing import Dict, List, Any
+from helios.core.constants import AU_KM, OMEGA_SUN_SIDEREAL
 
 class ParkerSpiralModel:
     """Computes heliospheric magnetic field morphology and connectivity."""
 
-    AU_KM = 149597870.7
-    OMEGA_SUN_RAD_S = 2.865e-6  # Solar sidereal rotation rate (~25.38 days)
+    AU_KM = AU_KM
+    OMEGA_SUN_RAD_S = OMEGA_SUN_SIDEREAL  # sidereal Carrington rate, 2 pi / 25.38 d
 
     @classmethod
     def spiral_pitch_angle(cls, speed_kms: float, r_au: float = 1.0) -> float:

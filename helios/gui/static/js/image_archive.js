@@ -198,7 +198,7 @@ function drawJmap() {
       const ms = jmapTimeMs(time);
       if (ms < jmapTimeMs(f.time_start) || ms > te) return;
       const dtSec = (ms - te) / 1000;
-      const rr = f.height_end_rsun + (f.speed_kms * dtSec + 0.5 * a * dtSec * dtSec) / 696340;
+      const rr = f.height_end_rsun + (f.speed_kms * dtSec + 0.5 * a * dtSec * dtSec) / 695700;  // IAU 2015 R_sun (constants.py)
       if (!started) { ctx.moveTo(A.x(time), A.y(rr)); started = true; } else ctx.lineTo(A.x(time), A.y(rr));
     });
     ctx.stroke();

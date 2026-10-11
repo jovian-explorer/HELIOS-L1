@@ -33,8 +33,8 @@ import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
+from helios.core.constants import R_SUN_KM
 
-R_SUN_KM = 695700.0
 CDAW = "https://cdaw.gsfc.nasa.gov/CME_list/UNIVERSAL_ver2/"
 CACTUS = "https://www.sidc.be/cactus/catalog/LASCO/2_5_0/qkl/"
 DONKI = "https://ccmc.gsfc.nasa.gov/DONKI-API/get/"

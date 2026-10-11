@@ -21,7 +21,7 @@ class CMESimulator {
     this.v0 = 1250; // Initial plane-of-sky velocity [km/s]
     this.vAmbient = 420; // Ambient solar wind velocity [km/s]
     this.gamma = 1.0e-7; // DBM drag parameter [km^-1], the server default until a result arrives
-    this.rSunKm = 696340;
+    this.rSunKm = 695700; // IAU 2015 nominal solar radius (helios/core/constants.py)
     this.r0Km = this.rSunKm; // start height of the trajectory; the server's r2 once a result arrives
     this.l1Km = 149597870.7 - 1496000.0; // same L1 distance as coronagraph.py
     this.earthKm = 149597870.7;

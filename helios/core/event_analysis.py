@@ -39,6 +39,7 @@ import pandas as pd
 from helios.core.lepping_errors import lepping_uncertainties
 from helios.core.archive import (BOLTZMANN_J_K, PROTON_MASS_KG, HapiError, hapi_data_url, parse_hapi_csv,
                                  thermal_speed_to_kelvin)
+from helios.core.constants import AU_KM
 
 MU0 = 4.0e-7 * math.pi
 EARTH_RADIUS_KM = 6371.2
@@ -837,7 +838,6 @@ def timing_comparison(normal, speed_kms: float, t_ref: pd.Timestamp, r_ref_km,
 # Magnetic cloud: force-free (Lundquist) flux rope fit
 # ----------------------------------------------------------------------------
 BESSEL_J0_ZERO = 2.404825557695773
-AU_KM = 1.495978707e8
 
 
 def _bessel_j(order: int, x: np.ndarray) -> np.ndarray:

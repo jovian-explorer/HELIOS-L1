@@ -38,8 +38,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
+from helios.core.constants import R_SUN_KM
 
-R_SUN_KM = 696340.0
 MIN_PSI_DEG = 20.0
 MAX_FRONT_KMS = 4000.0  # faster than any CME measured by LASCO (about 3500 km/s)
 OBSERVERS = {"lasco": "SOHO", "eit": "SOHO", "aia": "SDO", "hmi": "SDO", "euvi": "STEREO_A", "cor": "STEREO_A",

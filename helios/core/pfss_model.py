@@ -35,10 +35,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+from helios.core.constants import AU_KM, OMEGA_SUN_SIDEREAL as OMEGA_SIDEREAL, R_SUN_KM
 
-AU_KM = 149597870.7
-R_SUN_KM = 695700.0
-OMEGA_SIDEREAL = 2.865e-6  # rad/s, as in parker_spiral.py
 AR_THRESHOLD_G = 50.0
 SOURCES = ("gong", "adapt", "hmi")
 _SOLUTIONS: Dict[tuple, Any] = {}

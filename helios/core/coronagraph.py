@@ -6,13 +6,14 @@ and empirical CME deceleration and shock arrival forecasting.
 import math
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any
+from helios.core.constants import AU_KM, R_SUN_KM
 
 class CoronagraphAnalyzer:
     """Manages solar coronagraph feeds and CME expansion kinematics."""
 
-    R_SUN_KM = 696340.0
-    AU_KM = 149597870.7
-    L1_DIST_KM = 149597870.7 - 1496000.0  # ~1.481e8 km from Sun
+    R_SUN_KM = R_SUN_KM
+    AU_KM = AU_KM
+    L1_DIST_KM = AU_KM - 1496000.0  # ~1.481e8 km from Sun
 
     @classmethod
     def get_coronagraph_feeds(cls) -> Dict[str, Dict[str, Any]]:

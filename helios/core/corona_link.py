@@ -19,8 +19,8 @@ from typing import Any, Dict, List, Optional
 
 from helios.core import shock_catalog
 from helios.core.coronagraph import CoronagraphAnalyzer
+from helios.core.constants import R_SUN_KM
 
-R_SUN_KM = 696340.0
 SEARCH_HOURS = 24.0
 L1_FROM_SUN_KM = CoronagraphAnalyzer.L1_DIST_KM
 

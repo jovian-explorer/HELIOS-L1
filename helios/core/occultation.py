@@ -59,6 +59,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
+from helios.core.constants import AU_KM, OMEGA_SUN_SIDEREAL as OMEGA_SUN, R_SUN_KM
 
 NAIF = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/"
 GENERIC = [("spk/planets/", r"de440s\.bsp"), ("spk/stations/", r"earthstns_itrf93_\d+\.bsp"),
@@ -66,9 +67,6 @@ GENERIC = [("spk/planets/", r"de440s\.bsp"), ("spk/stations/", r"earthstns_itrf9
 SPK_HOSTS = ("https://naif.jpl.nasa.gov/", "https://spiftp.esac.esa.int/")
 HORIZONS = "https://ssd.jpl.nasa.gov/api/horizons.api"
 C_KMS = 299792.458
-R_SUN_KM = 695700.0
-AU_KM = 149597870.7
-OMEGA_SUN = 2.865e-6
 RM_CONST = 2.63e-13  # e^3 / (8 pi^2 eps0 m_e^2 c^3), SI
 STATIONS = ["DSS-14", "DSS-24", "DSS-25", "DSS-26", "DSS-34", "DSS-35", "DSS-36", "DSS-43", "DSS-54",
             "DSS-55", "DSS-56", "DSS-63", "DSS-65"]

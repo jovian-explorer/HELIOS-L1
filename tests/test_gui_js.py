@@ -203,8 +203,12 @@ def test_js_constants_match_python_models():
     from helios.core.coronagraph import CoronagraphAnalyzer
     parker = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
     cme = (APP_JS.parent / "cme_sim.js").read_text(encoding="utf-8")
-    omega = float(re.search(r"this\.omegaSun = ([\d.e+-]+);", parker).group(1))
-    assert omega == ParkerSpiralModel.OMEGA_SUN_RAD_S
+    period_days = float(re.search(r"this\.omegaSun = 2 \* Math\.PI / \(([\d.]+) \* 86400\);", parker).group(1))
+    assert 2 * math.pi / (period_days * 86400) == pytest.approx(ParkerSpiralModel.OMEGA_SUN_RAD_S, rel=1e-12)
+    from helios.core.constants import R_SUN_KM
+    for js in ("parker.js", "cme_sim.js"):
+        r = float(re.search(r"this\.rSunKm = ([\d.]+);", (APP_JS.parent / js).read_text(encoding="utf-8")).group(1))
+        assert r == R_SUN_KM  # one solar radius everywhere (IAU 2015 nominal)
     l1 = re.search(r"this\.l1Km = ([\d.]+) - ([\d.]+);", cme)
     assert float(l1.group(1)) - float(l1.group(2)) == pytest.approx(CoronagraphAnalyzer.L1_DIST_KM)
     gamma = float(re.search(r"this\.gamma = ([\d.e+-]+);", cme).group(1))
@@ -350,7 +354,7 @@ def test_cme_animation_reaches_l1_at_the_server_transit_time():
     src = (APP_JS.parent / "cme_sim.js").read_text(encoding="utf-8")
     script = "const window = {}; const document = {getElementById: () => null};\n" + src + f"""
 const s = Object.create(CMESimulator.prototype);
-Object.assign(s, {{rSunKm: 696340, r0Km: 696340, l1Km: 149597870.7 - 1496000.0, earthKm: 149597870.7, v0: 1000,
+Object.assign(s, {{rSunKm: 695700, r0Km: 695700, l1Km: 149597870.7 - 1496000.0, earthKm: 149597870.7, v0: 1000,
                   vAmbient: 420, gamma: 1e-7}});
 s.updateFromBackendResult({json.dumps(cme)});
 console.log(JSON.stringify([s.getShockAtTime(s.transitL1Hrs).rKm, s.l1Km]));
@@ -371,7 +375,7 @@ def test_parker_view_places_psp_and_solo_at_their_angle_from_earth():
     src = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
     script = "const window = {}; const document = {getElementById: () => null};\n" + src + f"""
 const p = Object.create(ParkerSpiralRenderer.prototype);
-Object.assign(p, {{auKm: 149597870.7, rSunKm: 696340, manualAnomalyDeg: null, pspOrbitSpeedMultiplier: 0.00075,
+Object.assign(p, {{auKm: 149597870.7, rSunKm: 695700, manualAnomalyDeg: null, pspOrbitSpeedMultiplier: 0.00075,
                   time: 0, spiceFleetData: {json.dumps(fleet)}}});
 console.log(JSON.stringify([p.getPSPState().theta, p.getSolOState().theta]));
 """
