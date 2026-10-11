@@ -203,10 +203,17 @@ def ray_geometry(sc: str, station: str, et: float) -> Dict[str, Any]:
     p = float(np.linalg.norm(closest))
     elong = math.degrees(math.acos(max(-1.0, min(1.0, d / float(np.linalg.norm(s_vec))))))
     x_cp = rot @ (-closest)  # closest point from the Sun, IAU_SUN
+    # Position angle of the closest point on the sky seen from the station: from the projected
+    # solar north (IAU_SUN z axis) through east (E = N x s, s the direction to the Sun).
+    s_hat = s_vec / np.linalg.norm(s_vec)
+    north = rot[2] - (rot[2] @ s_hat) * s_hat
+    north /= np.linalg.norm(north)
+    east = np.cross(north, s_hat)
+    pa = math.degrees(math.atan2(float(-closest @ east), float(-closest @ north))) % 360.0
     return {"u": u, "sun": s_vec, "rot": rot, "length_km": length, "d_km": d, "impact_km": p,
             "impact_rsun": p / R_SUN_KM, "elongation_deg": elong, "closest_on_ray": 0.0 < d < length,
             "closest_lon": math.degrees(math.atan2(x_cp[1], x_cp[0])) % 360.0,
-            "closest_lat": math.degrees(math.asin(max(-1.0, min(1.0, x_cp[2] / max(p, 1e-9))))),
+            "closest_pa": pa, "closest_lat": math.degrees(math.asin(max(-1.0, min(1.0, x_cp[2] / max(p, 1e-9))))),
             "range_km": length, "range_rate_kms": float(r_sc @ v_sc) / length, "light_time_s": float(lt)}
 
 
@@ -316,6 +323,7 @@ def occultation(sc: str, station: str, start: datetime, end: datetime, step_minu
             "time": t.strftime("%Y-%m-%d %H:%M:%S"), "elongation_deg": round(g["elongation_deg"], 4),
             "impact_rsun": round(g["impact_rsun"], 3), "closest_on_ray": g["closest_on_ray"],
             "closest_lon_deg": round(g["closest_lon"], 2), "closest_lat_deg": round(g["closest_lat"], 2),
+            "closest_pa_deg": round(g["closest_pa"], 2),
             "range_km": round(g["range_km"], 1), "range_rate_kms": round(g["range_rate_kms"], 5),
             "doppler_geometric_hz": round(-f_hz * g["range_rate_kms"] / C_KMS, 3),
             "blocked_by_sun": blocked,

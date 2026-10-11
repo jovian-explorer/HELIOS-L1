@@ -33,6 +33,7 @@ async function runOccultation() {
     if (!res.ok) throw new Error(apiErrorText(data, res));
     occLastRows = data.rows;
     const c = data.closest_approach;
+    occClosest = c;
     out.innerHTML =
       `<div class="font-semibold text-slate-100">${escapeHtml(data.spacecraft_name)} to ${escapeHtml(data.station)}, ${data.freq_mhz} MHz</div>` +
       (c ? `<div>Closest approach of the ray: ${c.impact_rsun} R☉ (elongation ${c.elongation_deg}°) at ${c.time} UTC, over ` +
@@ -89,6 +90,51 @@ async function unwrapPolarization() {
       `shifted by ${data.shift_multiples_of_180} × 180° towards the model).`;
   } catch (err) {
     out.innerText = err.message;
+  }
+}
+
+// ---- Event correlation (/api/events/match) ----------------------------------------
+let occClosest = null;
+
+function useOccultationForMatch() {
+  if (!occClosest) {
+    document.getElementById('em-result').innerText = 'Compute an occultation first.';
+    return;
+  }
+  document.getElementById('em-time').value = occClosest.time.slice(0, 16).replace(' ', 'T');
+  document.getElementById('em-height').value = occClosest.impact_rsun;
+  document.getElementById('em-pa').value = occClosest.closest_pa_deg;
+}
+
+async function matchEvents() {
+  const out = document.getElementById('em-result');
+  const v = id => document.getElementById(id).value;
+  out.innerText = 'Reading the catalogues...';
+  try {
+    const res = await fetch('/api/events/match', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ time: v('em-time'), height_rsun: parseFloat(v('em-height')), pa_deg: parseFloat(v('em-pa')),
+        window_hours: parseFloat(v('em-window')) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(apiErrorText(data, res));
+    const td = x => `<td class="px-2 py-1 border-b border-slate-800">${x ?? '---'}</td>`;
+    const cmes = data.cmes.map(c => `<tr class="${c.pa_inside ? '' : 'opacity-50'}">${td(c.catalog)}${td(c.time)}` +
+      `${td(c.central_pa_deg === null ? 'halo' : c.central_pa_deg + '°')}${td(c.width_deg + '°')}${td(c.speed_kms)}` +
+      `${td(c.arrival_at_height)}${td((c.arrival_minus_event_h > 0 ? '+' : '') + c.arrival_minus_event_h + ' h')}` +
+      `${td(c.pa_inside ? 'yes' : 'no')}${td(escapeHtml(c.reference_height_source))}</tr>`).join('');
+    const flares = data.flares.map(f => `<tr>${td(f.catalog)}${td(f.peak)}${td(f.class)}${td(f.noaa_ar)}` +
+      `${td(f.source_location || (f.hpc_arcsec ? f.hpc_arcsec.map(x => Math.round(x)).join(', ') + '″' : null))}</tr>`).join('');
+    out.innerHTML =
+      `<div class="mb-1 text-slate-100">CMEs reaching ${data.event.height_rsun} R☉ within ±${data.event.window_hours} h of ${data.event.time} UTC (faded: position angle outside the CME's extent)</div>` +
+      (cmes ? `<table class="w-full font-mono text-[10px]"><tr class="text-slate-400">${['Catalogue', 'First seen', 'PA', 'Width', 'Speed', 'At height', 'Δt', 'PA inside', 'Reference height'].map(td).join('')}</tr>${cmes}</table>`
+        : '<div class="text-slate-500">No catalogued CME arrives at that height in the window.</div>') +
+      `<div class="mt-2 mb-1 text-slate-100">Flares in the 24 h before</div>` +
+      (flares ? `<table class="w-full font-mono text-[10px]"><tr class="text-slate-400">${['List', 'Peak', 'Class', 'NOAA AR', 'Location'].map(td).join('')}</tr>${flares}</table>`
+        : '<div class="text-slate-500">None listed.</div>') +
+      `<div class="mt-1 text-slate-500">${escapeHtml(data.method)}. Sources: ${data.sources.map(escapeHtml).join('; ')}.</div>`;
+  } catch (err) {
+    out.innerText = `Matching unavailable: ${err.message}`;
   }
 }
 

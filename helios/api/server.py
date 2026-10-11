@@ -30,7 +30,7 @@ from helios.config import (
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios import config as helios_config
-from helios.core import cme_tracking, icme_catalog, occultation, pfss_model, shock_catalog, solar_images
+from helios.core import cme_tracking, event_catalogs, icme_catalog, occultation, pfss_model, shock_catalog, solar_images
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -113,6 +113,7 @@ app.add_middleware(LocalRequestGuard, body_limits={"/api/custom/import": MAX_IMP
                    default_body_limit=MAX_FORM_BYTES)
 
 downloader = DataDownloader()
+event_catalog_client = event_catalogs.Catalogs(lambda u: downloader.fetch_text(u), downloader.cache_dir)
 solar_image_client = solar_images.SolarImageClient(lambda u: downloader.fetch_text(u), lambda u: downloader.fetch_bytes(u),
                                                    downloader.cache_dir)
 latest_custom_dataset: Optional[Dict[str, Any]] = None
@@ -258,6 +259,12 @@ class OccultationRequest(BaseModel):
 class UnwrapRequest(BaseModel):
     measured_deg: List[float] = Field(..., max_length=100000)
     model_deg: Optional[List[float]] = Field(None, max_length=100000)
+
+class EventMatchRequest(BaseModel):
+    time: str = Field(..., max_length=40)
+    height_rsun: float = Field(..., gt=1.0, le=250.0, allow_inf_nan=False)
+    pa_deg: float = Field(..., ge=0.0, le=360.0, allow_inf_nan=False)
+    window_hours: float = Field(3.0, gt=0.0, le=48.0, allow_inf_nan=False)
 
 class CustomImportRequest(BaseModel):
     content: str
@@ -2277,6 +2284,14 @@ async def post_unwrap(req: UnwrapRequest):
         return occultation.unwrap_180(req.measured_deg, req.model_deg)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/events/match")
+async def post_event_match(req: EventMatchRequest):
+    """CMEs of the CDAW, CACTus and DONKI catalogues reaching a height and position angle near a time, and the flares before."""
+    res = await event_catalogs.match(event_catalog_client, _parse_utc(req.time, "time"), req.height_rsun, req.pa_deg,
+                                     req.window_hours)
+    return res
 
 
 @app.get("/api/coronagraph/feeds")
