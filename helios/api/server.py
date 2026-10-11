@@ -30,7 +30,7 @@ from helios.config import (
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios import config as helios_config
-from helios.core import cme_tracking, icme_catalog, shock_catalog, solar_images
+from helios.core import cme_tracking, icme_catalog, pfss_model, shock_catalog, solar_images
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -226,6 +226,19 @@ class FrontFitRequest(BaseModel):
     instrument: str = Field("lasco_c3", max_length=32)
     source_lon_deg: Optional[float] = Field(None, ge=-180.0, le=180.0, allow_inf_nan=False)
     source_lat_deg: Optional[float] = Field(None, ge=-90.0, le=90.0, allow_inf_nan=False)
+
+class FieldPoint(BaseModel):
+    r_rsun: float = Field(..., ge=1.0, le=2.5, allow_inf_nan=False)
+    lon: float = Field(..., ge=0.0, le=360.0, allow_inf_nan=False)
+    lat: float = Field(..., ge=-90.0, le=90.0, allow_inf_nan=False)
+
+class PfssRequest(BaseModel):
+    source: str = Field("gong", max_length=8)
+    time: str = Field(..., max_length=40)
+    speed_kms: float = Field(450.0, ge=200.0, le=2000.0, allow_inf_nan=False)
+    rss: float = Field(2.5, ge=1.5, le=4.0, allow_inf_nan=False)
+    points: List[FieldPoint] = Field(default_factory=list, max_length=50)
+    jsoc_email: Optional[str] = Field(None, max_length=200)
 
 class CustomImportRequest(BaseModel):
     content: str
@@ -2057,7 +2070,8 @@ async def get_solar_regions():
 async def get_solar_image_sources():
     """Instruments whose images can be had by time (Helioviewer Project)."""
     return {"instruments": solar_images.catalog(), "credit": solar_images.CREDIT,
-            "fits_available": importlib.util.find_spec("sunpy") is not None}
+            "fits_available": importlib.util.find_spec("sunpy") is not None,
+            "pfss_available": all(importlib.util.find_spec(m) is not None for m in ("sunpy", "sunkit_magex"))}
 
 
 @app.get("/api/solar_images/frames")
@@ -2160,6 +2174,26 @@ async def post_front_fit(req: FrontFitRequest):
             speed = proj["radial_speed_kms"]
     out["solver_inputs"] = cme_tracking.solver_inputs(fit, speed)
     return out
+
+
+@app.post("/api/pfss")
+async def post_pfss(req: PfssRequest):
+    """PFSS coronal field from a GONG, ADAPT or HMI synoptic map: Earth connection, traced points, current sheet."""
+    pts = [p.model_dump() for p in req.points]
+    if any(p["r_rsun"] > req.rss for p in pts):
+        raise HTTPException(status_code=422, detail=f"Points must lie between 1 and {req.rss:g} R_sun.")
+    try:
+        return await run_in_workers(pfss_model.analyse, req.source, _parse_utc(req.time, "time"),
+                                    str(helios_config.CACHE_DIR), req.speed_kms, req.rss, pts, req.jsoc_email)
+    except ImportError:
+        raise HTTPException(status_code=501, detail="The coronal field model needs SunPy and sunkit-magex: "
+                                                    "pip install \"helios-l1[solar]\".")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except (OSError, ConnectionError) as exc:
+        raise HTTPException(status_code=503, detail=f"The synoptic map could not be downloaded: {exc}")
 
 
 @app.get("/api/coronagraph/feeds")

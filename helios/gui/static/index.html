@@ -1434,6 +1434,30 @@
           <div id="parker-tooltip" class="hud-tooltip hidden"></div>
         </div>
       </div>
+      <!-- Coronal magnetic field (PFSS) from synoptic maps -->
+      <div class="glass-panel p-5 space-y-3" id="pfss-panel">
+        <div class="border-b border-sky-500/20 pb-2.5">
+          <h3 class="font-tech font-bold text-base text-slate-100">Coronal Magnetic Field (PFSS)</h3>
+          <p class="text-xs text-slate-400">Potential field source surface model from a GONG, ADAPT or HMI synoptic magnetogram: the solar source of the wind now at Earth, field lines from any point, the heliospheric current sheet and the distance to it.</p>
+        </div>
+        <div class="flex flex-wrap items-end gap-2 text-xs">
+          <label class="flex flex-col gap-1 text-slate-400">Map
+            <select id="pfss-source" class="rounded-lg px-2 py-1.5 bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="gong">GONG (NSO)</option><option value="adapt">ADAPT (NSO)</option><option value="hmi">HMI (JSOC, e-mail needed)</option></select></label>
+          <label class="flex flex-col gap-1 text-slate-400">Time (UTC)<input id="pfss-time" type="datetime-local" value="2024-05-09T12:00" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Wind speed (km/s)<input id="pfss-speed" type="number" value="450" min="200" max="2000" class="w-24 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">r_ss (R☉)<input id="pfss-rss" type="number" value="2.5" step="0.1" min="1.5" max="4" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Trace from r, lon, lat (Carrington; optional)<input id="pfss-point" type="text" placeholder="1.5, 120, 20" class="w-36 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">JSOC e-mail (HMI only)<input id="pfss-email" type="email" class="w-44 rounded-lg px-2 py-1.5 bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <button onclick="runPfss()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Compute</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-2 bg-black rounded-lg border border-slate-800 min-h-[200px] flex items-center justify-center">
+            <img id="pfss-plot" alt="PFSS map" class="w-full hidden">
+            <span id="pfss-placeholder" class="text-slate-500 text-xs p-4">The first computation downloads the map and takes 10-30 s.</span>
+          </div>
+          <div id="pfss-result" class="bg-space-900/80 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ========================================================================= -->
@@ -3399,6 +3423,7 @@
   <script src="/static/js/cme_sim.js"></script>
   <script src="/static/js/solar_viewer.js"></script>
   <script src="/static/js/image_archive.js"></script>
+  <script src="/static/js/coronal_field.js"></script>
   <script src="/static/js/matrix.js"></script>
   <script src="/static/js/forecast.js"></script>
   <script src="/static/js/event_analysis.js"></script>

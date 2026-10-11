@@ -130,6 +130,8 @@ Mission cards: agency, orbit, instruments, cadence, data policy as stated by the
 
 Archimedean spiral field lines for a chosen wind speed, the spiral angle at 1 AU and the longitude of the footpoint magnetically connected to Earth (important for solar energetic particles), with sector boundaries and stream interaction regions drawn schematically, and the orbit of Parker Solar Probe.
 
+**Coronal magnetic field (PFSS).** A potential field source surface model (sunkit-magex, the successor of pfsspy; Stansby et al. 2020, doi:10.21105/joss.02732) of the latest GONG, ADAPT (realization 0) or HMI synoptic map before a chosen time (HMI needs an e-mail address registered with JSOC). The wind now at Earth is mapped back ballistically (Neugebauer et al. 1998, doi:10.1029/98JA00798): source-surface longitude = sub-Earth Carrington longitude + Ω(1 AU − r_ss)/V. The field line traced down from there gives the solar source (open field in a coronal hole or at the edge of an active region, |B_r| ≥ 50 G at the footpoint), its polarity and its angular distance from the heliospheric current sheet (B_r = 0 on the source surface). Field lines can be traced from any point between 1 R☉ and the source surface. Optional dependencies: `pip install "helios-l1[solar]"`.
+
 ### FFT Turbulence & PSD
 
 Power spectrum of one field or plasma quantity from 1, 3 or 7 days of 1-minute data, the fitted spectral index compared with Kolmogorov (-5/3) and Iroshnikov-Kraichnan (-3/2), the RMS fluctuation and the length scale V/f at 1 mHz (Taylor's frozen-in flow). At 1-minute resolution the spectrum ends below 8.3 mHz (the Nyquist frequency), far below the ion scales, so it covers the energy-containing and inertial ranges only.

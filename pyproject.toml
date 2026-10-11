@@ -25,7 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.3", "pillow>=9.5"]
 build = ["pyinstaller>=6.0"]
-solar = ["sunpy[net]>=6.0"]
+solar = ["sunpy[net]>=6.0", "sunkit-magex>=1.0"]
 
 [project.scripts]
 helios = "helios.__main__:main"
