@@ -1167,6 +1167,38 @@
         </div>
       </div>
 
+      <!-- Radio occultation: spacecraft-station ray through the corona -->
+      <div class="glass-panel p-5 space-y-3" id="occultation-panel">
+        <div class="border-b border-sky-500/20 pb-2.5">
+          <h3 class="font-tech font-bold text-base text-slate-100">Radio Occultation by the Corona</h3>
+          <p class="text-xs text-slate-400">SPICE ray geometry between a spacecraft and a ground station (closest approach to the Sun, elongation), and along the ray the electron column, Faraday rotation and Doppler shift through a coronal density and magnetic field model.</p>
+        </div>
+        <div class="flex flex-wrap items-end gap-2 text-xs">
+          <label class="flex flex-col gap-1 text-slate-400">Spacecraft<select id="occ-spacecraft" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></select></label>
+          <label class="flex flex-col gap-1 text-slate-400">Station<select id="occ-station" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></select></label>
+          <label class="flex flex-col gap-1 text-slate-400">Start (UTC)<input id="occ-start" type="datetime-local" value="2023-11-14T00:00" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">End (UTC)<input id="occ-end" type="datetime-local" value="2023-11-22T00:00" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Step (min)<input id="occ-step" type="number" value="120" min="1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Frequency (MHz)<input id="occ-freq" type="number" value="8420" class="w-24 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Density<select id="occ-density" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="leblanc">Leblanc et al. 1998</option><option value="allen">Baumbach-Allen</option></select></label>
+          <label class="flex flex-col gap-1 text-slate-400">Field<select id="occ-field" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="parker">Parker spiral</option><option value="pfss">PFSS source surface</option><option value="none">none</option></select></label>
+          <label class="flex flex-col gap-1 text-slate-400">Polarity (Parker)<select id="occ-polarity" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="1">outward</option><option value="-1">inward</option></select></label>
+          <label class="flex flex-col gap-1 text-slate-400">Wind (km/s)<input id="occ-wind" type="number" value="400" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">SPK URL (optional, NAIF/ESA)<input id="occ-spk" type="url" placeholder="Horizons vectors if empty" class="w-56 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <button onclick="runOccultation()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Compute</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-2 h-[300px] bg-space-950 rounded-lg border border-slate-800 p-2"><canvas id="occ-chart"></canvas></div>
+          <div id="occ-result" class="bg-space-900/80 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1"></div>
+        </div>
+        <div class="flex flex-wrap items-end gap-2 text-xs">
+          <label class="flex flex-col gap-1 text-slate-400 flex-1">Measured polarization angles (°, one per step; known modulo 180°)<input id="occ-measured" type="text" placeholder="170, 178, 4, 12" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex items-center gap-1 text-slate-400"><input id="occ-use-model" type="checkbox" checked> anchor to the model</label>
+          <button onclick="unwrapPolarization()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Correct 180° ambiguity</button>
+        </div>
+        <div id="occ-unwrap-result" class="text-[11px] text-slate-300"></div>
+      </div>
+
       <!-- Interactive Multi-Wavelength Solar Disk & Active Region Scanner -->
       <div class="glass-panel p-5 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
@@ -3424,6 +3456,7 @@
   <script src="/static/js/solar_viewer.js"></script>
   <script src="/static/js/image_archive.js"></script>
   <script src="/static/js/coronal_field.js"></script>
+  <script src="/static/js/occultation.js"></script>
   <script src="/static/js/matrix.js"></script>
   <script src="/static/js/forecast.js"></script>
   <script src="/static/js/event_analysis.js"></script>

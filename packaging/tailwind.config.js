@@ -14,6 +14,7 @@ module.exports = {
       '../helios/gui/static/js/forecast.js',
       '../helios/gui/static/js/image_archive.js',
       '../helios/gui/static/js/matrix.js',
+      '../helios/gui/static/js/occultation.js',
       '../helios/gui/static/js/orbits.js',
       '../helios/gui/static/js/parker.js',
       '../helios/gui/static/js/solar_viewer.js',

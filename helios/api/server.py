@@ -30,7 +30,7 @@ from helios.config import (
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios import config as helios_config
-from helios.core import cme_tracking, icme_catalog, pfss_model, shock_catalog, solar_images
+from helios.core import cme_tracking, icme_catalog, occultation, pfss_model, shock_catalog, solar_images
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -239,6 +239,25 @@ class PfssRequest(BaseModel):
     rss: float = Field(2.5, ge=1.5, le=4.0, allow_inf_nan=False)
     points: List[FieldPoint] = Field(default_factory=list, max_length=50)
     jsoc_email: Optional[str] = Field(None, max_length=200)
+
+class OccultationRequest(BaseModel):
+    spacecraft: str = Field("-41", pattern=r"^-?\d{1,9}$")
+    spk_url: Optional[str] = Field(None, max_length=400)
+    station: str = Field("DSS-63", max_length=12)
+    start: str = Field(..., max_length=40)
+    end: str = Field(..., max_length=40)
+    step_minutes: float = Field(60.0, ge=1.0, le=1440.0, allow_inf_nan=False)
+    freq_mhz: float = Field(8420.0, ge=100.0, le=40000.0, allow_inf_nan=False)
+    density_model: str = Field("leblanc", max_length=10)
+    field_model: str = Field("parker", max_length=10)
+    b1au_nt: float = Field(3.5, ge=0.1, le=100.0, allow_inf_nan=False)
+    polarity: int = Field(1, ge=-1, le=1)
+    wind_kms: float = Field(400.0, ge=200.0, le=2000.0, allow_inf_nan=False)
+    pfss_source: str = Field("gong", max_length=8)
+
+class UnwrapRequest(BaseModel):
+    measured_deg: List[float] = Field(..., max_length=100000)
+    model_deg: Optional[List[float]] = Field(None, max_length=100000)
 
 class CustomImportRequest(BaseModel):
     content: str
@@ -2194,6 +2213,70 @@ async def post_pfss(req: PfssRequest):
         raise HTTPException(status_code=422, detail=str(exc))
     except (OSError, ConnectionError) as exc:
         raise HTTPException(status_code=503, detail=f"The synoptic map could not be downloaded: {exc}")
+
+
+@app.get("/api/occultation/options")
+async def get_occultation_options():
+    return {"stations": occultation.STATIONS, "spacecraft": occultation.SPACECRAFT,
+            "density_models": ["leblanc", "allen"], "field_models": ["parker", "pfss", "none"]}
+
+
+def _occultation_run(req: "OccultationRequest") -> Dict[str, Any]:
+    t0, t1 = _parse_utc(req.start, "start"), _parse_utc(req.end, "end")
+    cache = str(helios_config.CACHE_DIR)
+    kernels = occultation.generic_kernels(cache)
+    sc_kernel = (occultation.user_spk(req.spk_url, cache) if req.spk_url
+                 else occultation.horizons_spk(req.spacecraft, t0, t1, cache))
+    occultation.furnish(kernels + [sc_kernel])
+    field, field_note = None, "no magnetic field model: no Faraday rotation"
+    if req.field_model == "parker":
+        pol = req.polarity or 1
+        field = occultation.parker_field(req.b1au_nt, pol, req.wind_kms)
+        field_note = f"Parker spiral, B_r(1 AU) = {pol * req.b1au_nt:g} nT, V = {req.wind_kms:g} km/s"
+    elif req.field_model == "pfss":
+        mid = t0 + (t1 - t0) / 2
+        out = pfss_model.solve(pfss_model.fetch_map(req.pfss_source, mid, cache), 2.5)
+        field = occultation.parker_field(wind_kms=req.wind_kms, ss_br=occultation.pfss_source_surface(out))
+        field_note = (f"source-surface field of a PFSS solution ({req.pfss_source.upper()} map before "
+                      f"{mid:%Y-%m-%d %H:%M} UTC) along Parker spirals at {req.wind_kms:g} km/s")
+    rows = occultation.occultation(req.spacecraft, req.station, t0, t1, req.step_minutes, req.freq_mhz,
+                                   req.density_model, field)
+    fr = [r for r in rows if r["faraday_rotation_deg"] is not None]
+    closest = min(rows, key=lambda r: r["impact_rsun"]) if rows else None
+    return {"spacecraft": req.spacecraft, "spacecraft_name": occultation.SPACECRAFT.get(req.spacecraft, req.spacecraft),
+            "station": req.station, "freq_mhz": req.freq_mhz, "rows": rows, "closest_approach": closest,
+            "max_abs_faraday_deg": max((abs(r["faraday_rotation_deg"]) for r in fr), default=None),
+            "kernels": [os.path.basename(k) for k in kernels + [sc_kernel]],
+            "spacecraft_kernel_source": "user SPK" if req.spk_url else "written from JPL Horizons vectors (SPK type 13)",
+            "density_model": req.density_model, "field_model": field_note}
+
+
+@app.post("/api/occultation")
+async def post_occultation(req: OccultationRequest):
+    """Ray geometry and coronal plasma effects (TEC, Faraday rotation, Doppler) for a spacecraft-station pair."""
+    if req.density_model not in ("leblanc", "allen") or req.field_model not in ("parker", "pfss", "none"):
+        raise HTTPException(status_code=422, detail="density_model: leblanc|allen; field_model: parker|pfss|none.")
+    try:
+        return await run_in_workers(_occultation_run, req)
+    except ImportError:
+        raise HTTPException(status_code=501, detail='The PFSS field needs SunPy and sunkit-magex: pip install "helios-l1[solar]".')
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:  # network and SPICE errors (no ephemeris for the station or time)
+        if isinstance(exc, OSError) or type(exc).__name__.startswith(("Spice", "HTTP", "Connect", "Timeout")):
+            raise HTTPException(status_code=503, detail=f"{type(exc).__name__}: {str(exc)[:300]}")
+        raise
+
+
+@app.post("/api/occultation/unwrap")
+async def post_unwrap(req: UnwrapRequest):
+    """Polarization angles freed of 180-degree jumps, shifted towards a model if one is given."""
+    try:
+        return occultation.unwrap_180(req.measured_deg, req.model_deg)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @app.get("/api/coronagraph/feeds")
