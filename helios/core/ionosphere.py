@@ -4,7 +4,7 @@ Models solar flare X-ray and energetic proton induced ionization of the ionosphe
 quantifying signal attenuation (dB) across 3-30 MHz HF communications for aviation and maritime operations.
 """
 import math
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 class IonosphericModel:
     """Calculates D-region absorption, highest affected frequency (HAF), and polar blackout risk."""

@@ -11,7 +11,7 @@ Pure geometric elegance:
 """
 import math
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 CLEAN_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
@@ -254,7 +254,7 @@ def generate_clean_logo_and_icons(project_dir: Path):
     draw.ellipse([sat_x - 28, sat_y - 28, sat_x + 28, sat_y + 28], outline=(16, 185, 129, 160), width=2)
 
     # Solar Panels
-    pw, ph = 28, 44
+    pw = 28
     draw.rectangle([sat_x - pw//2, sat_y - 58, sat_x + pw//2, sat_y - 14], fill=(2, 132, 199, 255), outline=(56, 189, 248, 255), width=3)
     draw.rectangle([sat_x - pw//2, sat_y + 14, sat_x + pw//2, sat_y + 58], fill=(2, 132, 199, 255), outline=(56, 189, 248, 255), width=3)
     draw.line([(sat_x - pw//2, sat_y - 36), (sat_x + pw//2, sat_y - 36)], fill=(56, 189, 248, 255), width=2)

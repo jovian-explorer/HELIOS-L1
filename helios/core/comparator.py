@@ -6,7 +6,7 @@ and sensor residual analysis between L1 and space weather spacecraft.
 import math
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.statistics import correlation, effective_sample_size
 

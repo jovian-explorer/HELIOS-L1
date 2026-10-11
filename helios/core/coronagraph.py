@@ -5,7 +5,7 @@ and empirical CME deceleration and shock arrival forecasting.
 """
 import math
 from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Any
+from typing import Dict, Any
 from helios.core.constants import AU_KM, R_SUN_KM
 
 class CoronagraphAnalyzer:

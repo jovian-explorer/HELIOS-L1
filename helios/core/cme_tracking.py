@@ -35,7 +35,7 @@ import base64
 import io
 import math
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Sequence
 
 import numpy as np
 from helios.core.constants import R_SUN_KM

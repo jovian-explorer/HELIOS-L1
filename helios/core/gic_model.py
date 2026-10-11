@@ -4,7 +4,7 @@ Calculates ground electric fields (V/km) induced by space weather geomagnetic pe
 quantifying power grid transformer core saturation, pipeline corrosion, and railway signaling risks.
 """
 import math
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 class GICHazardModel:
     """Computes surface geoelectric fields and power transmission grid vulnerability."""

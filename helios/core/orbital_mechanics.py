@@ -3,7 +3,7 @@ Orbital mechanics and 3D coordinate modeling for Sun-Earth Lagrange points
 and space weather missions, powered by NASA JPL NAIF SPICE.
 """
 import math
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 
 try:
     from helios.core.spice_engine import get_spice_engine
