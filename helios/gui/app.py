@@ -47,11 +47,6 @@ def _family(host: str) -> int:
     return socket.AF_INET6 if ":" in host.strip("[]") else socket.AF_INET
 
 
-def is_port_in_use(port: int, host: str = DEFAULT_HOST) -> bool:
-    """Check if server port is already bound."""
-    with socket.socket(_family(host), socket.SOCK_STREAM) as s:
-        return s.connect_ex((host.strip("[]"), port)) == 0
-
 def check_existing_helios(host: str, port: int) -> bool:
     """Check if HELIOS-L1 is already running on the given host/port."""
     try:

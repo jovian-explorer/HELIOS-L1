@@ -8,9 +8,6 @@ class SoundEngine {
   constructor() {
     this.ctx = null;
     this.enabled = true;
-    this.ambientGain = null;
-    this.ambientOsc = null;
-    this.isAmbientPlaying = false;
   }
 
   init() {
@@ -36,7 +33,6 @@ class SoundEngine {
     } else {
       if (icon) icon.className = 'fa-solid fa-volume-xmark text-slate-500';
       if (text) text.innerText = 'Audio: OFF';
-      this.stopAmbient();
     }
     return this.enabled;
   }
@@ -88,34 +84,6 @@ class SoundEngine {
 
       osc.start();
       osc.stop(this.ctx.currentTime + 0.35);
-    } catch (e) {}
-  }
-
-  warningKlaxon() {
-    if (!this.enabled) return;
-    this.init();
-    if (!this.ctx) return;
-
-    try {
-      const now = this.ctx.currentTime;
-      for (let i = 0; i < 2; i++) {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        const tStart = now + i * 0.22;
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(580, tStart);
-        osc.frequency.linearRampToValueAtTime(880, tStart + 0.12);
-
-        gain.gain.setValueAtTime(0.06, tStart);
-        gain.gain.exponentialRampToValueAtTime(0.001, tStart + 0.18);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-
-        osc.start(tStart);
-        osc.stop(tStart + 0.18);
-      }
     } catch (e) {}
   }
 
@@ -190,21 +158,9 @@ class SoundEngine {
     }
   }
 
-  stopAmbient() {
-    if (this.ambientOsc) {
-      try {
-        this.ambientOsc.stop();
-        this.ambientOsc.disconnect();
-      } catch (e) {}
-      this.ambientOsc = null;
-    }
-    this.isAmbientPlaying = false;
-  }
 }
 
 window.soundEngine = new SoundEngine();
 function playBlip() { window.soundEngine?.blip(); }
 function playRadarPing() { window.soundEngine?.radarPing(); }
-function playWarningKlaxon() { window.soundEngine?.warningKlaxon(); }
-function playSolarWindSonification(speed, bz, density) { window.soundEngine?.sonifySolarWind(speed, bz, density); }
 function toggleAudio() { window.soundEngine?.toggle(); }

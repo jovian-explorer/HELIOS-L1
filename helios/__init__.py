@@ -4,5 +4,3 @@ Scientific data downloader, comparator, analyzer, and visualizer for Sun-Earth L
 """
 
 __version__ = "0.0.1"
-__app_name__ = "HELIOS-L1"
-__full_name__ = "Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite"

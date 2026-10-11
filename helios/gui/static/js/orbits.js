@@ -134,9 +134,6 @@ class OrbitRenderer {
     }
   }
 
-  isSatelliteVisible(key) {
-    return this.visibleSatellites.has(key);
-  }
 
   toggleAllSatellites(visible) {
     if (visible) {

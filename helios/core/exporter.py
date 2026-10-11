@@ -4,7 +4,6 @@ Supports CSV, JSON, NetCDF-compatible schemas, and Matplotlib chart exports.
 """
 import io
 import csv
-import json
 import threading
 from typing import Dict, List, Any
 import matplotlib
@@ -70,12 +69,6 @@ class DataExporter:
         for r in records:
             writer.writerow(r)
         return output.getvalue()
-
-    @staticmethod
-    def to_json(records: List[Dict[str, Any]], pretty: bool = True) -> str:
-        """Export records to JSON string."""
-        indent = 2 if pretty else None
-        return json.dumps(records, indent=indent)
 
     @staticmethod
     def to_netcdf_schema(records: List[Dict[str, Any]], mission_name: str) -> Dict[str, Any]:

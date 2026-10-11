@@ -66,12 +66,6 @@ class CMESimulator {
     window.addEventListener('resize', () => this.resize());
   }
 
-  setInitialSpeed(vInit) {
-    this.v0 = Math.max(300, Math.min(3000, vInit));
-    this.recomputeTrajectory();
-    this.timeHrs = 0;
-    this.isPlaying = true;
-  }
 
   updateFromBackendResult(cme) {
     if (!cme) return;

@@ -2062,10 +2062,6 @@ function clearCustomImportEditor() {
   currentCustomDataset = null;
 }
 
-function loadSampleCSV() {
-  loadCustomPreset('may2024_g5');
-}
-
 function handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -2126,7 +2122,7 @@ async function submitCustomImport() {
     const warnEl = document.getElementById('import-warnings');
     if (warnEl) {
       const w = data.warnings || [];
-      warnEl.innerHTML = w.map(x => `<li>${escapeHtmlReport(x)}</li>`).join('');
+      warnEl.innerHTML = w.map(x => `<li>${escapeHtml(x)}</li>`).join('');
       warnEl.classList.toggle('hidden', w.length === 0);
     }
     loadMissions(); // Refresh fleet list so CUSTOM shows up if active
@@ -2974,7 +2970,7 @@ function renderBulletinContent() {
     container.innerHTML = bulletinCache.html;
   } else {
     // High-contrast clean monospace Markdown view
-    container.innerHTML = `<pre class="bg-space-950 p-4 rounded-xl border border-slate-800 text-slate-200 text-xs font-mono leading-relaxed whitespace-pre-wrap select-text">${escapeHtmlReport(bulletinCache.md)}</pre>`;
+    container.innerHTML = `<pre class="bg-space-950 p-4 rounded-xl border border-slate-800 text-slate-200 text-xs font-mono leading-relaxed whitespace-pre-wrap select-text">${escapeHtml(bulletinCache.md)}</pre>`;
   }
 }
 
@@ -2995,14 +2991,6 @@ function escapeHtmlDeep(value) {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, escapeHtmlDeep(v)]));
   }
   return value;
-}
-
-function escapeHtmlReport(text) {
-  if (!text) return '';
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 function closeBulletinModal() {

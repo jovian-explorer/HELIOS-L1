@@ -15,7 +15,6 @@ except ImportError:
 class OrbitalMechanics:
     """Computes coordinates and halo orbit paths in GSE/rotating reference frame."""
 
-    AU_KM = 149597870.7
 
     @classmethod
     def get_lagrange_points(cls) -> Dict[str, Dict[str, Any]]:

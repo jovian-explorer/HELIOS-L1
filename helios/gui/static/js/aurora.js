@@ -131,11 +131,6 @@ class AuroralMapRenderer {
   }
 
   // Converts canvas (x, y) to geographic (lon, lat)
-  xyToGeo(x, y) {
-    const lon = (x / this.width) * 360 - 180;
-    const lat = 90 - (y / this.height) * 180;
-    return { lon, lat };
-  }
 
   // Calculate Sun subsolar coordinates for current UTC time
   getSubsolarPoint() {

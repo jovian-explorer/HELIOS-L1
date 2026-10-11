@@ -207,16 +207,6 @@ class SpiceEphemerisEngine:
             self._loaded_kernels = loaded
             return loaded
 
-    def unload_kernels(self):
-        """Clears the CSPICE kernel pool."""
-        if SPICE_AVAILABLE:
-            with self._kernel_lock:
-                try:
-                    spice.kclear()
-                    self._loaded_kernels = []
-                except SPICE_ERRORS as e:
-                    _log.warning("Could not clear the kernel pool: %s", e)
-
     @property
     def is_spice_available(self) -> bool:
         return SPICE_AVAILABLE and len(self._loaded_kernels) > 0
