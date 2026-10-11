@@ -81,7 +81,9 @@ class SpaceWeatherForecaster:
     def forecast_geomagnetic_storm(
         telemetry_records: List[Dict[str, Any]],
         observed_dst: Optional[float] = None,
-        noaa_forecast: Optional[Dict[str, Any]] = None
+        noaa_forecast: Optional[Dict[str, Any]] = None,
+        observed_dst_end: Optional[datetime] = None,
+        earth_drivers: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         12-hour Kp and Dst trajectory from the latest L1 solar wind.
@@ -133,17 +135,34 @@ class SpaceWeatherForecaster:
         else:
             band = (0.0, 0.0)
 
-        # Current Dst: observed when available, else the ring current model over the records
-        # (a previous ad hoc formula, 6.5 * Bz * V/400 - 1.5 * P_dyn, had no published basis).
-        if observed_dst is not None:
+        # Starting Dst: the latest observed (Kyoto) value carried forward by the model with the L1
+        # wind already measured, shifted to Earth by its travel time (earth_drivers), to the last
+        # time those drivers reach; without an observed value, the model over the whole day.
+        # (It used to start from the observed hour itself, up to 3 h old, and label it "now".)
+        drivers = earth_drivers if earth_drivers is not None else telemetry_records
+
+        def t_of(r):
+            t = parse(r.get("time_tag"))
+            return t.replace(tzinfo=timezone.utc) if t is not None else None
+        timed = [r for r in drivers if t_of(r) is not None]
+        if observed_dst is not None and observed_dst_end is not None:
+            after = [r for r in timed if t_of(r) > observed_dst_end]
+            sim = AuroralModel.simulate_dst_evolution(after, initial_dst=float(observed_dst)) if after else []
+            current_dst = sim[-1]["dst_predicted_nt"] if sim else round(float(observed_dst), 1)
+            start_time = t_of(after[-1]) if after else observed_dst_end
+            dst_source = (f"observed (WDC Kyoto real-time Dst, {observed_dst:g} nT for the hour to "
+                          f"{observed_dst_end:%H:%M} UTC), carried forward with the measured L1 wind")
+        elif observed_dst is not None:
             current_dst, dst_source = round(float(observed_dst), 1), "observed (WDC Kyoto real-time Dst)"
+            start_time = datetime.now(timezone.utc)
         else:
-            sim = AuroralModel.simulate_dst_evolution(telemetry_records)
+            sim = AuroralModel.simulate_dst_evolution(timed)
             current_dst = sim[-1]["dst_predicted_nt"] if sim else 0.0
+            start_time = t_of(timed[-1]) if timed else datetime.now(timezone.utc)
             dst_source = "O'Brien & McPherron (2000) model over the last day of solar wind"
 
         predictions = []
-        now_time = datetime.now(timezone.utc)
+        now_time = start_time
         sim_dst = current_dst
         q = QUIET_DRIVERS
         for h in range(1, 13):
@@ -197,6 +216,7 @@ class SpaceWeatherForecaster:
             "storm_probabilities": SpaceWeatherForecaster.noaa_probabilities(noaa_forecast),
             "noaa_kp_forecast": (noaa_forecast or {}).get("kp_forecast", []),
             "predictions_timeline": predictions,
+            "trajectory_start_utc": start_time.strftime("%Y-%m-%d %H:%M"),
             "kp_band_description": "Range of Newell (2008) Kp over the last 3 h of solar wind data, carried along the trajectory; not a statistical confidence interval.",
             "assumptions": [
                 f"The L1 drivers are not forecast: they relax linearly from the latest values towards {q['speed']:.0f} km/s, "

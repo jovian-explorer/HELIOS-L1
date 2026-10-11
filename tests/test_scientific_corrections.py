@@ -678,9 +678,22 @@ def test_forecast_starts_from_kyoto_dst_only_when_it_is_recent():
     from datetime import datetime, timedelta, timezone
     from helios.api.server import recent_dst
     hour = lambda h: (datetime.now(timezone.utc) - timedelta(hours=h)).strftime("%Y-%m-%d %H:00:00")
-    assert recent_dst([{"time_tag": hour(1), "dst": -40.0}]) == -40.0
-    assert recent_dst([{"time_tag": hour(50), "dst": -40.0}]) is None  # an old cached copy
-    assert recent_dst([]) is None
+    assert recent_dst([{"time_tag": hour(1), "dst": -40.0}])[0] == -40.0
+    assert recent_dst([{"time_tag": hour(50), "dst": -40.0}]) == (None, None)  # an old cached copy
+    assert recent_dst([]) == (None, None)
+
+
+def test_forecast_starts_after_the_measured_wind_not_at_the_observed_hour():
+    from datetime import datetime, timezone
+    from helios.core.ml_forecast import SpaceWeatherForecaster as F
+    end = datetime(2024, 5, 10, 18, tzinfo=timezone.utc)
+    drivers = [{"time_tag": f"2024-05-10 {h:02d}:{m:02d}:00", "speed": 700.0, "bz_gsm": -20.0, "by_gsm": 0.0,
+                "density": 10.0, "dynamic_pressure": 9.8} for h in (17, 18, 19, 20) for m in (0, 30)]
+    out = F.forecast_geomagnetic_storm(drivers, observed_dst=-50.0, observed_dst_end=end, earth_drivers=drivers)
+    # Two hours of strong southward field after the observed hour, then the 12 h trajectory.
+    assert out["trajectory_start_utc"] == "2024-05-10 20:30"
+    assert out["current_coupling"]["estimated_dst_nt"] < -80
+    assert out["predictions_timeline"][0]["time_iso"].startswith("2024-05-10T21:30")
 
 
 def test_dst_step_uses_the_driver_of_the_interval_that_ends():
