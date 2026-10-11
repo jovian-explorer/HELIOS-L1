@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone, timedelta
 
 from helios.core.aurora_model import AuroralModel
-from helios.core.science import SpaceWeatherPhysics
+from helios.core.science import PDYN_NPA_PER_CM3_KMS2, SpaceWeatherPhysics
 
 # Newell et al. (2008) Kp fit: Kp = a + b dPhi/dt + c n^(1/2) v^2
 NEWELL_2008_KP = (0.05, 2.244e-4, 2.844e-6)
@@ -74,7 +74,7 @@ class SpaceWeatherForecaster:
         if rec.get("density") is not None:
             return float(rec["density"])
         if rec.get("dynamic_pressure") is not None and rec.get("speed"):
-            return float(rec["dynamic_pressure"]) / (1.6726e-6 * float(rec["speed"]) ** 2)
+            return float(rec["dynamic_pressure"]) / (PDYN_NPA_PER_CM3_KMS2 * float(rec["speed"]) ** 2)
         return None
 
     @staticmethod
@@ -153,7 +153,7 @@ class SpaceWeatherForecaster:
             eff_bz = bz_now * w + q["bz_gsm"] * (1.0 - w)
             eff_by = by_now * w
             eff_n = (n_now * w + q["density"] * (1.0 - w)) if n_now is not None else None
-            eff_pdyn = 1.6726e-6 * eff_n * eff_v ** 2 if eff_n is not None else None
+            eff_pdyn = PDYN_NPA_PER_CM3_KMS2 * eff_n * eff_v ** 2 if eff_n is not None else None
 
             sim_dst = round(AuroralModel.dst_step(sim_dst, eff_v, eff_bz, eff_pdyn, dt_hours=1.0), 1)
             kp = SpaceWeatherForecaster.newell_2008_kp(eff_v, eff_n, eff_by, eff_bz)

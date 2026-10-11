@@ -998,7 +998,7 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "unit": "nPa",
         "nominal_range": "1.0 - 2.5 nPa",
         "disturbed_range": "> 6 nPa (Strong Compression), > 15 nPa (Severe Magnetopause Compression inside GEO)",
-        "formula": "P_dyn = 1.6726e-6 * N_p * V_sw^2 [nPa with V_sw in km/s and N_p in cm⁻³]",
+        "formula": "P_dyn = 1.67e-6 * N_p * V_sw^2 * (1 + 4 * 0.05) = 2.0e-6 * N_p * V_sw^2 [nPa, V_sw in km/s, N_p in cm⁻³; OMNI definition with 5 % alphas]",
         "description": "Macroscopic momentum flux exerted by the solar wind on Earth's magnetosphere, directly controlling the standoff distance of the subsolar magnetopause.",
         "doi": "10.1016/0032-0633(66)90124-3"
     },

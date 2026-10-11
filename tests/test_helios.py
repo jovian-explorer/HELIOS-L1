@@ -25,7 +25,7 @@ client = TestClient(app, base_url=LOCAL)
 def test_space_weather_physics_equations():
     # 1. Dynamic pressure
     pdyn = SpaceWeatherPhysics.dynamic_pressure(5.0, 400.0)
-    assert 1.3 < pdyn < 1.4
+    assert pdyn == pytest.approx(1.6)  # OMNI flow pressure: 2.0e-6 N V^2
 
     # 2. Magnetopause standoff
     rmp = SpaceWeatherPhysics.magnetopause_standoff(2.0, 0.0)
@@ -798,3 +798,8 @@ def test_parker_and_gic_inputs_are_validated():
     r = c.get("/api/gic/hazard?db_dt=100&geology=granit")
     assert r.status_code == 422 and "precambrian_shield" in r.json()["detail"]
     assert c.get("/api/gic/hazard?db_dt=-5").status_code == 422
+
+
+def test_flow_pressure_is_omni_s():
+    # OMNI HRO 1-min, 17 March 2015 06:00 UT: V 504.5 km/s, Np 41.57 cm^-3, Pressure 21.16 nPa
+    assert SpaceWeatherPhysics.dynamic_pressure(41.57, 504.5) == pytest.approx(21.16, abs=0.01)

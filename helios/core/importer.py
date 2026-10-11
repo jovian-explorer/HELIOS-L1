@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Any, Optional
 
-from helios.core.science import SpaceWeatherPhysics
+from helios.core.science import PDYN_NPA_PER_CM3_KMS2, SpaceWeatherPhysics
 from helios.core.coordinates import gse_to_gsm
 
 class TelemetryImporter:
@@ -348,7 +348,7 @@ class TelemetryImporter:
 
         # Vectorised derived quantities (same formulas as SpaceWeatherPhysics).
         with np.errstate(invalid="ignore", divide="ignore"):
-            pdyn = np.where((dens > 0) & (spd > 0), 1.6726e-6 * dens * spd ** 2, np.nan)
+            pdyn = np.where((dens > 0) & (spd > 0), PDYN_NPA_PER_CM3_KMS2 * dens * spd ** 2, np.nan)
             standoff = (10.22 + 1.29 * np.tanh(0.184 * (bz + 8.14))) * pdyn ** (-1.0 / 6.6)
             theta = np.arctan2(np.abs(by), bz)
             eps_gw = ((4.0 * np.pi / 1.25663706e-6) * (spd * 1e3) * (bt * 1e-9) ** 2

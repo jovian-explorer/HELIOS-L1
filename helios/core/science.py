@@ -7,19 +7,25 @@ import math
 import numpy as np
 from typing import Dict, List, Any, Optional, Tuple
 
+# OMNI flow pressure factor, nPa per (cm^-3 (km/s)^2): 1.67e-6 x (1 + 4 x 0.05), see dynamic_pressure.
+PDYN_NPA_PER_CM3_KMS2 = 2.0e-6
+
+
 class SpaceWeatherPhysics:
     """Core physics and geomagnetic coupling calculations."""
 
     @staticmethod
     def dynamic_pressure(density_cm3: float, speed_kms: float) -> float:
         """
-        Calculate solar wind dynamic pressure (P_dyn) in nanoPascals (nPa).
-        P_dyn = rho * v^2 = (1.6726e-27 kg * n * 1e6 m^-3) * (v * 1e3 m/s)^2 * 1e9 nPa/Pa
-        P_dyn approx 1.6726e-6 * n * v^2
+        Solar wind flow pressure in nPa with the OMNI definition, which the magnetopause and Dst
+        models were fitted with: P = 1.67e-6 Np V^2 (1 + 4 Na/Np), with Na/Np = 0.05 when the
+        alpha density is not measured, i.e. P = 2.0e-6 Np V^2 (Np in cm^-3, V in km/s). The
+        proton-only value m_p n V^2 = 1.6726e-6 n V^2 is 20 % lower than OMNI's (checked against
+        OMNI HRO 1-min "Pressure", 17 March 2015).
         """
         if density_cm3 is None or speed_kms is None or density_cm3 <= 0 or speed_kms <= 0:
             return 0.0
-        return float(1.6726e-6 * density_cm3 * (speed_kms ** 2))
+        return float(PDYN_NPA_PER_CM3_KMS2 * density_cm3 * (speed_kms ** 2))
 
     @staticmethod
     def magnetopause_standoff(dynamic_pressure_npa: float, bz_gsm_nt: float) -> float:

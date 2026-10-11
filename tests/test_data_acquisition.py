@@ -106,7 +106,7 @@ def test_block_average_means_not_decimation():
     # Mean of 400, 410, 420, 430, 440; keeping every 5th sample would give 400.
     assert out[0]["speed"] == pytest.approx(420.0)
     assert out[0]["time_tag"] == "2026-10-02 18:00:00"
-    assert out[0]["dynamic_pressure"] == pytest.approx(1.6726e-6 * 5.0 * 420.0 ** 2, rel=1e-3)
+    assert out[0]["dynamic_pressure"] == pytest.approx(2.0e-6 * 5.0 * 420.0 ** 2, rel=1e-3)
     assert infer_cadence_seconds(out) == 300.0
 
 

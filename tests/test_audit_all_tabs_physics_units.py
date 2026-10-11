@@ -41,17 +41,17 @@ class TestTab1DashboardL1Telemetry:
         v = 1 km/s = 10^3 m/s
         rho * v^2 = 1.6726219e-27 * 10^6 * 10^6 = 1.6726219e-15 Pa
         1 nPa = 1e-9 Pa
-        P_dyn [nPa] = 1.6726219e-6 * n_p * v^2
+        P_dyn [nPa] = 2.0e-6 * n_p * v^2 (OMNI flow pressure, 5 % alphas assumed)
         """
         # Nominal solar wind: n = 5 cm^-3, v = 400 km/s
-        # P_dyn = 1.6726e-6 * 5 * 160000 = 1.338 nPa
+        # P_dyn = 2.0e-6 * 5 * 160000 = 1.6 nPa
         pdyn = SpaceWeatherPhysics.dynamic_pressure(5.0, 400.0)
-        assert abs(pdyn - 1.338) < 0.01, f"Expected ~1.338 nPa, got {pdyn}"
+        assert abs(pdyn - 1.6) < 0.01, f"Expected ~1.6 nPa, got {pdyn}"
 
         # Fast CME shock: n = 45 cm^-3, v = 950 km/s
-        # P_dyn = 1.6726e-6 * 45 * 902500 = 67.92 nPa
+        # P_dyn = 2.0e-6 * 45 * 902500 = 81.23 nPa
         pdyn_cme = SpaceWeatherPhysics.dynamic_pressure(45.0, 950.0)
-        assert abs(pdyn_cme - 67.92) < 0.2, f"Expected ~67.92 nPa, got {pdyn_cme}"
+        assert abs(pdyn_cme - 81.23) < 0.2, f"Expected ~81.23 nPa, got {pdyn_cme}"
 
         # Boundary checks: zero or negative returns 0.0
         assert SpaceWeatherPhysics.dynamic_pressure(0.0, 400.0) == 0.0

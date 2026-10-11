@@ -3814,7 +3814,7 @@ function computeSandboxPhysics(p) {
   const temp = Math.max(1000, Number(p.temp) || 100000);
 
   // 1. Dynamic pressure (nPa)
-  const pdyn = 1.6726e-6 * n * Math.pow(vsw, 2);
+  const pdyn = 2.0e-6 * n * Math.pow(vsw, 2);  // OMNI flow pressure (4-5 % alphas), as science.py
   const pFactor = Math.pow(Math.max(0.05, pdyn), -1.0 / 6.6);
 
   // 2. Wave speeds (km/s)
@@ -4031,7 +4031,7 @@ function renderSandboxTab(container) {
               <div class="flex items-baseline space-x-2">
                 <span id="sbx-pdyn" class="text-lg font-bold font-hud text-amber-300">${res.pdyn.toFixed(2)} nPa</span>
               </div>
-              <p class="text-[10px] text-slate-500 font-mono">1.6726e-6 * N_p * V_sw²</p>
+              <p class="text-[10px] text-slate-500 font-mono">2.0e-6 * N_p * V_sw² (OMNI, alphas included)</p>
             </div>
 
             <!-- Shue comparison -->
