@@ -157,7 +157,10 @@ class SoundEngine {
       const lfoGain = this.ctx.createGain();
       lfo.frequency.setValueAtTime(lfoFreq, now);
       lfoGain.gain.setValueAtTime(0.025, now);
-      lfo.connect(lfoGain.gain);
+      // Tremolo of the carrier: +-0.025 on its gain of 0.05 (the LFO used to drive the gain of an
+      // unconnected node, so density had no audible effect).
+      lfo.connect(lfoGain);
+      lfoGain.connect(gain1.gain);
 
       // Master output envelope
       const masterGain = this.ctx.createGain();

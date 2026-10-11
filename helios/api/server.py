@@ -2185,7 +2185,7 @@ async def calculate_cme_kinematics(req: CMEKinematicsRequest):
 
 @app.get("/api/parker_spiral")
 @app.get("/api/parker/spiral")
-async def get_parker_spiral(speed_kms: float = 450.0):
+async def get_parker_spiral(speed_kms: float = Query(450.0, ge=150.0, le=3000.0, description="Solar wind speed (km/s)")):
     pitch = ParkerSpiralModel.spiral_pitch_angle(speed_kms)
     footpoint = ParkerSpiralModel.magnetic_footpoint_longitude(speed_kms)
     streamlines = ParkerSpiralModel.generate_parker_spiral_lines(speed_kms)
@@ -2290,9 +2290,12 @@ async def get_ionospheric_absorption(
 
 @app.get("/api/gic/hazard")
 async def get_gic_hazard(
-    db_dt: float = Query(120.0, description="Rate of magnetic change dB/dt (nT/min)"),
+    db_dt: float = Query(120.0, ge=0.0, le=10000.0, description="Rate of magnetic change dB/dt (nT/min)"),
     geology: str = Query("precambrian_shield", description="Geological conductivity profile")
 ):
+    # An unknown profile used to be replaced by the high-risk shield and reported as the user's choice.
+    if geology not in GICHazardModel.GEOLOGICAL_ZONES:
+        raise HTTPException(status_code=422, detail=f"Unknown geology '{geology}'; one of {', '.join(GICHazardModel.GEOLOGICAL_ZONES)}.")
     return GICHazardModel.calculate_geoelectric_field(db_dt_nt_per_min=db_dt, geology_type=geology)
 
 

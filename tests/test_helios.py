@@ -788,3 +788,13 @@ def test_bulletins_show_missing_values_as_dashes_not_none():
     for text in (md, html):
         assert "None" not in text.replace("R0 (None)", "")
     assert "unavailable (no Kp)" in md and "Mach Number" not in md
+
+
+def test_parker_and_gic_inputs_are_validated():
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+    c = TestClient(app, base_url=LOCAL)
+    assert c.get("/api/parker/spiral?speed_kms=0").status_code == 422  # used to answer a fixed 45 deg
+    r = c.get("/api/gic/hazard?db_dt=100&geology=granit")
+    assert r.status_code == 422 and "precambrian_shield" in r.json()["detail"]
+    assert c.get("/api/gic/hazard?db_dt=-5").status_code == 422
