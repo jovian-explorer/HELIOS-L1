@@ -268,5 +268,67 @@ function sendTrackToSolver() {
   document.getElementById('cme-r1').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+// ---- Corona to L1 (/api/link/l1) ----------------------------------------------------
+let l1Chart = null;
+
+function useSolverForL1() {
+  if (!trackFit) {
+    document.getElementById('ll-result').innerText = 'Fit a front on the J-map first.';
+    return;
+  }
+  const s = trackFit.solver_inputs;
+  document.getElementById('ll-mode').value = 'cme';
+  document.getElementById('ll-time').value = s.launch_time;
+  document.getElementById('ll-height').value = s.r2_rsun;
+  document.getElementById('ll-speed').value = s.speed_kms;
+}
+
+async function runL1Link() {
+  const out = document.getElementById('ll-result');
+  const v = id => document.getElementById(id).value;
+  out.innerText = 'Following to L1 and reading the L1 data...';
+  try {
+    const res = await fetch('/api/link/l1', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: v('ll-mode'), time: v('ll-time'), height_rsun: parseFloat(v('ll-height')),
+        speed_kms: parseFloat(v('ll-speed')), ambient_wind_kms: parseFloat(v('ll-w')),
+        gamma_drag: (parseFloat(v('ll-gamma')) || 1.0) * 1e-7, spacecraft: v('ll-sc') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(apiErrorText(data, res));
+    const p = data.predicted, sh = data.observed_shock;
+    out.innerHTML =
+      `<div class="font-semibold text-slate-100">Predicted at L1: ${p.arrival_l1} UTC, ${p.speed_l1_kms} km/s (${p.transit_hours} h; ${escapeHtml(p.model)})</div>` +
+      (sh ? `<div class="text-sky-300">Observed shock: ${sh.time} UTC at ${sh.spacecraft}, downstream ${sh.downstream_speed_kms ?? '---'} km/s ` +
+        `(upstream ${sh.upstream_speed_kms ?? '---'} km/s). Prediction ${data.arrival_error_hours > 0 ? 'late' : 'early'} by ` +
+        `${Math.abs(data.arrival_error_hours)} h, speed ${data.speed_error_kms > 0 ? '+' : ''}${data.speed_error_kms ?? '---'} km/s.</div>`
+        : `<div class="text-amber-300">No fast forward shock at L1 within ±24 h in the IPShocks database (${escapeHtml(data.shock_catalog_note)}).</div>`) +
+      `<div>Measured ${escapeHtml(data.l1_data.spacecraft)} speed within 1 h of the predicted time: ${data.measured_speed_at_predicted_kms ?? '---'} km/s.</div>` +
+      `<div class="text-slate-500">${escapeHtml(data.l1_data.provenance.description || '')}</div>`;
+    const ctx = document.getElementById('ll-chart')?.getContext('2d');
+    if (!ctx) return;
+    if (l1Chart) l1Chart.destroy();
+    const pts = data.series.filter(s => s.speed !== null).map(s => ({ x: s.hours_from_predicted, y: s.speed }));
+    const ys = pts.map(q => q.y);
+    const lo = Math.min(...ys, p.speed_l1_kms) - 50, hi = Math.max(...ys, p.speed_l1_kms) + 50;
+    const shockX = sh ? (Date.parse(sh.time.replace(' ', 'T') + 'Z') - Date.parse(p.arrival_l1.replace(' ', 'T') + 'Z')) / 3.6e6 : null;
+    const datasets = [
+      { label: `${data.l1_data.spacecraft} speed (km/s)`, data: pts, borderColor: '#38bdf8', pointRadius: 0, showLine: true },
+      { label: 'Predicted arrival and speed', data: [{ x: 0, y: lo }, { x: 0, y: hi }], borderColor: '#f472b6', borderDash: [6, 4], pointRadius: 0, showLine: true },
+      { label: 'Predicted speed', data: [{ x: 0, y: p.speed_l1_kms }], borderColor: '#f472b6', backgroundColor: '#f472b6', pointRadius: 5, showLine: false }
+    ];
+    if (shockX !== null) datasets.push({ label: 'IPShocks shock', data: [{ x: shockX, y: lo }, { x: shockX, y: hi }], borderColor: '#facc15', pointRadius: 0, showLine: true });
+    l1Chart = new Chart(ctx, {
+      type: 'scatter', data: { datasets },
+      options: { animation: false, responsive: true, maintainAspectRatio: false,
+        scales: { x: { title: { display: true, text: 'hours from the predicted arrival' }, ticks: { color: '#94a3b8' } },
+                  y: { min: lo, max: hi, title: { display: true, text: 'km/s' }, ticks: { color: '#94a3b8' } } },
+        plugins: { legend: { labels: { color: '#cbd5e1' } } } }
+    });
+  } catch (err) {
+    out.innerText = `Unavailable: ${err.message}`;
+  }
+}
+
 window.addEventListener('resize', () => { if (jmapData) drawJmap(); });
 document.addEventListener('DOMContentLoaded', initImageArchive);

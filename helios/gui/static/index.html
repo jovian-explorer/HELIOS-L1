@@ -1216,6 +1216,29 @@
         <div id="em-result" class="text-[11px] text-slate-300 overflow-x-auto"></div>
       </div>
 
+      <!-- Corona to L1: predicted against observed arrival -->
+      <div class="glass-panel p-5 space-y-3" id="l1-link-panel">
+        <div class="border-b border-sky-500/20 pb-2.5">
+          <h3 class="font-tech font-bold text-base text-slate-100">Corona to L1</h3>
+          <p class="text-xs text-slate-400">A CME from a measured height, time and speed (drag-based model), or a solar wind stream from the source surface (constant speed), followed to L1 and compared with the shocks of the IPShocks database and the speed measured there.</p>
+        </div>
+        <div class="flex flex-wrap items-end gap-2 text-xs">
+          <label class="flex flex-col gap-1 text-slate-400">Follow<select id="ll-mode" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="cme">CME (drag-based model)</option><option value="stream">stream (constant speed)</option></select></label>
+          <label class="flex flex-col gap-1 text-slate-400">Time (UTC)<input id="ll-time" type="datetime-local" value="2017-09-10T17:30" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Height (R☉, CME)<input id="ll-height" type="number" value="22.9" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Speed (km/s)<input id="ll-speed" type="number" value="2480" class="w-24 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Ambient wind (km/s)<input id="ll-w" type="number" value="420" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Γ (10⁻⁷ /km)<input id="ll-gamma" type="number" value="1.0" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">L1 data<select id="ll-sc" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></label>
+          <button onclick="runL1Link()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Follow to L1</button>
+          <button onclick="useSolverForL1()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Use the J-map fit</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="lg:col-span-2 h-[280px] bg-space-950 rounded-lg border border-slate-800 p-2"><canvas id="ll-chart"></canvas></div>
+          <div id="ll-result" class="bg-space-900/80 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1"></div>
+        </div>
+      </div>
+
       <!-- Interactive Multi-Wavelength Solar Disk & Active Region Scanner -->
       <div class="glass-panel p-5 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">

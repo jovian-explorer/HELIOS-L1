@@ -30,7 +30,7 @@ from helios.config import (
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios import config as helios_config
-from helios.core import cme_tracking, event_catalogs, icme_catalog, occultation, pfss_model, shock_catalog, solar_images
+from helios.core import cme_tracking, corona_link, event_catalogs, icme_catalog, occultation, pfss_model, shock_catalog, solar_images
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -265,6 +265,16 @@ class EventMatchRequest(BaseModel):
     height_rsun: float = Field(..., gt=1.0, le=250.0, allow_inf_nan=False)
     pa_deg: float = Field(..., ge=0.0, le=360.0, allow_inf_nan=False)
     window_hours: float = Field(3.0, gt=0.0, le=48.0, allow_inf_nan=False)
+
+class L1LinkRequest(BaseModel):
+    mode: str = Field("cme", max_length=8)
+    time: str = Field(..., max_length=40)
+    height_rsun: float = Field(20.0, gt=1.0, le=215.0, allow_inf_nan=False)
+    speed_kms: float = Field(..., gt=50.0, le=5000.0, allow_inf_nan=False)
+    ambient_wind_kms: float = Field(420.0, ge=100.0, le=1500.0, allow_inf_nan=False)
+    gamma_drag: float = Field(1.0e-7, gt=0.0, le=1.0e-5, allow_inf_nan=False)
+    rss_rsun: float = Field(2.5, ge=1.5, le=4.0, allow_inf_nan=False)
+    spacecraft: str = Field("WIND", max_length=8)
 
 class CustomImportRequest(BaseModel):
     content: str
@@ -2292,6 +2302,26 @@ async def post_event_match(req: EventMatchRequest):
     res = await event_catalogs.match(event_catalog_client, _parse_utc(req.time, "time"), req.height_rsun, req.pa_deg,
                                      req.window_hours)
     return res
+
+
+@app.post("/api/link/l1")
+async def post_l1_link(req: L1LinkRequest):
+    """A CME (drag-based model) or stream (constant speed) from the corona to L1, against the shocks and data there."""
+    if req.mode not in ("cme", "stream") or req.spacecraft not in ("WIND", "ACE", "DSCOVR"):
+        raise HTTPException(status_code=422, detail="mode: cme|stream; spacecraft: WIND|ACE|DSCOVR.")
+    t0 = _parse_utc(req.time, "time")
+    try:
+        pred = (corona_link.predict_cme(t0, req.height_rsun, req.speed_kms, req.ambient_wind_kms, req.gamma_drag)
+                if req.mode == "cme" else corona_link.predict_stream(t0, req.speed_kms, req.rss_rsun))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    t = pred["arrival_l1"]
+    bundle = await downloader.get_archive_bundle(req.spacecraft, t - timedelta(days=2), t + timedelta(days=2), cadence_minutes=5)
+    shock = corona_link.observed_shock(t, req.spacecraft) or corona_link.observed_shock(t)  # the data's craft first
+    out = corona_link.compare(pred, shock, bundle["records"])
+    out["l1_data"] = {"spacecraft": req.spacecraft, "provenance": bundle["provenance"]}
+    out["shock_catalog_note"] = "IPShocks snapshot of 2026-04-24 (shocks to March 2024)"
+    return out
 
 
 @app.get("/api/coronagraph/feeds")
