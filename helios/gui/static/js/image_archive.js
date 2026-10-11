@@ -297,6 +297,7 @@ async function runL1Link() {
     const data = await res.json();
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const p = data.predicted, sh = data.observed_shock;
+    setArrivalMarker('corona-link', p.arrival_l1, `Predicted L1 arrival (corona to L1) ${p.arrival_l1.slice(5, 16)}`);
     out.innerHTML =
       `<div class="font-semibold text-slate-100">Predicted at L1: ${p.arrival_l1} UTC, ${p.speed_l1_kms} km/s (${p.transit_hours} h; ${escapeHtml(p.model)})</div>` +
       (sh ? `<div class="text-sky-300">Observed shock: ${sh.time} UTC at ${sh.spacecraft}, downstream ${sh.downstream_speed_kms ?? '---'} km/s ` +

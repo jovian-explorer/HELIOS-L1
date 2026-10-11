@@ -1392,6 +1392,7 @@ function updateTelemetryUI(data) {
   }
 
   const times = records.map(r => formatTimestampToTimezone(r.time_tag));
+  [chartMag, chartPlasma, chartMagnetosphere].forEach(c => { if (c) c.$timeTags = records.map(r => r.time_tag); });
   const bzVals = records.map(r => r.bz_gsm);
   const byVals = records.map(r => r.by_gsm);
   const btVals = records.map(r => r.bt);
@@ -1424,6 +1425,66 @@ function updateTelemetryUI(data) {
 
   updateShocksTable(data.detected_shocks || []);
 }
+
+// ---- Predicted L1 arrivals drawn on the L1 time series (dashboard and archive views) ----
+// Set by the CME solver and the corona-to-L1 panel; kept in the browser between sessions.
+let arrivalMarkers = (() => {
+  try { return JSON.parse(localStorage.getItem('helios-arrival-markers') || '{}'); } catch (e) { return {}; }
+})();
+
+function arrivalTimeMs(utc) {
+  return Date.parse(String(utc).replace(' UTC', '').replace(' ', 'T') + 'Z');
+}
+
+function setArrivalMarker(key, utc, label) {
+  if (utc) arrivalMarkers[key] = { utc, label }; else delete arrivalMarkers[key];
+  try { localStorage.setItem('helios-arrival-markers', JSON.stringify(arrivalMarkers)); } catch (e) { /* not kept */ }
+  [chartMag, chartPlasma, chartMagnetosphere].forEach(c => { if (c) c.update('none'); });
+}
+
+function clearArrivalMarkers() {
+  Object.keys(arrivalMarkers).forEach(k => setArrivalMarker(k, null));
+}
+
+// Index of the first sample at or after t (fractional between samples), or null outside the series.
+function arrivalIndex(tags, t) {
+  if (!tags || tags.length < 2) return null;
+  const ms = tags.map(arrivalTimeMs);
+  if (t < ms[0] || t > ms[ms.length - 1]) return null;
+  for (let i = 1; i < ms.length; i++) {
+    if (ms[i] >= t) return i - 1 + (t - ms[i - 1]) / Math.max(1, ms[i] - ms[i - 1]);
+  }
+  return ms.length - 1;
+}
+
+const arrivalMarkerPlugin = {
+  id: 'arrivalMarkers',
+  afterDatasetsDraw(chart) {
+    const tags = chart.$timeTags;
+    const xs = chart.scales && chart.scales.x;
+    if (!tags || !xs) return;
+    const { ctx, chartArea } = chart;
+    Object.values(arrivalMarkers).forEach((m, k) => {
+      const idx = arrivalIndex(tags, arrivalTimeMs(m.utc));
+      if (idx === null) return;
+      const i0 = Math.floor(idx);
+      const x = xs.getPixelForValue(i0) + (idx - i0) * (xs.getPixelForValue(Math.min(i0 + 1, tags.length - 1)) - xs.getPixelForValue(i0));
+      ctx.save();
+      ctx.strokeStyle = k % 2 ? '#facc15' : '#f472b6';
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.fillText(m.label, Math.min(x + 4, chartArea.right - 160), chartArea.top + 12 + 12 * k);
+      ctx.restore();
+    });
+  }
+};
+if (typeof Chart !== 'undefined') Chart.register(arrivalMarkerPlugin);
 
 function updateShocksTable(shocks) {
   const badge = document.getElementById('shock-count-badge');
@@ -1772,6 +1833,9 @@ async function calculateCMEKinematics() {
     document.getElementById('cme-transit-earth').innerText = `${cme.transit_to_earth_hours} hrs`;
     document.getElementById('cme-arrival-earth').innerText = cme.predicted_earth_arrival;
     document.getElementById('cme-lead-time').innerText = `+${cme.l1_to_earth_lead_time_minutes} min`;
+    // Only for a measured CME (a time of the second height given): the start-up preset is not a prediction.
+    setArrivalMarker('cme-solver', document.getElementById('cme-t2')?.value ? cme.predicted_l1_arrival : null,
+                     `Predicted L1 arrival (CME solver) ${cme.predicted_l1_arrival.slice(5, 16)}`);
     const notes = document.getElementById('cme-model-notes');
     if (notes) {
       const g = cme.gopalswamy_2001_transit_hours !== null && cme.gopalswamy_2001_transit_hours !== undefined

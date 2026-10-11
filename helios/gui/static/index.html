@@ -1232,6 +1232,7 @@
           <label class="flex flex-col gap-1 text-slate-400">L1 data<select id="ll-sc" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></label>
           <button onclick="runL1Link()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Follow to L1</button>
           <button onclick="useSolverForL1()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Use the J-map fit</button>
+          <button onclick="clearArrivalMarkers()" title="Predicted arrivals are drawn as dashed lines on the dashboard and archive time series" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Clear arrival markers</button>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="lg:col-span-2 h-[280px] bg-space-950 rounded-lg border border-slate-800 p-2"><canvas id="ll-chart"></canvas></div>

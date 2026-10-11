@@ -396,3 +396,15 @@ console.log(JSON.stringify([o.machNumber, o.plasmaBeta, o.assumedMark('machNumbe
     res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert res.returncode == 0, res.stderr
     assert json.loads(res.stdout) == [8.0, 2.0, " (assumed)", ""]
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_predicted_arrival_marker_position_on_a_time_series():
+    script = _extract("arrivalTimeMs") + "\n" + _extract("arrivalIndex") + """
+const tags = ['2017-09-13 07:00:00', '2017-09-13 07:05:00', '2017-09-13 07:10:00'];
+console.log(JSON.stringify([arrivalIndex(tags, arrivalTimeMs('2017-09-13 07:07:30 UTC')),
+                            arrivalIndex(tags, arrivalTimeMs('2017-09-14 00:00:00')), arrivalIndex(tags, arrivalTimeMs('2017-09-13 07:00:00'))]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout) == [1.5, None, 0]
