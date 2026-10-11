@@ -63,7 +63,8 @@ def fetch_map(source: str, when: datetime, cache_dir: str, jsoc_email: Optional[
         res = Fido.search(a.Time(t - timedelta(hours=4), t), a.Instrument("ADAPT"), a.adapt.ADAPTLonType("0"))
     else:
         if not jsoc_email:
-            raise ValueError("HMI maps come from JSOC, which needs a registered e-mail address (jsoc_email).")
+            raise ValueError("HMI maps come from JSOC, which exports data only to an e-mail address registered at "
+                             "jsoc.stanford.edu/ajax/register_email.html: enter it in the JSOC e-mail field.")
         from sunpy.coordinates.sun import carrington_rotation_number
         cr = int(carrington_rotation_number(t))
         res = Fido.search(a.jsoc.Series("hmi.synoptic_mr_polfil_720s"), a.jsoc.PrimeKey("CAR_ROT", cr),

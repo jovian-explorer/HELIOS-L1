@@ -27,7 +27,7 @@ async function runOccultation() {
       body: JSON.stringify({ spacecraft: v('occ-spacecraft'), spk_url: v('occ-spk') || null, station: v('occ-station'),
         start: v('occ-start'), end: v('occ-end'), step_minutes: parseFloat(v('occ-step')), freq_mhz: parseFloat(v('occ-freq')),
         density_model: v('occ-density'), field_model: v('occ-field'), polarity: parseInt(v('occ-polarity')),
-        wind_kms: parseFloat(v('occ-wind')) })
+        wind_kms: parseFloat(v('occ-wind')), pfss_source: v('pfss-source') || 'gong', jsoc_email: jsocEmail() })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(apiErrorText(data, res));

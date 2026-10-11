@@ -111,7 +111,8 @@ def test_interval_checks_come_before_any_download():
     for body, text in (({"start": "2023-11-16", "end": "2023-11-14"}, "after the start"),
                        ({"start": "2023-11-01", "end": "2023-11-14", "step_minutes": 1}, "step of at least"),
                        ({"start": "x", "end": "2023-11-14"}, "ISO 8601"),
-                       ({"start": "2023-11-14", "end": "2023-11-15", "field_model": "pfss", "pfss_source": "hmi"}, "JSOC")):
+                       ({"start": "2023-11-14", "end": "2023-11-15", "field_model": "pfss", "pfss_source": "hmi"}, "JSOC"),
+                       ({"start": "2023-11-14", "end": "2023-11-15", "field_model": "pfss", "pfss_source": "mdi"}, "JSOC")):
         r = c.post("/api/occultation", json=body)
         assert r.status_code == 422 and text in r.json()["detail"], r.json()
 

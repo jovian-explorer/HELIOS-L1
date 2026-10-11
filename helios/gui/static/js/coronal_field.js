@@ -10,6 +10,19 @@ function describeFieldLine(t) {
     `B_r ${t.footpoint_br_gauss} G${hcs}`;
 }
 
+// The JSOC e-mail address (needed for HMI maps) is remembered in this browser.
+function jsocEmail() {
+  const el = document.getElementById('pfss-email');
+  const v = el ? el.value.trim() : '';
+  try { if (v) localStorage.setItem('helios-jsoc-email', v); } catch (e) { /* not kept */ }
+  return v || null;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('pfss-email');
+  try { if (el && !el.value) el.value = localStorage.getItem('helios-jsoc-email') || ''; } catch (e) { /* none */ }
+});
+
 async function runPfss() {
   const out = document.getElementById('pfss-result');
   const v = id => document.getElementById(id).value;
@@ -20,7 +33,7 @@ async function runPfss() {
     const res = await fetch('/api/pfss', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ source: v('pfss-source'), time: v('pfss-time'), speed_kms: parseFloat(v('pfss-speed')),
-        rss: parseFloat(v('pfss-rss')), points, jsoc_email: v('pfss-email') || null })
+        rss: parseFloat(v('pfss-rss')), points, jsoc_email: jsocEmail() })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(apiErrorText(data, res));

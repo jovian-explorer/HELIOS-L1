@@ -255,6 +255,7 @@ class OccultationRequest(BaseModel):
     polarity: int = Field(1, ge=-1, le=1)
     wind_kms: float = Field(400.0, ge=200.0, le=2000.0, allow_inf_nan=False)
     pfss_source: str = Field("gong", max_length=8)
+    jsoc_email: Optional[str] = Field(None, max_length=200)
 
 class UnwrapRequest(BaseModel):
     measured_deg: List[float] = Field(..., max_length=100000)
@@ -2252,7 +2253,7 @@ def _occultation_run(req: "OccultationRequest") -> Dict[str, Any]:
         field_note = f"Parker spiral, B_r(1 AU) = {pol * req.b1au_nt:g} nT, V = {req.wind_kms:g} km/s"
     elif req.field_model == "pfss":
         mid = t0 + (t1 - t0) / 2
-        out = pfss_model.solve(pfss_model.fetch_map(req.pfss_source, mid, cache), 2.5)
+        out = pfss_model.solve(pfss_model.fetch_map(req.pfss_source, mid, cache, req.jsoc_email), 2.5)
         field = occultation.parker_field(wind_kms=req.wind_kms, ss_br=occultation.pfss_source_surface(out))
         field_note = (f"source-surface field of a PFSS solution ({req.pfss_source.upper()} map before "
                       f"{mid:%Y-%m-%d %H:%M} UTC) along Parker spirals at {req.wind_kms:g} km/s")
@@ -2273,8 +2274,10 @@ async def post_occultation(req: OccultationRequest):
     """Ray geometry and coronal plasma effects (TEC, Faraday rotation, Doppler) for a spacecraft-station pair."""
     if req.density_model not in ("leblanc", "allen") or req.field_model not in ("parker", "pfss", "none"):
         raise HTTPException(status_code=422, detail="density_model: leblanc|allen; field_model: parker|pfss|none.")
-    if req.field_model == "pfss" and req.pfss_source not in ("gong", "adapt"):
-        raise HTTPException(status_code=422, detail="pfss_source: gong or adapt (HMI maps need a JSOC e-mail address).")
+    if req.field_model == "pfss" and (req.pfss_source not in pfss_model.SOURCES
+                                      or (req.pfss_source == "hmi" and not req.jsoc_email)):
+        raise HTTPException(status_code=422, detail="pfss_source: gong, adapt, or hmi with the e-mail address registered "
+                                                    "with JSOC (jsoc.stanford.edu) given in the PFSS panel.")
     try:  # checked before anything is downloaded (a reversed interval used to end in a Horizons 404)
         occultation.check_interval(_parse_utc(req.start, "start"), _parse_utc(req.end, "end"), req.step_minutes)
     except ValueError as exc:
