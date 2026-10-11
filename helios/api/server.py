@@ -2273,8 +2273,16 @@ async def post_occultation(req: OccultationRequest):
     """Ray geometry and coronal plasma effects (TEC, Faraday rotation, Doppler) for a spacecraft-station pair."""
     if req.density_model not in ("leblanc", "allen") or req.field_model not in ("parker", "pfss", "none"):
         raise HTTPException(status_code=422, detail="density_model: leblanc|allen; field_model: parker|pfss|none.")
+    if req.field_model == "pfss" and req.pfss_source not in ("gong", "adapt"):
+        raise HTTPException(status_code=422, detail="pfss_source: gong or adapt (HMI maps need a JSOC e-mail address).")
+    try:  # checked before anything is downloaded (a reversed interval used to end in a Horizons 404)
+        occultation.check_interval(_parse_utc(req.start, "start"), _parse_utc(req.end, "end"), req.step_minutes)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     try:
         return await run_in_workers(_occultation_run, req)
+    except HTTPException:
+        raise
     except ImportError:
         raise HTTPException(status_code=501, detail='The PFSS field needs SunPy and sunkit-magex: pip install "helios-l1[solar]".')
     except LookupError as exc:

@@ -75,7 +75,13 @@ STATIONS = ["DSS-14", "DSS-24", "DSS-25", "DSS-26", "DSS-34", "DSS-35", "DSS-36"
 SPACECRAFT = {"-41": "Mars Express", "-61": "Juno", "-121": "BepiColombo", "-144": "Solar Orbiter",
               "-96": "Parker Solar Probe", "-234": "STEREO-A", "-202": "MAVEN", "-74": "MRO", "-5": "Akatsuki"}
 MAX_DAYS = 14
-_LOCK = threading.Lock()
+MAX_ROWS = 5000
+
+
+def _lock() -> threading.Lock:
+    """The SPICE engine's lock: CSPICE is not thread-safe and the engine runs in the same worker pool."""
+    from helios.core.spice_engine import get_spice_engine
+    return get_spice_engine()._kernel_lock
 _FURNISHED: List[str] = []
 
 
@@ -143,12 +149,17 @@ def horizons_spk(naif_id: str, start: datetime, end: datetime, cache_dir: str,
     jd = np.array([float(r[0]) for r in rows])
     states = np.array([[float(x) for x in r[2:8]] for r in rows])
     epochs = (jd - 2451545.0) * 86400.0
-    with _LOCK:
-        handle = sp.spkopn(path + ".tmp", "HELIOS-L1 Horizons", 0)
-        sp.spkw13(handle, int(naif_id), 0, "J2000", epochs[0], epochs[-1], f"Horizons {naif_id}"[:40], 7,
-                  len(epochs), states, epochs)
-        sp.spkcls(handle)
-    os.replace(path + ".tmp", path)
+    tmp = path + ".tmp"
+    if os.path.exists(tmp):  # left by an interrupted write: SPICE will not open a file over it
+        os.remove(tmp)
+    with _lock():
+        handle = sp.spkopn(tmp, "HELIOS-L1 Horizons", 0)
+        try:
+            sp.spkw13(handle, int(naif_id), 0, "J2000", epochs[0], epochs[-1], f"Horizons {naif_id}"[:40], 7,
+                      len(epochs), states, epochs)
+        finally:
+            sp.spkcls(handle)
+    os.replace(tmp, path)
     return path
 
 
@@ -166,7 +177,7 @@ def furnish(paths: Sequence[str]) -> None:
     from helios.core.spice_engine import get_spice_engine
     sp = _spice()
     get_spice_engine()  # leap seconds and the IAU_SUN orientation
-    with _LOCK:
+    with _lock():
         loaded = {sp.kdata(i, "ALL")[0] for i in range(sp.ktotal("ALL"))}
         for p in paths:
             if p not in loaded:
@@ -178,7 +189,19 @@ def _utc(t: datetime) -> datetime:
 
 
 def _et(t: datetime) -> float:
-    return float(_spice().str2et(_utc(t).strftime("%Y-%m-%dT%H:%M:%S.%f")))
+    with _lock():
+        return float(_spice().str2et(_utc(t).strftime("%Y-%m-%dT%H:%M:%S.%f")))
+
+
+def check_interval(start: datetime, end: datetime, step_minutes: float) -> None:
+    """ValueError for an empty, too long or too finely stepped interval (before anything is downloaded)."""
+    span = (_utc(end) - _utc(start)).total_seconds()
+    if span <= 0:
+        raise ValueError("The end must be after the start.")
+    if span / 86400.0 > MAX_DAYS:
+        raise ValueError(f"At most {MAX_DAYS} days.")
+    if span / 60.0 / step_minutes + 1 > MAX_ROWS:
+        raise ValueError(f"At most {MAX_ROWS} times: use a step of at least {span / 60.0 / (MAX_ROWS - 1):.1f} min.")
 
 
 def density_cm3(r_rsun, model: str = "leblanc"):
@@ -193,7 +216,7 @@ def density_cm3(r_rsun, model: str = "leblanc"):
 def ray_geometry(sc: str, station: str, et: float) -> Dict[str, Any]:
     """Station-to-spacecraft ray at receive time et (see module notes); positions in km, J2000."""
     sp = _spice()
-    with _LOCK:
+    with _lock():
         state, lt = sp.spkezr(sc, et, "J2000", "CN", station)
         sun, _ = sp.spkpos("SUN", et, "J2000", "CN", station)
         rot = np.array(sp.pxform("J2000", "IAU_SUN", et))
@@ -303,15 +326,12 @@ def unwrap_180(measured_deg: Sequence[float], model_deg: Optional[Sequence[float
 def occultation(sc: str, station: str, start: datetime, end: datetime, step_minutes: float, freq_mhz: float,
                 density: str = "leblanc", field: Optional[Callable] = None) -> List[Dict[str, Any]]:
     """Time series of the geometry and the plasma effects (kernels must be furnished)."""
-    if (end - start).total_seconds() <= 0:
-        raise ValueError("The end must be after the start.")
-    if (end - start).total_seconds() / 86400.0 > MAX_DAYS:
-        raise ValueError(f"At most {MAX_DAYS} days.")
+    check_interval(start, end, step_minutes)
     f_hz = freq_mhz * 1e6
     lam = 299792458.0 / f_hz
     rows = []
     t = _utc(start)
-    while t <= _utc(end) and len(rows) < 5000:
+    while t <= _utc(end):
         et = _et(t)
         g = ray_geometry(sc, station, et)
         tec = ray_integrals(g, density, field)

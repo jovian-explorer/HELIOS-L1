@@ -102,3 +102,26 @@ def test_mars_express_conjunction_elongation(tmp_path):
     # JPL Horizons S-O-T angle from the geocentre, every 12 h from 16 November 12 UT
     assert [r["elongation_deg"] for r in rows] == pytest.approx([0.5366, 0.3897, 0.2470, 0.1353, 0.1410, 0.2595, 0.4024], abs=0.003)
     assert all(r["blocked_by_sun"] == (r["impact_rsun"] < 1.0) for r in rows)
+
+
+def test_interval_checks_come_before_any_download():
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    c = TestClient(server.app, base_url="http://127.0.0.1:8765")
+    for body, text in (({"start": "2023-11-16", "end": "2023-11-14"}, "after the start"),
+                       ({"start": "2023-11-01", "end": "2023-11-14", "step_minutes": 1}, "step of at least"),
+                       ({"start": "x", "end": "2023-11-14"}, "ISO 8601"),
+                       ({"start": "2023-11-14", "end": "2023-11-15", "field_model": "pfss", "pfss_source": "hmi"}, "JSOC")):
+        r = c.post("/api/occultation", json=body)
+        assert r.status_code == 422 and text in r.json()["detail"], r.json()
+
+
+def test_interrupted_spk_write_does_not_block_the_next(tmp_path):
+    from datetime import datetime
+    rows = "\n".join(f"{2460267.5 + k / 144:.9f}, A.D. x, {1.5e8 + k}, 1.0, 0.0, 30.0, 0.0, 0.0," for k in range(100))
+    text = ("$$SOE\n" + rows + "\n$$EOE\n").encode()
+    path_args = ("-998", datetime(2023, 11, 17, 1), datetime(2023, 11, 17, 2), str(tmp_path))
+    first = oc.horizons_spk(*path_args, lambda url: text)
+    os.remove(first)
+    open(first + ".tmp", "wb").write(b"partial")  # left by an interrupted write
+    assert oc.horizons_spk(*path_args, lambda url: text) == first and os.path.exists(first)
