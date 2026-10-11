@@ -681,3 +681,12 @@ def test_forecast_starts_from_kyoto_dst_only_when_it_is_recent():
     assert recent_dst([{"time_tag": hour(1), "dst": -40.0}]) == -40.0
     assert recent_dst([{"time_tag": hour(50), "dst": -40.0}]) is None  # an old cached copy
     assert recent_dst([]) is None
+
+
+def test_dst_step_uses_the_driver_of_the_interval_that_ends():
+    """Hourly rows: the southward hour starting at row 3 acts from row 3 to row 4, not before row 3."""
+    from helios.core.aurora_model import AuroralModel
+    rows = [{"time_tag": f"2024-05-10 {h:02d}:00:00", "speed": 500.0, "bz_gsm": 5.0 if h < 3 else -10.0,
+             "dynamic_pressure": 2.0} for h in range(6)]
+    d = [r["dst_predicted_nt"] for r in AuroralModel.simulate_dst_evolution(rows, initial_dst=0.0)]
+    assert d[3] > -2.0 and d[4] < d[3] - 10.0

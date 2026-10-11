@@ -256,6 +256,7 @@ class AuroralModel:
         prev_t = None
 
         results = []
+        prev_vbs = None  # driver of the interval ending at this row: the previous row's (forward step)
         for i, row in enumerate(telemetry):
             t = parse_t(row.get("time_tag"))
             if prev_t is not None and t is not None:
@@ -278,12 +279,16 @@ class AuroralModel:
 
             vbs = v * max(0.0, -bz) * 1e-3 if (v is not None and bz is not None) else None
             if i > 0:
-                vbs_eff = vbs if vbs is not None else 0.0
+                # The step from the previous row to this one uses the previous row's driver, as in
+                # the published scheme Dst*(t + dt) = Dst*(t) + (Q(t) - Dst*(t)/tau) dt; with hourly
+                # rows this row's driver (the hour that starts here) put the model an hour ahead.
+                vbs_eff = prev_vbs if prev_vbs is not None else 0.0
                 q = params["q_slope"] * (vbs_eff - params["ec"]) if vbs_eff > params["ec"] else 0.0
                 tau = params["tau"](vbs_eff)
                 # Exact step of d(Dst*)/dt = Q - Dst*/tau with Q and tau constant over dt.
                 decay = math.exp(-dt_hours / tau)
                 dst_star = dst_star * decay + q * tau * (1.0 - decay)
+            prev_vbs = vbs
 
             total_dst = round(dst_star + p_term(last_pdyn), 1)
             entry = {

@@ -624,7 +624,10 @@ def dst_model_skill(df: pd.DataFrame, storms: List[Dict[str, Any]]) -> Dict[str,
                               "window_start": a.strftime("%Y-%m-%d %H:%M"), "window_end": b.strftime("%Y-%m-%d %H:%M")})
     for key in ("obrien", "burton"):
         sim = AuroralModel.simulate_dst_evolution(recs, model=key, initial_dst=initial)
-        pred = pd.Series([r["dst_predicted_nt"] for r in sim], index=df.index, dtype=float)
+        state = pd.Series([r["dst_predicted_nt"] for r in sim], index=df.index, dtype=float)
+        # Model state at the start of each hour; the observed Dst of an hour is its average,
+        # compared here with the mean of the states at the start and the end of the hour.
+        pred = 0.5 * (state + state.shift(-1, freq="h").reindex(state.index))
         per = []
         for entry, (a, b) in zip(out["storms"], windows):
             j = pd.concat([obs.loc[a:b], pred.loc[a:b]], axis=1).dropna()
