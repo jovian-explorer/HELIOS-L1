@@ -49,6 +49,8 @@ DONKI_FLR = [{"flrID": "2017-09-10T15:35:00-FLR-001", "beginTime": "2017-09-10T1
               "classType": "X8.2", "sourceLocation": "S08W88", "activeRegionNum": 12673}]
 HEK = {"result": [{"event_starttime": "2017-09-10T15:35:00", "event_peaktime": "2017-09-10T16:06:00", "frm_name": "SWPC",
                    "fl_goescls": "X8.2", "ar_noaanum": 12673, "hpc_x": 0, "hpc_y": -120.7},
+                  {"event_starttime": "2017-09-10T17:05:00", "event_peaktime": "2017-09-10T17:10:00", "frm_name": "SWPC",
+                   "fl_goescls": "C2.0"},
                   {"event_starttime": "2017-09-10T15:37:20", "event_peaktime": "2017-09-10T16:15:56",
                    "frm_name": "Flare Detective - Trigger Module", "fl_goescls": ""}]}
 
@@ -76,6 +78,8 @@ def test_parsers():
     assert rows[0] == {"catalog": "CDAW", "time": "2017-09-10 16:00:05", "central_pa_deg": None, "width_deg": 360.0,
                        "speed_kms": 3163.0, "yht": "yht/20170910.160005.w360h.v3163.p262g.yht"}
     assert rows[1]["central_pa_deg"] == 273.0 and rows[1]["yht"] is None
+    bad = CDAW_ROW.replace("<td headers=\"hd_cpa\">273</td>", "<td headers=\"hd_cpa\">----</td>")
+    assert len(ec.parse_cdaw(bad, datetime(2017, 9, 1))) == 1  # the row without a PA is left out, not an error
     cac = ec.parse_cactus(CACTUS)
     assert [c["time"] for c in cac] == ["2017-09-10 16:48:00", "2017-09-10 05:00:00"]  # the flow is left out
     assert ec.donki_pa(90.0, 0.0) == pytest.approx(270.0) and ec.donki_pa(-90.0, 0.0) == pytest.approx(90.0)

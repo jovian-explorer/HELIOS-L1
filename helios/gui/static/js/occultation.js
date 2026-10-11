@@ -77,8 +77,10 @@ async function unwrapPolarization() {
   const out = document.getElementById('occ-unwrap-result');
   const nums = id => document.getElementById(id).value.split(/[\s,;]+/).filter(Boolean).map(Number);
   const measured = nums('occ-measured');
-  const model = document.getElementById('occ-use-model').checked
-    ? occLastRows.map(r => r.faraday_rotation_deg).slice(0, measured.length) : null;
+  // No model where it has no value (ray through the Sun, no field model): the angles are then only unwrapped.
+  const modelRows = occLastRows.map(r => r.faraday_rotation_deg).slice(0, measured.length);
+  const model = document.getElementById('occ-use-model').checked && modelRows.every(x => x !== null && x !== undefined)
+    ? modelRows : null;
   try {
     const res = await fetch('/api/occultation/unwrap', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

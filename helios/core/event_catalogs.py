@@ -125,12 +125,13 @@ class Catalogs:
         q = (f"{HEK}?cosec=2&cmd=search&type=column&event_type=fl&event_coordsys=helioprojective&x1=-5000&x2=5000"
              f"&y1=-5000&y2=5000&event_starttime={start:%Y-%m-%dT%H:%M:%S}&event_endtime={end:%Y-%m-%dT%H:%M:%S}"
              "&return=event_starttime,event_peaktime,event_endtime,fl_goescls,frm_name,hpc_x,hpc_y,ar_noaanum")
-        text = await self._get(q, f"hek_fl_{start:%Y%m%d%H}_{end:%Y%m%d%H}.json", end)
+        text = await self._get(q, f"hek_fl_{start:%Y%m%dT%H%M%S}_{end:%Y%m%dT%H%M%S}.json", end)
         try:
             rows = json.loads(text)["result"] if text else []
         except (ValueError, KeyError):
             return []
-        return [r for r in rows if r.get("frm_name") == "SWPC" and r.get("fl_goescls")]
+        return [r for r in rows if r.get("frm_name") == "SWPC" and r.get("fl_goescls")
+                and start <= _t(r.get("event_peaktime") or r["event_starttime"]) <= end]
 
 
 def _cells(row: str) -> Dict[str, str]:
@@ -149,16 +150,17 @@ def parse_cdaw(html: str, month: datetime) -> List[Dict[str, Any]]:
         if "hd_date_time" not in c or len(c["hd_date_time"]) < 2:
             continue
         date, tm = c["hd_date_time"][0], c["hd_date_time"][1]
-        try:
+        cpa = c.get("hd_cpa", [""])[0]
+        try:  # rows with a missing value (e.g. "----") are left out instead of failing the whole month
             t = datetime.strptime(f"{date} {tm}", "%Y/%m/%d %H:%M:%S").replace(tzinfo=timezone.utc)
             width = float(c["hd_wd"][0])
             speed = float(c["hd_v1"][0])
+            center = None if cpa.lower().startswith("halo") else float(cpa)
         except (KeyError, IndexError, ValueError):
             continue
-        cpa = c.get("hd_cpa", [""])[0]
         yht = re.search(r'href="(yht/[^"]+\.yht)"', row)
         out.append({"catalog": "CDAW", "time": t.strftime("%Y-%m-%d %H:%M:%S"),
-                    "central_pa_deg": None if cpa.lower().startswith("halo") else float(cpa),
+                    "central_pa_deg": center,
                     "width_deg": width, "speed_kms": speed, "yht": yht.group(1) if yht else None})
     return out
 

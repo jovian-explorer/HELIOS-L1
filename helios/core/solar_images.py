@@ -107,8 +107,11 @@ class SolarImageClient:
         sid = source(key)[0]
         path = os.path.join(self.cache_dir, f"closest_{sid}_{_utc(t):%Y%m%dT%H%M%S}.json")
         if self._fresh(path, t):
-            with open(path, encoding="utf-8") as f:
-                return json.load(f)
+            try:
+                with open(path, encoding="utf-8") as f:
+                    return json.load(f)
+            except (OSError, ValueError):  # unreadable copy: ask again
+                pass
         body = await self.fetch_text(f"{API}/getClosestImage/?" + urlencode({"date": _iso(t), "sourceId": sid}))
         try:
             meta = json.loads(body) if body else None
@@ -116,8 +119,9 @@ class SolarImageClient:
             meta = None
         if not meta or "date" not in meta or "error" in meta:
             return None
-        with open(path, "w", encoding="utf-8") as f:
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
             json.dump(meta, f)
+        os.replace(path + ".tmp", path)
         return meta
 
     async def frames(self, key: str, start: datetime, end: datetime, n: int, size: int = 512) -> Dict[str, Any]:
