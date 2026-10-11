@@ -21,11 +21,11 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlencode
 from helios.core.timeutil import utc as _utc
+from helios.core.cache import cached_text
 
 API = "https://api.helioviewer.org/v2"
 CREDIT = ("Images: Helioviewer Project (helioviewer.org) from SDO/AIA and HMI (NASA/SDO and the AIA and HMI "
@@ -93,33 +93,21 @@ class SolarImageClient:
         self.cache_dir = os.path.join(str(cache_dir), "solar_images")
         os.makedirs(self.cache_dir, exist_ok=True)
 
-    def _fresh(self, path: str, t: datetime) -> bool:
-        if not os.path.exists(path):
-            return False
-        old = datetime.now(timezone.utc) - _utc(t) > timedelta(days=1)
-        return old or time.time() - os.path.getmtime(path) < RECENT_TTL_S
-
     async def closest(self, key: str, t: datetime) -> Optional[Dict[str, Any]]:
         """Metadata of the image closest to t (id, date, native scale, rsun in pixels), or None."""
         sid = source(key)[0]
         path = os.path.join(self.cache_dir, f"closest_{sid}_{_utc(t):%Y%m%dT%H%M%S}.json")
-        if self._fresh(path, t):
-            try:
-                with open(path, encoding="utf-8") as f:
-                    return json.load(f)
-            except (OSError, ValueError):  # unreadable copy: ask again
-                pass
-        body = await self.fetch_text(f"{API}/getClosestImage/?" + urlencode({"date": _iso(t), "sourceId": sid}))
+
+        def valid(body):
+            meta = json.loads(body)
+            return isinstance(meta, dict) and "date" in meta and "error" not in meta
+        # For good if fetched more than a day after t (the archive has the images by then).
+        body, _ = await cached_text(path, f"{API}/getClosestImage/?" + urlencode({"date": _iso(t), "sourceId": sid}),
+                                    self.fetch_text, RECENT_TTL_S, _utc(t) + timedelta(days=1), valid)
         try:
-            meta = json.loads(body) if body else None
+            return json.loads(body) if body else None
         except ValueError:
-            meta = None
-        if not meta or "date" not in meta or "error" in meta:
             return None
-        with open(path + ".tmp", "w", encoding="utf-8") as f:
-            json.dump(meta, f)
-        os.replace(path + ".tmp", path)
-        return meta
 
     async def frames(self, key: str, start: datetime, end: datetime, n: int, size: int = 512) -> Dict[str, Any]:
         """

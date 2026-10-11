@@ -30,11 +30,11 @@ import json
 import math
 import os
 import re
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 from helios.core.constants import R_SUN_KM
 from helios.core.timeutil import parse_utc as _t, utc as _utc
+from helios.core.cache import cached_text
 
 CDAW = "https://cdaw.gsfc.nasa.gov/CME_list/UNIVERSAL_ver2/"
 CACTUS = "https://www.sidc.be/cactus/catalog/LASCO/2_5_0/qkl/"
@@ -53,20 +53,9 @@ class Catalogs:
         os.makedirs(self.dir, exist_ok=True)
 
     async def _get(self, url: str, key: str, period_end: datetime) -> Optional[str]:
+        # For good if fetched more than 40 days after the period (catalogues are revised for a while).
         path = os.path.join(self.dir, re.sub(r"[^A-Za-z0-9_.-]", "_", key))
-        old = datetime.now(timezone.utc) - period_end > timedelta(days=40)
-        if os.path.exists(path) and (old or time.time() - os.path.getmtime(path) < RECENT_TTL_S):
-            with open(path, encoding="utf-8") as f:
-                return f.read()
-        text = await self.fetch_text(url)
-        if text is None:
-            if os.path.exists(path):  # offline: the last copy
-                with open(path, encoding="utf-8") as f:
-                    return f.read()
-            return None
-        with open(path + ".tmp", "w", encoding="utf-8") as f:
-            f.write(text)
-        os.replace(path + ".tmp", path)
+        text, _ = await cached_text(path, url, self.fetch_text, RECENT_TTL_S, period_end + timedelta(days=40))
         return text
 
     @staticmethod

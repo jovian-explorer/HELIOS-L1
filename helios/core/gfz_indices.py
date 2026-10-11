@@ -14,11 +14,11 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
+from helios.core.cache import cached_text
 
 API = "https://kp.gfz.de/app/json/?start={year}-01-01T00:00:00Z&end={year}-12-31T23:59:59Z&index={index}"
 INDICES = {"kp": ("Kp", 180), "hp30": ("Hp30", 30)}  # HELIOS name: (GFZ name, interval in minutes)
@@ -35,25 +35,8 @@ async def year_series(fetch_text: Callable, cache_dir, key: str, year: int) -> O
     path = os.path.join(str(cache_dir), "gfz_indices", f"{name}_{year}.json")
     # The indices are definitive within months: a copy downloaded half a year after the year
     # ended is kept for good (a copy taken during the year used to be kept for good too).
-    old = os.path.exists(path) and os.path.getmtime(path) > datetime(year + 1, 7, 1, tzinfo=timezone.utc).timestamp()
-    body = None
-    if os.path.exists(path) and (old or time.time() - os.path.getmtime(path) < RECENT_TTL_S):
-        with open(path, encoding="utf-8") as f:
-            body = f.read()
-    else:
-        fresh = await fetch_text(API.format(year=year, index=name))
-        try:
-            if fresh is not None and name in json.loads(fresh):
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path + ".tmp", "w", encoding="utf-8") as f:
-                    f.write(fresh)
-                os.replace(path + ".tmp", path)
-                body = fresh
-        except ValueError:
-            pass
-        if body is None and os.path.exists(path):  # offline: the last copy
-            with open(path, encoding="utf-8") as f:
-                body = f.read()
+    body, _ = await cached_text(path, API.format(year=year, index=name), fetch_text, RECENT_TTL_S,
+                                datetime(year + 1, 7, 1, tzinfo=timezone.utc), valid=lambda t: name in json.loads(t))
     if body is None:
         return None
     d = json.loads(body)

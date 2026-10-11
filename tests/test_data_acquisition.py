@@ -522,3 +522,22 @@ def test_block_average_keeps_each_bins_spacecraft():
              "data_source": "observed"} for m in range(10)]
     out = block_average(recs, 5)
     assert [r["source_spacecraft"] for r in out] == ["ACE", "SOLAR1"]  # was ACE for both
+
+
+def test_cached_text_keeps_a_copy_for_good_only_if_written_after_its_period(tmp_path):
+    import asyncio, os
+    from datetime import datetime, timezone
+    from helios.core.cache import cached_text
+    calls = []
+
+    async def fetch(url):
+        calls.append(url)
+        return None if len(calls) > 1 else "fresh"
+    path = str(tmp_path / "x.txt")
+    period_end = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    assert asyncio.run(cached_text(path, "u", fetch, 0.0, period_end)) == ("fresh", False)
+    assert asyncio.run(cached_text(path, "u", fetch, 0.0, period_end)) == ("fresh", False) and len(calls) == 1
+    early = datetime(2023, 12, 31, tzinfo=timezone.utc).timestamp()
+    os.utime(path, (early, early))  # written before the period ended: asked again, offline copy used
+    assert asyncio.run(cached_text(path, "u", fetch, 0.0, period_end)) == ("fresh", True) and len(calls) == 2
+    assert asyncio.run(cached_text(str(tmp_path / "y"), "u", fetch, 0.0)) == (None, True)

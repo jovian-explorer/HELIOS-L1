@@ -19,12 +19,10 @@ regime and quality filters.
 
 The 95 % intervals and every filter are part of the answer and of its CSV export.
 """
-import gzip
 import hashlib
 import math
 import os
 import re
-import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -33,6 +31,7 @@ import pandas as pd
 
 from helios.core.archive import HapiError, hapi_data_url, parse_hapi_csv
 from helios.core.statistics import fisher_interval, student_t95
+from helios.core.cache import cached_text
 
 OMNI_HOURLY_ID = "OMNI2_H0_MRG1HR"
 FIRST_YEAR = 1963
@@ -105,22 +104,7 @@ class OmniHourlyClient:
         path = os.path.join(self.cache_dir, f"{year}_{self._key}.csv.gz")
         now = datetime.now(timezone.utc)
         ttl = OLD_TTL_SECONDS if year < now.year - 1 else RECENT_TTL_SECONDS
-        text, offline = None, False
-        if os.path.exists(path) and time.time() - os.path.getmtime(path) < ttl:
-            with gzip.open(path, "rt", encoding="utf-8") as f:
-                text = f.read()
-        else:
-            text = await self.fetch_text(self.url(year))
-            if text is None:
-                offline = True
-                if os.path.exists(path):
-                    with gzip.open(path, "rt", encoding="utf-8") as f:
-                        text = f.read()
-            else:
-                tmp = path + ".tmp"
-                with gzip.open(tmp, "wt", encoding="utf-8") as f:
-                    f.write(text)
-                os.replace(tmp, path)
+        text, offline = await cached_text(path, self.url(year), self.fetch_text, ttl, gz=True)
         if text is None:
             return None, offline
         try:

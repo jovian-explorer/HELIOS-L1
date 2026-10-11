@@ -28,9 +28,8 @@ statistical angular errors of eq. 8.23,
 import hashlib
 import math
 import os
-import time
 import warnings
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -40,6 +39,7 @@ from helios.core.lepping_errors import lepping_uncertainties
 from helios.core.archive import (BOLTZMANN_J_K, PROTON_MASS_KG, HapiError, hapi_data_url, parse_hapi_csv,
                                  thermal_speed_to_kelvin)
 from helios.core.constants import AU_KM
+from helios.core.cache import cached_text
 
 MU0 = 4.0e-7 * math.pi
 EARTH_RADIUS_KM = 6371.2
@@ -158,20 +158,7 @@ class EventDataClient:
     async def _get(self, url: str, end: datetime) -> Optional[str]:
         path = os.path.join(self.cache_dir, hashlib.sha1(url.encode("utf-8")).hexdigest()[:20] + ".csv")
         # For good only if fetched more than two days after the interval ended (complete then).
-        old = os.path.exists(path) and os.path.getmtime(path) - end.timestamp() > 2 * 86400
-        if os.path.exists(path) and (old or time.time() - os.path.getmtime(path) < RECENT_TTL_SECONDS):
-            with open(path, "r", encoding="utf-8") as f:
-                return f.read()
-        text = await self.fetch_text(url)
-        if text is None:
-            if os.path.exists(path):
-                with open(path, "r", encoding="utf-8") as f:
-                    return f.read()
-            return None
-        tmp = path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(text)
-        os.replace(tmp, path)
+        text, _ = await cached_text(path, url, self.fetch_text, RECENT_TTL_SECONDS, end + timedelta(days=2))
         return text
 
     async def fetch_dataset(self, spec: Dict[str, Any], start: datetime, end: datetime, role: str):
