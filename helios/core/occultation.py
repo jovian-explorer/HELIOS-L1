@@ -37,6 +37,11 @@ dl = p sec^2 theta dtheta, which samples densely where the density is high):
 * Doppler (one-way downlink at f): geometric -f (drho/dt)/c and plasma +(40.3/(c f)) dTEC/dt
   (the phase path is rho - 40.3 TEC / f^2), dTEC/dt by central differences over 120 s.
 
+Compared with the VLA rotation measures of Ingleby, Spangler & Whiting (2007, ApJ 668, 520,
+doi:10.1086/521140) at 5.6-9.7 R_sun: n and B at 6.2 R_sun are within a factor of two of the
+values they infer, but with a flat current sheet the rotation measures are about 4 times too
+small in rms and mostly of the wrong sign: the actual current sheet (PFSS) is needed.
+
 Measured polarization angles are known modulo 180 deg: `unwrap_180` removes the 180-deg jumps
 of a time series and, given model values, adds the multiple of 180 deg that brings the series
 closest to the model.
