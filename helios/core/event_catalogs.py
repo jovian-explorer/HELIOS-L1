@@ -34,6 +34,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 from helios.core.constants import R_SUN_KM
+from helios.core.timeutil import parse_utc as _t, utc as _utc
 
 CDAW = "https://cdaw.gsfc.nasa.gov/CME_list/UNIVERSAL_ver2/"
 CACTUS = "https://www.sidc.be/cactus/catalog/LASCO/2_5_0/qkl/"
@@ -41,14 +42,6 @@ DONKI = "https://ccmc.gsfc.nasa.gov/DONKI-API/get/"
 HEK = "https://www.lmsal.com/hek/her"
 CACTUS_H0 = 2.2
 RECENT_TTL_S = 6 * 3600
-
-
-def _utc(t: datetime) -> datetime:
-    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t.astimezone(timezone.utc)
-
-
-def _t(s: str) -> datetime:
-    return _utc(datetime.fromisoformat(s.replace("Z", "+00:00").replace("/", "-").replace(" ", "T")))
 
 
 class Catalogs:

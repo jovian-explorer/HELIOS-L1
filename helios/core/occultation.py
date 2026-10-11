@@ -55,11 +55,12 @@ import math
 import os
 import re
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 from helios.core.constants import AU_KM, OMEGA_SUN_SIDEREAL as OMEGA_SUN, R_SUN_KM
+from helios.core.timeutil import utc as _utc
 
 NAIF = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/"
 GENERIC = [("spk/planets/", r"de440s\.bsp"), ("spk/stations/", r"earthstns_itrf93_\d+\.bsp"),
@@ -180,10 +181,6 @@ def furnish(paths: Sequence[str]) -> None:
         for p in paths:
             if p not in loaded:
                 sp.furnsh(p)
-
-
-def _utc(t: datetime) -> datetime:
-    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t.astimezone(timezone.utc)
 
 
 def _et(t: datetime) -> float:

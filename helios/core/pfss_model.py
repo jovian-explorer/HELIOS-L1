@@ -31,20 +31,17 @@ import io
 import math
 import os
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 from helios.core.constants import AU_KM, OMEGA_SUN_SIDEREAL as OMEGA_SIDEREAL, R_SUN_KM
+from helios.core.timeutil import utc as _utc
 
 AR_THRESHOLD_G = 50.0
 SOURCES = ("gong", "adapt", "hmi")
 _SOLUTIONS: Dict[tuple, Any] = {}
 _LOCK = threading.Lock()
-
-
-def _utc(t: datetime) -> datetime:
-    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t.astimezone(timezone.utc)
 
 
 def fetch_map(source: str, when: datetime, cache_dir: str, jsoc_email: Optional[str] = None) -> str:

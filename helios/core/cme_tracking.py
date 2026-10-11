@@ -34,11 +34,12 @@ from __future__ import annotations
 import base64
 import io
 import math
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 from helios.core.constants import R_SUN_KM
+from helios.core.timeutil import parse_utc as _t
 
 MIN_PSI_DEG = 20.0
 MAX_FRONT_KMS = 4000.0  # faster than any CME measured by LASCO (about 3500 km/s)
@@ -145,11 +146,6 @@ def auto_track(values: np.ndarray, r_rsun: Sequence[float], times: Sequence[str]
         if h >= r[-1] - 2 * (r[1] - r[0]):
             break
     return points
-
-
-def _t(s: str) -> datetime:
-    t = datetime.fromisoformat(str(s).replace("Z", "+00:00").replace(" ", "T"))
-    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t
 
 
 def fit_height_time(points: List[Dict[str, Any]], order: int = 1) -> Dict[str, Any]:

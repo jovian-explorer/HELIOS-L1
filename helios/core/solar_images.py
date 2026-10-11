@@ -25,6 +25,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlencode
+from helios.core.timeutil import utc as _utc
 
 API = "https://api.helioviewer.org/v2"
 CREDIT = ("Images: Helioviewer Project (helioviewer.org) from SDO/AIA and HMI (NASA/SDO and the AIA and HMI "
@@ -55,10 +56,6 @@ SOURCES: Dict[str, tuple] = {
 }
 MAX_FRAMES = 48
 SIZES = (256, 512, 1024)
-
-
-def _utc(t: datetime) -> datetime:
-    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t.astimezone(timezone.utc)
 
 
 def _iso(t: datetime) -> str:

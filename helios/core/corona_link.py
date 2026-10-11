@@ -20,13 +20,10 @@ from typing import Any, Dict, List, Optional
 from helios.core import shock_catalog
 from helios.core.coronagraph import CoronagraphAnalyzer
 from helios.core.constants import R_SUN_KM
+from helios.core.timeutil import utc as _utc
 
 SEARCH_HOURS = 24.0
 L1_FROM_SUN_KM = CoronagraphAnalyzer.L1_DIST_KM
-
-
-def _utc(t: datetime) -> datetime:
-    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t.astimezone(timezone.utc)
 
 
 def predict_cme(t0: datetime, h0_rsun: float, v0_kms: float, w_kms: float = 420.0,
