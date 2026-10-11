@@ -41,6 +41,9 @@ Compared with the VLA rotation measures of Ingleby, Spangler & Whiting (2007, Ap
 doi:10.1086/521140) at 5.6-9.7 R_sun: n and B at 6.2 R_sun are within a factor of two of the
 values they infer, but with a flat current sheet the rotation measures are about 4 times too
 small in rms and mostly of the wrong sign: the actual current sheet (PFSS) is needed.
+With the PFSS field of the GONG map of 17 August 2011, the rotation of 3C228 seen over the north
+pole (Kooi et al. 2014, ApJ 784, 68: -21.2, +9.8, +6.1 rad/m^2 at 5.0-4.6 R_sun) comes
+out at -2.6 to -5.9 rad/m^2: the unipolar polar field largely cancels along the line of sight.
 
 Measured polarization angles are known modulo 180 deg: `unwrap_180` removes the 180-deg jumps
 of a time series and, given model values, adds the multiple of 180 deg that brings the series
