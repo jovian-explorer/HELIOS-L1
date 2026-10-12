@@ -703,3 +703,10 @@ def test_dst_step_uses_the_driver_of_the_interval_that_ends():
              "dynamic_pressure": 2.0} for h in range(6)]
     d = [r["dst_predicted_nt"] for r in AuroralModel.simulate_dst_evolution(rows, initial_dst=0.0)]
     assert d[3] > -2.0 and d[4] < d[3] - 10.0
+
+
+def test_boundaries_list_the_inputs_left_at_typical_values():
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+    r = TestClient(app, base_url=LOCAL).get("/api/magnetosphere/boundaries?dynamic_pressure=3&bz_gsm=-2").json()
+    assert r["inputs_assumed"] == {"mach_number": 8.0, "plasma_beta": 2.0} and r["dynamic_pressure_npa"] == 3.0

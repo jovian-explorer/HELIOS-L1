@@ -2016,26 +2016,32 @@ async def get_aurora(kp: Optional[float] = Query(None, ge=0.0, le=9.0),
 
 @app.get("/api/magnetosphere/boundaries")
 async def get_magnetospheric_boundaries(
-    dynamic_pressure: float = Query(2.0, ge=0.01, le=120.0, description="Solar wind dynamic pressure P_dyn (nPa)"),
-    bz_gsm: float = Query(0.0, ge=-80.0, le=80.0, description="Interplanetary Magnetic Field Bz component (nT)"),
-    mach_number: float = Query(8.0, ge=1.2, le=30.0, description="Solar wind magnetosonic Mach number M_ms"),
-    plasma_beta: float = Query(2.0, ge=0.0, le=100.0, description="Solar wind plasma beta (OMNI definition)"),
+    dynamic_pressure: Optional[float] = Query(None, ge=0.01, le=120.0, description="Solar wind dynamic pressure P_dyn (nPa); default 2"),
+    bz_gsm: Optional[float] = Query(None, ge=-80.0, le=80.0, description="Interplanetary Magnetic Field Bz component (nT); default 0"),
+    mach_number: Optional[float] = Query(None, ge=1.2, le=30.0, description="Solar wind magnetosonic Mach number M_ms; default 8"),
+    plasma_beta: Optional[float] = Query(None, ge=0.0, le=100.0, description="Solar wind plasma beta (OMNI definition); default 2"),
     model: str = Query("chao", description="Bow shock model: 'chao' (Chao et al., 2002) or 'shue' (Farris & Russell, 1994, from the Shue et al. 1998 magnetopause)")
 ):
     """
     Computes magnetopause and bow shock standoff distances, flaring parameters and
     GSE coordinate profiles. The magnetopause is Shue et al. (1998); the bow shock is
-    Chao et al. (2002) or Farris & Russell (1994).
+    Chao et al. (2002) or Farris & Russell (1994). Inputs not given take typical values,
+    listed in "inputs_assumed".
     """
     if model.lower().strip() not in ("chao", "shue", "farris"):
         raise HTTPException(status_code=400, detail="model must be 'chao' or 'shue'")
-    return SpaceWeatherPhysics.calculate_magnetospheric_boundaries(
-        dynamic_pressure_npa=dynamic_pressure,
-        bz_gsm_nt=bz_gsm,
-        mach_number=mach_number,
+    given = {"dynamic_pressure": dynamic_pressure, "bz_gsm": bz_gsm, "mach_number": mach_number, "plasma_beta": plasma_beta}
+    typical = {"dynamic_pressure": 2.0, "bz_gsm": 0.0, "mach_number": 8.0, "plasma_beta": 2.0}
+    v = {k: typical[k] if x is None else x for k, x in given.items()}
+    out = SpaceWeatherPhysics.calculate_magnetospheric_boundaries(
+        dynamic_pressure_npa=v["dynamic_pressure"],
+        bz_gsm_nt=v["bz_gsm"],
+        mach_number=v["mach_number"],
         model=model,
-        plasma_beta=plasma_beta
+        plasma_beta=v["plasma_beta"]
     )
+    out["inputs_assumed"] = {k: typical[k] for k, x in given.items() if x is None}
+    return out
 
 @app.get("/api/geospace/coupling")
 async def get_geospace_coupling(
@@ -2148,8 +2154,8 @@ async def get_solar_image_fits(instrument: str = Query("lasco_c2"), start: str =
     folder = os.path.join(str(helios_config.CACHE_DIR), "fits", instrument) if download else None
     try:  # network-bound: a thread, not the worker pool
         return await asyncio.to_thread(solar_images.fits_search, instrument, t0, t1, download or 20, folder)
-    except ImportError:
-        raise HTTPException(status_code=501, detail="Science FITS files need SunPy: pip install \"helios-l1[solar]\".")
+    except ImportError as exc:
+        raise HTTPException(status_code=501, detail=f"Science FITS files need SunPy: pip install \"helios-l1[solar]\" ({exc}).")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
@@ -2224,9 +2230,9 @@ async def post_pfss(req: PfssRequest):
     try:
         return await run_in_workers(pfss_model.analyse, req.source, _parse_utc(req.time, "time"),
                                     str(helios_config.CACHE_DIR), req.speed_kms, req.rss, pts, req.jsoc_email)
-    except ImportError:
+    except ImportError as exc:
         raise HTTPException(status_code=501, detail="The coronal field model needs SunPy and sunkit-magex: "
-                                                    "pip install \"helios-l1[solar]\".")
+                                                    f"pip install \"helios-l1[solar]\" ({exc}).")
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
@@ -2288,8 +2294,8 @@ async def post_occultation(req: OccultationRequest):
         return await run_in_workers(_occultation_run, req)
     except HTTPException:
         raise
-    except ImportError:
-        raise HTTPException(status_code=501, detail='The PFSS field needs SunPy and sunkit-magex: pip install "helios-l1[solar]".')
+    except ImportError as exc:
+        raise HTTPException(status_code=501, detail=f'The PFSS field needs SunPy and sunkit-magex: pip install "helios-l1[solar]" ({exc}).')
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
