@@ -13,6 +13,11 @@ window.fetch = (...args) => _fetch(...args).catch((err) => {
   throw new Error('No answer from the HELIOS server: is the app still running? Restart it and try again.');
 });
 
+// How far the "inside geostationary orbit" alert can be trusted (Shue 1998 against GOES-12
+// magnetosheath encounters in 2004-2005; user guide, Position of Probes & Orbits).
+const GEO_ALERT_CAVEAT = 'Model estimate (Shue et al. 1998). Checked against GOES-12: reliable in large '
+  + 'compressions (60-96 nPa), often wrong in moderate ones (10-15 nPa), where it missed real crossings and gave false alerts.';
+
 let chartMag = null;
 let chartPlasma = null;
 let chartMagnetosphere = null;
@@ -2196,14 +2201,16 @@ function renderCustomIngestUI(data) {
     if (typeof summary.standoff_min === 'number' && summary.standoff_min < 6.6) {
       elStandoff.className = "text-lg font-bold text-rose-500 font-mono mt-0.5";
       if (elGeoAlert) {
-        elGeoAlert.innerText = "CRITICAL: Inward GEO (< 6.6 R_E)";
+        elGeoAlert.innerText = "Model: magnetopause inside GEO (< 6.6 R_E)";
         elGeoAlert.className = "text-[10px] text-rose-400 font-mono font-bold";
+        elGeoAlert.title = GEO_ALERT_CAVEAT;
       }
     } else {
       elStandoff.className = "text-lg font-bold text-emerald-400 font-mono mt-0.5";
       if (elGeoAlert) {
-        elGeoAlert.innerText = "Nominal cavity (> 6.6 R_E)";
+        elGeoAlert.innerText = "Model: magnetopause outside GEO (> 6.6 R_E)";
         elGeoAlert.className = "text-[10px] text-slate-500 font-mono";
+        elGeoAlert.title = GEO_ALERT_CAVEAT;
       }
     }
   }
@@ -2940,6 +2947,7 @@ function updateBoundaryCards(b) {
     } else {
       cardMpStatus.innerHTML = `<span class="text-emerald-400 font-medium">GEO Standoff Clear (+${margin.toFixed(1)} RE outside geostationary orbit)</span>`;
     }
+    cardMpStatus.innerHTML += `<div class="text-[10px] text-slate-500 mt-0.5">${GEO_ALERT_CAVEAT}</div>`;
   }
 
   const cardSheath = document.getElementById('card-sheath-thick');
@@ -3655,7 +3663,7 @@ function renderUserGuideTab(container) {
               <span>Critical Operational Alert: Sub-GEO Compression (r₀,mp &lt; 6.6 R_E)</span>
             </div>
             <p class="text-slate-300 leading-relaxed text-[11px]">
-              Under severe coronal mass ejection impacts (dynamic pressure P_dyn &gt; 25 nPa coupled with southward Bz &lt; -20 nT), the dayside magnetopause can be compressed inside Geostationary Orbit (GEO radius = 6.6 R_E ≈ 42,164 km). Geostationary telecommunication and weather satellites (e.g. GOES-16) are abruptly exposed to unshielded magnetosheath plasma and direct solar wind, inducing severe electrostatic spacecraft surface charging, attitude control torque disturbances, and single-event upsets (SEUs).
+              Under severe coronal mass ejection impacts (dynamic pressure P_dyn &gt; 25 nPa coupled with southward Bz &lt; -20 nT), the dayside magnetopause can be compressed inside Geostationary Orbit (GEO radius = 6.6 R_E ≈ 42,164 km). Geostationary satellites on the day side (e.g. GOES) then find themselves in the magnetosheath: their magnetometers see the compressed solar wind field instead of Earth's, which disturbs attitude systems that use the field, and the particle environment changes. The alert is the Shue et al. (1998) model's: checked against GOES-12 in 2004-2005 it was reliable in large compressions (60-96 nPa) and often wrong in moderate ones (10-15 nPa).
             </p>
           </div>
         </div>
@@ -4709,7 +4717,7 @@ class MissionIncidentLogger {
         'CRITICAL',
         'SUB_GEO_CROSSING',
         'Subsolar Magnetopause Compressed Inside GEO Orbit',
-        `Standoff compressed to ${rmp.toFixed(1)} R_E (< 6.6 R_E GEO). Geostationary spacecraft directly exposed to unshielded solar wind / magnetosheath plasma.`,
+        `Modelled standoff ${rmp.toFixed(1)} R_E (< 6.6 R_E GEO): geostationary satellites on the day side may be outside the magnetopause, in the magnetosheath. ${GEO_ALERT_CAVEAT}`,
         'R_mp',
         `${rmp.toFixed(1)} R_E`,
         '< 6.6 R_E'
