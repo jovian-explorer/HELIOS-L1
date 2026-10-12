@@ -126,3 +126,19 @@ def test_interrupted_spk_write_does_not_block_the_next(tmp_path):
     os.remove(first)
     open(first + ".tmp", "wb").write(b"partial")  # left by an interrupted write
     assert oc.horizons_spk(*path_args, lambda url: text) == first and os.path.exists(first)
+
+
+@pytest.mark.skipif(os.environ.get("HELIOS_NETWORK_TESTS") != "1", reason="network test (HELIOS_NETWORK_TESTS=1)")
+def test_mars_express_with_the_pfss_field_outside_conjunction():
+    """8 November 2023, ray 11 R_sun from the Sun: the PFSS field (GONG map) gives a rotation of its own sign and size."""
+    from fastapi.testclient import TestClient
+    from helios.api.server import app
+    c = TestClient(app, base_url="http://127.0.0.1:8765")
+    body = {"start": "2023-11-08T08:00:00", "end": "2023-11-08T14:00:00", "step_minutes": 120}
+    pf = c.post("/api/occultation", json={**body, "field_model": "pfss"}).json()["rows"]
+    pk = c.post("/api/occultation", json={**body, "field_model": "parker"}).json()["rows"]
+    lam2 = (299792458.0 / 8.42e9) ** 2
+    for a, b in zip(pf, pk):
+        assert not a["blocked_by_sun"] and 10.8 < a["impact_rsun"] < 11.3
+        assert 0.2 < a["rm_rad_m2"] < 0.5 and b["rm_rad_m2"] < 0  # opposite sign to the default Parker polarity
+        assert a["faraday_rotation_deg"] == pytest.approx(math.degrees(a["rm_rad_m2"] * lam2), abs=0.002)
