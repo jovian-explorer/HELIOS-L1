@@ -135,6 +135,7 @@ const TAB_TO_DOMAIN = {
 
 document.addEventListener('DOMContentLoaded', () => {
   initSettingsAndPreferences();
+  showWelcome();
   explainTerms();
   startClock();
   renderSubnav('fleet');
@@ -236,6 +237,18 @@ function renderSettingsReview(rev) {
   const title = document.getElementById('review-title');
   if (title) title.innerText = rev.whats_new ? `HELIOS-L1 ${rev.version}: what's new and what changed in the settings`
     : `HELIOS-L1 ${rev.version}: what changed in the settings`;
+}
+
+// First-run introduction on the dashboard, until the user hides it (kept in this browser).
+function showWelcome() {
+  let hidden = false;
+  try { hidden = localStorage.getItem('helios-welcome-hidden') === '1'; } catch (e) { /* show it */ }
+  document.getElementById('welcome-card')?.classList.toggle('hidden', hidden);
+}
+
+function dismissWelcome() {
+  try { localStorage.setItem('helios-welcome-hidden', '1'); } catch (e) { /* hidden for this session only */ }
+  document.getElementById('welcome-card')?.classList.add('hidden');
 }
 
 async function showSettingsReview() {
