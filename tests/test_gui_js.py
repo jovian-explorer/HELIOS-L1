@@ -450,3 +450,14 @@ console.log(JSON.stringify(out));
     assert "low on the northern horizon" in near["oval"]
     assert "unlikely" in far["oval"]
     assert south["oval"] == "the oval is not loaded yet" and south["sky"].startswith("daylight")
+
+
+def test_every_data_term_on_the_page_is_in_the_glossary():
+    import re
+    js = (APP_JS.parent / "glossary.js").read_text(encoding="utf-8")
+    block = js[js.index("const GLOSSARY = {"):js.index("};", js.index("const GLOSSARY = {"))]
+    keys = set(re.findall(r"^\s*'?([\w\-. ]+?)'?\s*:", block, re.M))
+    html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
+    used = set(re.findall(r'data-term="([^"]+)"', html))
+    assert len(used) > 20 and not used - keys, used - keys
+    assert html.index("js/glossary.js") < html.index("js/app.js")

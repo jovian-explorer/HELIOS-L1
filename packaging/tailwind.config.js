@@ -19,6 +19,7 @@ module.exports = {
       '../helios/gui/static/js/parker.js',
       '../helios/gui/static/js/solar_viewer.js',
       '../helios/gui/static/js/statistics.js',
+      '../helios/gui/static/js/glossary.js',
     ],
   },
   darkMode: 'class',

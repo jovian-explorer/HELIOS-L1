@@ -387,3 +387,6 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus {
 .ea-table { border-collapse: collapse; width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #e2e8f0; }
 .ea-th { text-align: left; color: #94a3b8; font-weight: 600; padding: 0.25rem 0.5rem; border-bottom: 1px solid var(--color-border-subtle); }
 .ea-td { padding: 0.25rem 0.5rem; border-bottom: 1px solid var(--color-border-subtle); white-space: nowrap; }
+
+/* Terms explained by a tooltip (js/glossary.js) */
+.term { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }

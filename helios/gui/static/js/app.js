@@ -127,6 +127,7 @@ const TAB_TO_DOMAIN = {
 
 document.addEventListener('DOMContentLoaded', () => {
   initSettingsAndPreferences();
+  explainTerms();
   startClock();
   renderSubnav('fleet');
   initCharts();
@@ -3484,6 +3485,14 @@ function renderUserGuideTab(container) {
   const q = (refSearchQuery || '').toLowerCase().trim();
 
   const sections = [
+    {
+      id: 'guide-glossary',
+      title: 'Glossary: the terms in plain words',
+      icon: 'fa-book-open',
+      color: 'text-amber-300',
+      summary: 'Short explanations of the expert terms on the screens; the underlined terms show them when you hold the mouse over them.',
+      content: glossaryHtml()
+    },
     {
       id: 'guide-arch',
       title: '1. Mission Control Architecture & Two-Tier Navigation',

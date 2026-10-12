@@ -311,7 +311,7 @@
         <div class="metric-card speed-card">
           <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
             <div class="flex items-center space-x-1.5">
-              <span>Solar Wind Speed</span>
+              <span data-term="solar wind">Solar Wind Speed</span>
               <button onclick="showParameterDetail('speed')" title="Physical Units, Formula &amp; Sensor Origin" class="text-slate-500 hover:text-amber-300 transition">
                 <i class="fa-solid fa-circle-info text-[10px]"></i>
               </button>
@@ -336,7 +336,7 @@
         <div class="metric-card bz-card">
           <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
             <div class="flex items-center space-x-1.5">
-              <span>IMF Bz (GSM)</span>
+              <span data-term="Bz">IMF Bz (GSM)</span>
               <button onclick="showParameterDetail('bz_gsm')" title="Physical Units, Formula &amp; Sensor Origin" class="text-slate-500 hover:text-rose-300 transition">
                 <i class="fa-solid fa-circle-info text-[10px]"></i>
               </button>
@@ -377,7 +377,7 @@
         <div class="metric-card bt-card">
           <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
             <div class="flex items-center space-x-1.5">
-              <span>Total IMF |B|</span>
+              <span data-term="IMF">Total IMF |B|</span>
               <button onclick="showParameterDetail('bt')" title="Physical Units, Formula &amp; Sensor Origin" class="text-slate-500 hover:text-sky-300 transition">
                 <i class="fa-solid fa-circle-info text-[10px]"></i>
               </button>
@@ -402,7 +402,7 @@
         <div class="metric-card density-card">
           <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
             <div class="flex items-center space-x-1.5">
-              <span>Proton Density</span>
+              <span data-term="density">Proton Density</span>
               <button onclick="showParameterDetail('density')" title="Physical Units, Formula &amp; Sensor Origin" class="text-slate-500 hover:text-emerald-300 transition">
                 <i class="fa-solid fa-circle-info text-[10px]"></i>
               </button>
@@ -427,7 +427,7 @@
         <div class="metric-card pressure-card">
           <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
             <div class="flex items-center space-x-1.5">
-              <span>Dynamic Pressure</span>
+              <span data-term="dynamic pressure">Dynamic Pressure</span>
               <button onclick="showParameterDetail('pdyn')" title="Physical Units, Formula &amp; Sensor Origin" class="text-slate-500 hover:text-orange-300 transition">
                 <i class="fa-solid fa-circle-info text-[10px]"></i>
               </button>
@@ -452,7 +452,7 @@
         <div class="metric-card delay-card">
           <div class="flex items-center justify-between text-slate-400 text-xs mb-1 font-semibold">
             <div class="flex items-center space-x-1.5">
-              <span>L1 → Earth Lead Time</span>
+              <span data-term="lead time">L1 → Earth Lead Time</span>
               <button onclick="showParameterDetail('speed')" title="Physical Units, Formula &amp; Sensor Origin" class="text-slate-500 hover:text-cyan-300 transition">
                 <i class="fa-solid fa-circle-info text-[10px]"></i>
               </button>
@@ -531,7 +531,7 @@
           <div class="flex items-center space-x-2.5">
             <i class="fa-solid fa-radiation text-amber-400 text-lg"></i>
             <div>
-              <h3 class="font-tech font-bold text-sm text-slate-100">Interplanetary Shocks & CME Fronts (Rankine-Hugoniot Detection)</h3>
+              <h3 data-term="shock" class="font-tech font-bold text-sm text-slate-100">Interplanetary Shocks & CME Fronts (Rankine-Hugoniot Detection)</h3>
               <p class="text-xs text-slate-400">Automated hydrodynamic jump condition analysis across bulk velocity, plasma density, and magnetic vectors.</p>
             </div>
           </div>
@@ -899,7 +899,7 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
           <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
-              <span>Collisionless Bow Shock (R₀,bs)</span>
+              <span data-term="bow shock">Collisionless Bow Shock (R₀,bs)</span>
               <i class="fa-solid fa-shield-halved text-sky-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
@@ -911,7 +911,7 @@
 
           <div class="metric-card" style="border-left: 3px solid var(--accent-solar);">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
-              <span>Magnetopause Standoff (r₀,mp)</span>
+              <span data-term="magnetopause">Magnetopause Standoff (r₀,mp)</span>
               <i class="fa-solid fa-magnet text-amber-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
@@ -923,7 +923,7 @@
 
           <div class="metric-card" style="border-left: 3px solid #a855f7;">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
-              <span>Magnetosheath Thickness (ΔR)</span>
+              <span data-term="magnetosheath">Magnetosheath Thickness (ΔR)</span>
               <i class="fa-solid fa-arrows-left-right-to-line text-purple-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
@@ -935,7 +935,7 @@
 
           <div class="metric-card" style="border-left: 3px solid #10b981;">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
-              <span>Flaring Parameters (α)</span>
+              <span data-term="flaring">Flaring Parameters (α)</span>
               <i class="fa-solid fa-square-root-variable text-emerald-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
@@ -955,7 +955,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="metric-card" style="border-left: 3px solid var(--accent-emerald);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-            <span>Equatorward Midnight Boundary</span>
+            <span data-term="equatorward boundary">Equatorward Midnight Boundary</span>
             <i class="fa-solid fa-moon text-emerald-400"></i>
           </div>
           <div id="aurora-midnight-lat" class="text-3xl font-hud font-black text-emerald-300">---°</div>
@@ -964,7 +964,7 @@
         </div>
         <div class="metric-card" style="border-left: 3px solid var(--accent-solar);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-            <span>Hemispheric Power Index (HPI)</span>
+            <span data-term="hemispheric power">Hemispheric Power Index (HPI)</span>
             <i class="fa-solid fa-bolt text-amber-400"></i>
           </div>
           <div id="aurora-power-gw" class="text-3xl font-hud font-black text-amber-300">--- GW</div>
@@ -986,7 +986,7 @@
           <div>
             <div class="flex items-center space-x-2">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <h3 class="font-tech font-bold text-base text-slate-100">Global Geographic Auroral Oval Visibility Map</h3>
+              <h3 data-term="auroral oval" class="font-tech font-bold text-base text-slate-100">Global Geographic Auroral Oval Visibility Map</h3>
             </div>
             <p class="text-xs text-slate-400">Starkov (1994) auroral oval (green band) and equatorward edge of the diffuse aurora (dashed), mapped with the IGRF dipole for the oval time, with the day/night terminator and ground observatories.</p>
           </div>
@@ -1043,7 +1043,7 @@
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center space-x-2">
               <i class="fa-solid fa-wave-square text-rose-400"></i>
-              <h3 class="font-bold text-sm text-slate-200">Dst Ring Current: Model vs Observed</h3>
+              <h3 data-term="Dst" class="font-bold text-sm text-slate-200">Dst Ring Current: Model vs Observed</h3>
             </div>
             <div class="flex items-center space-x-2">
               <select id="dst-model-select" onchange="loadAuroralForecast()" class="bg-space-900 text-rose-300 text-[11px] border border-slate-700 rounded px-1.5 py-0.5">
@@ -1171,7 +1171,7 @@
       <!-- Radio occultation: spacecraft-station ray through the corona -->
       <div class="glass-panel p-5 space-y-3" id="occultation-panel">
         <div class="border-b border-sky-500/20 pb-2.5">
-          <h3 class="font-tech font-bold text-base text-slate-100">Radio Occultation by the Corona</h3>
+          <h3 data-term="radio occultation" class="font-tech font-bold text-base text-slate-100">Radio Occultation by the Corona</h3>
           <p class="text-xs text-slate-400">SPICE ray geometry between a spacecraft and a ground station (closest approach to the Sun, elongation), and along the ray the electron column, Faraday rotation and Doppler shift through a coronal density and magnetic field model.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
@@ -1304,7 +1304,7 @@
       <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-xl space-y-4">
         <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
           <div>
-            <h3 class="font-bold text-sm text-slate-200">CME Plane-of-Sky Kinematic Solver &amp; Aerodynamic Shock Simulator</h3>
+            <h3 data-term="CME" class="font-bold text-sm text-slate-200">CME Plane-of-Sky Kinematic Solver &amp; Aerodynamic Shock Simulator</h3>
             <p class="text-xs text-slate-400">Plane-of-sky speed from two heights, then transit to L1 and Earth with the Vršnak et al. (2013) drag-based model, compared with the Gopalswamy et al. (2001) empirical arrival model. Presets set heights and Δt that give the speed on the button: the SOHO/LASCO linear speed from the CDAW CME catalogue for the 2000, 2003 and 2024 events; Carrington and Nominal are illustrative.</p>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
@@ -1424,7 +1424,7 @@
           <div>
             <div class="flex items-center space-x-2">
               <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-              <h3 class="font-tech font-bold text-base text-slate-100">Heliospheric Parker Spiral & Solar Wind Stream Simulator</h3>
+              <h3 data-term="Parker spiral" class="font-tech font-bold text-base text-slate-100">Heliospheric Parker Spiral & Solar Wind Stream Simulator</h3>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Archimedean magnetic field lines wound by solar rotation. Corotating Interaction Regions (CIRs) and Solar Energetic Particle (SEP) connectivity.</p>
           </div>
@@ -1511,7 +1511,7 @@
       <!-- Coronal magnetic field (PFSS) from synoptic maps -->
       <div class="glass-panel p-5 space-y-3" id="pfss-panel">
         <div class="border-b border-sky-500/20 pb-2.5">
-          <h3 class="font-tech font-bold text-base text-slate-100">Coronal Magnetic Field (PFSS)</h3>
+          <h3 data-term="PFSS" class="font-tech font-bold text-base text-slate-100">Coronal Magnetic Field (PFSS)</h3>
           <p class="text-xs text-slate-400">Potential field source surface model from a GONG, ADAPT or HMI synoptic magnetogram: the solar source of the wind now at Earth, field lines from any point, the heliospheric current sheet and the distance to it.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
@@ -1825,7 +1825,7 @@
             <i class="fa-solid fa-chart-line"></i>
           </div>
           <div>
-            <h3 class="font-tech font-bold text-base text-slate-100 tracking-wide">Solar Wind MHD Turbulence &amp; Power Spectral Density (PSD)</h3>
+            <h3 data-term="power spectrum" class="font-tech font-bold text-base text-slate-100 tracking-wide">Solar Wind MHD Turbulence &amp; Power Spectral Density (PSD)</h3>
             <p class="text-xs text-slate-400">Fast Fourier Transform (FFT) analysis of IMF &amp; plasma fluctuations. Benchmarks Kolmogorov f⁻⁵/³ inertial subrange vs Iroshnikov-Kraichnan f⁻³/².</p>
           </div>
         </div>
@@ -2265,7 +2265,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
         <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-            <span>Newell Coupling dΦ/dt</span>
+            <span data-term="coupling function">Newell Coupling dΦ/dt</span>
             <i class="fa-solid fa-bolt text-cyan-400"></i>
           </div>
           <div id="forecast-newell-val" class="text-2xl font-hud font-black text-cyan-300">---</div>
@@ -2274,7 +2274,7 @@
 
         <div class="metric-card" style="border-left: 3px solid #38bdf8;">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-            <span>Current Ring Current Dst</span>
+            <span data-term="Dst">Current Ring Current Dst</span>
             <i class="fa-solid fa-circle-dot text-sky-400"></i>
           </div>
           <div id="forecast-dst-val" class="text-2xl font-hud font-black text-sky-300">--- nT</div>
@@ -2283,7 +2283,7 @@
 
         <div class="metric-card" style="border-left: 3px solid #eab308;">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-            <span>Minor Storm (G1, Kp 5)</span>
+            <span data-term="Kp">Minor Storm (G1, Kp 5)</span>
             <span id="gauge-g1-val" class="text-xs font-hud font-bold text-yellow-400">---%</span>
           </div>
           <div class="w-full bg-slate-900/80 h-2 rounded-full mt-2 overflow-hidden border border-slate-700/40">
@@ -2336,7 +2336,7 @@
           <div class="flex items-center justify-between">
             <div class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
               <i class="fa-solid fa-tower-broadcast text-sky-400"></i>
-              <span>Power Grid & GIC Risks</span>
+              <span data-term="GIC">Power Grid & GIC Risks</span>
             </div>
             <span id="hazard-gic-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
           </div>
@@ -2347,7 +2347,7 @@
           <div class="flex items-center justify-between">
             <div class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
               <i class="fa-solid fa-plane-departure text-amber-400"></i>
-              <span>Polar Aviation & HF Radio</span>
+              <span data-term="D-RAP">Polar Aviation & HF Radio</span>
             </div>
             <span id="hazard-aviation-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
           </div>
@@ -2404,7 +2404,7 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 pt-1">
           <div class="metric-card" style="border-left: 3px solid #f59e0b;">
             <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-              <span>Smoothed Sunspot No. (SSN)</span>
+              <span data-term="sunspot number">Smoothed Sunspot No. (SSN)</span>
               <i class="fa-solid fa-sun text-amber-400"></i>
             </div>
             <div class="flex items-baseline space-x-1.5">
@@ -2416,7 +2416,7 @@
 
           <div class="metric-card" style="border-left: 3px solid #38bdf8;">
             <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
-              <span>10.7 cm Solar Radio Flux</span>
+              <span data-term="F10.7">10.7 cm Solar Radio Flux</span>
               <i class="fa-solid fa-satellite-dish text-sky-400"></i>
             </div>
             <div class="flex items-baseline space-x-1.5">
@@ -2471,7 +2471,7 @@
           <div>
             <div class="flex items-center space-x-2">
               <span class="w-2.5 h-2.5 rounded-full bg-rose-500 pulse-beacon"></span>
-              <h3 class="font-tech font-bold text-base text-slate-100">D-Region Ionospheric Radio Absorption (D-RAP) &amp; HF Blackout Simulator</h3>
+              <h3 data-term="D-RAP" class="font-tech font-bold text-base text-slate-100">D-Region Ionospheric Radio Absorption (D-RAP) &amp; HF Blackout Simulator</h3>
             </div>
             <p class="text-xs text-slate-400">Quantifies 3–30 MHz signal attenuation and Highest Affected Frequency (HAF) with the NOAA SWPC D-RAP flare relation HAF = 10 log₁₀(Fx) + 65 MHz (the proton part of D-RAP, Sauer &amp; Wilkinson 2008, is not modelled).</p>
           </div>
@@ -2545,7 +2545,7 @@
           <div>
             <div class="flex items-center space-x-2">
               <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 pulse-beacon"></span>
-              <h3 class="font-tech font-bold text-base text-slate-100">Geomagnetically Induced Currents (GIC) &amp; Surface Geoelectric Field Model</h3>
+              <h3 data-term="GIC" class="font-tech font-bold text-base text-slate-100">Geomagnetically Induced Currents (GIC) &amp; Surface Geoelectric Field Model</h3>
             </div>
             <p class="text-xs text-slate-400">Simulates horizontal electric field induction (E_H = √(ρ / (μ₀ω)) · |dB/dt|) and transformer quasi-DC neutral saturation based on Boteler &amp; Pirjola (2017).</p>
           </div>
@@ -3490,6 +3490,7 @@
     </div>
   </div>
 
+  <script src="/static/js/glossary.js"></script>
   <script src="/static/js/audio.js"></script>
   <script src="/static/js/orbits.js"></script>
   <script src="/static/js/aurora.js"></script>
