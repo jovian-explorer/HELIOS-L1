@@ -2,14 +2,23 @@
 
 **Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite**
 
-> A unified scientific software suite for acquiring, analyzing, comparing, and visualizing space weather telemetry from satellites stationed at the Sun-Earth L1 Lagrange point and complementary heliospheric missions.
+HELIOS-L1 is a free desktop app for space weather: the stream of particles and magnetic field from the Sun (the *solar wind*), the storms it causes around Earth, and the aurora. It reads live measurements from spacecraft parked 1.5 million km sunward of Earth at the *L1 point* (about an hour of warning before the wind reaches us) and decades of archived data, and runs the standard published models on them. Everything runs on your own computer; the data come from public NOAA, NASA and GFZ services.
 
----
+## What can I do with it?
 
-## 🌟 Name & Full Form
+* **See the solar wind right now** and what it means: speed, density and magnetic field at L1, the NOAA storm scales (G, S, R), and how hard Earth's magnetic shield is being pushed.
+* **Check whether the aurora may be visible from where you are**: the map shows the auroral oval for the current solar wind, the day-night line, and the darkness of the sky at aurora observatories.
+* **Follow a solar eruption (CME) to Earth**: coronagraph images of the Sun, the eruption's speed, and its predicted arrival time.
+* **Replay famous storms** (Bastille Day 2000, Halloween 2003, May 2024) with the real data.
+* **Do research**: shock normals, flux-rope fits, minimum variance and de Hoffmann-Teller analysis, superposed epochs, OMNI statistics from 1963, PFSS coronal fields, radio occultation geometry. Every result lists its data sources and can be saved as CSV or JSON.
 
-* **Short & Catchy Name:** **HELIOS-L1** (or **HELIOS**)
-* **Full Form:** **H**eliophysical **E**xploration, **L**agrange-1 **I**nterplanetary **O**bservation & **S**pace-weather Suite
+New to the subject? Press `U` for the user guide, `P` for the formulas and the papers they come from, and `?` for the keyboard shortcuts.
+
+## Quick start
+
+1. Download the archive for your system from the [Releases](https://github.com/jovian-explorer/HELIOS-L1/releases) page (details in [How to Install and Run](#-how-to-install-and-run)).
+2. Unzip it and run `HELIOS-L1` (Windows: `HELIOS-L1.exe`). No Python or other software is needed.
+3. The dashboard opens on the live solar wind. The four sections at the top lead to the rest: *L1 Fleet & Telemetry* (spacecraft data), *Solar & Heliosphere* (solar images, CMEs, the Sun's magnetic field), *Geospace & Hazards* (aurora, storm forecast, effects on power grids and radio) and *Data Studio & Science* (archive data, your own files, research analyses).
 
 ---
 

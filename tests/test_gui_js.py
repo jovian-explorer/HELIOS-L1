@@ -429,3 +429,24 @@ console.log(JSON.stringify([s.lon, s.lat, a.getDipoleLatitude(-72.8, 80.8)]));
     assert res.returncode == 0, res.stderr
     lon, lat, pole = json.loads(res.stdout)
     assert lon == pytest.approx(-4.1, abs=0.15) and lat == pytest.approx(-15.05, abs=0.3) and pole == pytest.approx(90.0)
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_aurora_map_outlook_for_the_users_place():
+    src = (APP_JS.parent / "aurora.js").read_text(encoding="utf-8")
+    script = "const window = {}; const document = {getElementById: () => null};\n" + src + """
+const a = Object.create(AuroralMapRenderer.prototype);
+a.mapTime = new Date(Date.UTC(2026, 0, 15, 22, 0, 0));
+a.magPoleNorth = { lat: 80.8, lon: -72.8 };
+a.ovalBoundaries = { north: { equatorward: Array.from({length: 73}, (_, i) => ({ lon: -180 + 5 * i, lat: 60 })) } };
+const out = [];
+for (const [lat, lon] of [[70, 19], [55, 19], [35, 19], [-45, 170]]) { a.home = { lat, lon }; out.push(a.homeOutlook()); }
+console.log(JSON.stringify(out));
+"""
+    res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert res.returncode == 0, res.stderr
+    inside, near, far, south = json.loads(res.stdout)
+    assert "overhead" in inside["oval"] and inside["sky"] == "dark night"
+    assert "low on the northern horizon" in near["oval"]
+    assert "unlikely" in far["oval"]
+    assert south["oval"] == "the oval is not loaded yet" and south["sky"].startswith("daylight")

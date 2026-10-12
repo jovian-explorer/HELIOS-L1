@@ -32,6 +32,9 @@ class AuroralMapRenderer {
     this.showGrid = true;
     this.hoveredStation = null;
     this.mouseGeo = null;
+    // The user's own place ({lat, lon}, set by clicking the map), kept in this browser
+    this.home = null;
+    try { this.home = JSON.parse(localStorage.getItem('helios-aurora-home')); } catch (e) { /* none */ }
 
     // North & South Geomagnetic (centred dipole) Poles, IGRF-14 for 2025
     this.magPoleNorth = { lat: 80.8, lon: -72.8 };
@@ -103,6 +106,10 @@ class AuroralMapRenderer {
       this.updateTooltip(e.clientX, e.clientY);
     });
 
+    this.canvas.addEventListener('click', () => {
+      if (this.mouseGeo) this.setHome(this.mouseGeo.lat, this.mouseGeo.lon);
+    });
+
     this.canvas.addEventListener('mouseleave', () => {
       this.hoveredStation = null;
       this.mouseGeo = null;
@@ -121,6 +128,59 @@ class AuroralMapRenderer {
     // Equatorward midnight boundary from the server model, so the map label matches the card
     this.eqMidnightLat = (eqMidnightLat !== undefined && eqMidnightLat !== null) ? Number(eqMidnightLat) : null;
     this.ovalBoundaries = (ovalBoundaries && ovalBoundaries.north) ? ovalBoundaries : null;
+    this.showHomeOutlook();
+  }
+
+  setHome(lat, lon) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90) return;
+    lon = ((lon + 540) % 360) - 180;
+    this.home = { lat, lon };
+    try { localStorage.setItem('helios-aurora-home', JSON.stringify(this.home)); } catch (e) { /* not kept */ }
+    this.showHomeOutlook();
+  }
+
+  // Sky darkness in plain words from the solar zenith angle (deg)
+  skyText(zenith) {
+    if (zenith > 108) return 'dark night';
+    if (zenith > 96) return 'deep twilight (bright aurora can be seen)';
+    if (zenith > 90) return 'civil twilight (only very bright aurora)';
+    return 'daylight (aurora cannot be seen)';
+  }
+
+  // Where the place lies relative to the oval drawn on the map. The equatorward boundary point
+  // nearest in magnetic local time is compared in dipole latitude. Aurora 120 km up is 5 deg
+  // above the horizon from about 7 deg of latitude away (central angle
+  // acos(R cos 5deg / (R + 120 km)) - 5deg), so within 7 deg it may be seen low in the sky.
+  homeOutlook() {
+    const h = this.home;
+    if (!h) return null;
+    const sky = this.skyText(this.getSolarZenith(h.lon, h.lat, this.getSubsolarPoint()));
+    const hemi = this.ovalBoundaries && this.ovalBoundaries[h.lat >= 0 ? 'north' : 'south'];
+    if (!hemi || !hemi.equatorward || !hemi.equatorward.length) return { sky, oval: 'the oval is not loaded yet' };
+    const mlt = this.getMLT(h.lon, h.lat);
+    let best = null, bestDt = 99;
+    for (const pt of hemi.equatorward) {
+      let dt = Math.abs(this.getMLT(pt.lon, pt.lat) - mlt);
+      dt = Math.min(dt, 24 - dt);
+      if (dt < bestDt) { bestDt = dt; best = pt; }
+    }
+    const gap = Math.abs(this.getDipoleLatitude(best.lon, best.lat)) - Math.abs(this.getDipoleLatitude(h.lon, h.lat));
+    const side = h.lat >= 0 ? 'northern' : 'southern';
+    let oval;
+    if (gap <= 0) oval = 'inside or poleward of the oval\'s outer edge: aurora overhead when the sky is dark';
+    else if (gap <= 7) oval = `${gap.toFixed(0)}° of latitude from the oval: aurora possible low on the ${side} horizon`;
+    else oval = `${gap.toFixed(0)}° of latitude from the oval: aurora unlikely`;
+    return { sky, oval };
+  }
+
+  showHomeOutlook() {
+    const el = typeof document !== 'undefined' && document.getElementById('aurora-home-note');
+    if (!el) return;
+    const o = this.homeOutlook();
+    el.textContent = o
+      ? `Your place (${this.home.lat.toFixed(1)}°, ${this.home.lon.toFixed(1)}°): sky ${o.sky}; ${o.oval}. ` +
+        'Rough guide: the drawn oval can be several degrees off, and clouds and city lights are not included.'
+      : 'Click the map to mark your place and see whether the aurora may be visible there.';
   }
 
   // Converts geographic (lon, lat) to canvas (x, y)
@@ -271,6 +331,20 @@ class AuroralMapRenderer {
     // 7. Ground Observation Network Stations
     if (this.showStations) {
       this.drawStations(sun);
+    }
+
+    if (this.home) {
+      const { x, y } = this.geoToXY(this.home.lon, this.home.lat);
+      this.ctx.save();
+      this.ctx.strokeStyle = '#facc15';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, 6, 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.fillStyle = '#facc15';
+      this.ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      this.ctx.fillText('YOU', x + 8, y + 3);
+      this.ctx.restore();
     }
 
     // 8. Dynamic Telemetry Watermark & HUD Coordinates
