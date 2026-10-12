@@ -151,7 +151,7 @@ The Dst panel runs the Burton et al. (1975) or O'Brien & McPherron (2000) model 
 
 ### Storm Forecast
 
-A 12-hour Kp trajectory from the Newell et al. (2008) coupling fit and an O'Brien-McPherron Dst trajectory, both from the latest solar wind **held and relaxed towards quiet values** (an assumption, written under the chart; it is not a forecast of the solar wind). The storm probabilities and the yellow Kp line are NOAA SWPC's own forecast (3-day geomagnetic forecast; Kp forecast product, whose values are "estimated" for the current UTC day and "predicted" after it).
+A 12-hour Kp trajectory from the Newell et al. (2008) coupling fit and an O'Brien-McPherron Dst trajectory, both from the latest solar wind **held and relaxed towards quiet values** (an assumption, written under the chart; it is not a forecast of the solar wind). The storm probabilities and the yellow Kp line are NOAA SWPC's own forecast (3-day geomagnetic forecast; Kp forecast product, whose values are "estimated" for the current UTC day and "predicted" after it). How good the Newell Kp fit is, from hourly OMNI solar wind against the OMNI Kp of the same hour: r = 0.76, RMSE 0.96, bias −0.08 in 2003 (8514 hours, mean Kp 3.1) and r = 0.79, RMSE 0.85, bias +0.13 in 2015 (8730 hours, mean Kp 2.1); so with measured solar wind it is good to about one Kp unit, and the 12-hour trajectory is only as good as the persistence assumption.
 
 ### Terrestrial Hazards & Solar Cycle
 

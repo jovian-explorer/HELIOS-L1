@@ -24,31 +24,9 @@ class SpaceWeatherForecaster:
 
     @staticmethod
     def calculate_newell_coupling(speed_kms: float, b_total_nt: float, bz_gsm_nt: float, by_gsm_nt: float = 0.0) -> float:
-        """
-        Newell universal coupling function dPhi_MP / dt [Wb/s or proxy]:
-        dPhi/dt = v^(4/3) * B_T^(2/3) * sin^(8/3)(theta_c / 2)
-        where theta_c is the IMF clock angle in GSM coordinates and B_T = sqrt(By^2 + Bz^2)
-        is the field transverse to the Sun-Earth line (Newell et al. 2007). Bx does not
-        enter; b_total_nt is kept for API compatibility and is not used.
-        """
-        v = max(100.0, speed_kms)
-        bt = max(0.1, math.hypot(by_gsm_nt or 0.0, bz_gsm_nt or 0.0))
-        
-        # Clock angle theta_c = atan2(By, Bz)
-        clock_angle = math.atan2(by_gsm_nt, bz_gsm_nt)
-        if clock_angle < 0:
-            clock_angle += 2 * math.pi
-
-        sin_half = math.sin(clock_angle / 2.0)
-        # Handle zero or negative safely
-        sin_half_pow = math.pow(max(0.0, abs(sin_half)), 8.0 / 3.0)
-        v_pow = math.pow(v, 4.0 / 3.0)
-        bt_pow = math.pow(bt, 2.0 / 3.0)
-
-        # In the (km/s)^(4/3) nT^(2/3) units of Newell et al. (2007): ~8600 for 400 km/s and
-        # 5 nT due south
-        coupling = v_pow * bt_pow * sin_half_pow
-        return round(coupling, 1)
+        """Newell et al. (2007) dPhi/dt in (km/s)^(4/3) nT^(2/3) (SpaceWeatherPhysics.newell_coupling),
+        rounded to 0.1; b_total_nt is kept for API compatibility and is not used (Bx does not enter)."""
+        return round(SpaceWeatherPhysics.newell_coupling(speed_kms, by_gsm_nt, bz_gsm_nt), 1)
 
     @staticmethod
     def newell_2008_kp(speed_kms: Optional[float], density_cm3: Optional[float],
