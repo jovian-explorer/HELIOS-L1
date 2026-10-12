@@ -220,9 +220,9 @@ class ScientificReportGenerator:
         if bz_val is None:
             reconn_status = "UNKNOWN (no IMF Bz in the latest records)"
         elif bz_val < 0:
-            reconn_status = "ACTIVE RECONNECTION (Southward IMF Bz < 0)"
+            reconn_status = "SOUTHWARD IMF (Bz < 0): dayside reconnection, energy entering the magnetosphere"
         else:
-            reconn_status = "CLOSED MAGNETOSPHERE (Northward IMF Bz >= 0)"
+            reconn_status = "NORTHWARD IMF (Bz >= 0): weak coupling to the magnetosphere"
 
         shocks_table = ""
         if shocks:
@@ -248,7 +248,7 @@ class ScientificReportGenerator:
 - **Geomagnetic Storm Activity (G-Scale):** `{g_scale}` (Kp {_v(classification.get('kp'))}: {classification.get('kp_source', '---')})
 - **Solar Radiation Storm Activity (S-Scale):** `{s_scale}` (Proton Flux ≥ 10 MeV: **{proton_pfu} pfu**)
 - **HF Radio Blackout Activity (R-Scale):** `{r_scale}` (X-ray Flare Class: **{flare_cls}**)
-- **Interplanetary Reconnection State:** **{reconn_status}**
+- **IMF Direction and Coupling:** **{reconn_status}**
 - **Magnetopause Subsolar Standoff ($R_{{mp}}$):** **{_v(latest.get('magnetopause_re'))} $R_E$** (Nominal ~ 10–11 $R_E$)
 - **Akasofu Energy Coupling (ε / \\epsilon):** **{_v(latest.get('akasofu_gw'))} GW**
 
