@@ -5,6 +5,14 @@
  * and custom telemetry/OMNI data ingestion.
  */
 
+// A request the local server never answered (the app was closed, or it is restarting) failed
+// with the browser's bare "Failed to fetch"; every panel shows err.message, so say it there.
+const _fetch = window.fetch.bind(window);
+window.fetch = (...args) => _fetch(...args).catch((err) => {
+  if (err && err.name === 'AbortError') throw err;
+  throw new Error('No answer from the HELIOS server: is the app still running? Restart it and try again.');
+});
+
 let chartMag = null;
 let chartPlasma = null;
 let chartMagnetosphere = null;
@@ -1038,15 +1046,15 @@ async function loadTelemetry() {
   const t0 = performance.now();
   try {
     const res = await fetch(`/api/telemetry/${sat}?span_days=${span}`);
-    if (!res.ok) throw new Error('Failed to fetch telemetry');
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(apiErrorText(data, res));
     currentTelemetryData = data;
     const latency = Math.round(performance.now() - t0);
     updateFeedStatus(data, latency);
     updateTelemetryUI(data);
   } catch (err) {
     console.error('Error fetching telemetry:', err);
-    updateFeedStatus({ error: true });
+    updateFeedStatus({ error: err.message });
   }
 }
 
@@ -1150,6 +1158,8 @@ function updateFeedStatus(data, latency = 0) {
     badgeText.innerText = 'Feed Offline';
     badgeText.className = 'text-rose-400 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-rose-500';
+    const badge = document.getElementById('feed-status-badge');
+    if (badge) badge.title = `Telemetry could not be loaded: ${data.error}`;
     return;
   }
 
@@ -2043,8 +2053,8 @@ async function loadCustomPreset(presetId) {
   window.playBlip?.();
   try {
     const res = await fetch(`/api/custom/presets/${presetId}`);
-    if (!res.ok) throw new Error('Preset not found');
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(apiErrorText(data, res));
     const preset = data.preset;
     if (preset) {
       document.getElementById('import-mission-name').value = `${preset.name} (illustrative profile)`;
@@ -2052,7 +2062,7 @@ async function loadCustomPreset(presetId) {
       await submitCustomImport();
     }
   } catch (e) {
-    console.error('Failed to load preset:', e);
+    alert(`The example could not be loaded: ${e.message}`);
   }
 }
 

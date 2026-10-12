@@ -16,8 +16,8 @@ async function loadMLForecast() {
 
   try {
     const res = await fetch(`/api/forecast/ml?mission_id=${sat}`);
-    if (!res.ok) throw new Error('Forecast API failed');
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(apiErrorText(data, res));
 
     // 1. Current Coupling & Indicators
     const c = data.current_coupling;
@@ -54,6 +54,8 @@ async function loadMLForecast() {
 
   } catch (err) {
     console.error('Error loading ML forecast:', err);
+    const notes = document.getElementById('forecast-assumptions');
+    if (notes) notes.innerHTML = `<div class="text-rose-400">Forecast unavailable: ${escapeHtml(err.message)}</div>`;
   }
 }
 

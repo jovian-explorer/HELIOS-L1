@@ -20,8 +20,8 @@ async function loadFleetMatrix() {
 
   try {
     const res = await fetch(`/api/compare/matrix?parameter=${param}`);
-    if (!res.ok) throw new Error('Matrix API failed');
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(apiErrorText(data, res));
 
     const missions = data.missions;
     const matrix = data.matrix_r;
