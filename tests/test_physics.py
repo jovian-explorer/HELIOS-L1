@@ -18,3 +18,12 @@ def test_hazards_follow_the_noaa_g_scale():
     assert g1["aviation_hf"]["risk_level"] == "MINOR (G1)"  # southward Bz alone no longer raises it
     assert g4["satellite_ops"]["risk_level"] == "SEVERE (G4)" and "tracking" in g4["satellite_ops"]["advisory"]
     assert F.assess_hazards(400, 0, None, 2.0)["power_grid_gic"]["risk_level"] == "NONE (G0)"
+
+
+def test_earth_connected_parker_line_passes_through_earth():
+    from helios.core.parker_spiral import ParkerSpiralModel as P
+    for v in (300.0, 450.0, 2000.0):
+        line = P.generate_parker_spiral_lines(v, num_points=121)[0]
+        assert line["is_earth_connected"]
+        p = min(line["points"], key=lambda q: abs(q["r_au"] - 1.0))
+        assert abs(p["r_au"] - 1.0) < 0.01 and abs(p["y_au"]) < 0.01 and p["x_au"] > 0.99

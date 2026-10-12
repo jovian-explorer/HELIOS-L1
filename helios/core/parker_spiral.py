@@ -19,8 +19,6 @@ class ParkerSpiralModel:
         Calculate IMF spiral pitch angle psi in degrees at radial distance r (in AU).
         tan(psi) = (Omega * r) / V_sw
         """
-        if speed_kms <= 0:
-            return 45.0
         r_km = r_au * cls.AU_KM
         tan_psi = (cls.OMEGA_SUN_RAD_S * r_km) / speed_kms
         return round(math.degrees(math.atan(tan_psi)), 1)
@@ -33,8 +31,6 @@ class ParkerSpiralModel:
         Delta phi = (Omega * r) / V_sw
         Known as the 'well-connected' zone (typically ~45° to 60° West).
         """
-        if speed_kms <= 0:
-            return 50.0
         r_km = r_au * cls.AU_KM
         delta_phi_rad = (cls.OMEGA_SUN_RAD_S * r_km) / speed_kms
         return round(math.degrees(delta_phi_rad), 1)
@@ -54,10 +50,12 @@ class ParkerSpiralModel:
         r_max_au = 1.25
         r_min_au = 0.05
 
-        v = max(250.0, min(1200.0, speed_kms))
+        v = float(speed_kms)  # no clamp: the angles reported with the lines use the same speed
+        # Line 0 leaves the Sun where it reaches Earth (1 AU, longitude 0): Omega (1 AU - r0) / V east of it
+        phi_earth = cls.OMEGA_SUN_RAD_S * (cls.AU_KM - r_min_au * cls.AU_KM) / v
 
         for stream_idx in range(num_streamlines):
-            phi_0 = (2.0 * math.pi * stream_idx) / num_streamlines
+            phi_0 = phi_earth + (2.0 * math.pi * stream_idx) / num_streamlines
             points = []
 
             for i in range(num_points):
@@ -78,12 +76,12 @@ class ParkerSpiralModel:
                     "y_au": round(y, 4)
                 })
 
-            # Line 0 starts at phi_0 = 0 (the reference streamline drawn through Earth)
+            # Line 0 passes through Earth (it used to start at longitude 0 and miss Earth by about 60 deg)
             connected_to_earth = (stream_idx == 0)
 
             streamlines.append({
                 "stream_id": stream_idx,
-                "phi_source_deg": round(math.degrees(phi_0), 1),
+                "phi_source_deg": round(math.degrees(phi_0) % 360.0, 1),
                 "is_earth_connected": connected_to_earth,
                 "points": points
             })
