@@ -2736,11 +2736,16 @@ async function loadSpectralAnalysis() {
     const taylorKmEl = document.getElementById('psd-stat-taylor-km');
     const taylorReEl = document.getElementById('psd-stat-taylor-re');
 
-    if (alphaEl) alphaEl.innerText = psd.spectral_slope_alpha != null ? psd.spectral_slope_alpha.toFixed(2) : '---';
+    if (alphaEl) {
+      alphaEl.innerText = psd.spectral_slope_alpha != null
+        ? psd.spectral_slope_alpha.toFixed(2) + (psd.spectral_slope_error != null ? ` ± ${psd.spectral_slope_error.toFixed(2)}` : '') : '---';
+      const fr = psd.fit_range_hz;
+      alphaEl.title = fr ? `Fitted from ${(fr[0] * 1000).toFixed(2)} to ${(fr[1] * 1000).toFixed(2)} mHz (spectrum averaged in logarithmic bins); ± one standard error` : '';
+    }
     if (regimeEl) {
-      regimeEl.innerText = psd.cascade_regime || 'Inertial Cascade';
-      const a = psd.spectral_slope_alpha;
-      regimeEl.className = `text-[11px] font-semibold mt-1 truncate ${a == null ? 'text-slate-400' : (a >= 1.55 && a <= 1.80 ? 'text-cyan-400' : (a >= 1.4 && a < 1.55 ? 'text-emerald-400' : 'text-amber-400'))}`;
+      regimeEl.innerText = psd.cascade_regime || '---';
+      regimeEl.title = psd.cascade_regime || '';
+      regimeEl.className = `text-[11px] font-semibold mt-1 truncate ${psd.spectral_slope_alpha == null ? 'text-slate-400' : 'text-cyan-400'}`;
     }
     if (r2El) r2El.innerText = psd.r_squared != null ? psd.r_squared.toFixed(2) : '---';
     if (rmsEl) rmsEl.innerText = psd.fluctuation_rms !== undefined ? psd.fluctuation_rms.toFixed(2) : '---';

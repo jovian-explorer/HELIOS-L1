@@ -11,6 +11,11 @@ from typing import Dict, List, Any, Optional, Tuple
 PDYN_NPA_PER_CM3_KMS2 = 2.0e-6
 
 
+# Lower end of the spectral fit: the 1/f range of the solar wind at 1 AU reaches up to about
+# 1e-4 Hz (Bruno & Carbone 2013, Living Rev. Sol. Phys. 10, 2, doi:10.12942/lrsp-2013-2), the inertial range above.
+PSD_FIT_FMIN_HZ = 1e-4
+
+
 class SpaceWeatherPhysics:
     """Core physics and geomagnetic coupling calculations."""
 
@@ -719,15 +724,33 @@ class SpaceWeatherPhysics:
             psd_raw[1:] *= 2.0
         freqs_raw = np.fft.rfftfreq(len(arr), d=dt_seconds)
 
-        # Truncate DC component, take up to first 120 modes
-        max_modes = min(len(freqs_raw), 120)
-        freqs = [float(f) for f in freqs_raw[1:max_modes]]
-        psd = [float(p) for p in psd_raw[1:max_modes]]
+        # Every mode but DC (only the first 120 were kept, so a day of 1-min data was fitted
+        # between 0.01 and 1.4 mHz, across the 1/f range and the start of the inertial range).
+        freqs = [float(f) for f in freqs_raw[1:]]
+        psd = [float(p) for p in psd_raw[1:]]
 
-        # Fit spectral slope in log-log space: log10(P) = -alpha * log10(f) + C
+        # Slope fitted to the spectrum averaged in logarithmic bins (10 per decade) between
+        # PSD_FIT_FMIN_HZ (above the 1/f range at 1 AU) and half the Nyquist frequency (the top
+        # octave of averaged data is distorted by aliasing): the raw periodogram has 100 %
+        # scatter per mode and most modes at the top, which dominated the fit.
         f_arr = np.array(freqs)
         p_arr = np.array(psd)
-        valid_mask = (p_arr > 0) & (f_arr > 0)
+        f_hi = 0.5 * fs / 2.0
+        in_range = (p_arr > 0) & (f_arr >= PSD_FIT_FMIN_HZ) & (f_arr <= f_hi)
+        if np.sum(in_range) < 8:  # short series: the whole spectrum below half the Nyquist frequency
+            in_range = (p_arr > 0) & (f_arr <= f_hi)
+        fit_f, fit_p = [], []
+        if np.any(in_range):
+            lf, lp = np.log10(f_arr[in_range]), np.log10(p_arr[in_range])
+            edges = np.arange(lf.min(), lf.max() + 0.1, 0.1)
+            which = np.digitize(lf, edges)
+            for b in np.unique(which):
+                sel = which == b
+                fit_f.append(float(np.mean(lf[sel])))
+                fit_p.append(float(np.mean(lp[sel])))  # log-mean: the periodogram's log bias is a constant
+        fit_f, fit_p = np.array(fit_f), np.array(fit_p)
+        valid_mask = np.isfinite(fit_p)
+        alpha_err = None
 
         # No fit (e.g. a constant series has no power): no slope rather than a made-up -5/3.
         alpha = None
@@ -736,9 +759,9 @@ class SpaceWeatherPhysics:
         iroshnikov_psd = []
         regime = "No power-law fit (flat or zero spectrum)"
 
-        if np.sum(valid_mask) >= 8:
-            log_f = np.log10(f_arr[valid_mask])
-            log_p = np.log10(p_arr[valid_mask])
+        if np.sum(valid_mask) >= 6:
+            log_f = fit_f[valid_mask]
+            log_p = fit_p[valid_mask]
 
             # Linear regression
             slope, intercept = np.polyfit(log_f, log_p, 1)
@@ -748,6 +771,9 @@ class SpaceWeatherPhysics:
             ss_tot = np.sum((log_p - np.mean(log_p)) ** 2)
             ss_res = np.sum((log_p - y_pred) ** 2)
             r2 = float(1.0 - (ss_res / max(1e-9, ss_tot))) if ss_tot > 0 else 0.0
+            # Standard error of the slope from the residuals of the binned fit
+            sxx = float(np.sum((log_f - log_f.mean()) ** 2))
+            alpha_err = float(np.sqrt(ss_res / max(1, len(log_f) - 2) / sxx)) if sxx > 0 else None
 
             # Reference curves anchored at median log_f / log_p
             f_mid = float(np.median(log_f))
@@ -761,17 +787,23 @@ class SpaceWeatherPhysics:
             log_ik = - 1.5 * (np.log10(f_arr) - f_mid) + p_mid
             iroshnikov_psd = [float(f"{10 ** val:.6g}") for val in log_ik]
 
-            # Regime identification
-            if 1.55 <= alpha <= 1.80:
-                regime = "Kolmogorov Fully-Developed Inertial Subrange (f⁻⁵/³)"
-            elif 1.40 <= alpha < 1.55:
-                regime = "Iroshnikov-Kraichnan Weak MHD Wave Cascade (f⁻³/²)"
-            elif alpha > 1.80:
-                regime = "Steepened Shock Dissipation Subrange (Steep α > 1.8)"
-            elif 0.8 <= alpha < 1.40:
-                regime = "Low-Frequency 1/f Driver Energy Subrange"
+            # What the slope is consistent with, within two standard errors. 1-minute data reach
+            # 8 mHz at most: the dissipation range (near 1 Hz) is out of reach, so a steep slope
+            # here is not "dissipation".
+            tol = 2.0 * (alpha_err or 0.0)
+            k41, ik = abs(alpha - 5.0 / 3.0) <= tol, abs(alpha - 1.5) <= tol
+            if k41 and ik:
+                regime = "Between -3/2 and -5/3 (the fit cannot tell Kolmogorov from Iroshnikov-Kraichnan)"
+            elif k41:
+                regime = "Consistent with Kolmogorov f⁻⁵/³"
+            elif ik:
+                regime = "Consistent with Iroshnikov-Kraichnan f⁻³/²"
+            elif alpha > 5.0 / 3.0:
+                regime = "Steeper than f⁻⁵/³"
+            elif alpha >= 0.8:
+                regime = "Shallower than f⁻³/² (towards the 1/f range)"
             else:
-                regime = f"Non-Kolmogorov Fluctuations (α = {alpha:.2f})"
+                regime = f"Flat spectrum (α = {alpha:.2f})"
 
         v_sw = max(250.0, float(v_sw_kms))
         # Taylor hypothesis: lambda = v_sw / f. At f = 1 mHz (0.001 Hz), lambda = v_sw * 1000 km
@@ -786,6 +818,8 @@ class SpaceWeatherPhysics:
             "dt_seconds": float(dt_seconds),
             "gap_fraction": round(gap_fraction, 4),
             "spectral_slope_alpha": round(alpha, 3) if alpha is not None else None,
+            "spectral_slope_error": round(alpha_err, 3) if alpha_err is not None else None,
+            "fit_range_hz": [float(f"{10 ** fit_f.min():.3g}"), float(f"{10 ** fit_f.max():.3g}")] if len(fit_f) else None,
             "r_squared": round(max(0.0, min(1.0, r2)), 3) if r2 is not None else None,
             "cascade_regime": regime,
             "fluctuation_rms": round(rms_val, 3),

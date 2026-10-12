@@ -710,3 +710,19 @@ def test_boundaries_list_the_inputs_left_at_typical_values():
     from helios.api.server import app
     r = TestClient(app, base_url=LOCAL).get("/api/magnetosphere/boundaries?dynamic_pressure=3&bz_gsm=-2").json()
     assert r["inputs_assumed"] == {"mach_number": 8.0, "plasma_beta": 2.0} and r["dynamic_pressure_npa"] == 3.0
+
+
+def test_spectral_slope_is_fitted_on_log_bins_with_its_error():
+    """A day of 1-min data with an exact f^-5/3 spectrum: slope 5/3 within its error, fitted above 0.1 mHz."""
+    import numpy as np
+    from helios.core.science import SpaceWeatherPhysics as S
+    rng = np.random.default_rng(3)
+    n = 1440
+    f = np.fft.rfftfreq(n, 60.0)
+    amp = np.zeros_like(f)
+    amp[1:] = f[1:] ** (-5.0 / 6.0)
+    x = np.fft.irfft(amp * np.exp(2j * np.pi * rng.random(len(f))), n)
+    r = S.power_spectral_density(x.tolist(), 60.0)
+    assert abs(r["spectral_slope_alpha"] - 5.0 / 3.0) <= 2 * r["spectral_slope_error"] + 0.05
+    assert r["fit_range_hz"][0] >= 1e-4 and r["fit_range_hz"][1] <= 0.25 / 60.0 * 1.01
+    assert "Dissipation" not in r["cascade_regime"] and len(r["frequencies_hz"]) == n // 2
