@@ -171,7 +171,7 @@ Historical storms. Events since 1995 load measured OMNI data (5-minute means) an
 
 ### 6.1 Custom Ingestion & OMNI
 
-Paste or upload CSV, tab- or space-delimited text, JSON (record lists, NOAA SWPC header-row products) or HELIOS-L1's own CSV/JSON exports (files up to 64 MB). Column names are matched without regard to case, spaces or units in brackets; recognised names include `time`, `epoch`, `speed`, `Vp`, `proton_speed`, `density`, `Np`, `temperature`, `Tpr`, `bx/by/bz` (taken as GSM), `bx_gse ...` (rotated to GSM for each row's time, Hapgood 1992 with the IGRF-14 dipole) and OMNI's `YEAR DOY HR MN`. OMNI and CDF fill values are treated as missing; unused columns are listed. CDF and NetCDF files must first be listed as text (for example CDAWeb's ASCII output).
+Paste or upload CSV, tab- or space-delimited text, JSON (record lists, NOAA SWPC header-row products, NOAA real-time solar wind files `rtsw_*_1m.json`, of which only the active spacecraft's unflagged rows are used), HAPI CSV with its header (e.g. from CDAWeb, fill values become gaps) or HELIOS-L1's own CSV/JSON exports (files up to 64 MB). Column names are matched without regard to case, spaces or units in brackets; recognised names include `time`, `epoch`, `speed`, `Vp`, `proton_speed`, `density`, `Np`, `temperature`, `Tpr`, `bx/by/bz` (taken as GSM), `bx_gse ...` (rotated to GSM for each row's time, Hapgood 1992 with the IGRF-14 dipole) and OMNI's `YEAR DOY HR MN`. OMNI and CDF fill values are treated as missing; unused columns are listed. CDF and NetCDF files must first be listed as text (for example CDAWeb's ASCII output).
 
 The five profile cards are hand-written illustrations for trying the pipeline, not measured data.
 

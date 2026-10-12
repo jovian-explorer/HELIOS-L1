@@ -555,3 +555,19 @@ def test_lead_time_uses_the_measuring_spacecraft_position(monkeypatch):
             {"source_spacecraft": "XYZ", "speed": 400.0, "l1_travel_time_min": 58.8}]
     asyncio.run(dl._lead_times_from_positions(recs))
     assert [r["l1_travel_time_min"] for r in recs] == [61.9, 55.2, 58.8]
+
+
+def test_import_reads_hapi_csv_headers_and_keeps_only_active_rtsw_rows():
+    import json as _json
+    from helios.core.importer import TelemetryImporter as T
+    header = {"HAPI": "2.0", "parameters": [{"name": "Time"}, {"name": "BZ_GSM", "fill": "9999.99"},
+                                            {"name": "flow_speed", "fill": "99999.9"}, {"name": "proton_density", "fill": "999.99"}]}
+    hapi = "\n".join("#" + ln for ln in _json.dumps(header, indent=1).splitlines()) + \
+        "\n2024-05-10T12:00:00.000Z,-3.10,424.6,3.02\n2024-05-10T12:01:00.000Z,-3.00,99999.9,999.99\n"
+    r = T.parse_csv_or_text(hapi)
+    assert [(x["speed"], x["density"], x["bz_gsm"]) for x in r["records"]] == [(424.6, 3.02, -3.1), (None, None, -3.0)]
+    rtsw = _json.dumps([
+        {"time_tag": "2026-10-11T11:45:00", "active": True, "source": "SOLAR1", "proton_speed": 586.7, "proton_density": 1.02, "overall_quality": 0},
+        {"time_tag": "2026-10-11T11:45:00", "active": False, "source": "ACE", "proton_speed": 604.2, "proton_density": 0.11, "overall_quality": 0},
+        {"time_tag": "2026-10-11T11:46:00", "active": True, "source": "SOLAR1", "proton_speed": 591.1, "proton_density": 9.9, "overall_quality": 3}])
+    assert [(x["speed"], x["density"]) for x in T.parse_csv_or_text(rtsw)["records"]] == [(586.7, 1.02)]

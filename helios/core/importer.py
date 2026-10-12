@@ -202,8 +202,30 @@ class TelemetryImporter:
                 obj = obj.get("records", obj.get("data", []))
             if isinstance(obj, list) and obj and isinstance(obj[0], list):
                 return pd.DataFrame(obj[1:], columns=[str(c) for c in obj[0]])
-            return pd.DataFrame(obj)
-        lines = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+            df = pd.DataFrame(obj)
+            if "active" in df.columns and df["active"].isin([True, False]).all():
+                # NOAA RTSW JSON lists the active spacecraft and the standby one minute by minute
+                df = df[df["active"].astype(bool)]
+            if "overall_quality" in df.columns:  # RTSW: non-zero means a flagged sample, as in the live feed
+                df = df[df["overall_quality"].fillna(0) == 0]
+            return df
+        all_lines = text.splitlines()
+        lines = [ln for ln in all_lines if ln.strip() and not ln.lstrip().startswith("#")]
+        if text.startswith("#{"):
+            # HAPI CSV with its header (CDAWeb and other HAPI servers, include=header): the
+            # column names and fill values are in the '#'-commented JSON header, the rows have none.
+            header = json.loads("".join(ln.lstrip()[1:] for ln in all_lines if ln.lstrip().startswith("#")))
+            names, fills = [], {}
+            for prm in header.get("parameters", []):
+                size = (prm.get("size") or [1])[0]
+                cols = [prm["name"]] if size == 1 else [f"{prm['name']}_{'xyz'[i] if size == 3 else i}" for i in range(size)]
+                names += cols
+                if prm.get("fill") not in (None, ""):
+                    fills.update({c: float(prm["fill"]) for c in cols})
+            df = pd.read_csv(io.StringIO("\n".join(lines)), header=None, names=names)
+            for c, f in fills.items():
+                df[c] = df[c].mask(pd.to_numeric(df[c], errors="coerce") == f)
+            return df
         return pd.read_csv(io.StringIO("\n".join(lines)), sep=None, engine="python")
 
     # Fill-value thresholds (values at or beyond these are archive fill flags, not data).
