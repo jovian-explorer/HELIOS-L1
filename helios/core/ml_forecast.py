@@ -19,6 +19,36 @@ NEWELL_2008_KP = (0.05, 2.244e-4, 2.844e-6)
 QUIET_DRIVERS = {"speed": 400.0, "density": 5.0, "bz_gsm": -1.0}
 RELAXATION_PER_HOUR = 0.05
 
+# NOAA space weather scales: G level names and, per system, the effects NOAA lists (paraphrased)
+G_LEVELS = [("NONE (G0)", "#00ff9d"), ("MINOR (G1)", "#facc15"), ("MODERATE (G2)", "#ffb703"),
+            ("STRONG (G3)", "#fb923c"), ("SEVERE (G4)", "#ff2a6d"), ("EXTREME (G5)", "#ff2a6d")]
+G_EFFECTS = {
+    "power_grid_gic": [
+        "No storm-level effects expected.",
+        "Weak power grid fluctuations can occur.",
+        "High-latitude power systems may see voltage alarms; long storms may damage transformers.",
+        "Voltage corrections may be needed; some protection devices may give false alarms.",
+        "Widespread voltage control problems possible; some protection systems may trip key assets off the grid.",
+        "Widespread voltage control and protection problems; some grids may collapse or black out; transformers may be damaged.",
+    ],
+    "aviation_hf": [
+        "Normal HF radio propagation and satellite navigation.",
+        "Little effect on radio; aurora at high latitudes.",
+        "HF radio propagation can fade at higher latitudes.",
+        "Satellite navigation and low-frequency radio navigation may have intermittent problems; HF radio may be intermittent.",
+        "HF radio propagation sporadic; satellite navigation degraded for hours; low-frequency radio navigation disrupted.",
+        "HF radio may be impossible in many areas for one to two days; satellite navigation degraded for days.",
+    ],
+    "satellite_ops": [
+        "No storm-level effects expected.",
+        "Minor impact on satellite operations possible.",
+        "Orientation corrections may be needed; changes in drag affect orbit predictions.",
+        "Surface charging possible; drag on low-orbit satellites may increase; orientation corrections may be needed.",
+        "Surface charging and tracking problems possible; orientation corrections may be needed.",
+        "Extensive surface charging and problems with orientation, uplink/downlink and tracking possible.",
+    ],
+}
+
 class SpaceWeatherForecaster:
     """Empirical coupling functions, Kp and Dst trajectories and hazard categories."""
 
@@ -223,54 +253,9 @@ class SpaceWeatherForecaster:
 
     @staticmethod
     def assess_hazards(speed: float, bz: float, pdyn: float, max_kp: float) -> Dict[str, Any]:
-        """Evaluates operational risk levels for critical infrastructure from the NOAA G level of max_kp."""
+        """Effects on power grids, HF radio and navigation, and satellites expected at the NOAA G level
+        of max_kp, as NOAA's space weather scales describe them (speed, bz and pdyn are not used)."""
         g = SpaceWeatherPhysics.noaa_g_level(max_kp)
-        # 1. Power Grids & Geomagnetically Induced Currents (GIC)
-        if g >= 4:
-            gic_risk = "CRITICAL / SEVERE"
-            gic_color = "#ff2a6d"
-            gic_advice = "Widespread voltage regulation alarms and protective transformer trip risks. GIC monitoring active."
-        elif g >= 2:
-            gic_risk = "MODERATE / ELEVATED"
-            gic_color = "#ffb703"
-            gic_advice = "Weak power grid fluctuations possible in high-latitude systems (>55° geomag)."
-        else:
-            gic_risk = "NOMINAL / LOW"
-            gic_color = "#00ff9d"
-            gic_advice = "No transmission network mitigation required."
-
-        # 2. Polar Aviation & High-Frequency (HF) Communications
-        if g >= 3 or bz < -10.0:
-            aviation_risk = "HIGH / SEVERE ABSORPTION"
-            aviation_color = "#ff2a6d"
-            aviation_advice = "HF fading and absorption at high latitudes and GNSS scintillation likely. (Polar cap absorption needs a solar proton event: see the S scale.)"
-        elif g >= 1:
-            aviation_risk = "MODERATE"
-            aviation_color = "#ffb703"
-            aviation_advice = "HF radio fadeouts on sub-auroral routes; GNSS scintillation degradation expected."
-        else:
-            aviation_risk = "NOMINAL"
-            aviation_color = "#00ff9d"
-            aviation_advice = "Normal trans-polar navigation and HF propagation."
-
-        # 3. Satellite Operations (Surface Charging & Atmospheric Drag)
-        # Categories follow the NOAA G scale; the drag increase itself is not modelled (it was
-        # given as an invented 1 + 0.45 (Kp - 3) multiplier).
-        if g >= 3:
-            sat_risk = "CRITICAL / DRAG ACCELERATION"
-            sat_color = "#ff2a6d"
-            sat_advice = "Thermospheric heating raises LEO drag strongly (NOAA G3+: surface charging, orientation and tracking problems possible)."
-        elif g >= 1:
-            sat_risk = "ELEVATED"
-            sat_color = "#ffb703"
-            sat_advice = "Increased LEO drag and orbit prediction errors possible (NOAA G1-G2)."
-        else:
-            sat_risk = "NOMINAL"
-            sat_color = "#00ff9d"
-            sat_advice = "Standard orbit ephemeris and telemetry downlink nominal."
-
-        return {
-            "power_grid_gic": {"risk_level": gic_risk, "color": gic_color, "advisory": gic_advice},
-            "aviation_hf": {"risk_level": aviation_risk, "color": aviation_color, "advisory": aviation_advice},
-            "satellite_ops": {"risk_level": sat_risk, "color": sat_color, "drag_multiplier": None, "advisory": sat_advice}
-        }
+        level = G_LEVELS[g]
+        return {key: {"risk_level": level[0], "color": level[1], "advisory": G_EFFECTS[key][g]}
+                for key in G_EFFECTS}
