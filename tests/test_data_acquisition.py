@@ -541,3 +541,17 @@ def test_cached_text_keeps_a_copy_for_good_only_if_written_after_its_period(tmp_
     os.utime(path, (early, early))  # written before the period ended: asked again, offline copy used
     assert asyncio.run(cached_text(path, "u", fetch, 0.0, period_end)) == ("fresh", True) and len(calls) == 2
     assert asyncio.run(cached_text(str(tmp_path / "y"), "u", fetch, 0.0)) == (None, True)
+
+
+def test_lead_time_uses_the_measuring_spacecraft_position(monkeypatch):
+    dl = DataDownloader()
+    xs = {"SOLAR1": 1576244.0, "ACE": 1415916.0}
+
+    async def pos(src):
+        return {"x_km": xs[src]} if src in xs else None
+    monkeypatch.setattr(dl, "get_rtsw_position", pos)
+    recs = [{"source_spacecraft": "SOLAR1", "speed": 400.0, "l1_travel_time_min": 58.8},
+            {"source_spacecraft": "ACE", "speed": 400.0, "l1_travel_time_min": 58.8},
+            {"source_spacecraft": "XYZ", "speed": 400.0, "l1_travel_time_min": 58.8}]
+    asyncio.run(dl._lead_times_from_positions(recs))
+    assert [r["l1_travel_time_min"] for r in recs] == [61.9, 55.2, 58.8]

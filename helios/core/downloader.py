@@ -422,6 +422,17 @@ class DataDownloader:
         rows = await self.fetch_json(NOAA_SWPC_ENDPOINTS["rtsw_ephemerides_1h"], "rtsw_ephemerides_1h")
         return self.parse_rtsw_ephemeris(rows if isinstance(rows, list) else None, source)
 
+    async def _lead_times_from_positions(self, records: List[Dict[str, Any]]) -> None:
+        """L1-to-Earth lead time from the GSE x of the spacecraft that measured each record (NOAA
+        RTSW ephemeris) instead of a fixed 1.5 million km: SOLAR1 and ACE were 1.58 and 1.42
+        million km sunward on 12 October 2026, 7 minutes apart at 400 km/s."""
+        srcs = sorted({r.get("source_spacecraft") for r in records if r.get("source_spacecraft")})
+        pos = dict(zip(srcs, await asyncio.gather(*(self.get_rtsw_position(s) for s in srcs))))
+        for r in records:
+            p = pos.get(r.get("source_spacecraft"))
+            if p and r.get("speed"):
+                r["l1_travel_time_min"] = SpaceWeatherPhysics.propagation_delay_minutes(p["x_km"], r["speed"])
+
     async def _fetch_rtsw(self) -> Tuple[Optional[List[Any]], Optional[List[Any]]]:
         mag, wind = await asyncio.gather(
             self.fetch_json(NOAA_SWPC_ENDPOINTS["rtsw_mag_1m"], "rtsw_mag_1m"),
@@ -482,6 +493,7 @@ class DataDownloader:
                     description += (f" The newest record is from {records[-1]['time_tag']} UTC, {age_h:.1f} h ago "
                                     "(the feed could not be refreshed): not current conditions.")
                     extra["newest_record_age_hours"] = round(age_h, 2)
+                await self._lead_times_from_positions(records)
             if span_days > 1:
                 # Archive data for the longer window; RTSW only after the last archive sample.
                 arch = await self.get_archive_bundle(mission_id, window_start, now, cadence_minutes=5)
