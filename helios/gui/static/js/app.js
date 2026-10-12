@@ -1208,13 +1208,18 @@ function updateFeedStatus(data, latency = 0) {
 }
 
 function sonifyCurrentTelemetry() {
+  // Only measured values: the sound used to stand in 450 km/s, Bz -2.5 nT and 6 cm^-3 for missing ones.
   const latest = (currentTelemetryData && currentTelemetryData.latest) || {};
-  const speed = typeof latest.speed === 'number' ? latest.speed : 450;
-  const bz = typeof latest.bz_gsm === 'number' ? latest.bz_gsm : -2.5;
-  const density = typeof latest.density === 'number' ? latest.density : 6.0;
-  if (window.soundEngine) {
-    window.soundEngine.sonifySolarWind(speed, bz, density);
+  const missing = ['speed', 'bz_gsm', 'density'].filter(k => typeof latest[k] !== 'number');
+  if (missing.length) {
+    alert(`No sound: the latest record has no ${missing.join(', ').replace('bz_gsm', 'Bz')} (a data gap).`);
+    return;
   }
+  if (window.soundEngine && !window.soundEngine.enabled) {
+    alert("Sound is off: press 'A' or the Audio button to turn it on.");
+    return;
+  }
+  window.soundEngine?.sonifySolarWind(latest.speed, latest.bz_gsm, latest.density);
 }
 
 function updateTelemetryUI(data) {
