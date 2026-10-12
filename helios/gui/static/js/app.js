@@ -2555,7 +2555,10 @@ async function selectEvent(eventId) {
     if (sevBadge) {
       // NOAA levels: G5 from Kp 9o, G4 from Kp 8- (7.67)
       const isExtreme = meta.peak_kp >= 8.83;
-      sevBadge.innerText = isExtreme ? `Extreme G5 (Kp=${meta.peak_kp})` : (meta.peak_kp >= 7.5 ? `Severe G4 (Kp=${meta.peak_kp})` : `Nominal (Kp=${meta.peak_kp})`);
+      // Thresholds of SpaceWeatherPhysics.noaa_g_level (a G3 storm read "Nominal")
+      const g = [8.83, 7.5, 6.5, 5.5, 4.5].findIndex(x => meta.peak_kp >= x);
+      const gName = g < 0 ? 'No storm (G0)' : ['Extreme G5', 'Severe G4', 'Strong G3', 'Moderate G2', 'Minor G1'][g];
+      sevBadge.innerText = `${gName} (Kp=${meta.peak_kp})`;
       sevBadge.className = `px-3 py-1 rounded-full text-xs font-bold ${isExtreme ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`;
     }
 
@@ -2599,9 +2602,57 @@ async function selectEvent(eventId) {
     });
 
     renderEventDst(ev);
+    const story = document.getElementById('event-story');
+    if (story) {
+      const steps = evProv.kind === 'observed' ? stormStory(ev.telemetry, ev.dst_comparison) : [];
+      story.innerHTML = steps.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+      story.classList.toggle('hidden', !steps.length);
+    }
   } catch (err) {
     console.error('Error selecting event:', err);
+    const desc = document.getElementById('event-desc');
+    if (desc) desc.innerText = `The event could not be loaded: ${err.message}`;
   }
+}
+
+// The storm in plain steps from the measured data: the arrival (first sharp rise of the speed),
+// the southward field that lets the energy in, and the ring current's
+// strongest point (minimum SYM-H). Steps whose data are missing are left out.
+function stormStory(rows, dst) {
+  const t = (s) => `${String(s).slice(0, 16)} UTC`;
+  const steps = [];
+  // The first sharp rise: at least 80 km/s above the lowest speed of the 15 minutes before
+  // (the largest rise could span a data gap and come after the shock).
+  const ms = (r) => Date.parse(String(r.time_tag).replace(' ', 'T') + 'Z');
+  let jump = null;
+  for (let i = 0; i < rows.length && !jump; i++) {
+    if (typeof rows[i].speed !== 'number') continue;
+    for (let j = i - 1; j >= 0 && ms(rows[i]) - ms(rows[j]) <= 15 * 60000; j--) {
+      if (typeof rows[j].speed === 'number' && rows[i].speed - rows[j].speed >= 80) {
+        jump = { from: rows[j].speed, to: rows[i].speed, at: rows[i].time_tag };
+        break;
+      }
+    }
+  }
+  if (jump) {
+    steps.push(`${t(jump.at)}: the disturbance arrives. The solar wind jumps from ${Math.round(jump.from)} to ${Math.round(jump.to)} km/s within minutes, which is usually the shock ahead of a CME.`);
+  }
+  const bz = rows.filter(r => typeof r.bz_gsm === 'number');
+  if (bz.length) {
+    const min = bz.reduce((a, b) => (b.bz_gsm < a.bz_gsm ? b : a));
+    const south = bz.find(r => r.bz_gsm <= -10);
+    if (south) {
+      steps.push(`${t(south.time_tag)}: the magnetic field turns strongly south (Bz below -10 nT), reaching ${min.bz_gsm.toFixed(0)} nT at ${t(min.time_tag)}. A southward field connects to Earth's and lets the solar wind's energy in.`);
+    }
+  }
+  if (dst && Array.isArray(dst.observed)) {
+    let k = -1;
+    dst.observed.forEach((v, i) => { if (typeof v === 'number' && (k < 0 || v < dst.observed[k])) k = i; });
+    if (k >= 0 && dst.observed[k] <= -50) {
+      steps.push(`${t(dst.time_tags[k])}: the storm is at its strongest. The ring of current around Earth weakens the field at the equator by ${Math.round(-dst.observed[k])} nT (SYM-H ${Math.round(dst.observed[k])} nT; below -100 nT is an intense storm), and aurora reaches far from the poles.`);
+    }
+  }
+  return steps;
 }
 
 // Hourly observations (time stamp = start of the hour) placed on a finer series' time axis.

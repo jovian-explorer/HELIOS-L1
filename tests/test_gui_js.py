@@ -461,3 +461,25 @@ def test_every_data_term_on_the_page_is_in_the_glossary():
     used = set(re.findall(r'data-term="([^"]+)"', html))
     assert len(used) > 20 and not used - keys, used - keys
     assert html.index("js/glossary.js") < html.index("js/app.js")
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_storm_story_steps_from_measured_data():
+    script = _extract("stormStory") + """
+const rows = [
+  {time_tag: '2024-05-10 17:00:00', speed: 450, bz_gsm: 2},
+  {time_tag: '2024-05-10 17:05:00', speed: 460, bz_gsm: 1},
+  {time_tag: '2024-05-10 17:10:00', speed: 690, bz_gsm: -5},
+  {time_tag: '2024-05-10 18:00:00', speed: 720, bz_gsm: -12},
+  {time_tag: '2024-05-10 19:00:00', speed: 750, bz_gsm: -40},
+];
+const dst = {time_tags: ['2024-05-11 01:00:00', '2024-05-11 02:00:00'], observed: [-300, -518]};
+console.log(JSON.stringify([stormStory(rows, dst), stormStory([{time_tag: '2024-01-01 00:00:00', speed: 400, bz_gsm: 3}], null)]));
+"""
+    res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert res.returncode == 0, res.stderr
+    steps, quiet = json.loads(res.stdout)
+    assert len(steps) == 3 and quiet == []
+    assert "2024-05-10 17:10 UTC" in steps[0] and "460 to 690 km/s" in steps[0]
+    assert "2024-05-10 18:00 UTC" in steps[1] and "-40 nT" in steps[1]
+    assert "2024-05-11 02:00 UTC" in steps[2] and "518 nT" in steps[2]
