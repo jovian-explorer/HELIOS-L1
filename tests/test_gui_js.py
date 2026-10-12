@@ -483,3 +483,11 @@ console.log(JSON.stringify([stormStory(rows, dst), stormStory([{time_tag: '2024-
     assert "2024-05-10 17:10 UTC" in steps[0] and "460 to 690 km/s" in steps[0]
     assert "2024-05-10 18:00 UTC" in steps[1] and "-40 nT" in steps[1]
     assert "2024-05-11 02:00 UTC" in steps[2] and "518 nT" in steps[2]
+
+
+def test_research_forms_explain_themselves_in_plain_words():
+    import re
+    html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
+    start, end = html.index('id="tab-analysis"'), html.index('id="tab-missions"')
+    heads = re.findall(r"<h4[^>]*>.*?</h4>\n\s*(<p[^>]*>In plain words:)?", html[start:end])
+    assert heads and all(heads), "every Event Analysis form needs an 'In plain words' line"

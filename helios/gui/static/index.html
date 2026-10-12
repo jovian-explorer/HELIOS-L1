@@ -1123,6 +1123,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 class="font-tech font-bold text-base text-slate-100">Solar Image Archive</h3>
           <p class="text-xs text-slate-400">SDO, SOHO, STEREO-A and Solar Orbiter images for any interval, Sun-centred at a fixed scale per instrument (Helioviewer Project). The science FITS files of the same interval can be listed and downloaded through SunPy.</p>
+          <p class="text-[11px] text-amber-200/80">In plain words: Pictures of the Sun and its corona for any date, played as a film: watch a flare or a CME leave the Sun.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Instrument
@@ -1191,6 +1192,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 data-term="radio occultation" class="font-tech font-bold text-base text-slate-100">Radio Occultation by the Corona</h3>
           <p class="text-xs text-slate-400">SPICE ray geometry between a spacecraft and a ground station (closest approach to the Sun, elongation), and along the ray the electron column, Faraday rotation and Doppler shift through a coronal density and magnetic field model.</p>
+          <p class="text-[11px] text-amber-200/80">In plain words: When a spacecraft's radio signal passes close to the Sun, the corona delays and twists it; this computes by how much.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Spacecraft<select id="occ-spacecraft" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></select></label>
@@ -1223,6 +1225,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 class="font-tech font-bold text-base text-slate-100">Event Correlation</h3>
           <p class="text-xs text-slate-400">CMEs of the SOHO/LASCO CDAW catalogue, CACTus and DONKI that reach a given height at a given position angle (from solar north through east, seen from Earth) near a time, e.g. a disturbance in a radio occultation or a coronagraph image, and the GOES and DONKI flares of the day before.</p>
+          <p class="text-[11px] text-amber-200/80">In plain words: Which catalogued CMEs and flares could explain a disturbance seen at a given place and time near the Sun.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Time (UTC)<input id="em-time" type="datetime-local" value="2017-09-10T16:42" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
@@ -1240,6 +1243,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 class="font-tech font-bold text-base text-slate-100">Corona to L1</h3>
           <p class="text-xs text-slate-400">A CME from a measured height, time and speed (drag-based model), or a solar wind stream from the source surface (constant speed), followed to L1 and compared with the shocks of the IPShocks database and the speed measured there.</p>
+          <p class="text-[11px] text-amber-200/80">In plain words: Follows a CME or a solar wind stream from near the Sun out to L1 and compares the predicted arrival with what the spacecraft measured.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Follow<select id="ll-mode" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="cme">CME (drag-based model)</option><option value="stream">stream (constant speed)</option></select></label>
@@ -1531,6 +1535,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 data-term="PFSS" class="font-tech font-bold text-base text-slate-100">Coronal Magnetic Field (PFSS)</h3>
           <p class="text-xs text-slate-400">Potential field source surface model from a GONG, ADAPT or HMI synoptic magnetogram: the solar source of the wind now at Earth, field lines from any point, the heliospheric current sheet and the distance to it.</p>
+          <p class="text-[11px] text-amber-200/80">In plain words: The Sun's magnetic field computed from a map of its surface: where the solar wind now reaching Earth comes from.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Map
@@ -1981,6 +1986,7 @@
       <!-- Shock analysis and multi-spacecraft timing -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Interplanetary shock: normal, speed, θ<sub>Bn</sub>, Mach numbers and timing</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: Which way a shock front faces, how fast it moves and how strong it is, and when it should reach the other spacecraft.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-shock-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2011,6 +2017,7 @@
       <!-- Minimum variance -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Minimum variance analysis of the magnetic field</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: Finds the direction in which the magnetic field changes least across a boundary: the boundary's orientation.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-mva-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2030,6 +2037,7 @@
       <!-- Coupling functions with errors -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Coupling functions, proton beta and Alfv&eacute;n Mach number with uncertainties</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: How strongly the solar wind of an interval drives Earth's magnetosphere, and whether its plasma or its field dominates.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-cpl-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2046,6 +2054,7 @@
       <!-- Time shift to the bow shock nose -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Time shift to the bow shock nose (OMNI method)</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: Moves spacecraft data to the time they would reach Earth's bow shock, as NASA's OMNI dataset does.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-ts-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2063,6 +2072,7 @@
       <!-- Magnetic cloud search -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Magnetic cloud search (Lepping et al. 2005)</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: Looks for magnetic clouds, the twisted-field cores of CMEs that cause many of the strongest storms.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-mcd-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option><option>OMNI</option></select></div>
@@ -2080,6 +2090,7 @@
       <!-- Flux rope -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Magnetic cloud: Lundquist flux rope fit</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: Fits a twisted magnetic tube (flux rope) to a magnetic cloud: its axis direction, size and twist.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-mc-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2099,6 +2110,7 @@
       <!-- Sudden commencements -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Sudden commencements in SYM-H (OMNI 1-min)</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: Finds the sudden jumps in the ground magnetic field when a shock or pressure pulse hits the magnetosphere.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Start (UTC)</label><input id="ea-sc-start" type="text" class="ea-input w-32" value="2015-03-01"></div>
           <div><label class="ea-label">End (UTC, up to 366 days)</label><input id="ea-sc-end" type="text" class="ea-input w-32" value="2015-07-01"></div>
@@ -2117,6 +2129,7 @@
       <!-- Superposed epoch -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Superposed epoch analysis (OMNI 1-min)</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: Lines up many storms at their start (or minimum) and averages them, to show what a typical storm looks like.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div class="flex-1 min-w-[16rem]"><label class="ea-label">Onset times (UTC, one per line or comma-separated)</label>
             <textarea id="ea-sea-onsets" rows="2" class="ea-input w-full font-mono">2015-03-17T04:45
@@ -2161,6 +2174,7 @@
       <!-- Richardson & Cane ICME list -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Near-Earth ICMEs since 1996 (Richardson &amp; Cane list)</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: The published list of CMEs that reached Earth since 1996, with their start, end and the storm each caused.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Start (UTC)</label><input id="ea-icme-start" type="text" class="ea-input w-32" value="2003-10-20"></div>
           <div><label class="ea-label">End (UTC)</label><input id="ea-icme-end" type="text" class="ea-input w-32" value="2003-11-25"></div>
@@ -2175,6 +2189,7 @@
       <!-- IPShocks database -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Interplanetary shocks at L1 (IPShocks database, University of Helsinki)</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: The catalogue of shocks measured at the L1 spacecraft, with their speeds and strengths.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Start (UTC)</label><input id="ea-ips-start" type="text" class="ea-input w-32" value="2015-03-01"></div>
           <div><label class="ea-label">End (UTC)</label><input id="ea-ips-end" type="text" class="ea-input w-32" value="2015-07-01"></div>
@@ -2191,6 +2206,7 @@
       <!-- OMNI statistics -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">OMNI statistics (hourly, 1963 to the present)</h4>
+        <p class="text-[11px] text-amber-200/80">In plain words: Distributions, averages and correlations of six decades of near-Earth solar wind and geomagnetic indices.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">From year</label><input id="st-y0" type="number" min="1963" max="2100" class="ea-input w-20" value="1995"></div>
           <div><label class="ea-label">To year</label><input id="st-y1" type="number" min="1963" max="2100" class="ea-input w-20" value="2024"></div>
