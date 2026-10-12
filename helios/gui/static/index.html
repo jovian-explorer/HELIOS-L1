@@ -2561,7 +2561,7 @@
             <div>
               <select id="gic-geology-select" onchange="onGicGeologyChange(this.value)" class="bg-space-950 text-slate-200 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none">
                 <option value="precambrian_shield">Precambrian Shield (Granitic / High Resistivity ρ=5000 Ω·m)</option>
-                <option value="coastal_margin">Coastal Ocean Margin (Edge Effect ρ=500 Ω·m)</option>
+                <option value="coastal_margin">Intermediate Crust (ρ=500 Ω·m; coast effect not modelled)</option>
                 <option value="sedimentary_basin">Sedimentary Basin (Conductive Silt ρ=50 Ω·m)</option>
               </select>
             </div>
@@ -2589,9 +2589,9 @@
           </div>
 
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
-            <div class="text-slate-400 text-xs font-semibold mb-1">NERC Grid Vulnerability</div>
+            <div class="text-slate-400 text-xs font-semibold mb-1">Grid Stress (HELIOS-L1 bands)</div>
             <div id="gic-hazard-status" class="text-sm font-bold text-amber-300 mt-1">Assessing Risk...</div>
-            <div id="gic-hazard-desc" class="text-[10px] text-slate-400 mt-0.5">Monitoring core temperature</div>
+            <div id="gic-hazard-desc" class="text-[10px] text-slate-400 mt-0.5"></div>
           </div>
         </div>
 
@@ -3195,7 +3195,7 @@
                 <span>Power Grid GIC Hazard Mitigation</span>
               </div>
               <p class="text-slate-400 leading-relaxed">
-                Computes telluric geoelectric fields (E(t) in V/km) via 1D layered Earth conductivity convolutions to provide early warnings for high-voltage transmission utilities against transformer core half-cycle saturation, harmonic distortion, and cascading grid collapse.
+                Estimates the ground electric field (V/km) that a magnetic storm induces, and the direct current it drives through power lines and transformers, which can overheat them or upset the grid. A first estimate: uniform ground, one period of the field variation.
               </p>
             </div>
             <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
@@ -3239,8 +3239,8 @@
               <span class="text-slate-400">Magnetopause r(&theta;) = r_0(2/(1+cos&theta;))^&alpha; and bow shock r(&theta;) = r_0((1+&epsilon;)/(1+&epsilon;cos&theta;))^&alpha; under solar wind P_dyn, Bz, M_ms and &beta;.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <strong class="text-rose-300 block">Boteler (2012) &amp; Pirjola (2002) GIC Induction</strong>
-              <span class="text-slate-400">1D layered lithosphere impedance and magnetotelluric electric field E(t) = -1/&radic;(&pi;&mu;&sigma;) &int; (dB/dt)/&radic;(t-u) du.</span>
+              <strong class="text-rose-300 block">Plane-wave GIC estimate (Boteler &amp; Pirjola 2017)</strong>
+              <span class="text-slate-400">Uniform ground of resistivity &rho; and one period T = 180 s: E = &radic;(&rho;/(&mu;&#8320;&omega;)) |dB/dt|; current = E &middot; line length / loop resistance.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
               <strong class="text-purple-300 block">NOAA SWPC D-RAP (X-ray flare absorption)</strong>

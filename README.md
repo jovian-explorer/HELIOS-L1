@@ -80,7 +80,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    * Scans for Rankine-Hugoniot MHD jump conditions: compression ratio $r_c = N_2/N_1$, shock velocity $V_{sh}$, and fast magnetosonic Mach number $M_{ms}$.
 
 8. **Geomagnetically Induced Currents (GIC) & D-RAP Ionospheric Absorption:**
-   * **Boteler (2012) 1D Induction Model:** Computes surface geoelectric field ($E = Z \cdot H$) and neutral transformer currents on resistive geological shields.
+   * **Plane-wave induction (Boteler & Pirjola 2017):** the geoelectric field of a uniform ground for one period (180 s), $E = \sqrt{\rho/(\mu_0\omega)}\,|dB/dt|$, and the quasi-DC current it drives through a line and a transformer neutral: a first estimate (no layered or coastal ground).
    * **NOAA D-RAP Model:** Highest Affected Frequency $HAF = 10\log_{10}F_x + 65$ MHz (reduced by $\cos^{0.75}\chi$) and absorption $A(f) = (HAF/f)^{1.5}$ dB from solar X-ray flares.
 
 9. **Sensor Cross-Calibration & Turbulence Power Spectral Density:**

@@ -9,7 +9,7 @@ from typing import Dict, Any
 class GICHazardModel:
     """Computes surface geoelectric fields and power transmission grid vulnerability."""
 
-    # Standard regional 1-D Earth conductivity profiles (USGS / NRC / EPRI models)
+    # Uniform grounds of one resistivity each (typical values, not regional conductivity models)
     GEOLOGICAL_ZONES = {
         "precambrian_shield": {
             "name": "Precambrian Crystalline Shield (High Risk)",
@@ -26,11 +26,11 @@ class GICHazardModel:
             "example_regions": "US Gulf Coast, Central Europe, Indo-Gangetic Plains"
         },
         "coastal_margin": {
-            "name": "Coastal Ocean Transition (Edge Enhancement)",
-            "description": "Coast effect where high-conductivity seawater contrasts with continental crust, focusing GIC.",
+            "name": "Intermediate Crust (500 ohm m)",
+            "description": "Resistivity between shield and sediments. The coast effect (fields enhanced on land near the sea) needs a 2-D or 3-D model and is not included.",
             "resistivity_ohm_m": 500.0,
             "apparent_conductivity_s_m": 0.002,
-            "example_regions": "US Atlantic Coast, North Sea Coast, Japanese Archipelago"
+            "example_regions": "Mixed crystalline and sedimentary ground"
         }
     }
 
@@ -76,7 +76,7 @@ class GICHazardModel:
         # Risk categories (HELIOS-L1's own bands, not from a standard; NERC TPL-007 uses an
         # 8 V/km benchmark event at 60 deg geomagnetic latitude)
         if e_field_v_per_km >= 5.0:
-            hazard_level = "CRITICAL (Carrington / Quebec 1989 Scale)"
+            hazard_level = "CRITICAL (5 V/km or more)"
             grid_impact = "Widespread transformer half-cycle saturation, voltage collapse, and relay tripping imminent."
             color = "#f43f5e"
         elif e_field_v_per_km >= 2.0:
