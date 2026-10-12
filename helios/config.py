@@ -258,7 +258,7 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
         "coordinate_system": "GSE & GSM (Geocentric Solar Ecliptic / Magnetospheric)",
         "cadence": "1-minute real-time stream / 60-second verified Level 2",
         "data_portal_name": "NOAA SWPC Data Access / NCEI Archive",
-        "data_portal_url": "https://services.swpc.noaa.gov/products/solar-wind/",
+        "data_portal_url": "https://services.swpc.noaa.gov/json/rtsw/",
         "data_license": "U.S. Public Domain (NOAA Open Data / 17 U.S.C. § 105)",
         "license_badge": "Public Domain",
         "doi": "10.1109/AERO.2012.6187025",
