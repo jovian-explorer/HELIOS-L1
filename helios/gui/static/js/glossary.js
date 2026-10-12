@@ -36,6 +36,9 @@ const GLOSSARY = {
   'D-RAP': 'NOAA\'s D-region absorption prediction: how strongly the lowest layer of the ionosphere, charged up by solar X-rays, absorbs shortwave (HF) radio on the day side.',
   'sunspot number': 'The count of sunspots, the standard measure of the Sun\'s 11-year activity cycle.',
   'F10.7': 'The Sun\'s radio brightness at 10.7 cm wavelength, measured daily since 1947: another measure of solar activity, in solar flux units.',
+  nT: 'Nanotesla, the unit of the magnetic field here: Earth\'s field at the ground is about 50 000 nT, the solar wind\'s about 5 nT.',
+  nPa: 'Nanopascal, the unit of the solar wind\'s pressure: about a hundred-trillionth of the air pressure at sea level.',
+  R_E: 'Earth radius, 6371 km: distances around Earth are counted in it. Geostationary satellites orbit at 6.6 R_E.',
   shock: 'A sudden jump in solar wind speed, density and field, usually driven by a fast CME or stream; it often starts a geomagnetic storm when it hits.',
   'power spectrum': 'How the strength of fluctuations is spread over time scales; turbulence in the solar wind follows a power law close to Kolmogorov\'s -5/3.',
 };
