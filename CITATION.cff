@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use HELIOS-L1 in your work, please cite it, together with the data sets and the papers of the models it lists for each result."
+title: "HELIOS-L1: Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite"
+type: software
+authors:
+  - family-names: Aggarwal
+    given-names: Keshav
+    email: keshavaggarwal2310@gmail.com
+version: 0.1.0
+date-released: 2026-10-12
+abstract: >-
+  HELIOS-L1 is a desktop application for space weather. It reads live solar wind
+  measurements from the spacecraft at the Sun-Earth L1 point (NOAA RTSW) and archived
+  data from NASA CDAWeb, OMNI, GFZ and NOAA SWPC, and runs published models on them:
+  NOAA storm scales, magnetopause and bow shock positions, ring current (Dst) models,
+  the auroral oval, CME arrival (drag-based model), shock normals, minimum variance,
+  de Hoffmann-Teller and flux rope fits, superposed epoch analysis, OMNI statistics
+  since 1963, PFSS coronal fields and radio occultation geometry with SPICE. Every
+  result lists its data sources and can be exported. Builds for Windows, macOS and Linux.
+repository-code: "https://github.com/jovian-explorer/HELIOS-L1"
+keywords:
+  - space weather
+  - heliophysics
+  - solar wind
+  - geomagnetic storms
+  - Sun-Earth L1
+  - coronal mass ejections

@@ -1,0 +1,33 @@
+name: Problem or wrong result
+description: Something does not work, crashes, or gives a result you think is wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for testing HELIOS-L1. The more exact the steps, the faster it can be fixed.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Tab and panel, spacecraft or data source, time interval, values entered, buttons pressed.
+      placeholder: "1. Data Studio & Science > Event Analysis, WIND, 2017-09-07 to 2017-09-09\n2. ..."
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: HELIOS-L1 version and how you run it
+      placeholder: "0.1.0 (About shows it), Windows app (or pip install, macOS, Linux)"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log or error message
+      description: Paste the message shown in the app, or the console output if you started it from a terminal.

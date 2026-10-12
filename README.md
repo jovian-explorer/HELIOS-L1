@@ -4,6 +4,8 @@
 
 HELIOS-L1 is a free desktop app for space weather: the stream of particles and magnetic field from the Sun (the *solar wind*), the storms it causes around Earth, and the aurora. It reads live measurements from spacecraft parked 1.5 million km sunward of Earth at the *L1 point* (about an hour of warning before the wind reaches us) and decades of archived data, and runs the standard published models on them. Everything runs on your own computer; the data come from public NOAA, NASA and GFZ services.
 
+> **HELIOS-L1 is public and in pre-release** (version 0.1.0). It is ready for use and for testing; results can still change between versions. Please report problems, wrong results and suggestions through **Feedback** in the app or on the [issue tracker](https://github.com/jovian-explorer/HELIOS-L1/issues/new/choose). To cite HELIOS-L1, see [CITATION.cff](CITATION.cff).
+
 ## What can I do with it?
 
 * **See the solar wind right now** and what it means: speed, density and magnetic field at L1, the NOAA storm scales (G, S, R), and how hard Earth's magnetic shield is being pushed.

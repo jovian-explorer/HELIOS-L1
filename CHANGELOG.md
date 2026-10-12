@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.1.0 (2026-10-12, pre-release)
+
+First public pre-release since 0.0.1, and the first archived on Zenodo with a DOI. In short:
+
+- **Real data instead of examples**: live L1 solar wind from NOAA RTSW, archives from NASA CDAWeb (WIND, ACE, DSCOVR, OMNI), GFZ Kp and Hp30, Kyoto Dst, NOAA SWPC products; values without a measurement are left empty or labelled as estimates.
+- **Event analysis**: shock normals and Mach numbers, multi-spacecraft timing, minimum variance, de Hoffmann-Teller frame, flux rope fits, magnetic cloud search, superposed epoch analysis, OMNI statistics since 1963, the ICME, IPShocks and sudden commencement lists, all with uncertainties.
+- **Sun and corona**: solar image archive (SDO, SOHO, STEREO-A, Solar Orbiter), J-maps and CME front fits, CME arrival with the drag-based model, PFSS coronal field, event correlation with the CME catalogues, radio occultation geometry with SPICE.
+- **Scientific corrections**: many formulas, constants, labels and references corrected and checked against published results (listed below).
+- **Security and robustness**: the local server accepts only requests from the app itself, inputs are validated, download names are sanitised.
+- **Installation**: standalone builds for Windows, macOS and Linux with a weekly automatic update; a Feedback button and issue forms for reports.
+
+The detailed list follows.
+
 ### Solar imaging
 - Radio occultation with the PFSS field checked outside conjunction on real data (Mars Express from DSS-63, 8 November 2023, ray at 11 R☉, GONG map of 10:04 UT): rotation measure +0.35 to +0.31 rad/m² and Faraday rotation +0.025° at 8.4 GHz, against −0.66 to −0.69 rad/m² with the default Parker field; added as a network test and to the user guide.
 - HMI maps for the PFSS panel and the occultation field: the JSOC e-mail address entered in the PFSS panel is remembered in the browser and used by both; without it, or with an unknown map source, the answer says that JSOC exports only to an address registered at jsoc.stanford.edu. The occultation PFSS field takes the map chosen in the PFSS panel. (The JSOC search for the Carrington-rotation map was checked; the export needs a registered address and was not run.)

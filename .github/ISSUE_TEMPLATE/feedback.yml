@@ -1,0 +1,16 @@
+name: Feedback or suggestion
+description: Comments on usability, missing data sources or analyses, documentation
+labels: [feedback]
+body:
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Your comments
+      description: What did you try to do, what helped, what got in the way, what is missing?
+    validations:
+      required: true
+  - type: input
+    id: context
+    attributes:
+      label: Your field and the data you work with (optional)
+      placeholder: "e.g. CME arrival forecasting, magnetic clouds, aurora observing"

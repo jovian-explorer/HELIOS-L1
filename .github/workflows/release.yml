@@ -55,7 +55,7 @@ jobs:
         with:
           files: artifacts/*
           generate_release_notes: true
-          # Until the public 1.0.0 release, every build is a pre-release (version 0.0.1)
+          # Until the public 1.0.0 release, every build is a pre-release (version 0.x)
           prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
       # Release policy: keep only the two newest releases. Runs only after a successful
       # publish (a failed step stops the job). Older releases are deleted without
