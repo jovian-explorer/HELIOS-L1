@@ -40,6 +40,7 @@ from helios.core.timeutil import utc as _utc
 
 AR_THRESHOLD_G = 50.0
 SOURCES = ("gong", "adapt", "hmi")
+MAP_LOOKBACK = timedelta(days=1)
 _SOLUTIONS: Dict[tuple, Any] = {}
 _LOCK = threading.Lock()
 
@@ -52,10 +53,11 @@ def fetch_map(source: str, when: datetime, cache_dir: str, jsoc_email: Optional[
     folder = os.path.join(str(cache_dir), "magnetograms", source)
     os.makedirs(folder, exist_ok=True)
     t = _utc(when).replace(tzinfo=None)
+    # GONG maps are hourly and ADAPT ones 2-hourly, with gaps of several hours: look back a day.
     if source == "gong":
-        res = Fido.search(a.Time(t - timedelta(hours=2), t), a.Instrument("GONG"))
+        res = Fido.search(a.Time(t - MAP_LOOKBACK, t), a.Instrument("GONG"))
     elif source == "adapt":
-        res = Fido.search(a.Time(t - timedelta(hours=4), t), a.Instrument("ADAPT"), a.adapt.ADAPTLonType("0"))
+        res = Fido.search(a.Time(t - MAP_LOOKBACK, t), a.Instrument("ADAPT"), a.adapt.ADAPTLonType("0"))
     else:
         if not jsoc_email:
             raise ValueError("HMI maps come from JSOC, which exports data only to an e-mail address registered at "
@@ -65,8 +67,10 @@ def fetch_map(source: str, when: datetime, cache_dir: str, jsoc_email: Optional[
         res = Fido.search(a.jsoc.Series("hmi.synoptic_mr_polfil_720s"), a.jsoc.PrimeKey("CAR_ROT", cr),
                           a.jsoc.Notify(jsoc_email))
     if not len(res) or not len(res[0]):
-        raise LookupError(f"No {source.upper()} map found before {t:%Y-%m-%d %H:%M} UTC.")
-    row = res[0][-1:]  # the latest before the time asked for
+        raise LookupError(f"No {source.upper()} map found in the day before {t:%Y-%m-%d %H:%M} UTC.")
+    table = res[0]
+    table.sort("Start Time")
+    row = table[-1:]  # the latest before the time asked for
     files = Fido.fetch(row, path=os.path.join(folder, "{file}"), progress=False)
     if not files:
         raise LookupError(f"The {source.upper()} map could not be downloaded.")

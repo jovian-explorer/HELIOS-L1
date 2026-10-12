@@ -68,3 +68,30 @@ def test_plot_draws_without_pyplot(dipole_solution):
 
     url = pm.plot(dipole_solution, pm.hcs_lines(dipole_solution), [])
     assert url.startswith("data:image/png;base64,") and len(url) > 1000
+
+
+def test_map_search_looks_back_a_day_and_takes_the_latest(monkeypatch, tmp_path):
+    """GONG had no map from 23:44 to after 03:00 UT on 10 November 2023; a 2 h window found none."""
+    import sys
+    import types
+    from datetime import datetime, timedelta, timezone
+    from helios.core import pfss_model
+
+    class Table(list):
+        def sort(self, key):
+            list.sort(self, key=lambda r: r[key])
+
+    seen = {}
+
+    def search(tr, *attrs):
+        seen["span"] = tr.end - tr.start
+        return [Table([{"Start Time": "2023-11-09 23:44"}, {"Start Time": "2023-11-09 20:14"}])]
+
+    def fetch(row, path, progress):
+        seen["row"] = row
+        return ["map.fits"]
+
+    attrs = types.SimpleNamespace(Time=lambda a, b: types.SimpleNamespace(start=a, end=b), Instrument=lambda x: x)
+    monkeypatch.setitem(sys.modules, "sunpy.net", types.SimpleNamespace(Fido=types.SimpleNamespace(search=search, fetch=fetch), attrs=attrs))
+    assert pfss_model.fetch_map("gong", datetime(2023, 11, 10, 3, tzinfo=timezone.utc), str(tmp_path)) == "map.fits"
+    assert seen["span"] == timedelta(days=1) and seen["row"] == [{"Start Time": "2023-11-09 23:44"}]
