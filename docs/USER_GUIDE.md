@@ -147,6 +147,8 @@ Power spectrum of one field or plasma quantity from 1, 3 or 7 days of 1-minute d
 
 The Starkov (1994) oval (poleward and equatorward boundaries and the equatorward edge of the diffuse aurora, coefficients from Sigernes et al. 2011) for any UTC time, driven by OMNI AL when OMNI covers the time, otherwise by Kp converted to AL, or by an AL you enter (limited to 18-750 nT). Hemispheric power from Kp (Zhang & Paxton 2008) is an estimate, not a measurement. The region list picks one of four fixed lists from the equatorward boundary at magnetic midnight; it is a rough guide, not a probability of seeing the aurora.
 
+Compared with NOAA SWPC's OVATION Prime forecast for the same time (12 October 2026 12:34 UT, Kp 3.3): along the northern oval, every 15° of longitude, the Starkov equatorward boundary drawn here lay on average 0.3° poleward of the lowest latitude where OVATION gives at least 5 % aurora probability (1.5° poleward at 3 %), with a scatter of 3.8°; the oval here reaches higher on the day side and lower before midnight than OVATION's. That is one quiet time: a rough agreement, not a validation in storms.
+
 The Dst panel runs the Burton et al. (1975) or O'Brien & McPherron (2000) model on the L1 solar wind shifted to Earth, starting from the observed Kyoto real-time Dst, and scores it against that Dst.
 
 ### Storm Forecast
