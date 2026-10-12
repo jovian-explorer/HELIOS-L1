@@ -458,13 +458,13 @@ class SpaceWeatherPhysics:
         return round(float(ey), 2)
 
     @staticmethod
-    def propagation_delay_minutes(distance_km: float, speed_kms: float) -> float:
+    def propagation_delay_minutes(distance_km: float, speed_kms: float) -> Optional[float]:
         """
-        Calculate propagation travel time from satellite location (e.g. L1 at ~1.5 million km)
-        to Earth's bow shock (~14 R_E upstream, ~90,000 km) in minutes.
+        Travel time in minutes from the spacecraft's sunward distance (GSE x, about 1.5 million km
+        at L1) to Earth's bow shock (about 14 R_E, 90,000 km); None without a speed.
         """
         if not speed_kms or speed_kms <= 0:
-            return 45.0  # Nominal default
+            return None
         effective_dist = max(0.0, distance_km - 90000.0)
         delay_seconds = effective_dist / speed_kms
         return round(float(delay_seconds / 60.0), 1)
