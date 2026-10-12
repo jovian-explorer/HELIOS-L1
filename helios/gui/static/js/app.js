@@ -1785,7 +1785,9 @@ async function loadAuroralForecast() {
       const kpUsed = !(data.kp_source || '').startsWith('not used');
       const kpVal = kpUsed ? (data.kp !== undefined ? data.kp : b.kp_used) : null;
       const bzVal = data.bz_gsm ?? null;  // shown only; no value is "n/a", not a default
-      const pastTime = timeEl && timeEl.value ? data.oval_time_utc : null;
+      // The oval is fixed in geographic coordinates at its time: the map's Sun, terminator and
+      // MLT use that time too (with "now" they turned away from the oval as the minutes passed).
+      const pastTime = data.oval_time_utc;
       auroralRenderer.setConditions(kpVal, bzVal, b.hemispheric_power_gw, b.equatorward_midnight_lat, data.oval_polygon,
                                     b.al_used_nt, pastTime);
     }

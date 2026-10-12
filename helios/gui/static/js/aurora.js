@@ -41,17 +41,17 @@ class AuroralMapRenderer {
 
     // Ground Magnetometer & Auroral Observatories
     this.stations = [
-      { id: 'TRO', name: 'Tromsø Geophysical Observatory', country: 'Norway', lat: 69.66, lon: 18.94, magLat: 66.8, type: 'Magnetometer & All-Sky Imager' },
-      { id: 'PKR', name: 'Poker Flat Research Range', country: 'Alaska, USA', lat: 65.12, lon: -147.48, magLat: 65.4, type: 'Sounding Rockets & LIDAR' },
-      { id: 'REK', name: 'Reykjavik Auroral Station', country: 'Iceland', lat: 64.14, lon: -21.94, magLat: 64.9, type: 'Geomagnetic Observatory' },
-      { id: 'YEL', name: 'Yellowknife Dark Sky Observatory', country: 'Canada', lat: 62.45, lon: -114.37, magLat: 69.2, type: 'CANOPUS Riometer Array' },
-      { id: 'KIR', name: 'Kiruna Space Campus', country: 'Sweden', lat: 67.86, lon: 20.22, magLat: 65.1, type: 'EISCAT Incoherent Scatter' },
-      { id: 'SOD', name: 'Sodankylä Geophysical Observatory', country: 'Finland', lat: 67.37, lon: 26.63, magLat: 64.2, type: 'VLF & Ionospheric Radar' },
-      { id: 'ABK', name: 'Abisko Scientific Station', country: 'Sweden', lat: 68.35, lon: 18.82, magLat: 65.7, type: 'Aurora Station' },
-      { id: 'DUN', name: 'Dunedin Dark Sky Station', country: 'New Zealand', lat: -45.87, lon: 170.50, magLat: -53.2, type: 'Southern Lights Watch' },
-      { id: 'SYO', name: 'Syowa Station', country: 'Antarctica (Japan)', lat: -69.00, lon: 39.58, magLat: -70.5, type: 'SuperDARN Radar Array' },
-      { id: 'HAL', name: 'Halley VI Research Station', country: 'Antarctica (UK)', lat: -75.58, lon: -26.22, magLat: -66.1, type: 'Geospace Observation' },
-      { id: 'SPT', name: 'Amundsen-Scott South Pole', country: 'Antarctica (USA)', lat: -90.00, lon: 0.00, magLat: -74.2, type: 'Cusp Magnetometer' }
+      { id: 'TRO', name: 'Tromsø Geophysical Observatory', country: 'Norway', lat: 69.66, lon: 18.94, type: 'Magnetometer & All-Sky Imager' },
+      { id: 'PKR', name: 'Poker Flat Research Range', country: 'Alaska, USA', lat: 65.12, lon: -147.48, type: 'Sounding Rockets & LIDAR' },
+      { id: 'REK', name: 'Reykjavik Auroral Station', country: 'Iceland', lat: 64.14, lon: -21.94, type: 'Geomagnetic Observatory' },
+      { id: 'YEL', name: 'Yellowknife Dark Sky Observatory', country: 'Canada', lat: 62.45, lon: -114.37, type: 'CANOPUS Riometer Array' },
+      { id: 'KIR', name: 'Kiruna Space Campus', country: 'Sweden', lat: 67.86, lon: 20.22, type: 'EISCAT Incoherent Scatter' },
+      { id: 'SOD', name: 'Sodankylä Geophysical Observatory', country: 'Finland', lat: 67.37, lon: 26.63, type: 'VLF & Ionospheric Radar' },
+      { id: 'ABK', name: 'Abisko Scientific Station', country: 'Sweden', lat: 68.35, lon: 18.82, type: 'Aurora Station' },
+      { id: 'DUN', name: 'Dunedin Dark Sky Station', country: 'New Zealand', lat: -45.87, lon: 170.50, type: 'Southern Lights Watch' },
+      { id: 'SYO', name: 'Syowa Station', country: 'Antarctica (Japan)', lat: -69.00, lon: 39.58, type: 'SuperDARN Radar Array' },
+      { id: 'HAL', name: 'Halley VI Research Station', country: 'Antarctica (UK)', lat: -75.58, lon: -26.22, type: 'Geospace Observation' },
+      { id: 'SPT', name: 'Amundsen-Scott South Pole', country: 'Antarctica (USA)', lat: -90.00, lon: 0.00, type: 'Cusp Magnetometer' }
     ];
 
     // High-Resolution World Continents Geo-polygons (Equirectangular lon/lat pairs)
@@ -133,23 +133,33 @@ class AuroralMapRenderer {
   // Converts canvas (x, y) to geographic (lon, lat)
 
   // Calculate Sun subsolar coordinates for current UTC time
+  // Subsolar point with the equation of time and the declination of the NOAA solar position
+  // formulas (Spencer 1971 series; about 0.1 deg): without the equation of time the subsolar
+  // longitude was up to 4 deg off, and the terminator and MLT disagreed with the server's oval.
   getSubsolarPoint() {
     const now = this.mapTime || new Date();
     const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-    
-    // Subsolar longitude: noon (12:00 UTC) corresponds to 0° longitude
-    let sunLon = (12 - utcHours) * 15;
+    const startOfYear = Date.UTC(now.getUTCFullYear(), 0, 1);
+    const dayOfYear = Math.floor((now - startOfYear) / 86400000) + 1;
+    const g = (2 * Math.PI / 365) * (dayOfYear - 1 + (utcHours - 12) / 24);
+    const eqTimeMin = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g)
+      - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+    const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g)
+      + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+    let sunLon = (12 - utcHours - eqTimeMin / 60) * 15;
     while (sunLon > 180) sunLon -= 360;
     while (sunLon < -180) sunLon += 360;
-
-    // Subsolar latitude (declination): varies between -23.44° and +23.44°
-    const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
-    const dayOfYear = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
-    const sunLat = -23.44 * Math.cos((2 * Math.PI * (dayOfYear + 10)) / 365.25);
-
-    return { lon: sunLon, lat: sunLat };
+    return { lon: sunLon, lat: decl * 180 / Math.PI };
   }
 
+  // Centred-dipole latitude (the frame the oval is drawn in; corrected geomagnetic latitude,
+  // in which Starkov's boundaries are given, differs from it by up to about 5 deg).
+  getDipoleLatitude(lon, lat) {
+    const d = Math.PI / 180;
+    const p = this.magPoleNorth;
+    const c = Math.sin(lat * d) * Math.sin(p.lat * d) + Math.cos(lat * d) * Math.cos(p.lat * d) * Math.cos((lon - p.lon) * d);
+    return Math.asin(Math.max(-1, Math.min(1, c))) / d;
+  }
   // Compute Solar Zenith Angle for any lat/lon
   getSolarZenith(lon, lat, sun) {
     const deg2rad = Math.PI / 180;
@@ -629,13 +639,17 @@ class AuroralMapRenderer {
       const zenith = this.getSolarZenith(st.lon, st.lat, sun);
       const mlt = this.getMLT(st.lon, st.lat);
 
-      let skyStatus = 'DAYLIGHT (No Optical Sightings)';
+      // The sky only: whether aurora is there depends on the oval drawn on the map.
+      let skyStatus = 'DAYLIGHT (no optical aurora)';
       let statusColor = 'text-slate-400';
-      if (zenith > 102) {
-        skyStatus = 'OPTIMAL DARK NIGHT (High Sighting Likelihood)';
+      if (zenith > 108) {
+        skyStatus = 'DARK NIGHT (Sun more than 18° below the horizon)';
         statusColor = 'text-emerald-400 font-bold';
+      } else if (zenith > 96) {
+        skyStatus = 'NAUTICAL OR ASTRONOMICAL TWILIGHT (bright aurora visible)';
+        statusColor = 'text-amber-400 font-bold';
       } else if (zenith > 90) {
-        skyStatus = 'TWILIGHT HORIZON (Visible for Strong Storms)';
+        skyStatus = 'CIVIL TWILIGHT (only very bright aurora)';
         statusColor = 'text-amber-400 font-bold';
       }
 
@@ -647,7 +661,7 @@ class AuroralMapRenderer {
         </div>
         <div class="text-[11px] font-mono space-y-0.5 text-slate-200">
           <div>Geographic: <span class="text-amber-300">${st.lat.toFixed(2)}°, ${st.lon.toFixed(2)}°</span></div>
-          <div>Geomagnetic Lat: <span class="text-emerald-300">${st.magLat.toFixed(1)}° MLat</span></div>
+          <div>Dipole latitude: <span class="text-emerald-300">${this.getDipoleLatitude(st.lon, st.lat).toFixed(1)}°</span> <span class="text-slate-500">(CGM within ~5°)</span></div>
           <div>Magnetic Local Time: <span class="text-cyan-300">${mlt.toFixed(1)} hrs MLT</span></div>
           <div>Payload: <span class="text-slate-300">${st.type}</span></div>
           <div class="pt-1 mt-1 border-t border-slate-800 ${statusColor}">• ${skyStatus}</div>

@@ -171,8 +171,10 @@ class AuroralModel:
         """
         Geographic (lat, lon) boundaries of the Starkov (1994) oval in both hemispheres at
         the UTC time `when` (default now). Magnetic local time and latitude are mapped to
-        geographic coordinates with the IGRF centred dipole, which puts the boundaries
-        within a degree or two of their corrected geomagnetic positions. The southern oval
+        geographic coordinates with the IGRF centred dipole. Starkov's latitudes are corrected
+        geomagnetic (CGM) latitudes, which differ from dipole latitudes by up to about 5 deg in
+        places (e.g. -59 dipole against about -64.5 CGM at Macquarie Island), so the drawn oval is
+        shifted by as much there. The southern oval
         mirrors the northern boundaries in magnetic latitude. Each boundary is sorted by
         longitude from -180 to 180 deg so it can be drawn on a cylindrical map.
         """

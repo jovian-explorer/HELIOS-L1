@@ -412,3 +412,20 @@ console.log(JSON.stringify([arrivalIndex(tags, arrivalTimeMs('2017-09-13 07:07:3
     res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
     assert res.returncode == 0, res.stderr
     assert json.loads(res.stdout) == [1.5, None, 0]
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_aurora_map_subsolar_point_has_the_equation_of_time():
+    """3 November 12:00 UT: the Sun is over about 4.1 deg W (equation of time +16.4 min), declination about -15.05 deg (Spencer series good to about 0.2 deg)."""
+    src = (APP_JS.parent / "aurora.js").read_text(encoding="utf-8")
+    script = "const window = {}; const document = {getElementById: () => null};\n" + src + """
+const a = Object.create(AuroralMapRenderer.prototype);
+a.mapTime = new Date(Date.UTC(2026, 10, 3, 12, 0, 0));
+a.magPoleNorth = { lat: 80.8, lon: -72.8 };
+const s = a.getSubsolarPoint();
+console.log(JSON.stringify([s.lon, s.lat, a.getDipoleLatitude(-72.8, 80.8)]));
+"""
+    res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert res.returncode == 0, res.stderr
+    lon, lat, pole = json.loads(res.stdout)
+    assert lon == pytest.approx(-4.1, abs=0.15) and lat == pytest.approx(-15.05, abs=0.3) and pole == pytest.approx(90.0)
