@@ -185,9 +185,10 @@ Builds update themselves once a week from the releases page (Settings, *Updates*
 
 ### Option 2: Install with pip (Python 3.10+)
 ```bash
-pip install "git+https://github.com/jovian-explorer/HELIOS-L1.git"
+pip install "helios-l1[solar] @ git+https://github.com/jovian-explorer/HELIOS-L1.git"
 helios            # or: python -m helios
 ```
+`[solar]` adds SunPy and sunkit-magex for science FITS files, the coronal field (PFSS) and the PFSS field of the radio occultation; leave it out for a smaller install without them. The standalone app includes them.
 The repository is private, so pip needs GitHub access (e.g. `gh auth login` with git credentials set up).
 
 ### Command-line options
