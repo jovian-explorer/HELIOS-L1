@@ -2,15 +2,16 @@
 
 ## Unreleased
 
+### Scientific corrections
+- Orbit positions checked against JPL Horizons for 13 October 2026: Parker Solar Probe, Solar Orbiter, STEREO-A, Earth and Mars within 2 100-100 000 km, i.e. under 0.05° of heliocentric longitude (user guide; the code said "within 1 degree").
+- Starkov's Kp-to-AL conversion (used for the live oval) checked against 17 520 hours of OMNI (2003, 2015): it follows the median |AL| per Kp from Kp 0 to 6 and falls short at Kp 8-9 (636-652 nT against medians of 844-1121 nT); stated in the user guide. Unchanged.
+
 ### Licence
 - HELIOS-L1 is released under the MIT licence (`LICENSE`); `THIRD_PARTY_LICENSES.md` lists the bundled third-party code, fonts and data with their licences. Both are in the Python package metadata (pyproject `license`, `license-files`), CITATION.cff and next to the program in the standalone app.
 
 ### Code quality
 - CI was red on all three systems: it runs a copy of the tests against the installed package, and six tests read files by their place in the source tree (the page, the launcher, the build scripts). Package files are now found through the installed `helios` package; the three tests that need the source tree itself (CSS build inputs, build script, packaging lists) skip outside it.
 - A time-shift test measured a 1e-6° angle with arccos, which at that size is one rounding step and failed on macOS; it uses atan2(|a×b|, a·b).
-
-### Scientific corrections
-- Starkov's Kp-to-AL conversion (used for the live oval) checked against 17 520 hours of OMNI (2003, 2015): it follows the median |AL| per Kp from Kp 0 to 6 and falls short at Kp 8-9 (636-652 nT against medians of 844-1121 nT); stated in the user guide. Unchanged.
 
 ## 0.1.0 (2026-10-12)
 

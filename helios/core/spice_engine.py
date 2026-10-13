@@ -52,7 +52,8 @@ def _psp_phase(engine, pos_km) -> str:
 CONIC_TARGETS = [
     # Spacecraft: osculating heliocentric elements (ecliptic and equinox J2000) for
     # 2026-01-01 00:00 TDB from JPL Horizons (ssd.jpl.nasa.gov). Checked against Horizons
-    # positions for 2026-10-10: within 1 degree of heliocentric longitude.
+    # heliocentric positions for 2026-10-13 15:11 UT: PSP 70 000 km, Solar Orbiter 19 000 km,
+    # STEREO-A 2 100 km, Earth 39 000 km, Mars 100 000 km off (all under 0.05 deg of longitude).
     (("PARKER_SOLAR_PROBE", "PSP", "PARKER"), {
         # Perihelion 9.86 R_sun, aphelion 0.73 AU, period 88 d (final orbit since the
         # Venus flyby of November 2024).
