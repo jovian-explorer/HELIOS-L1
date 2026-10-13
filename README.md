@@ -1,10 +1,12 @@
 # HELIOS-L1
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23322367.svg)](https://doi.org/10.5281/zenodo.23322367)
+
 **Heliophysical Exploration, Lagrange-1 Interplanetary Observation & Space-weather Suite**
 
 HELIOS-L1 is a free desktop app for space weather: the stream of particles and magnetic field from the Sun (the *solar wind*), the storms it causes around Earth, and the aurora. It reads live measurements from spacecraft parked 1.5 million km sunward of Earth at the *L1 point* (about an hour of warning before the wind reaches us) and decades of archived data, and runs the standard published models on them. Everything runs on your own computer; the data come from public NOAA, NASA and GFZ services.
 
-> **HELIOS-L1 is public and in pre-release** (version 0.1.0). It is ready for use and for testing; results can still change between versions. Please report problems, wrong results and suggestions through **Feedback** in the app or on the [issue tracker](https://github.com/jovian-explorer/HELIOS-L1/issues/new/choose). To cite HELIOS-L1, see [CITATION.cff](CITATION.cff).
+> **HELIOS-L1 is public and in pre-release** (version 0.1.0). It is ready for use and for testing; results can still change between versions. Please report problems, wrong results and suggestions through **Feedback** in the app or on the [issue tracker](https://github.com/jovian-explorer/HELIOS-L1/issues/new/choose). To cite HELIOS-L1, use the DOI [10.5281/zenodo.23322367](https://doi.org/10.5281/zenodo.23322367) (all versions; see [CITATION.cff](CITATION.cff)).
 
 ## What can I do with it?
 

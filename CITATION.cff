@@ -7,6 +7,15 @@ authors:
     given-names: Keshav
     email: keshavaggarwal2310@gmail.com
 version: 0.1.0
+# Concept DOI on Zenodo: all versions, always resolves to the newest release
+doi: 10.5281/zenodo.23322367
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23322367
+    description: "Concept DOI (all versions; resolves to the newest release)"
+  - type: doi
+    value: 10.5281/zenodo.23322368
+    description: "Version DOI of release v0.1.0"
 date-released: 2026-10-12
 abstract: >-
   HELIOS-L1 is a desktop application for space weather. It reads live solar wind
