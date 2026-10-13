@@ -2409,6 +2409,7 @@ async function loadMissions() {
 
           <!-- Mission Name & Launch -->
           <h4 class="font-bold text-sm text-slate-100 mb-1">${m.full_name}</h4>
+          ${m.helios_use ? `<p class="text-[11px] text-amber-200/80 mb-2">In HELIOS-L1: ${m.helios_use}</p>` : ''}
           <p class="text-xs text-slate-400 mb-3 flex items-center space-x-2">
             <span>Launched: <strong class="text-slate-200">${m.launch_year}</strong></span>
             <span>•</span>

@@ -25,7 +25,7 @@ from helios import __version__
 from helios.api.guard import LocalRequestGuard
 from helios import settings_review, updates
 from helios.config import (
-    MISSIONS, STATIC_DIR, DATA_PROVIDERS,
+    MISSIONS, HELIOS_USE, STATIC_DIR, DATA_PROVIDERS,
     SCIENTIFIC_REFERENCES, PARAMETER_DEFINITIONS,
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
@@ -350,7 +350,7 @@ async def acknowledge_settings_review(req: SettingsReviewRequest):
 
 @app.get("/api/missions")
 async def get_missions():
-    missions = list(MISSIONS.values())
+    missions = [{**m, "helios_use": HELIOS_USE.get(k)} for k, m in MISSIONS.items()]
     if latest_custom_dataset and latest_custom_dataset.get("records"):
         name = latest_custom_dataset.get("mission_name", "Custom Spacecraft")
         missions.append({

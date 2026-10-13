@@ -502,6 +502,20 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
 # (HTTP 404). Solar wind now comes from the Real-Time Solar Wind (RTSW) 1-minute feeds,
 # which carry every L1 monitor (DSCOVR, ACE, SOLAR-1, IMAP ...) tagged by "source",
 # with "active": true marking the spacecraft NOAA uses operationally. They cover ~24 h.
+# What HELIOS-L1 itself reads for each mission (the catalogue lists the instruments on board)
+HELIOS_USE: Dict[str, str] = {
+    "DSCOVR": "Live NOAA real-time solar wind (the operational stream); magnetometer and Faraday cup archive from NASA CDAWeb.",
+    "ACE": "Live NOAA real-time rows tagged ACE; MAG and SWEPAM archive from NASA CDAWeb.",
+    "ADITYA_L1": "Simulated: no public real-time data, so its view is the operational stream with fixed offsets.",
+    "WIND": "MFI and SWE archive from NASA CDAWeb (event analyses at the instruments' own cadence).",
+    "SOHO": "LASCO C2/C3 images (NOAA, Helioviewer) and FITS files; its in-situ view is simulated.",
+    "GOES_16": "X-ray flux and protons from NOAA (R and S scales, D-RAP); the Hp magnetometer view is simulated.",
+    "STEREO_A": "EUVI and COR images (Helioviewer); its position corrects CME speeds seen off the Sun-Earth line.",
+    "SDO": "AIA and HMI images (Helioviewer), FITS files (SunPy) and HMI maps for the coronal field.",
+    "PARKER_SOLAR_PROBE": "Position from an orbit model (checked against JPL Horizons).",
+    "SOLAR_ORBITER": "EUI images (Helioviewer) and its position from an orbit model.",
+}
+
 NOAA_SWPC_ENDPOINTS = {
     "rtsw_mag_1m": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
     "rtsw_wind_1m": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
