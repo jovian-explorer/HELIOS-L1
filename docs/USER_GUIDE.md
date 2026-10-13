@@ -63,7 +63,7 @@ Set the environment variable `HELIOS_HOME` to a folder to keep all three there i
 
 ## 2. The window
 
-* **Status bar (top line):** the latest NOAA G, S and R scales (thresholds as NOAA's: G from Kp 5- to 9o, S from 10 to 10⁵ pfu above 10 MeV, R from M1 to X20; checked on 10-11 May 2024, where archived GFZ Kp 9.0, the GOES-16 X5.8 flare of 11 May 01:23 UT and about 225 pfu on 10 May at 17:45 UT give G5, R3 and S2, NOAA's own maxima for that storm), the magnetopause stand-off distance and the Akasofu coupling from the live solar wind, and the clock in the selected time zone.
+* **Status bar (top line):** the latest NOAA G, S and R scales (thresholds as NOAA's: G from Kp 5- to 9o, S from 10 to 10⁵ pfu above 10 MeV, R from M1 to X20; checked on 10-11 May 2024, where archived GFZ Kp 9.0, the GOES-16 X5.8 flare of 11 May 01:23 UT and about 225 pfu on 10 May at 17:45 UT give G5, R3 and S2, NOAA's own maxima for that storm; the flare class from the peak flux matched NOAA's class for all 49 flares of NOAA's 7-day list of 14 October 2026), the magnetopause stand-off distance and the Akasofu coupling from the live solar wind, and the clock in the selected time zone.
 * **Header:** the data source of the view on screen (for example *Observed: NOAA RTSW SOLAR1*, or the CDAWeb datasets of an archive interval), the G scale, the latest Bz, and the buttons *Live Fetch*, *Bulletin*, *References*, *Guide*, *Incidents*, *Settings* and *About*.
 * **Domain bar:** four domains, each with its own row of tabs, plus sound on/off, bulletin, Markdown summary, CSV and PNG export.
 
