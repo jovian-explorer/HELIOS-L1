@@ -257,7 +257,7 @@ Every record has a `data_source` and every API answer a `provenance` block:
 | Kind | Meaning |
 |---|---|
 | `observed` | Measured: NOAA RTSW or the NASA CDAWeb archive. |
-| `simulated` | No data for this mission and window (Aditya-L1, SOHO, GOES-16 Hp, STEREO-A; WIND before the archive reaches the window): the operational L1 stream with fixed offsets and noise. Not a measurement. Aditya-L1 Level-2 data are on ISRO's PRADAN portal for registered users only and cannot be fetched without your own login. |
+| `simulated` | No data for this mission and window (Aditya-L1, SOHO, STEREO-A; WIND before the archive reaches the window): the operational L1 stream with fixed offsets and noise. Not a measurement. Aditya-L1 Level-2 data are on ISRO's PRADAN portal for registered users only and cannot be fetched without your own login. |
 | `synthetic` | Nothing could be reached and nothing was cached: values from the offline solar wind model; also the historical storm profiles built from published peaks. |
 | `imported` | Rows from your file. |
 

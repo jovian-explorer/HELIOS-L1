@@ -509,7 +509,7 @@ HELIOS_USE: Dict[str, str] = {
     "ADITYA_L1": "Simulated: no public real-time data, so its view is the operational stream with fixed offsets.",
     "WIND": "MFI and SWE archive from NASA CDAWeb (event analyses at the instruments' own cadence).",
     "SOHO": "LASCO C2/C3 images (NOAA, Helioviewer) and FITS files; its in-situ view is simulated.",
-    "GOES_16": "X-ray flux and protons from NOAA (R and S scales, D-RAP); the Hp magnetometer view is simulated.",
+    "GOES_16": "X-ray flux and protons from NOAA (status bar R and S scales, flare class, D-RAP). It measures no solar wind, so it has no solar wind view.",
     "STEREO_A": "EUVI and COR images (Helioviewer); its position corrects CME speeds seen off the Sun-Earth line.",
     "SDO": "AIA and HMI images (Helioviewer), FITS files (SunPy) and HMI maps for the coronal field.",
     "PARKER_SOLAR_PROBE": "Position from an orbit model (checked against JPL Horizons).",

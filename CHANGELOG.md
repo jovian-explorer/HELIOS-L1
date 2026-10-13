@@ -4,6 +4,7 @@
 
 ### Interface and robustness
 - Simulated views are labelled where they are chosen and shown: the spacecraft menus say "simulated" for Aditya-L1, SOHO, GOES-16 and STEREO-A, and the dashboard shows a banner above the cards when the values are simulated or synthetic. The storm forecast and turbulence spectrum no longer offer Aditya-L1 (a forecast or spectrum of the operational stream with offsets and noise says nothing about Aditya-L1).
+- GOES-16 is no longer offered as a solar wind view: it measures no solar wind, so that view could only be simulated. Its real data (X-rays and protons) drive the R and S scales, the flare class and D-RAP.
 - README: the spacecraft section says what HELIOS-L1 uses from each mission (live, archive, images, positions) and that the Aditya-L1, SOHO in-situ and GOES Hp views are simulated; it listed their instruments as if their data were read, and STEREO-A "3D triangulation", which HELIOS-L1 does not do.
 - About panel: the fleet cards say what is used from each spacecraft instead of listing instruments whose data are not read (Aditya-L1 ASPEX/PAPA/VELC, PSP FIELDS/SWEAP, Solar Orbiter MAG/SWA, WIND 3DP, ACE EPAM).
 - Fleet Catalog: each mission card says what HELIOS-L1 reads from it (live, archive, images, position, or simulated), under the list of its instruments.
