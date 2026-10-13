@@ -30,6 +30,9 @@ def main():
          str(ROOT / "packaging" / "helios.spec")],
         check=True,
     )
+    # The licences sit next to the program, where users look for them.
+    for name in ("LICENSE", "THIRD_PARTY_LICENSES.md"):
+        shutil.copy2(ROOT / name, dist / "HELIOS-L1" / name)
     # The updater (helios/updates.py) picks the archive for its system by this name.
     base = dist / archive_basename()
     archive = shutil.make_archive(str(base), archive_format(), root_dir=dist, base_dir="HELIOS-L1")

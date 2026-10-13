@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Licence
+- HELIOS-L1 is released under the MIT licence (`LICENSE`); `THIRD_PARTY_LICENSES.md` lists the bundled third-party code, fonts and data with their licences. Both are in the Python package metadata (pyproject `license`, `license-files`), CITATION.cff and next to the program in the standalone app.
+
 ### Code quality
 - CI was red on all three systems: it runs a copy of the tests against the installed package, and six tests read files by their place in the source tree (the page, the launcher, the build scripts). Package files are now found through the installed `helios` package; the three tests that need the source tree itself (CSS build inputs, build script, packaging lists) skip outside it.
 - A time-shift test measured a 1e-6° angle with arccos, which at that size is one rounding step and failed on macOS; it uses atan2(|a×b|, a·b).

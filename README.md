@@ -263,6 +263,12 @@ assets/            application icon used for the Windows build
 
 ---
 
+## Licence
+
+HELIOS-L1 is free software under the MIT licence (`LICENSE`). The third-party code, fonts and data it bundles (Chart.js, Tailwind CSS, Font Awesome, NAIF kernels, the Richardson & Cane ICME list, the IPShocks database) keep their own licences, listed in `THIRD_PARTY_LICENSES.md`; both files are included in the standalone app.
+
+---
+
 ## 👨‍🔬 Creator & Lead Architect
 
 * **Dr. Keshav Aggarwal**

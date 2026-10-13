@@ -7,6 +7,7 @@ authors:
     given-names: Keshav
     email: keshavaggarwal2310@gmail.com
 version: 0.1.0
+license: MIT
 # Concept DOI on Zenodo: all versions, always resolves to the newest release
 doi: 10.5281/zenodo.23322367
 identifiers:

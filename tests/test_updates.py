@@ -449,3 +449,15 @@ def test_skipped_releases_are_counted_with_a_compare_link(installed, server):
     # the old tag is missing (e.g. a copy built from an untagged commit): CHANGELOG as well
     assert updates.releases_behind("v9.0.9", ["v9.0.9"], [], old)["compare_url"] is None
     assert updates.releases_behind("v9.0.9", [f"v{old}", "v9.0.9"], [], old)["releases_behind"] == 1
+
+
+def test_licence_files_ship_with_the_package_and_the_standalone_app():
+    from conftest import source_root
+    root = source_root()
+    assert (root / "LICENSE").read_text(encoding="utf-8").startswith("MIT License\n\nCopyright (c) 2026 Keshav Aggarwal")
+    tp = (root / "THIRD_PARTY_LICENSES.md").read_text(encoding="utf-8")
+    assert all(k in tp for k in ("Chart.js", "Tailwind", "Font Awesome", "NAIF", "Richardson", "IPShocks"))
+    py = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'license = "MIT"' in py and '"LICENSE", "THIRD_PARTY_LICENSES.md"' in py
+    build = (root / "packaging" / "build.py").read_text(encoding="utf-8")
+    assert '("LICENSE", "THIRD_PARTY_LICENSES.md")' in build
