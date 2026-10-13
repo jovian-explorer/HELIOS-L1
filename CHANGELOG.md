@@ -4,6 +4,7 @@
 
 ### Interface and robustness
 - README: the spacecraft section says what HELIOS-L1 uses from each mission (live, archive, images, positions) and that the Aditya-L1, SOHO in-situ and GOES Hp views are simulated; it listed their instruments as if their data were read, and STEREO-A "3D triangulation", which HELIOS-L1 does not do.
+- About panel: the fleet cards say what is used from each spacecraft instead of listing instruments whose data are not read (Aditya-L1 ASPEX/PAPA/VELC, PSP FIELDS/SWEAP, Solar Orbiter MAG/SWA, WIND 3DP, ACE EPAM).
 - "In plain words" lines also on the aurora map, the Dst panel, the storm forecast, the orbit view, the comparator, the Parker spiral, the turbulence spectrum, the solar cycle, D-RAP and GIC panels (26 in all).
 
 ### Scientific corrections
