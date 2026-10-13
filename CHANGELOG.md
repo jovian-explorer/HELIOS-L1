@@ -9,9 +9,9 @@
 ### Scientific corrections
 - Starkov's Kp-to-AL conversion (used for the live oval) checked against 17 520 hours of OMNI (2003, 2015): it follows the median |AL| per Kp from Kp 0 to 6 and falls short at Kp 8-9 (636-652 nT against medians of 844-1121 nT); stated in the user guide. Unchanged.
 
-## 0.1.0 (2026-10-12, pre-release)
+## 0.1.0 (2026-10-12)
 
-First public pre-release since 0.0.1, and the first archived on Zenodo with a DOI. In short:
+First public release since 0.0.1, and the first archived on Zenodo with a DOI. In short:
 
 - **Real data instead of examples**: live L1 solar wind from NOAA RTSW, archives from NASA CDAWeb (WIND, ACE, DSCOVR, OMNI), GFZ Kp and Hp30, Kyoto Dst, NOAA SWPC products; values without a measurement are left empty or labelled as estimates.
 - **Event analysis**: shock normals and Mach numbers, multi-spacecraft timing, minimum variance, de Hoffmann-Teller frame, flux rope fits, magnetic cloud search, superposed epoch analysis, OMNI statistics since 1963, the ICME, IPShocks and sudden commencement lists, all with uncertainties.
