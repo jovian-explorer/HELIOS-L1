@@ -336,7 +336,7 @@ def test_shock_and_mva_api_with_provenance(monkeypatch, tmp_path):
     assert client.get("/api/analysis/ht?mission=WIND&start=2015-03-17T04:02&end=2015-03-17T04:04").status_code == 422
     assert client.get("/api/analysis/shock?mission=SOHO&time=2015-03-17T04:00").status_code == 404
     assert client.get("/api/analysis/mva?mission=WIND&start=2015-03-17&end=2015-03-21").status_code == 422
-    assert client.get("/api/analysis/shock?mission=ACE&time=2015-03-17T04:00").status_code == 404  # nothing served
+    assert client.get("/api/analysis/shock?mission=ACE&time=2015-03-17T04:00").status_code == 503  # nothing served: CDAWeb not reached
 
 
 def test_timing_wind_to_ace_20140227_against_cfa_arrivals():

@@ -769,7 +769,7 @@ async def _run_shock(key: str, tc: datetime, upstream_minutes: float, downstream
         missing = "magnetic field" if data["field"] is None else "plasma"
         msg = ("The CDAWeb HAPI server could not be reached and nothing is cached for this interval."
                if data["offline"] else f"CDAWeb has no {key} {missing} data for this interval.")
-        raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=503 if data["offline"] else 404, detail=msg)
     try:
         result = await run_in_workers(analyze_shock, data["field"], data["plasma"], tc, upstream_minutes,
                                       downstream_minutes, exclude_minutes, refine, exclude_after_minutes=gap_after)
@@ -921,7 +921,7 @@ async def analyse_flux_rope(
         raise HTTPException(status_code=422, detail=f"Intervals are limited to {MAX_EVENT_HOURS} hours.")
     data = await downloader.events.fetch(key, t0, t1, coarse=True)
     if data["field"] is None:
-        raise HTTPException(status_code=404, detail="No magnetic field data for this interval"
+        raise HTTPException(status_code=503 if data["offline"] else 404, detail="No magnetic field data for this interval"
                             + (" (CDAWeb could not be reached)." if data["offline"] else "."))
     try:
         result = await run_in_workers(fit_flux_rope, data["field"], data["plasma"], t0, t1, average_minutes, speed_kms)
@@ -956,7 +956,7 @@ async def detect_clouds(
     res = await downloader.archive.fetch_mission(key, t0, t1)
     frame = res["frame"]
     if frame is None or frame.empty:
-        raise HTTPException(status_code=404, detail="The CDAWeb HAPI server could not be reached and nothing is cached "
+        raise HTTPException(status_code=503 if res["offline"] else 404, detail="The CDAWeb HAPI server could not be reached and nothing is cached "
                             "for this interval." if res["offline"] else f"CDAWeb has no {key} data for this interval.")
     try:
         result = await run_in_workers(detect_magnetic_clouds, frame, criteria)
@@ -1135,7 +1135,7 @@ async def analyse_mva(
     data = await downloader.events.fetch(key, t0, t1)
     field = data["field"]
     if field is None:
-        raise HTTPException(status_code=404, detail="No magnetic field data for this interval"
+        raise HTTPException(status_code=503 if data["offline"] else 404, detail="No magnetic field data for this interval"
                             + (" (CDAWeb could not be reached)." if data["offline"] else "."))
     field = field[(field.index >= pd.Timestamp(t0)) & (field.index < pd.Timestamp(t1))]
     if average_seconds:
@@ -1169,7 +1169,7 @@ async def analyse_dehoffmann_teller(
         raise HTTPException(status_code=422, detail=f"Intervals are limited to {MAX_EVENT_HOURS} hours.")
     data = await downloader.events.fetch(key, t0, t1)
     if data["field"] is None or data["plasma"] is None:
-        raise HTTPException(status_code=404, detail="No field or plasma data for this interval"
+        raise HTTPException(status_code=503 if data["offline"] else 404, detail="No field or plasma data for this interval"
                             + (" (CDAWeb could not be reached)." if data["offline"] else "."))
     sel = lambda df: df[(df.index >= pd.Timestamp(t0)) & (df.index < pd.Timestamp(t1))]
     field, plasma = sel(data["field"]), sel(data["plasma"]).dropna(subset=["vx", "vy", "vz"])
@@ -1215,7 +1215,7 @@ async def analyse_coupling(
         raise HTTPException(status_code=422, detail=f"Intervals are limited to {MAX_EVENT_HOURS} hours.")
     data = await downloader.events.fetch(key, t0, t1, coarse=True)
     if data["field"] is None or data["plasma"] is None:
-        raise HTTPException(status_code=404, detail="No field or plasma data for this interval"
+        raise HTTPException(status_code=503 if data["offline"] else 404, detail="No field or plasma data for this interval"
                             + (" (CDAWeb could not be reached)." if data["offline"] else "."))
     sel = lambda df: df[(df.index >= pd.Timestamp(t0)) & (df.index < pd.Timestamp(t1))]
     try:
@@ -1259,7 +1259,7 @@ async def analyse_timeshift(
         field = timeshift.wind_field_limit(field) if field is not None else None
     missing = [name for name, v in (("magnetic field", field), ("plasma", plasma), ("position", position)) if v is None]
     if missing:
-        raise HTTPException(status_code=404, detail=f"No {key} {' or '.join(missing)} data for this interval"
+        raise HTTPException(status_code=503 if data["offline"] else 404, detail=f"No {key} {' or '.join(missing)} data for this interval"
                             + (" (CDAWeb could not be reached)." if data["offline"] else "."))
     try:
         res = await run_in_workers(timeshift.shift_to_bow_shock, field, plasma, position, t0, t1)
@@ -1390,7 +1390,7 @@ async def analyse_sudden_commencements(
     data = data[(data.index >= a) & (data.index < b)]
     if not data["sym_h"].notna().any():
         offline = not any(reached for _, _, reached, _ in got)
-        raise HTTPException(status_code=404, detail="No OMNI SYM-H for this interval"
+        raise HTTPException(status_code=503 if offline else 404, detail="No OMNI SYM-H for this interval"
                             + (" (CDAWeb could not be reached)." if offline else "."))
     events = await run_in_workers(sc.detect, data["sym_h"], data["pressure"])
     events = events[(events["time"] >= t0) & (events["time"] < t1)].reset_index(drop=True)
@@ -1584,7 +1584,7 @@ async def omni_statistics_endpoint(
     x, y = x.strip().lower(), (y.strip().lower() if y else None)
     df, prov = await _omni_hourly_frame(start_year, end_year)
     if df.empty:
-        raise HTTPException(status_code=404, detail="No OMNI hourly data for these years"
+        raise HTTPException(status_code=503 if prov["years_not_refreshed"] else 404, detail="No OMNI hourly data for these years"
                             + (" (CDAWeb could not be reached and nothing is cached)." if prov["years_not_refreshed"] else "."))
     try:
         result = await run_in_workers(omni_statistics.run_analysis, df, analysis, x, y, filters, bins, log_x, log_y,
