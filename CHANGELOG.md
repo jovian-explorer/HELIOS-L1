@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Interface and robustness
+- SOHO's live view shows measured solar wind: speed and density from the CELIAS/MTOF Proton Monitor near-real-time file of the University of Maryland (the last two days, 5-minute means; SOHO has no magnetometer, so field values stay empty). It was simulated from the operational stream. On 13 October 2026 19:25 UT it read 645 km/s and 2.4 cm⁻³ against 613 km/s and 3.8 cm⁻³ from the operational L1 stream.
 - Simulated views are labelled where they are chosen and shown: the spacecraft menus say "simulated" for Aditya-L1, SOHO, GOES-16 and STEREO-A, and the dashboard shows a banner above the cards when the values are simulated or synthetic. The storm forecast and turbulence spectrum no longer offer Aditya-L1 (a forecast or spectrum of the operational stream with offsets and noise says nothing about Aditya-L1).
 - GOES-16 is no longer offered as a solar wind view: it measures no solar wind, so that view could only be simulated. Its real data (X-rays and protons) drive the R and S scales, the flare class and D-RAP.
 - README: the spacecraft section says what HELIOS-L1 uses from each mission (live, archive, images, positions) and that the Aditya-L1, SOHO in-situ and GOES Hp views are simulated; it listed their instruments as if their data were read, and STEREO-A "3D triangulation", which HELIOS-L1 does not do.

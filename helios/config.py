@@ -508,7 +508,7 @@ HELIOS_USE: Dict[str, str] = {
     "ACE": "Live NOAA real-time rows tagged ACE; MAG and SWEPAM archive from NASA CDAWeb.",
     "ADITYA_L1": "Simulated: no public real-time data, so its view is the operational stream with fixed offsets.",
     "WIND": "MFI and SWE archive from NASA CDAWeb (event analyses at the instruments' own cadence).",
-    "SOHO": "LASCO C2/C3 images (NOAA, Helioviewer) and FITS files; its in-situ view is simulated.",
+    "SOHO": "Live solar wind speed and density from the CELIAS/MTOF Proton Monitor (University of Maryland); LASCO C2/C3 images (NOAA, Helioviewer) and FITS files.",
     "GOES_16": "X-ray flux and protons from NOAA (status bar R and S scales, flare class, D-RAP). It measures no solar wind, so it has no solar wind view.",
     "STEREO_A": "EUVI and COR images (Helioviewer); its position corrects CME speeds seen off the Sun-Earth line.",
     "SDO": "AIA and HMI images (Helioviewer), FITS files (SunPy) and HMI maps for the coronal field.",

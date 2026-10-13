@@ -571,3 +571,22 @@ def test_import_reads_hapi_csv_headers_and_keeps_only_active_rtsw_rows():
         {"time_tag": "2026-10-11T11:45:00", "active": False, "source": "ACE", "proton_speed": 604.2, "proton_density": 0.11, "overall_quality": 0},
         {"time_tag": "2026-10-11T11:46:00", "active": True, "source": "SOLAR1", "proton_speed": 591.1, "proton_density": 9.9, "overall_quality": 3}])
     assert [(x["speed"], x["density"]) for x in T.parse_csv_or_text(rtsw)["records"]] == [(586.7, 1.02)]
+
+
+def test_soho_proton_monitor_rows_become_records(monkeypatch):
+    from datetime import datetime, timezone
+    from helios.core.downloader import parse_soho_pm
+    text = ("pmsw8 v8.0b5\nYear DOY:HH:MM:SS      VSW     Dens      Vth    Angle   PM_Min   PM_Max  F\n"
+            "2026 285:00:00:46    497.7     1.28     34.6    -0.74       58     8208   \n"
+            "2026 285:00:02:46    495.4     2.20     30.3    -0.11       59    12170   1235\n"
+            "2026 286:19:27:10    651.1     2.30     61.5    -1.78       77    19634   \n")
+    recs = parse_soho_pm(text)
+    assert [(r["time_tag"], r["speed"], r["density"]) for r in recs] == [
+        ("2026-10-12 00:00:46", 497.7, 1.28), ("2026-10-13 19:27:10", 651.1, 2.3)]  # flagged row left out
+    dl = DataDownloader()
+
+    async def fetch(url, timeout=120.0):
+        return text.replace("2026 286:19:27:10", datetime.now(timezone.utc).strftime("%Y %j:%H:%M:%S"))
+    monkeypatch.setattr(dl, "fetch_text", fetch)
+    b = asyncio.run(dl.get_telemetry_bundle("SOHO", 1))
+    assert b["provenance"]["kind"] == "observed" and b["records"][-1]["speed"] == 651.1 and b["records"][-1]["bz_gsm"] is None

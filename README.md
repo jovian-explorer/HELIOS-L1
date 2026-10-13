@@ -32,7 +32,8 @@ New to the subject? Press `U` for the user guide, `P` for the formulas and the p
 * **DSCOVR / NOAA operational stream** (*NOAA*): live 1-minute solar wind and field from NOAA's Real-Time Solar Wind feed; the spacecraft actually supplying it (e.g. SOLAR1) is named. Archive: DSCOVR magnetometer and Faraday cup data from NASA CDAWeb (plasma 2016-2019 only).
 * **ACE** (*NASA*): live RTSW rows tagged ACE; archive MAG and SWEPAM (Level 2 and key parameters) from CDAWeb.
 * **WIND** (*NASA*): archive MFI and SWE from CDAWeb, at the instruments' own cadence for the event analyses.
-* **Aditya-L1** (*ISRO*) and **SOHO** (*ESA/NASA*): no public real-time in-situ data, so their live views are **simulated** (the operational stream with fixed offsets) and labelled so. SOHO/LASCO coronagraph images are real (NOAA, Helioviewer).
+* **SOHO** (*ESA/NASA*): live solar wind speed and density from the CELIAS/MTOF Proton Monitor (University of Maryland, the last two days; SOHO has no magnetometer), and LASCO C2/C3 coronagraph images (NOAA, Helioviewer).
+* **Aditya-L1** (*ISRO*): no public real-time in-situ data, so its live view is **simulated** (the operational stream with fixed offsets) and labelled so.
 * **OMNI** (*NASA*): solar wind time-shifted to Earth's bow shock and geomagnetic indices, 1963 to the present, for history, statistics and model checks.
 
 ### Elsewhere
@@ -125,7 +126,7 @@ Every telemetry record carries a `data_source` field and every API response a `p
 | `data_source` | Meaning |
 |---|---|
 | `observed` | Measured values: the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`) or the NASA CDAWeb archive (HAPI). |
-| `simulated` | No data for the mission and window (Aditya-L1, SOHO, STEREO-A; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. Aditya-L1 ASPEX/SWIS and MAG Level-2 data are on ISSDC PRADAN (https://pradan.issdc.gov.in/al1/) for registered users only; there is no public API, so they cannot be fetched without the user's own login. |
+| `simulated` | No data for the mission and window (Aditya-L1, STEREO-A; SOHO when its proton monitor feed cannot be reached; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. Aditya-L1 ASPEX/SWIS and MAG Level-2 data are on ISSDC PRADAN (https://pradan.issdc.gov.in/al1/) for registered users only; there is no public API, so they cannot be fetched without the user's own login. |
 | `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. Historical storm profiles are also synthetic (built from published peak values). |
 | `imported` | Rows from a user file in the Custom Ingestion tab. |
 
@@ -164,7 +165,7 @@ Every telemetry record carries a `data_source` field and every API response a `p
 | IPShocks database, the shocks at WIND, ACE and DSCOVR of the version of 2026-04-24 (rows at other spacecraft and some columns left out, field names changed; `scripts/update_shock_catalog.py`) | `helios/data/ipshocks_l1.json` | CC BY 4.0 (Zenodo) | Kilpua, E., Good, S., Soljento, J., Price, D. J., Isavnin, A., Lumme, E., Mäkelä, T. V., Isavnina, K. & Andréeová, K., The IPShocks Database, doi:10.5281/zenodo.19730292; Kilpua et al. (2015, JGR 120, 4112, doi:10.1002/2015JA021138) |
 | IGRF-14 degree-1 coefficients | `helios/core/coordinates.py` | | IAGA Working Group V-MOD; coefficients file from NOAA NCEI |
 
-Read at run time and cached, never bundled: the sudden commencement lists of the Observatori de l'Ebre (CC BY-NC 4.0, no commercial use), the Kp and Hp30 indices of GFZ (CC BY 4.0), the NOAA SWPC products and the NASA CDAWeb data; their terms are in section 10 of the [user guide](docs/USER_GUIDE.md). The test fixtures under `tests/data` are short excerpts of these sources (NASA CDAWeb, GFZ Kp and Hp30, Ebre list lines), credited in the tests that use them.
+Read at run time and cached, never bundled: the SOHO CELIAS/MTOF Proton Monitor near-real-time solar wind of the University of Maryland (space.umd.edu/pm), the sudden commencement lists of the Observatori de l'Ebre (CC BY-NC 4.0, no commercial use), the Kp and Hp30 indices of GFZ (CC BY 4.0), the NOAA SWPC products and the NASA CDAWeb data; their terms are in section 10 of the [user guide](docs/USER_GUIDE.md). The test fixtures under `tests/data` are short excerpts of these sources (NASA CDAWeb, GFZ Kp and Hp30, Ebre list lines), credited in the tests that use them.
 
 ---
 

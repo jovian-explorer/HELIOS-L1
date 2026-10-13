@@ -497,7 +497,7 @@ def test_research_forms_explain_themselves_in_plain_words():
 def test_simulated_spacecraft_are_labelled_where_they_are_chosen():
     import re
     html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
-    opts = re.findall(r'<option value="(ADITYA_L1|SOHO|STEREO_A)">([^<]*)</option>', html)
+    opts = re.findall(r'<option value="(ADITYA_L1|STEREO_A)">([^<]*)</option>', html)
     assert opts and all(label.endswith("simulated") for _, label in opts)
     for sel in ("forecast-satellite-select", "turbulence-sat-select"):  # no spectrum or forecast of simulated data
         block = html[html.index(f'id="{sel}"'):html.index("</select>", html.index(f'id="{sel}"'))]

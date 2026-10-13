@@ -22,6 +22,7 @@ from typing import Dict, List, Any, Optional, Tuple
 import httpx
 
 from helios.config import CACHE_DIR, NOAA_SWPC_ENDPOINTS, MISSIONS
+from helios.core.cache import cached_text
 from helios.core.science import SpaceWeatherPhysics
 from helios.core.aurora_model import AuroralModel
 from helios.core.coverage import records_coverage
@@ -49,6 +50,35 @@ RTSW_SOURCES = {"DSCOVR": "DSCOVR", "ACE": "ACE"}
 
 # RTSW records older than this are flagged as not current (the feed normally lags minutes).
 STALE_AFTER_HOURS = 0.5
+
+
+# SOHO CELIAS/MTOF Proton Monitor near-real-time solar wind (University of Maryland): the last
+# two days at about 2-minute cadence, speed and density (SOHO has no magnetometer).
+SOHO_PM_URL = "https://space.umd.edu/pm/pmsw.used"
+SOHO_PM_TTL_S = 120.0
+
+
+def parse_soho_pm(text: Optional[str]) -> List[Dict[str, Any]]:
+    """Rows 'Year DOY:HH:MM:SS VSW Dens Vth Angle PM_Min PM_Max [F]' as records; flagged rows (F) and
+    non-positive values are left out."""
+    out = []
+    for line in (text or "").splitlines():
+        parts = line.split()
+        if len(parts) != 8 or not parts[0].isdigit():
+            continue
+        try:
+            doy, hms = parts[1].split(":", 1)
+            t = datetime(int(parts[0]), 1, 1, tzinfo=timezone.utc) + timedelta(days=int(doy) - 1)
+            h, m, sec = (int(x) for x in hms.split(":"))
+            t = t.replace(hour=h, minute=m, second=sec)
+            v, n = float(parts[2]), float(parts[3])
+        except ValueError:
+            continue
+        if v > 0 and n > 0:
+            out.append({"time_tag": t.strftime("%Y-%m-%d %H:%M:%S"), "mission": "SOHO", "source_spacecraft": "SOHO",
+                        "speed": v, "density": n, "temperature": None, "bt": None, "bx_gsm": None,
+                        "by_gsm": None, "bz_gsm": None, "data_source": "observed"})
+    return out
 
 
 class UnknownEventError(LookupError):
@@ -522,6 +552,19 @@ class DataDownloader:
                     records = block_average(records, 5, dist)  # leaves the 5-minute archive bins unchanged
                     if not arch_recs:
                         description += " Averaged to 5-minute bins."
+        elif mission_id == "SOHO":
+            text, _ = await cached_text(os.path.join(str(self.cache_dir), "soho_pm.txt"), SOHO_PM_URL,
+                                        self.fetch_text, SOHO_PM_TTL_S)
+            start_tag = window_start.strftime("%Y-%m-%d %H:%M:%S")
+            pm = [r for r in parse_soho_pm(text) if r["time_tag"] >= start_tag]
+            if pm:
+                records = block_average(pm, 5, dist)
+                kind, sources = "observed", ["SOHO"]
+                description = ("SOHO CELIAS/MTOF Proton Monitor near-real-time solar wind speed and density "
+                               "(University of Maryland, space.umd.edu/pm), 5-minute means. SOHO has no "
+                               "magnetometer: field values and the quantities that need them are empty.")
+                if span_days > 2:
+                    description += " The feed covers about the last two days."
         elif mission_id in ARCHIVE_SOURCES:
             arch = await self.get_archive_bundle(mission_id, window_start, now,
                                                  cadence_minutes=5 if span_days > 1 else 1)
