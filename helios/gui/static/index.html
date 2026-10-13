@@ -594,6 +594,7 @@
               <h3 class="font-tech font-bold text-base text-slate-100">Fleet-Wide Mutual Cross-Calibration Heatmap Matrix</h3>
             </div>
             <p class="text-xs text-slate-400">Pairwise Pearson correlation coefficients (r) across the Sun-Earth L1 fleet. Click any cell to cross-calibrate that pair.</p>
+            <p class="text-[11px] text-amber-200/80">In plain words: How closely the spacecraft agree with each other; the time lag between two of them is how long the solar wind took to travel from one to the other.</p>
           </div>
           <button onclick="loadFleetMatrix()" class="px-3 py-1.5 rounded-lg bg-space-950/80 hover:bg-space-900 text-cyan-400 text-xs font-semibold border border-cyan-500/30 transition flex items-center space-x-1.5 shadow-sm">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -772,6 +773,7 @@
               <h3 class="font-tech font-bold text-lg text-slate-100 tracking-wide">Sun-Earth L1 Orbital Geometry Simulator</h3>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Interactive GSE rotating reference frame. Real-time solar wind flux, magnetopause standoff dynamics, and 3D out-of-plane Halo oscillations.</p>
+            <p class="text-[11px] text-amber-200/80">In plain words: Where the spacecraft are between the Sun and Earth, and how far Earth's magnetic shield reaches towards the Sun.</p>
           </div>
           
           <div class="flex flex-wrap items-center gap-3 text-xs">
@@ -1011,6 +1013,7 @@
               <h3 data-term="auroral oval" class="font-tech font-bold text-base text-slate-100">Global Geographic Auroral Oval Visibility Map</h3>
             </div>
             <p class="text-xs text-slate-400">Starkov (1994) auroral oval (green band) and equatorward edge of the diffuse aurora (dashed), mapped with the IGRF dipole for the oval time, with the day/night terminator and ground observatories.</p>
+            <p class="text-[11px] text-amber-200/80">In plain words: Where the aurora is now (the green ring), where night falls, and, if you click the map, what to expect at your place.</p>
           </div>
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
@@ -1079,6 +1082,7 @@
             <canvas id="chart-dst"></canvas>
           </div>
           <p id="dst-skill-text" class="text-[10px] text-slate-400 mt-2 font-mono">Model driven by L1 solar wind shifted to Earth; observed: WDC Kyoto real-time Dst.</p>
+          <p class="text-[11px] text-amber-200/80">In plain words: during a magnetic storm a ring of electric current around Earth weakens the field at the equator; Dst measures by how much (more negative = stronger storm), here measured and as the model predicts it from the solar wind.</p>
         </div>
       </div>
     </section>
@@ -1453,6 +1457,7 @@
               <h3 data-term="Parker spiral" class="font-tech font-bold text-base text-slate-100">Heliospheric Parker Spiral & Solar Wind Stream Simulator</h3>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Archimedean magnetic field lines wound by solar rotation. Corotating Interaction Regions (CIRs) and Solar Energetic Particle (SEP) connectivity.</p>
+            <p class="text-[11px] text-amber-200/80">In plain words: The Sun's rotation winds its magnetic field into a spiral; this shows the spiral and which part of the Sun is magnetically connected to Earth.</p>
           </div>
           
           <div class="flex flex-wrap items-center gap-3 text-xs">
@@ -1855,6 +1860,7 @@
           <div>
             <h3 data-term="power spectrum" class="font-tech font-bold text-base text-slate-100 tracking-wide">Solar Wind MHD Turbulence &amp; Power Spectral Density (PSD)</h3>
             <p class="text-xs text-slate-400">Fast Fourier Transform (FFT) analysis of IMF &amp; plasma fluctuations. Benchmarks Kolmogorov f⁻⁵/³ inertial subrange vs Iroshnikov-Kraichnan f⁻³/².</p>
+            <p class="text-[11px] text-amber-200/80">In plain words: How the solar wind's ripples are spread over time scales; the slope tells what kind of turbulence carries the energy.</p>
           </div>
         </div>
 
@@ -2281,6 +2287,7 @@
             <h3 class="font-tech font-bold text-base text-slate-100">Magnetospheric Coupling &amp; Storm Horizon</h3>
           </div>
           <p class="text-xs text-slate-400 mt-0.5">Newell coupling, a 12-hour Kp (Newell et al. 2008) and Dst (O'Brien &amp; McPherron 2000) trajectory from persisted L1 solar wind, and NOAA SWPC's storm probabilities and Kp forecast.</p>
+          <p class="text-[11px] text-amber-200/80">In plain words: How hard the solar wind is driving Earth's magnetic field now, and where Kp and Dst would go in the next 12 hours if the wind stayed as it is.</p>
         </div>
 
         <div class="flex items-center space-x-3 text-xs">
@@ -2420,6 +2427,7 @@
             <div>
               <h3 class="font-tech font-bold text-base text-slate-100">Terrestrial Space Weather Hazards &amp; Solar Cycle 25 Observatory</h3>
               <p class="text-xs text-slate-400">Critical Infrastructure Impact: D-Region HF Radio Absorption (D-RAP), Ground Geoelectric Currents (GIC), and 11-Year Solar Cycle Progression.</p>
+              <p class="text-[11px] text-amber-200/80">In plain words: The Sun's 11-year activity cycle (sunspots and radio brightness) and where we are in it.</p>
             </div>
           </div>
           <div class="flex items-center space-x-2">
@@ -2513,6 +2521,7 @@
               <h3 data-term="D-RAP" class="font-tech font-bold text-base text-slate-100">D-Region Ionospheric Radio Absorption (D-RAP) &amp; HF Blackout Simulator</h3>
             </div>
             <p class="text-xs text-slate-400">Quantifies 3–30 MHz signal attenuation and Highest Affected Frequency (HAF) with the NOAA SWPC D-RAP flare relation HAF = 10 log₁₀(Fx) + 65 MHz (the proton part of D-RAP, Sauer &amp; Wilkinson 2008, is not modelled).</p>
+            <p class="text-[11px] text-amber-200/80">In plain words: Solar flares charge up the lowest part of the ionosphere on the day side, which then swallows shortwave radio; this estimates which frequencies are lost.</p>
           </div>
 
           <!-- Controls -->
@@ -2587,6 +2596,7 @@
               <h3 data-term="GIC" class="font-tech font-bold text-base text-slate-100">Geomagnetically Induced Currents (GIC) &amp; Surface Geoelectric Field Model</h3>
             </div>
             <p class="text-xs text-slate-400">Simulates horizontal electric field induction (E_H = √(ρ / (μ₀ω)) · |dB/dt|) and transformer quasi-DC neutral saturation based on Boteler &amp; Pirjola (2017).</p>
+            <p class="text-[11px] text-amber-200/80">In plain words: Magnetic storms induce electric fields in the ground that push currents through power lines; this gives a first estimate of their size.</p>
           </div>
 
           <!-- GIC Controls -->

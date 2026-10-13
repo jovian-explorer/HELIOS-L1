@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Interface and robustness
+- "In plain words" lines also on the aurora map, the Dst panel, the storm forecast, the orbit view, the comparator, the Parker spiral, the turbulence spectrum, the solar cycle, D-RAP and GIC panels (26 in all).
+
 ### Scientific corrections
 - Comparator lag checked live (SOLAR1 against ACE, 13 October 2026): 5 min measured against 5.6 min expected from the spacecraft positions and the wind speed; the 5-minute resolution of the lag is stated in the user guide.
 - Hemispheric power from Kp compared with NOAA's OVATION Prime nowcast on 13 October 2026: 1.6 to 2.3 times larger (27-44 against 16-28 GW at Kp 2-3.3); stated in the user guide.
