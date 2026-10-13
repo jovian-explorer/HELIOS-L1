@@ -81,6 +81,39 @@ def parse_soho_pm(text: Optional[str]) -> List[Dict[str, Any]]:
     return out
 
 
+# STEREO-A space weather beacon (STEREO Science Center): daily CDF files of IMPACT (magnetic field,
+# RTN) and PLASTIC (proton speed and density), updated through the day.
+STA_BEACON = "https://stereo-ssc.nascom.nasa.gov/data/beacon/ahead"
+STA_BEACON_TTL_S = 600.0
+
+
+def parse_stereo_beacon(impact_path: Optional[str], plastic_path: Optional[str]) -> List[Dict[str, Any]]:
+    """Records from one day's beacon files: |B| from IMPACT and speed and density from PLASTIC (fill
+    values left out). The field components are in RTN at STEREO-A, far from Earth, so no GSM
+    components are given."""
+    import cdflib
+    import numpy as np
+    out: List[Dict[str, Any]] = []
+
+    def stamps(cdf, var):
+        return [str(t)[:19].replace("T", " ") for t in cdflib.cdfepoch.to_datetime(cdf.varget(var))]
+
+    base = {"mission": "STEREO-A", "source_spacecraft": "STEREO-A", "data_source": "observed",
+            "bx_gsm": None, "by_gsm": None, "bz_gsm": None, "temperature": None}
+    if impact_path:
+        c = cdflib.CDF(impact_path)
+        b = np.asarray(c.varget("MAGBField"), dtype=float)
+        for t, (br, bt_, bn) in zip(stamps(c, "Epoch_MAG"), b):
+            if max(abs(br), abs(bt_), abs(bn)) < 1e4:
+                out.append({**base, "time_tag": t, "bt": float(np.sqrt(br * br + bt_ * bt_ + bn * bn))})
+    if plastic_path:
+        c = cdflib.CDF(plastic_path)
+        for t, n, v in zip(stamps(c, "Epoch1"), c.varget("Density"), c.varget("Bulk_Speed")):
+            if 0 < v < 3000 and 0 < n < 1000:
+                out.append({**base, "time_tag": t, "speed": float(v), "density": float(n)})
+    return sorted(out, key=lambda r: r["time_tag"])
+
+
 class UnknownEventError(LookupError):
     """No historical event with that id."""
 
@@ -565,6 +598,25 @@ class DataDownloader:
                                "magnetometer: field values and the quantities that need them are empty.")
                 if span_days > 2:
                     description += " The feed covers about the last two days."
+        elif mission_id == "STEREO_A":
+            raw: List[Dict[str, Any]] = []
+            day = window_start.date()
+            while day <= now.date():
+                paths = [await self._stereo_beacon_file(inst, day) for inst in ("impact", "plastic")]
+                try:
+                    raw += parse_stereo_beacon(*paths)
+                except (OSError, ValueError, KeyError, IndexError) as exc:  # a damaged file: that day is left out
+                    logging.getLogger("helios.download").warning("STEREO-A beacon %s unreadable: %s", day, exc)
+                day += timedelta(days=1)
+            start_tag = window_start.strftime("%Y-%m-%d %H:%M:%S")
+            raw = [r for r in raw if r["time_tag"] >= start_tag]
+            if raw:
+                records = block_average(raw, 5, None)  # not at L1: no L1-to-Earth travel time
+                kind, sources = "observed", ["STEREO-A"]
+                description = ("STEREO-A space weather beacon (STEREO Science Center): PLASTIC proton speed and "
+                               "density and the IMPACT field magnitude, 5-minute means. STEREO-A is far from "
+                               "Earth (see the orbit view), so its field components are not given as GSM and no "
+                               "travel time to Earth is computed; beacon data are preliminary.")
         elif mission_id in ARCHIVE_SOURCES:
             arch = await self.get_archive_bundle(mission_id, window_start, now,
                                                  cadence_minutes=5 if span_days > 1 else 1)
@@ -600,6 +652,28 @@ class DataDownloader:
                     r["data_source"] = kind
 
         return {"records": records, "provenance": self._provenance(kind, description, sources, records, **extra)}
+
+    async def _stereo_beacon_file(self, inst: str, day) -> Optional[str]:
+        """Local copy of one day's STEREO-A beacon CDF ('impact' or 'plastic'): days before
+        yesterday are kept for good, newer ones refreshed after STA_BEACON_TTL_S."""
+        folder = os.path.join(str(self.cache_dir), "stereo_beacon")
+        os.makedirs(folder, exist_ok=True)
+        key = f"{inst}_{day:%Y%m%d}.cdf"
+        path = os.path.join(folder, key)
+        final = day < (datetime.now(timezone.utc) - timedelta(days=1)).date()
+        if os.path.exists(path) and (final or time.time() - os.path.getmtime(path) < STA_BEACON_TTL_S):
+            return path
+        month = f"{STA_BEACON}/{inst}/{day:%Y}/{day:%m}/"
+        listing = await self.fetch_text(month)
+        names = re.findall(rf'href="(STA_LB_[A-Z_]+_{day:%Y%m%d}_V\d+\.cdf)"', listing or "")
+        data = await self.fetch_bytes(month + sorted(names)[-1]) if names else None
+        if data:
+            tmp = path + ".part"
+            with open(tmp, "wb") as f:
+                f.write(data)
+            os.replace(tmp, path)
+            return path
+        return path if os.path.exists(path) else None
 
     async def get_satellite_telemetry(self, mission_id: str, span_days: int = 1) -> List[Dict[str, Any]]:
         """Telemetry records for any satellite in the catalog (see get_telemetry_bundle)."""

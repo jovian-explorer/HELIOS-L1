@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Interface and robustness
+- STEREO-A's live view shows measured solar wind from its space weather beacon (STEREO Science Center daily CDF files, read with cdflib, a new small dependency): PLASTIC speed and density and the IMPACT field magnitude, 5-minute means. STEREO-A is about 70° ahead of Earth, so no GSM components and no travel time to Earth are given. It was simulated from the operational stream.
 - SOHO's live view shows measured solar wind: speed and density from the CELIAS/MTOF Proton Monitor near-real-time file of the University of Maryland (the last two days, 5-minute means; SOHO has no magnetometer, so field values stay empty). It was simulated from the operational stream. On 13 October 2026 19:25 UT it read 645 km/s and 2.4 cm⁻³ against 613 km/s and 3.8 cm⁻³ from the operational L1 stream.
 - Fleet matrix: a spacecraft without the chosen quantity (SOHO for the magnetic field) shows n/a on its whole row, its diagonal included (it showed r = 1.000 there).
 - Simulated views are labelled where they are chosen and shown: the spacecraft menus say "simulated" for Aditya-L1, SOHO, GOES-16 and STEREO-A, and the dashboard shows a banner above the cards when the values are simulated or synthetic. The storm forecast and turbulence spectrum no longer offer Aditya-L1 (a forecast or spectrum of the operational stream with offsets and noise says nothing about Aditya-L1).

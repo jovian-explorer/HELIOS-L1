@@ -510,7 +510,7 @@ HELIOS_USE: Dict[str, str] = {
     "WIND": "MFI and SWE archive from NASA CDAWeb (event analyses at the instruments' own cadence).",
     "SOHO": "Live solar wind speed and density from the CELIAS/MTOF Proton Monitor (University of Maryland); LASCO C2/C3 images (NOAA, Helioviewer) and FITS files.",
     "GOES_16": "X-ray flux and protons from NOAA (status bar R and S scales, flare class, D-RAP). It measures no solar wind, so it has no solar wind view.",
-    "STEREO_A": "EUVI and COR images (Helioviewer); its position corrects CME speeds seen off the Sun-Earth line.",
+    "STEREO_A": "Live solar wind speed, density and field magnitude from its space weather beacon; EUVI and COR images (Helioviewer); its position corrects CME speeds seen off the Sun-Earth line.",
     "SDO": "AIA and HMI images (Helioviewer), FITS files (SunPy) and HMI maps for the coronal field.",
     "PARKER_SOLAR_PROBE": "Position from an orbit model (checked against JPL Horizons).",
     "SOLAR_ORBITER": "EUI images (Helioviewer) and its position from an orbit model.",

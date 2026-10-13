@@ -37,6 +37,7 @@ New to the subject? Press `U` for the user guide, `P` for the formulas and the p
 * **OMNI** (*NASA*): solar wind time-shifted to Earth's bow shock and geomagnetic indices, 1963 to the present, for history, statistics and model checks.
 
 ### Elsewhere
+* **STEREO-A** (*NASA*): live solar wind speed, density and field magnitude from its space weather beacon (STEREO Science Center), about 70° ahead of Earth on its orbit, so no GSM components or travel time to Earth.
 * **GOES** (*NOAA*): X-ray flux (flare class, R scale, D-RAP) and ≥10 MeV protons (S scale), live from NOAA. GOES measures no solar wind, so it has no solar wind view.
 * **SDO, SOHO, STEREO-A, Solar Orbiter** (*NASA/ESA*): solar and coronagraph images for any date (Helioviewer Project) and their science FITS files (SunPy). STEREO-A's position is used to correct CME speeds seen from off the Sun-Earth line.
 * **Parker Solar Probe, Solar Orbiter, STEREO-A** and the planets: positions from orbit models (checked against JPL Horizons) in the orbit view; any spacecraft with a SPICE kernel for the radio occultation tool.
@@ -126,7 +127,7 @@ Every telemetry record carries a `data_source` field and every API response a `p
 | `data_source` | Meaning |
 |---|---|
 | `observed` | Measured values: the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`) or the NASA CDAWeb archive (HAPI). |
-| `simulated` | No data for the mission and window (Aditya-L1, STEREO-A; SOHO when its proton monitor feed cannot be reached; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. Aditya-L1 ASPEX/SWIS and MAG Level-2 data are on ISSDC PRADAN (https://pradan.issdc.gov.in/al1/) for registered users only; there is no public API, so they cannot be fetched without the user's own login. |
+| `simulated` | No data for the mission and window (Aditya-L1; SOHO and STEREO-A when their feeds cannot be reached; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. Aditya-L1 ASPEX/SWIS and MAG Level-2 data are on ISSDC PRADAN (https://pradan.issdc.gov.in/al1/) for registered users only; there is no public API, so they cannot be fetched without the user's own login. |
 | `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. Historical storm profiles are also synthetic (built from published peak values). |
 | `imported` | Rows from a user file in the Custom Ingestion tab. |
 
@@ -165,7 +166,7 @@ Every telemetry record carries a `data_source` field and every API response a `p
 | IPShocks database, the shocks at WIND, ACE and DSCOVR of the version of 2026-04-24 (rows at other spacecraft and some columns left out, field names changed; `scripts/update_shock_catalog.py`) | `helios/data/ipshocks_l1.json` | CC BY 4.0 (Zenodo) | Kilpua, E., Good, S., Soljento, J., Price, D. J., Isavnin, A., Lumme, E., Mäkelä, T. V., Isavnina, K. & Andréeová, K., The IPShocks Database, doi:10.5281/zenodo.19730292; Kilpua et al. (2015, JGR 120, 4112, doi:10.1002/2015JA021138) |
 | IGRF-14 degree-1 coefficients | `helios/core/coordinates.py` | | IAGA Working Group V-MOD; coefficients file from NOAA NCEI |
 
-Read at run time and cached, never bundled: the SOHO CELIAS/MTOF Proton Monitor near-real-time solar wind of the University of Maryland (space.umd.edu/pm), the sudden commencement lists of the Observatori de l'Ebre (CC BY-NC 4.0, no commercial use), the Kp and Hp30 indices of GFZ (CC BY 4.0), the NOAA SWPC products and the NASA CDAWeb data; their terms are in section 10 of the [user guide](docs/USER_GUIDE.md). The test fixtures under `tests/data` are short excerpts of these sources (NASA CDAWeb, GFZ Kp and Hp30, Ebre list lines), credited in the tests that use them.
+Read at run time and cached, never bundled: the SOHO CELIAS/MTOF Proton Monitor near-real-time solar wind of the University of Maryland (space.umd.edu/pm), the STEREO-A space weather beacon of the STEREO Science Center, the sudden commencement lists of the Observatori de l'Ebre (CC BY-NC 4.0, no commercial use), the Kp and Hp30 indices of GFZ (CC BY 4.0), the NOAA SWPC products and the NASA CDAWeb data; their terms are in section 10 of the [user guide](docs/USER_GUIDE.md). The test fixtures under `tests/data` are short excerpts of these sources (NASA CDAWeb, GFZ Kp and Hp30, Ebre list lines), credited in the tests that use them.
 
 ---
 

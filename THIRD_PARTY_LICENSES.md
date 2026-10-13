@@ -95,5 +95,5 @@ Reference Field, 14th generation (IAGA Working Group V-MOD), as distributed by N
 
 The standalone app also contains the Python runtime and the libraries HELIOS-L1 depends on (see
 `pyproject.toml`), among them NumPy, SciPy, pandas, Matplotlib, FastAPI, Uvicorn, SpiceyPy (CSPICE),
-pywebview, Astropy, SunPy and sunkit-magex, each under its own open-source licence (BSD, MIT or
+pywebview, cdflib, Astropy, SunPy and sunkit-magex, each under its own open-source licence (BSD, MIT or
 Apache 2.0; see each project).

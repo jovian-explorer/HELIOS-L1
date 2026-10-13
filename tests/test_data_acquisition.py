@@ -590,3 +590,26 @@ def test_soho_proton_monitor_rows_become_records(monkeypatch):
     monkeypatch.setattr(dl, "fetch_text", fetch)
     b = asyncio.run(dl.get_telemetry_bundle("SOHO", 1))
     assert b["provenance"]["kind"] == "observed" and b["records"][-1]["speed"] == 651.1 and b["records"][-1]["bz_gsm"] is None
+
+
+def test_stereo_beacon_cdfs_become_records(tmp_path):
+    import numpy as np
+    from cdflib import cdfepoch
+    from cdflib.cdfwrite import CDF as CDFWriter
+    from helios.core.downloader import parse_stereo_beacon
+
+    def write(path, variables):
+        w = CDFWriter(str(path), cdf_spec={"Majority": "row_major"})
+        for name, data, dtype in variables:
+            data = np.asarray(data)
+            w.write_var({"Variable": name, "Data_Type": dtype, "Num_Elements": 1, "Rec_Vary": True,
+                         "Dim_Sizes": list(data.shape[1:])}, var_data=data)
+        w.close()
+
+    ep = cdfepoch.compute_epoch([[2026, 10, 13, 12, m, 0, 0] for m in range(3)])
+    write(tmp_path / "i.cdf", [("Epoch_MAG", ep, 31), ("MAGBField", [[3.0, 4.0, 0.0], [-1e31, 0, 0], [0.0, 0.0, 5.0]], 21)])
+    write(tmp_path / "p.cdf", [("Epoch1", ep, 31), ("Density", [2.5, -1e31, 3.0], 21), ("Bulk_Speed", [400.0, -1e31, 410.0], 21)])
+    recs = parse_stereo_beacon(str(tmp_path / "i.cdf"), str(tmp_path / "p.cdf"))
+    assert [r.get("bt") for r in recs if "bt" in r] == [5.0, 5.0]                     # the fill vector left out
+    assert [(r["speed"], r["density"]) for r in recs if "speed" in r] == [(400.0, 2.5), (410.0, 3.0)]
+    assert all(r["bz_gsm"] is None and r["time_tag"].startswith("2026-10-13 12:0") for r in recs)
