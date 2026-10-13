@@ -3381,10 +3381,10 @@ function renderLicensesTab(container) {
       <div class="bg-space-950/80 p-4 rounded-xl border border-emerald-500/30">
         <div class="flex items-center space-x-2 text-emerald-400 font-bold text-sm mb-1">
           <i class="fa-solid fa-certificate"></i>
-          <span>Open Science &amp; Multi-Agency Data Compliance Framework</span>
+          <span>Licences</span>
         </div>
         <p class="text-xs text-slate-300 leading-relaxed">
-          HELIOS-L1 integrates observational data from six premier sovereign space agencies and institutes. All telemetry access strictly adheres to the open data policies, academic fair use charters, and Creative Commons licensing established by each provider.
+          HELIOS-L1 is free software under the MIT licence (Copyright (c) 2026 Keshav Aggarwal; file LICENSE). The code, fonts and data it bundles keep their own licences: Chart.js and Tailwind CSS (MIT), Font Awesome Free (icons CC BY 4.0, fonts SIL OFL 1.1), the NAIF generic kernels (redistributed unmodified), the Richardson &amp; Cane ICME list (CC0) and the IPShocks database (CC BY 4.0); see THIRD_PARTY_LICENSES.md. The data HELIOS-L1 downloads come with the terms of their providers, below.
         </p>
       </div>
 
