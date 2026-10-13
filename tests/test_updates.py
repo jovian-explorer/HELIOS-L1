@@ -99,7 +99,8 @@ def installed(tmp_path, monkeypatch, server):
 
 def test_archive_names_match_the_build_script():
     """packaging/build.py names the archive with the same function the updater picks it by."""
-    src = (Path(__file__).parent.parent / "packaging" / "build.py").read_text(encoding="utf-8")
+    from conftest import source_root
+    src = (source_root() / "packaging" / "build.py").read_text(encoding="utf-8")
     assert "archive_basename()" in src and "archive_format()" in src
     rel = {"assets": [{"name": f"{APP}-0.0.2-linux-x86_64.tar.gz"}, {"name": f"{APP}-0.0.2-macos-arm64.tar.gz"},
                       {"name": f"{APP}-0.0.2-windows-x86_64.zip"}, {"name": "notes.txt"}]}
@@ -119,7 +120,8 @@ def test_every_bundled_data_file_is_packaged():
     """
     import fnmatch
     import re
-    root = Path(__file__).parent.parent
+    from conftest import source_root
+    root = source_root()
     data = root / "helios" / "data"
     files = [p.relative_to(root / "helios").as_posix() for p in data.rglob("*") if p.is_file()]
     assert len(files) >= 5

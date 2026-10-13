@@ -558,7 +558,8 @@ def test_cme_presets_match_cdaw_catalogue_speeds():
     import re
     from pathlib import Path
     from helios.core.coronagraph import CoronagraphAnalyzer
-    html = (Path(__file__).parent.parent / "helios" / "gui" / "static" / "index.html").read_text(encoding="utf-8")
+    from conftest import package_dir
+    html = (package_dir() / "gui" / "static" / "index.html").read_text(encoding="utf-8")
     presets = re.findall(r"setCMEPreset\(([\d.]+), ([\d.]+), ([\d.]+), '[^']*'\)[^>]*>\s*([^<]+?)\s*</button>", html)
     labels = {}
     for r1, r2, dt, label in presets:

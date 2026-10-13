@@ -774,7 +774,8 @@ def test_settings_are_validated_and_saved(monkeypatch, tmp_path):
 
 def test_desktop_window_keeps_its_browser_storage():
     from pathlib import Path
-    src = (Path(__file__).resolve().parents[1] / "helios" / "gui" / "app.py").read_text(encoding="utf-8")
+    from conftest import package_dir
+    src = (package_dir() / "gui" / "app.py").read_text(encoding="utf-8")
     assert "private_mode=False" in src and "storage_path=" in src
 
 

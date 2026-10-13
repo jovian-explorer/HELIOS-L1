@@ -27,6 +27,22 @@ import pytest
 
 _RUN_DIR = None
 
+# CI runs a copy of tests/ against the installed package, so files of the package are found
+# through it, and files only in the source tree (scripts/, packaging/, pyproject.toml) skip
+# the tests that need them there.
+SOURCE_ROOT = Path(__file__).resolve().parents[1]
+
+
+def package_dir() -> Path:
+    import helios
+    return Path(helios.__file__).resolve().parent
+
+
+def source_root() -> Path:
+    if not (SOURCE_ROOT / "pyproject.toml").is_file():
+        pytest.skip("needs the source tree (scripts/, packaging/, pyproject.toml)")
+    return SOURCE_ROOT
+
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config):

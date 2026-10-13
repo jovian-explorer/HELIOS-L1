@@ -244,7 +244,7 @@ def test_dialogs_are_not_nested_in_other_dialogs():
     """
     from html.parser import HTMLParser
     from pathlib import Path
-    html = (Path(__file__).parent.parent / "helios" / "gui" / "static" / "index.html").read_text(encoding="utf-8")
+    html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
     void = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
     class P(HTMLParser):
@@ -284,8 +284,9 @@ def test_tailwind_css_is_built_and_current():
     """
     import importlib.util
     from pathlib import Path
-    root = Path(__file__).parent.parent
-    static = root / "helios" / "gui" / "static"
+    from conftest import source_root
+    root = source_root()
+    static = APP_JS.parent.parent
     html = (static / "index.html").read_text(encoding="utf-8")
     assert "tailwind.min.js" not in html and "cdn.tailwindcss.com" not in html and "tailwind.config" not in html
     assert '<link rel="stylesheet" href="/static/css/tailwind.css">' in html
