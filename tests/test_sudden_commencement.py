@@ -217,4 +217,4 @@ def test_api_limits_and_offline(monkeypatch, tmp_path):
     assert client.get(f"{base}?start=2015-01-01&end=2016-01-03").status_code == 422
     assert client.get(f"{base}?start=yesterday&end=2015-03-01").status_code == 422
     r = client.get(f"{base}?start=2015-03-01&end=2015-03-02")
-    assert r.status_code == 404 and "could not be reached" in r.json()["detail"]
+    assert r.status_code == 503 and "could not be reached" in r.json()["detail"]
