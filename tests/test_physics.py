@@ -38,3 +38,11 @@ def test_scales_of_10_11_may_2024_from_archived_goes_and_gfz_values():
     assert (c["g_level"], c["s_level"], c["r_level"]) == (5, 2, 3) and c["flare_class"].startswith("X5.8")
     assert I.calculate_drap_absorption(5.82e-4)["r_scale"].startswith("R3")
     assert [S.noaa_r_level(f) for f in (9.9e-6, 1e-5, 5e-5, 1e-4, 1e-3, 2e-3)] == [0, 1, 2, 3, 4, 5]
+
+
+def test_fleet_matrix_leaves_a_spacecraft_without_the_parameter_empty():
+    from helios.core.comparator import SatelliteComparator as C
+    rows = [{"time_tag": f"2026-10-13 00:{m:02d}:00", "bz_gsm": float(m % 7), "speed": 400.0 + m} for m in range(60)]
+    no_b = [{"time_tag": r["time_tag"], "bz_gsm": None, "speed": r["speed"]} for r in rows]
+    res = C.compute_fleet_matrix({"A": rows, "B": rows, "SOHO": no_b}, parameter="bz_gsm")
+    assert res["matrix_r"][0][0] == 1.0 and res["matrix_r"][2][2] is None and res["matrix_r"][0][2] is None

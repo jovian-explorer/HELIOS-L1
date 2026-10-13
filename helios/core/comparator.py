@@ -375,8 +375,11 @@ class SatelliteComparator:
         """
         missions = list(telemetry_map.keys())
         n = len(missions)
-        matrix_r = [[1.0] * n for _ in range(n)]
-        matrix_rmse = [[0.0] * n for _ in range(n)]
+        # The diagonal is 1 / 0 only for a spacecraft that measured the parameter (SOHO has no
+        # magnetometer: its Bz row is empty, diagonal included)
+        has = [any(r.get(parameter) is not None for r in telemetry_map[m]) for m in missions]
+        matrix_r = [[(1.0 if has[i] else None) if i == j else None for j in range(n)] for i in range(n)]
+        matrix_rmse = [[(0.0 if has[i] else None) if i == j else None for j in range(n)] for i in range(n)]
         pairs_summary = {}
 
         for i in range(n):
