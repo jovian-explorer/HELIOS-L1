@@ -1171,6 +1171,14 @@ function updateFeedStatus(data, latency = 0) {
   const badgeText = document.getElementById('feed-status-text');
   const badgeDot = document.getElementById('feed-status-dot');
   if (!badgeText || !badgeDot) return;
+  const simBanner = document.getElementById('sim-banner');
+  const simKind = !data.error && (data.provenance || {}).kind;
+  if (simBanner) {
+    simBanner.classList.toggle('hidden', simKind !== 'simulated' && simKind !== 'synthetic');
+    simBanner.innerText = simKind === 'simulated'
+      ? 'SIMULATED: this spacecraft has no public real-time data. The values below are the NOAA operational L1 stream with fixed offsets, not its measurements.'
+      : 'SYNTHETIC: no data service could be reached and nothing was cached. The values below come from a model, not from any spacecraft.';
+  }
 
   if (data.error) {
     badgeText.innerText = 'Feed Offline';

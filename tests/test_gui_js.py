@@ -492,3 +492,14 @@ def test_research_forms_explain_themselves_in_plain_words():
     start, end = html.index('id="tab-analysis"'), html.index('id="tab-missions"')
     heads = re.findall(r"<h4[^>]*>.*?</h4>\n\s*(<p[^>]*>In plain words:)?", html[start:end])
     assert heads and all(heads), "every Event Analysis form needs an 'In plain words' line"
+
+
+def test_simulated_spacecraft_are_labelled_where_they_are_chosen():
+    import re
+    html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
+    opts = re.findall(r'<option value="(ADITYA_L1|SOHO|GOES_16|STEREO_A)">([^<]*)</option>', html)
+    assert opts and all(label.endswith("simulated") for _, label in opts)
+    for sel in ("forecast-satellite-select", "turbulence-sat-select"):  # no spectrum or forecast of simulated data
+        block = html[html.index(f'id="{sel}"'):html.index("</select>", html.index(f'id="{sel}"'))]
+        assert "ADITYA_L1" not in block and "SOHO" not in block
+    assert 'id="sim-banner"' in html

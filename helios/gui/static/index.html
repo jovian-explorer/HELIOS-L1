@@ -236,11 +236,11 @@
             <select id="telemetry-satellite-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
               <option value="DSCOVR">DSCOVR (Sun-Earth L1 Lissajous)</option>
               <option value="ACE">ACE (Sun-Earth L1 Halo)</option>
-              <option value="ADITYA_L1">Aditya-L1 (ISRO L1 Halo)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO L1 Halo), simulated</option>
               <option value="WIND">WIND (L1 Baseline)</option>
-              <option value="SOHO">SOHO (L1 Solar Halo)</option>
-              <option value="GOES_16">GOES-16 (Geostationary 35.7k km)</option>
-              <option value="STEREO_A">STEREO-A (Heliocentric 0.96 AU)</option>
+              <option value="SOHO">SOHO (L1 Solar Halo), simulated</option>
+              <option value="GOES_16">GOES-16 (Geostationary 35.7k km), simulated</option>
+              <option value="STEREO_A">STEREO-A (Heliocentric 0.96 AU), simulated</option>
             </select>
           </div>
           <div>
@@ -327,6 +327,9 @@
           <p id="archive-status" class="text-[11px] text-slate-400 basis-full">Measured data for any interval up to 31 days. Archives lag real time by days (WIND, ACE key parameters) to months (OMNI, Level 2).</p>
         </div>
       </div>
+
+      <!-- Shown when the values below are not measurements (app.js updateFeedStatus) -->
+      <div id="sim-banner" class="hidden px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-200 text-xs"></div>
 
       <!-- Live Scientific HUD Gauges -->
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
@@ -611,20 +614,20 @@
             <select id="comp-sat-a" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
               <option value="DSCOVR">DSCOVR (L1 Lissajous)</option>
               <option value="ACE">ACE (L1 Halo)</option>
-              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo), simulated</option>
               <option value="WIND">WIND (L1 Baseline)</option>
-              <option value="SOHO">SOHO (L1 Solar)</option>
+              <option value="SOHO">SOHO (L1 Solar), simulated</option>
             </select>
           </div>
           <div class="text-slate-500 font-bold self-end pb-2">VS</div>
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Comparative Spacecraft (B)</label>
             <select id="comp-sat-b" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
-              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo), simulated</option>
               <option value="ACE" selected>ACE (L1 Halo)</option>
               <option value="DSCOVR">DSCOVR (L1 Lissajous)</option>
               <option value="WIND">WIND (L1 Baseline)</option>
-              <option value="SOHO">SOHO (L1 Solar)</option>
+              <option value="SOHO">SOHO (L1 Solar), simulated</option>
             </select>
           </div>
           <div>
@@ -1879,7 +1882,6 @@
             <select id="turbulence-sat-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none bg-space-950 border border-slate-700 text-slate-200">
               <option value="DSCOVR">DSCOVR (L1)</option>
               <option value="ACE">ACE (L1)</option>
-              <option value="ADITYA_L1">Aditya-L1 (ISRO)</option>
               <option value="WIND">WIND (Baseline)</option>
             </select>
           </div>
@@ -2305,7 +2307,6 @@
             <select id="forecast-satellite-select" onchange="loadMLForecast()" class="rounded-lg px-3 py-1.5 text-xs font-semibold focus:outline-none">
               <option value="DSCOVR">DSCOVR (L1 Primary)</option>
               <option value="ACE">ACE (L1 Secondary)</option>
-              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo)</option>
               <option value="WIND">WIND (Baseline)</option>
             </select>
           </div>
