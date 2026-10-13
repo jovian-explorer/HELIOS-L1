@@ -12,6 +12,7 @@
 - HELIOS-L1 is released under the MIT licence (`LICENSE`); `THIRD_PARTY_LICENSES.md` lists the bundled third-party code, fonts and data with their licences. Both are in the Python package metadata (pyproject `license`, `license-files`), CITATION.cff and next to the program in the standalone app.
 
 ### Code quality
+- One NOAA radio blackout (R) level function, used by the status classification and the D-RAP panel (the thresholds were written out twice). The G, S and R classification was checked on 10-11 May 2024 with archived values (GFZ Kp 9.0, GOES-16 X5.8 and about 225 pfu above 10 MeV from the SGPS channels): G5, S2, R3, as NOAA reported (test and user guide).
 - CI was red on all three systems: it runs a copy of the tests against the installed package, and six tests read files by their place in the source tree (the page, the launcher, the build scripts). Package files are now found through the installed `helios` package; the three tests that need the source tree itself (CSS build inputs, build script, packaging lists) skip outside it.
 - A time-shift test measured a 1e-6° angle with arccos, which at that size is one rounding step and failed on macOS; it uses atan2(|a×b|, a·b).
 

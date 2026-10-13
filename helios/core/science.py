@@ -490,6 +490,11 @@ class SpaceWeatherPhysics:
         return None
 
     @staticmethod
+    def noaa_r_level(xray_flux: float) -> int:
+        """NOAA radio blackout level 0-5 from the GOES 0.1-0.8 nm flux (W/m^2): R1 M1, R2 M5, R3 X1, R4 X10, R5 X20."""
+        return next((lvl for thr, lvl in ((2e-3, 5), (1e-3, 4), (1e-4, 3), (5e-5, 2), (1e-5, 1)) if xray_flux >= thr), 0)
+
+    @staticmethod
     def noaa_g_level(kp: Optional[float]) -> int:
         """
         NOAA geomagnetic storm level 0-5 for a Kp value. Kp comes in thirds; the scale counts
@@ -556,16 +561,8 @@ class SpaceWeatherPhysics:
         if xray_flux is not None and xray_flux > 0:
             r_scale = "R0 (None)"
             flare_class = f"{SpaceWeatherPhysics.goes_flare_class(xray_flux)} ({xray_flux:.1e} W/m^2)"
-            if xray_flux >= 2e-3:
-                r_scale, r_level = "R5 (Extreme)", 5
-            elif xray_flux >= 1e-3:
-                r_scale, r_level = "R4 (Severe)", 4
-            elif xray_flux >= 1e-4:
-                r_scale, r_level = "R3 (Strong)", 3
-            elif xray_flux >= 5e-5:
-                r_scale, r_level = "R2 (Moderate)", 2
-            elif xray_flux >= 1e-5:
-                r_scale, r_level = "R1 (Minor)", 1
+            r_level = SpaceWeatherPhysics.noaa_r_level(xray_flux)
+            r_scale = ("R0 (None)", "R1 (Minor)", "R2 (Moderate)", "R3 (Strong)", "R4 (Severe)", "R5 (Extreme)")[r_level]
 
         # 4. Solar Radiation Storm (S-Scale based on >= 10 MeV proton flux in pfu)
         # No measurement means no classification: never substitute a made-up flux.

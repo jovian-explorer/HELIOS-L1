@@ -27,3 +27,14 @@ def test_earth_connected_parker_line_passes_through_earth():
         assert line["is_earth_connected"]
         p = min(line["points"], key=lambda q: abs(q["r_au"] - 1.0))
         assert abs(p["r_au"] - 1.0) < 0.01 and abs(p["y_au"]) < 0.01 and p["x_au"] > 0.99
+
+
+def test_scales_of_10_11_may_2024_from_archived_goes_and_gfz_values():
+    """NOAA reported G5, S2 and R3 for 10-11 May 2024: GFZ Kp 9.0 (11 May 00-03 UT), GOES-16
+    X5.8 (5.82e-4 W/m^2, 11 May 01:23 UT) and about 225 pfu above 10 MeV (10 May 17:45 UT)."""
+    from helios.core.ionosphere import IonosphericModel as I
+    from helios.core.science import SpaceWeatherPhysics as S
+    c = S.classify_noaa_scales(9.0, None, 5.82e-4, 225.0)
+    assert (c["g_level"], c["s_level"], c["r_level"]) == (5, 2, 3) and c["flare_class"].startswith("X5.8")
+    assert I.calculate_drap_absorption(5.82e-4)["r_scale"].startswith("R3")
+    assert [S.noaa_r_level(f) for f in (9.9e-6, 1e-5, 5e-5, 1e-4, 1e-3, 2e-3)] == [0, 1, 2, 3, 4, 5]

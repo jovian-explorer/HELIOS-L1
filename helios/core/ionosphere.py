@@ -6,6 +6,8 @@ quantifying signal attenuation (dB) across 3-30 MHz HF communications for aviati
 import math
 from typing import Dict, Any
 
+from helios.core.science import SpaceWeatherPhysics
+
 class IonosphericModel:
     """Calculates D-region absorption, highest affected frequency (HAF), and polar blackout risk."""
 
@@ -54,24 +56,14 @@ class IonosphericModel:
             })
 
         # NOAA R-scale Radio Blackout classification
-        if f_x >= 2.0e-3:
-            r_scale = "R5 - Extreme (X20+)"
-            hazard_level = "Catastrophic Dayside HF Radio Blackout"
-        elif f_x >= 1.0e-3:
-            r_scale = "R4 - Severe (X10)"
-            hazard_level = "Widespread Dayside HF Radio Blackout"
-        elif f_x >= 1.0e-4:
-            r_scale = "R3 - Strong (X1)"
-            hazard_level = "Wide Area Loss of HF Radio Communications"
-        elif f_x >= 5.0e-5:
-            r_scale = "R2 - Moderate (M5)"
-            hazard_level = "Limited Blackout of HF Radio on Sunlit Earth"
-        elif f_x >= 1.0e-5:
-            r_scale = "R1 - Minor (M1)"
-            hazard_level = "Weak or Minor Degradation of HF Radio"
-        else:
-            r_scale = "R0 - Nominal"
-            hazard_level = "No Significant Ionospheric Radio Blackout"
+        r_scale, hazard_level = (
+            ("R0 - Nominal", "No Significant Ionospheric Radio Blackout"),
+            ("R1 - Minor (M1)", "Weak or Minor Degradation of HF Radio"),
+            ("R2 - Moderate (M5)", "Limited Blackout of HF Radio on Sunlit Earth"),
+            ("R3 - Strong (X1)", "Wide Area Loss of HF Radio Communications"),
+            ("R4 - Severe (X10)", "Widespread Dayside HF Radio Blackout"),
+            ("R5 - Extreme (X20+)", "Catastrophic Dayside HF Radio Blackout"),
+        )[SpaceWeatherPhysics.noaa_r_level(f_x)]
 
         return {
             "status": "success",
