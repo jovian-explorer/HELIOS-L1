@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Scientific corrections
+- Hemispheric power from Kp compared with NOAA's OVATION Prime nowcast on 13 October 2026: 1.6 to 2.3 times larger (27-44 against 16-28 GW at Kp 2-3.3); stated in the user guide.
 - Orbit positions checked against JPL Horizons for 13 October 2026: Parker Solar Probe, Solar Orbiter, STEREO-A, Earth and Mars within 2 100-100 000 km, i.e. under 0.05° of heliocentric longitude (user guide; the code said "within 1 degree").
 - Starkov's Kp-to-AL conversion (used for the live oval) checked against 17 520 hours of OMNI (2003, 2015): it follows the median |AL| per Kp from Kp 0 to 6 and falls short at Kp 8-9 (636-652 nT against medians of 844-1121 nT); stated in the user guide. Unchanged.
 
