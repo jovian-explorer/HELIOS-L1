@@ -1048,7 +1048,16 @@
           <canvas id="aurora-map-canvas" class="w-full h-full block"></canvas>
           <div id="aurora-tooltip" class="hud-tooltip hidden"></div>
         </div>
-        <p id="aurora-home-note" class="text-xs text-amber-200">Click the map to mark your place and see whether the aurora may be visible there.</p>
+        <div class="flex flex-wrap items-end gap-2 text-xs">
+          <label class="flex flex-col text-slate-400">Your latitude (°, north +)
+            <input type="number" id="aurora-home-lat" min="-90" max="90" step="0.1" placeholder="e.g. 51.5" class="bg-space-900 text-slate-200 border border-slate-700 rounded px-2 py-1 w-28">
+          </label>
+          <label class="flex flex-col text-slate-400">Longitude (°, east +)
+            <input type="number" id="aurora-home-lon" min="-180" max="360" step="0.1" placeholder="e.g. -0.1" class="bg-space-900 text-slate-200 border border-slate-700 rounded px-2 py-1 w-28">
+          </label>
+          <button onclick="auroralRenderer && auroralRenderer.setHome(parseFloat(document.getElementById('aurora-home-lat').value), parseFloat(document.getElementById('aurora-home-lon').value))" class="px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-200 border border-amber-500/40 hover:bg-amber-500/25">Set my place</button>
+        </div>
+        <p id="aurora-home-note" class="text-xs text-amber-200">Click the map, or enter your latitude and longitude, to see whether the aurora may be visible at your place.</p>
       </div>
 
       <!-- Visibility Regions & Dst Ring Current Forecast -->

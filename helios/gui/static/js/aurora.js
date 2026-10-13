@@ -180,7 +180,7 @@ class AuroralMapRenderer {
     el.textContent = o
       ? `Your place (${this.home.lat.toFixed(1)}°, ${this.home.lon.toFixed(1)}°): sky ${o.sky}; ${o.oval}. ` +
         'Rough guide: the drawn oval can be several degrees off, and clouds and city lights are not included.'
-      : 'Click the map to mark your place and see whether the aurora may be visible there.';
+      : 'Click the map, or enter your latitude and longitude, to see whether the aurora may be visible at your place.';
   }
 
   // Converts geographic (lon, lat) to canvas (x, y)
