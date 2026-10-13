@@ -4,6 +4,7 @@
 
 ### Code quality
 - CI was red on all three systems: it runs a copy of the tests against the installed package, and six tests read files by their place in the source tree (the page, the launcher, the build scripts). Package files are now found through the installed `helios` package; the three tests that need the source tree itself (CSS build inputs, build script, packaging lists) skip outside it.
+- A time-shift test measured a 1e-6° angle with arccos, which at that size is one rounding step and failed on macOS; it uses atan2(|a×b|, a·b).
 
 ### Scientific corrections
 - Starkov's Kp-to-AL conversion (used for the live oval) checked against 17 520 hours of OMNI (2003, 2015): it follows the median |AL| per Kp from Kp 0 to 6 and falls short at Kp 8-9 (636-652 nT against medians of 844-1121 nT); stated in the user guide. Unchanged.

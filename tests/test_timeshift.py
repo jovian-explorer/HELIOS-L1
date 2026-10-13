@@ -41,7 +41,9 @@ def test_cross_product_normal_and_delay_of_a_tangential_discontinuity():
     out = ts.phase_front_normals(b, tsec, v)
     near = np.arange(195, 206)
     assert (out["source"][near] == 1).all()
-    assert np.degrees(np.arccos(np.clip(out["normal"][near] @ n0, -1, 1))).max() < 1e-6
+    nn = out["normal"][near]
+    # angle by atan2(|a x b|, a.b): arccos near 1 turns one rounding step into 1e-6 deg (macOS CI)
+    assert np.degrees(np.arctan2(np.linalg.norm(np.cross(nn, n0), axis=1), nn @ n0)).max() < 1e-6
     # Away from it the field is constant: no cross product and no MVAB-0 (no variance; before
     # the floor on the eigenvalues, round-off passed as normals in such windows).
     assert set(out["source"][:150]) <= {0} and set(out["source"][250:]) <= {0}
