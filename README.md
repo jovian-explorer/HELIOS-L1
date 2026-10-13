@@ -26,21 +26,19 @@ New to the subject? Press `U` for the user guide, `P` for the formulas and the p
 
 ---
 
-## 🛰️ Supported Spacecraft & Missions
+## 🛰️ Spacecraft and what HELIOS-L1 uses from each
 
-HELIOS-L1 is engineered to ingest, cross-calibrate, and analyze data from the spacecraft fleet observing solar-terrestrial dynamics:
+### At the Sun-Earth L1 point (~1.5 million km sunward)
+* **DSCOVR / NOAA operational stream** (*NOAA*): live 1-minute solar wind and field from NOAA's Real-Time Solar Wind feed; the spacecraft actually supplying it (e.g. SOLAR1) is named. Archive: DSCOVR magnetometer and Faraday cup data from NASA CDAWeb (plasma 2016-2019 only).
+* **ACE** (*NASA*): live RTSW rows tagged ACE; archive MAG and SWEPAM (Level 2 and key parameters) from CDAWeb.
+* **WIND** (*NASA*): archive MFI and SWE from CDAWeb, at the instruments' own cadence for the event analyses.
+* **Aditya-L1** (*ISRO*) and **SOHO** (*ESA/NASA*): no public real-time in-situ data, so their live views are **simulated** (the operational stream with fixed offsets) and labelled so. SOHO/LASCO coronagraph images are real (NOAA, Helioviewer).
+* **OMNI** (*NASA*): solar wind time-shifted to Earth's bow shock and geomagnetic indices, 1963 to the present, for history, statistics and model checks.
 
-### 1. Sun-Earth L1 Fleet (~1.5 Million km Sunward)
-* **DSCOVR** (*NOAA / NASA / USAF*): Primary operational space weather monitor in Lissajous orbit at L1. Features the **PlasMag** Faraday Cup (proton density, bulk speed) and Fluxgate Magnetometer ($B_x, B_y, B_z, B_t$).
-* **ACE** (*NASA / Caltech*): Advanced Composition Explorer in L1 Halo orbit. Instruments include **MAG**, **SWEPAM**, and **EPAM** for solar energetic particle events and shock tracking.
-* **Aditya-L1** (*ISRO*): India's pioneering solar observatory in L1 Halo orbit. Features **ASPEX** (SWIS/STEPS particle spectrometer), **PAPA** (plasma analyzer), **MAG** (tri-axial fluxgate magnetometer), and **VELC** (coronagraph).
-* **WIND** (*NASA / GSFC*): Long-baseline solar wind reference observatory at L1 with **MFI** (magnetic field) and **SWE** (solar wind plasma).
-* **SOHO** (*ESA / NASA*): Landmark solar observatory at L1. White-light coronagraphs (**LASCO C2/C3**) and **CELIAS/MTOF** solar wind composition.
-
-### 2. Complementary Space Weather Missions
-* **GOES-16 / GOES-18** (*NOAA / NASA*): Geostationary orbit (~35,786 km). Measures magnetospheric magnetic compression (**Hp**), solar X-ray irradiance (**EXIS XRS** for solar flare classification A/B/C/M/X), and radiation belt proton fluxes (**SEISS**).
-* **SDO** (*NASA*): Solar Dynamics Observatory in geosynchronous orbit. Ultra-HD extreme ultraviolet coronal dynamics (**AIA**) and photospheric magnetic fields (**HMI**).
-* **STEREO-A** (*NASA*): Heliocentric orbit (~0.96 AU ahead of Earth). Provides off-axis 3D triangulation of Earth-directed CMEs.
+### Elsewhere
+* **GOES** (*NOAA*): X-ray flux (flare class, R scale, D-RAP) and ≥10 MeV protons (S scale), live from NOAA. The GOES Hp magnetometer view is simulated.
+* **SDO, SOHO, STEREO-A, Solar Orbiter** (*NASA/ESA*): solar and coronagraph images for any date (Helioviewer Project) and their science FITS files (SunPy). STEREO-A's position is used to correct CME speeds seen from off the Sun-Earth line.
+* **Parker Solar Probe, Solar Orbiter, STEREO-A** and the planets: positions from orbit models (checked against JPL Horizons) in the orbit view; any spacecraft with a SPICE kernel for the radio occultation tool.
 
 ---
 
