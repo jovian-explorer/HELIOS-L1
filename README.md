@@ -284,5 +284,5 @@ HELIOS-L1 is free software under the MIT licence (`LICENSE`). The third-party co
 ```bash
 python -m pytest
 ```
-The suite covers the physics models, telemetry pipeline, SPICE ephemeris engine and the REST API. The workflow `.github/workflows/ci.yml` runs it on Windows, macOS and Linux for every push to `main` when GitHub Actions can start jobs for the repository; at present it cannot, so the suite is run locally before every push.
+The suite covers the physics models, telemetry pipeline, SPICE ephemeris engine and the REST API. The workflow `.github/workflows/ci.yml` runs it on Windows, macOS and Linux for every push to `main` and every pull request, on a copy of the tests against the installed package.
 
