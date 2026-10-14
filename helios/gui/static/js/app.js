@@ -1054,7 +1054,12 @@ function initCharts() {
 let currentTelemetryData = null;
 let currentTelemetryFilter = 'all';
 
+// Only the answer to the latest request is shown: a slow answer for the spacecraft chosen
+// before (e.g. STEREO-A while its beacon files download) used to overwrite the newer choice.
+let telemetrySeq = 0;
+
 async function loadTelemetry() {
+  const seq = ++telemetrySeq;
   const satSelect = document.getElementById('telemetry-satellite-select');
   const spanSelect = document.getElementById('telemetry-span-select');
   const sat = satSelect ? satSelect.value : 'DSCOVR';
@@ -1065,12 +1070,14 @@ async function loadTelemetry() {
   try {
     const res = await fetch(`/api/telemetry/${sat}?span_days=${span}`);
     const data = await res.json().catch(() => ({}));
+    if (seq !== telemetrySeq) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     currentTelemetryData = data;
     const latency = Math.round(performance.now() - t0);
     updateFeedStatus(data, latency);
     updateTelemetryUI(data);
   } catch (err) {
+    if (seq !== telemetrySeq) return;
     console.error('Error fetching telemetry:', err);
     updateFeedStatus({ error: err.message });
   }
@@ -1118,6 +1125,7 @@ function omniYearsNote(prov) {
 }
 
 async function loadArchiveTelemetry() {
+  const seq = ++telemetrySeq;  // shares loadTelemetry's counter: the newest request wins
   const statusEl = document.getElementById('archive-status');
   const { mission, qs } = archiveQuery();
   if (statusEl) statusEl.innerText = `Retrieving ${mission} from NASA CDAWeb...`;
@@ -1125,6 +1133,7 @@ async function loadArchiveTelemetry() {
   try {
     const res = await fetch(`/api/archive/${mission}?${qs}`);
     const data = await res.json();
+    if (seq !== telemetrySeq) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const prov = data.provenance || {};
     const groups = (prov.coverage && prov.coverage.groups) || {};
@@ -1142,6 +1151,7 @@ async function loadArchiveTelemetry() {
     currentTelemetryData = data;
     updateTelemetryUI(data);
   } catch (err) {
+    if (seq !== telemetrySeq) return;
     console.error('Error fetching archive interval:', err);
     if (statusEl) statusEl.innerText = `Archive request failed: ${err.message}`;
   }
@@ -1174,10 +1184,17 @@ function updateFeedStatus(data, latency = 0) {
   const simBanner = document.getElementById('sim-banner');
   const simKind = !data.error && (data.provenance || {}).kind;
   if (simBanner) {
-    simBanner.classList.toggle('hidden', simKind !== 'simulated' && simKind !== 'synthetic');
-    simBanner.innerText = simKind === 'simulated'
-      ? 'SIMULATED: this spacecraft has no public real-time data. The values below are the NOAA operational L1 stream with fixed offsets, not its measurements.'
-      : 'SYNTHETIC: no data service could be reached and nothing was cached. The values below come from a model, not from any spacecraft.';
+    // Measured data without field components (SOHO has no magnetometer; STEREO-A is far from
+    // Earth, so no GSM): say why the field cards are empty, in a neutral colour.
+    const recs = data.records || [];
+    const noBz = simKind === 'observed' && recs.some(r => typeof r.speed === 'number') && !recs.some(r => typeof r.bz_gsm === 'number');
+    simBanner.classList.toggle('hidden', simKind !== 'simulated' && simKind !== 'synthetic' && !noBz);
+    simBanner.className = `${simBanner.classList.contains('hidden') ? 'hidden ' : ''}px-4 py-2 rounded-lg text-xs border ${noBz ? 'bg-sky-500/10 border-sky-500/40 text-sky-200' : 'bg-amber-500/10 border-amber-500/40 text-amber-200'}`;
+    simBanner.innerText = noBz
+      ? 'Measured, without field components: this spacecraft measures no magnetic field in the frame of Earth (SOHO has no magnetometer; STEREO-A is far from Earth), so Bz, the coupling and the magnetopause cards are empty. ' + ((data.provenance || {}).description || '')
+      : simKind === 'simulated'
+        ? 'SIMULATED: this spacecraft has no public real-time data. The values below are the NOAA operational L1 stream with fixed offsets, not its measurements.'
+        : 'SYNTHETIC: no data service could be reached and nothing was cached. The values below come from a model, not from any spacecraft.';
   }
 
   if (data.error) {
