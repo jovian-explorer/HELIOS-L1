@@ -812,3 +812,15 @@ def test_every_mission_says_what_helios_uses_from_it():
     ms = TestClient(app, base_url="http://127.0.0.1:8765").get("/api/missions").json()
     assert all(m["helios_use"] for m in ms if m.get("agency") != "User Custom Ingestion")
     assert "Simulated" in next(m for m in ms if "Aditya" in m["name"])["helios_use"]
+
+
+def test_headless_example_runs():
+    import subprocess
+    import sys
+    from conftest import source_root
+    root = source_root()
+    env = {**__import__("os").environ, "PYTHONPATH": str(root)}
+    res = subprocess.run([sys.executable, str(root / "examples" / "headless_basics.py")], capture_output=True,
+                         text=True, env=env, timeout=120)
+    assert res.returncode == 0, res.stderr
+    assert "magnetopause stand-off 6.10" in res.stdout and "G4 (Severe)" in res.stdout

@@ -195,6 +195,18 @@ helios            # or: python -m helios
 `[solar]` adds SunPy and sunkit-magex for science FITS files, the coronal field (PFSS) and the PFSS field of the radio occultation; leave it out for a smaller install without them. The standalone app includes them.
 The repository is private, so pip needs GitHub access (e.g. `gh auth login` with git credentials set up).
 
+### Using HELIOS-L1 from Python (no window)
+The models are plain functions in `helios.core` and can be used in scripts and notebooks without starting the app. [`examples/headless_basics.py`](examples/headless_basics.py) runs offline and shows the magnetopause stand-off, Newell coupling, NOAA scales, the auroral oval, a Dst run, the Parker spiral and a minimum variance analysis:
+```python
+from helios.core.science import SpaceWeatherPhysics as swp
+from helios.core.aurora_model import AuroralModel
+
+p = swp.dynamic_pressure(15.0, 650.0)            # nPa, from density (cm^-3) and speed (km/s)
+r0, alpha = swp.shue1998_magnetopause(p, -20.0)  # stand-off (Earth radii) and flaring, Shue et al. 1998
+edge = AuroralModel.starkov_latitude(AuroralModel.kp_to_al(8.0), 0.0)  # oval edge at midnight, deg
+```
+Data come through `helios.core.downloader.DataDownloader` (async; e.g. `await DataDownloader().get_telemetry_bundle("DSCOVR", 1)`), and with the app running every result is also a JSON API at `http://127.0.0.1:8765/api/...` (listed at `/docs`). The CI runs the example on Windows, macOS and Linux.
+
 ### Command-line options
 ```
 helios [--host 127.0.0.1] [--port 8765] [--headless] [--browser] [--version]

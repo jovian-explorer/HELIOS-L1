@@ -31,3 +31,8 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/t" && cp -r tests "$RUNNER_TEMP/t/"
           cd "$RUNNER_TEMP/t" && HELIOS_HOME="$RUNNER_TEMP/home" python -m pytest -q tests
+      - name: Run the headless example against the installed package
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ex" && cp examples/*.py "$RUNNER_TEMP/ex/"
+          cd "$RUNNER_TEMP/ex" && HELIOS_HOME="$RUNNER_TEMP/home" python headless_basics.py
