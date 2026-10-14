@@ -1459,8 +1459,12 @@ function updateTelemetryUI(data) {
     }
   }
 
-  // Evaluate operational alerts and threshold excursions
-  if (missionIncidentLogger && latest) {
+  // Evaluate operational alerts and threshold excursions: live measurements only (an archive
+  // interval such as May 2024 used to log "critical" incidents stamped with today's time, and
+  // simulated or synthetic values logged incidents that described no real conditions)
+  const liveMeasured = (data.provenance || {}).kind === 'observed'
+    && !String((data.classification || {}).g_scale || '').startsWith('Archive');
+  if (missionIncidentLogger && latest && liveMeasured) {
     missionIncidentLogger.checkTelemetry(latest, mission);
   }
 

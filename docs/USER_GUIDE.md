@@ -82,7 +82,7 @@ Keyboard shortcuts (not while typing in a field):
 
 After you start a different version of HELIOS-L1 with the same settings, a dialog lists once what changed in the settings: new settings with their defaults, settings whose allowed values or default changed, stored values this version cannot use, and stored settings it does not have. Nothing stored is changed: values this version cannot use stay in `settings.json` for the version that uses them, and the dialog lets you keep the values or pick others.
 
-**Incident log** (key L): entries made during the session when the live data cross fixed thresholds: magnetopause stand-off below 6.6 R_E, Bz at or below -8 nT (warning) or -15 nT (critical), dynamic pressure at or above 12 nPa, speed at or above 650 km/s. The same kind of event is not logged again within 12 minutes. The log is kept in the window's browser storage (up to 100 entries) and can be exported as JSON.
+**Incident log** (key L): entries made during the session when the live measured data cross fixed thresholds (not from archive intervals or simulated views): magnetopause stand-off below 6.6 R_E, Bz at or below -8 nT (warning) or -15 nT (critical), dynamic pressure at or above 12 nPa, speed at or above 650 km/s. The same kind of event is not logged again within 12 minutes. The log is kept in the window's browser storage (up to 100 entries) and can be exported as JSON.
 
 ---
 
