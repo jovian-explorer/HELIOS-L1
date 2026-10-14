@@ -1307,10 +1307,15 @@ function updateTelemetryUI(data) {
     gBadge.style.backgroundColor = (cls.g_color || '#10b981') + '1a';
   }
 
+  // The header reads as current conditions: values from an archive interval or a simulated
+  // view say so (they used to look like the live state)
+  const kindNow = (data.provenance || {}).kind;
+  const headerTag = String(cls.g_scale || '').startsWith('Archive') ? ' (archive end)'
+    : (kindNow === 'simulated' || kindNow === 'synthetic') ? ` (${kindNow})` : '';
   const bzBadge = document.getElementById('bz-alert-badge');
   const bzText = document.getElementById('bz-alert-text');
   if (bzBadge && bzText) {
-    bzText.innerText = (latest.bz_gsm != null ? `Bz: ${latest.bz_gsm} nT` : 'Bz n/a');
+    bzText.innerText = (latest.bz_gsm != null ? `Bz: ${latest.bz_gsm} nT${headerTag}` : 'Bz n/a');
     bzBadge.style.color = cls.bz_color || '#10b981';
     bzBadge.style.borderColor = (cls.bz_color || '#10b981') + '66';
     bzBadge.style.backgroundColor = (cls.bz_color || '#10b981') + '1a';
@@ -1333,9 +1338,9 @@ function updateTelemetryUI(data) {
     tickR.style.color = cls.r_level > 0 ? '#f59e0b' : '#10b981';
   }
   const tickRmp = document.getElementById('ticker-rmp');
-  if (tickRmp && latest.magnetopause_re != null) tickRmp.innerText = `${latest.magnetopause_re} RE`;
+  if (tickRmp) tickRmp.innerText = latest.magnetopause_re != null ? `${latest.magnetopause_re} RE${headerTag}` : '---';
   const tickEps = document.getElementById('ticker-epsilon');
-  if (tickEps && latest.akasofu_gw != null) tickEps.innerText = `${latest.akasofu_gw} GW`;
+  if (tickEps) tickEps.innerText = latest.akasofu_gw != null ? `${latest.akasofu_gw} GW${headerTag}` : '---';
 
   // Update KPI Gauge Numbers
   document.getElementById('metric-speed').innerText = latest.speed != null ? latest.speed : '---';
