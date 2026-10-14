@@ -6,7 +6,7 @@ from pathlib import Path
 
 from packaging.requirements import Requirement
 
-from PyInstaller.utils.hooks import collect_submodules, copy_metadata
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
 
 ROOT = Path(SPECPATH).parent
 PKG = ROOT / "helios"
@@ -32,6 +32,8 @@ a = Analysis(
         (str(PKG / "data" / "icme_richardson_cane.json"), "helios/data"),
         (str(PKG / "data" / "ipshocks_l1.json"), "helios/data"),
         *_solar_metadata,
+        # cdflib reads its leap-second table (CDFLeapSeconds.txt) at run time (STEREO-A beacon)
+        *collect_data_files("cdflib"),
     ],
     hiddenimports=[
         "uvicorn.logging", "uvicorn.loops", "uvicorn.loops.auto",

@@ -473,3 +473,10 @@ def test_stamped_build_number_makes_newer_builds_of_the_same_version_count(monke
     monkeypatch.delitem(sys.modules, "helios._build")
     monkeypatch.setitem(sys.modules, "helios._build", None)  # no stamp: a source or pip copy is build 0
     assert updates.build_number() == 0 and updates.is_newer("v0.1.0-build.1", "0.1.0")
+
+
+def test_spec_ships_the_data_files_libraries_read_at_run_time():
+    """cdflib's leap-second table was missing from a built app: STEREO-A fell back to simulated."""
+    from conftest import source_root
+    spec = (source_root() / "packaging" / "helios.spec").read_text(encoding="utf-8")
+    assert 'collect_data_files("cdflib")' in spec
