@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Interface and robustness
+- Glossary: 12 research terms added (θBn, Mach number, minimum variance, de Hoffmann-Teller, Alfvén Mach number, proton beta, magnetic cloud, flux rope, sudden commencement, SYM-H, superposed epoch, ICME) and tagged on the Event Analysis forms. A test now parses every script with Node (a syntax error in one file showed only in the browser).
 - Comparator API: when the expected solar wind delay between two spacecraft lies outside the ±120-min lag search (e.g. STEREO-A against an L1 monitor, 170 million km apart), the answer says that r and the lag do not describe a calibration.
 - Using HELIOS-L1 from Python: a README section and `examples/headless_basics.py`, which runs offline (magnetopause, Newell coupling, NOAA scales, auroral oval, a Dst run, Parker spiral, minimum variance); the CI runs it on all three systems against the installed package.
 - STEREO-A's live view shows measured solar wind from its space weather beacon (STEREO Science Center daily CDF files, read with cdflib, a new small dependency): PLASTIC speed and density and the IMPACT field magnitude, 5-minute means. STEREO-A is about 70° ahead of Earth, so no GSM components and no travel time to Earth are given. It was simulated from the operational stream.

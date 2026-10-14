@@ -503,3 +503,11 @@ def test_simulated_spacecraft_are_labelled_where_they_are_chosen():
         block = html[html.index(f'id="{sel}"'):html.index("</select>", html.index(f'id="{sel}"'))]
         assert "ADITYA_L1" not in block and "SOHO" not in block
     assert 'id="sim-banner"' in html
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_every_script_parses():
+    """A syntax error in one file (e.g. an unescaped apostrophe) only showed in the browser."""
+    for js in sorted(APP_JS.parent.glob("*.js")):
+        res = subprocess.run([NODE, "--check", str(js)], capture_output=True, text=True, encoding="utf-8", timeout=60)
+        assert res.returncode == 0, f"{js.name}: {res.stderr}"
