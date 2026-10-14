@@ -511,3 +511,14 @@ def test_every_script_parses():
     for js in sorted(APP_JS.parent.glob("*.js")):
         res = subprocess.run([NODE, "--check", str(js)], capture_output=True, text=True, encoding="utf-8", timeout=60)
         assert res.returncode == 0, f"{js.name}: {res.stderr}"
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_latest_request_check_goes_stale_when_a_newer_request_starts():
+    script = "const _latestRequests = {};\n" + _extract("latestRequest") + """
+const a = latestRequest('x'); const b = latestRequest('x'); const c = latestRequest('y');
+console.log(JSON.stringify([a(), b(), c()]));
+"""
+    res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout) == [False, True, True]

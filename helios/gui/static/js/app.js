@@ -1058,6 +1058,14 @@ let currentTelemetryFilter = 'all';
 // before (e.g. STEREO-A while its beacon files download) used to overwrite the newer choice.
 let telemetrySeq = 0;
 
+// The same for other panels: latestRequest('name') returns a check that is true only while no
+// newer request of that name has started.
+const _latestRequests = {};
+function latestRequest(name) {
+  const n = (_latestRequests[name] = (_latestRequests[name] || 0) + 1);
+  return () => _latestRequests[name] === n;
+}
+
 async function loadTelemetry() {
   const seq = ++telemetrySeq;
   const satSelect = document.getElementById('telemetry-satellite-select');
@@ -1771,6 +1779,7 @@ function renderCompResidualChart(comp) {
 
 // AURORAL FORECAST & DUAL-HEMISPHERE OVAL
 async function loadAuroralForecast() {
+  const current = latestRequest('aurora');
   try {
     const modelSel = document.getElementById('dst-model-select');
     const params = new URLSearchParams({ dst_model: modelSel ? modelSel.value : 'obrien' });
@@ -1780,6 +1789,7 @@ async function loadAuroralForecast() {
     if (alEl && alEl.value !== '') params.set('al', alEl.value);
     const res = await fetch(`/api/aurora?${params}`);
     const data = await res.json();
+    if (!current()) return;
     const noteEl = document.getElementById('aurora-oval-note');
     if (!res.ok) {
       if (noteEl) noteEl.innerText = apiErrorText(data, res);
@@ -2739,6 +2749,7 @@ function renderEventDst(ev) {
 }
 
 async function loadSpectralAnalysis() {
+  const current = latestRequest('spectrum');
   try {
     const satSelect = document.getElementById('turbulence-sat-select');
     const paramSelect = document.getElementById('turbulence-param-select');
@@ -2750,6 +2761,7 @@ async function loadSpectralAnalysis() {
 
     const res = await fetch(`/api/spectrum?mission_id=${sat}&parameter=${param}&span_days=${span}`);
     const psd = await res.json();
+    if (!current()) return;
     const ctx = document.getElementById('chart-spectrum')?.getContext('2d');
     if (!ctx || !psd.frequencies_hz) return;
 

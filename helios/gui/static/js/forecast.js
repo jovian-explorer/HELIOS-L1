@@ -13,10 +13,12 @@ let chartMLForecast = null;
 async function loadMLForecast() {
   const satSelect = document.getElementById('forecast-satellite-select');
   const sat = satSelect ? satSelect.value : 'DSCOVR';
+  const current = latestRequest('forecast');
 
   try {
     const res = await fetch(`/api/forecast/ml?mission_id=${sat}`);
     const data = await res.json().catch(() => ({}));
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
 
     // 1. Current Coupling & Indicators
