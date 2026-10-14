@@ -31,6 +31,7 @@ function imageArchiveQuery() {
 }
 
 async function loadImageArchive() {
+  const current = latestRequest('loadImageArchive');
   const info = document.getElementById('ia-info');
   info.innerText = 'Loading the frame list...';
   stopArchivePlay();
@@ -38,6 +39,7 @@ async function loadImageArchive() {
     const n = document.getElementById('ia-n').value || 12;
     const res = await fetch(`/api/solar_images/frames?${imageArchiveQuery()}&n=${n}`);
     const data = await res.json();
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     archiveMeta = data;
     archiveFrames = data.frames;
@@ -93,11 +95,13 @@ function toggleImageArchivePlay() {
 }
 
 async function searchArchiveFits(download) {
+  const current = latestRequest('searchArchiveFits');
   const box = document.getElementById('ia-fits');
   box.innerText = download ? `Downloading up to ${download} FITS files...` : 'Searching FITS files...';
   try {
     const res = await fetch(`/api/solar_images/fits?${imageArchiveQuery()}&download=${download}`);
     const data = await res.json();
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const rows = (data.listed || []).slice(0, 8).map(r =>
       `<div class="font-mono text-[10px]">${r['Start Time'] || ''} ${r['Provider'] || ''} ${r['Size'] || ''}</div>`).join('');
@@ -116,6 +120,7 @@ let trackPoints = [];
 let trackFit = null;
 
 async function buildJmap() {
+  const current = latestRequest('buildJmap');
   const out = document.getElementById('jm-result');
   out.innerText = 'Building the J-map (the first time, every frame is fetched)...';
   const v = id => document.getElementById(id).value;
@@ -127,6 +132,7 @@ async function buildJmap() {
         r_max: parseFloat(v('jm-rmax')), mode: v('jm-mode') })
     });
     const data = await res.json();
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     jmapData = data;
     trackPoints = [];
@@ -284,6 +290,7 @@ function useSolverForL1() {
 }
 
 async function runL1Link() {
+  const current = latestRequest('runL1Link');
   const out = document.getElementById('ll-result');
   const v = id => document.getElementById(id).value;
   out.innerText = 'Following to L1 and reading the L1 data...';
@@ -295,6 +302,7 @@ async function runL1Link() {
         gamma_drag: (parseFloat(v('ll-gamma')) || 1.0) * 1e-7, spacecraft: v('ll-sc') })
     });
     const data = await res.json();
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const p = data.predicted, sh = data.observed_shock;
     setArrivalMarker('corona-link', p.arrival_l1, `Predicted L1 arrival (corona to L1) ${p.arrival_l1.slice(5, 16)}`);

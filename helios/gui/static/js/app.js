@@ -1602,6 +1602,7 @@ function showComparisonProvenanceWarning(comp, satA, satB) {
 }
 
 async function runComparison() {
+  const current = latestRequest('runComparison');
   const satA = document.getElementById('comp-sat-a').value;
   const satB = document.getElementById('comp-sat-b').value;
   const param = document.getElementById('comp-param').value;
@@ -1615,6 +1616,7 @@ async function runComparison() {
       return;
     }
     const comp = await res.json();
+    if (!current()) return;
 
     showComparisonProvenanceWarning(comp, satA, satB);
     if (comp.status !== 'success') {
@@ -4382,6 +4384,7 @@ let currentGicDbDt = 180.0;
 let currentGicGeology = 'precambrian_shield';
 
 async function loadHazardsAndCycle() {
+  const drapCurrent = latestRequest('drap'), gicCurrent = latestRequest('gic');
   try {
     const [resCycle, resDrap, resGic] = await Promise.all([
       fetch('/api/solar_cycle'),
@@ -4422,12 +4425,14 @@ async function loadHazardsAndCycle() {
 
     renderSolarCycleChart(sc.timeline || []);
 
-    // 2. Update D-RAP Absorption Metrics
-    updateDrapReadouts(drap);
-    renderDrapSpectrumChart(drap.absorption_spectrum || []);
+    // 2. Update D-RAP Absorption Metrics (unless a slider has moved since)
+    if (drapCurrent()) {
+      updateDrapReadouts(drap);
+      renderDrapSpectrumChart(drap.absorption_spectrum || []);
+    }
 
     // 3. Update GIC Hazard Metrics
-    updateGicReadouts(gic);
+    if (gicCurrent()) updateGicReadouts(gic);
 
   } catch (err) {
     console.error('Error loading terrestrial hazards & solar cycle:', err);
@@ -4477,11 +4482,15 @@ function updateGicReadouts(gic) {
   if (descEl) descEl.innerText = gic.grid_impact_assessment;
 }
 
+// The sliders send a request at every step: only the latest answer is drawn (a slow earlier
+// answer used to replace it, leaving numbers that did not match the slider).
 async function setDrapXrayPreset(flux) {
   currentDrapXray = flux;
+  const drapCurrent = latestRequest('drap');
   try {
     const res = await fetch(`/api/ionosphere/absorption?xray_flux=${currentDrapXray}&zenith_angle=${currentDrapZenith}`);
     const drap = await res.json();
+    if (!drapCurrent()) return;
     updateDrapReadouts(drap);
     renderDrapSpectrumChart(drap.absorption_spectrum || []);
     window.playBlip?.();
@@ -4494,10 +4503,12 @@ async function onDrapZenithChange(deg) {
   currentDrapZenith = parseFloat(deg);
   const valEl = document.getElementById('drap-zenith-val');
   if (valEl) valEl.innerText = `${currentDrapZenith}°`;
+  const drapCurrent = latestRequest('drap');
 
   try {
     const res = await fetch(`/api/ionosphere/absorption?xray_flux=${currentDrapXray}&zenith_angle=${currentDrapZenith}`);
     const drap = await res.json();
+    if (!drapCurrent()) return;
     updateDrapReadouts(drap);
     renderDrapSpectrumChart(drap.absorption_spectrum || []);
   } catch (err) {
@@ -4509,10 +4520,12 @@ async function onGicDbDtChange(val) {
   currentGicDbDt = parseFloat(val);
   const valEl = document.getElementById('gic-dbdt-val');
   if (valEl) valEl.innerText = `${currentGicDbDt} nT/min`;
+  const gicCurrent = latestRequest('gic');
 
   try {
     const res = await fetch(`/api/gic/hazard?db_dt=${currentGicDbDt}&geology=${currentGicGeology}`);
     const gic = await res.json();
+    if (!gicCurrent()) return;
     updateGicReadouts(gic);
   } catch (err) {
     console.error('Error updating GIC dB/dt:', err);
@@ -4521,9 +4534,11 @@ async function onGicDbDtChange(val) {
 
 async function onGicGeologyChange(geology) {
   currentGicGeology = geology;
+  const gicCurrent = latestRequest('gic');
   try {
     const res = await fetch(`/api/gic/hazard?db_dt=${currentGicDbDt}&geology=${currentGicGeology}`);
     const gic = await res.json();
+    if (!gicCurrent()) return;
     updateGicReadouts(gic);
     window.playBlip?.();
   } catch (err) {

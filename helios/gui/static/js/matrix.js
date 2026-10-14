@@ -5,6 +5,7 @@
  */
 
 async function loadFleetMatrix() {
+  const current = latestRequest('loadFleetMatrix');
   const paramSelect = document.getElementById('comp-param');
   const param = paramSelect ? paramSelect.value : 'bz_gsm';
 
@@ -21,6 +22,7 @@ async function loadFleetMatrix() {
   try {
     const res = await fetch(`/api/compare/matrix?parameter=${param}`);
     const data = await res.json().catch(() => ({}));
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
 
     const missions = data.missions;

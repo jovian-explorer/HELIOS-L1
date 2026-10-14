@@ -18,6 +18,7 @@ async function initOccultation() {
 }
 
 async function runOccultation() {
+  const current = latestRequest('runOccultation');
   const out = document.getElementById('occ-result');
   const v = id => document.getElementById(id).value;
   out.innerText = 'Computing (the first run downloads about 60 MB of SPICE kernels)...';
@@ -30,6 +31,7 @@ async function runOccultation() {
         wind_kms: parseFloat(v('occ-wind')), pfss_source: v('pfss-source') || 'gong', jsoc_email: jsocEmail() })
     });
     const data = await res.json();
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     occLastRows = data.rows;
     const c = data.closest_approach;
@@ -109,6 +111,7 @@ function useOccultationForMatch() {
 }
 
 async function matchEvents() {
+  const current = latestRequest('matchEvents');
   const out = document.getElementById('em-result');
   const v = id => document.getElementById(id).value;
   out.innerText = 'Reading the catalogues...';
@@ -119,6 +122,7 @@ async function matchEvents() {
         window_hours: parseFloat(v('em-window')) })
     });
     const data = await res.json();
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const td = x => `<td class="px-2 py-1 border-b border-slate-800">${x ?? '---'}</td>`;
     const cmes = data.cmes.map(c => `<tr class="${c.pa_inside ? '' : 'opacity-50'}">${td(c.catalog)}${td(c.time)}` +

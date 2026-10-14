@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function runPfss() {
+  const current = latestRequest('runPfss');
   const out = document.getElementById('pfss-result');
   const v = id => document.getElementById(id).value;
   out.innerText = 'Computing (download, PFSS solution, tracing)...';
@@ -36,6 +37,7 @@ async function runPfss() {
         rss: parseFloat(v('pfss-rss')), points, jsoc_email: jsocEmail() })
     });
     const data = await res.json();
+    if (!current()) return;
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const img = document.getElementById('pfss-plot');
     img.src = data.plot;
