@@ -11,3 +11,5 @@ __pycache__/
 .coverage
 htmlcov/
 *.log
+# written by the release workflow into a build
+helios/_build.py

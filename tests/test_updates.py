@@ -412,7 +412,9 @@ def test_the_newest_release_is_staged_not_the_next_one(installed, server):
     assert updates.newest_release([{"tag_name": "v0.0.2"}, {"tag_name": "v0.0.3"}], "0.0.1")["tag_name"] == "v0.0.3"
     assert updates.newest_release([], "0.0.1") is None
     assert updates.version_tuple("1.2") == (1, 2, 0) and updates.is_newer("v1.2.1", "1.2")
-    assert not updates.is_newer("v0.0.1-build.40", "0.0.1")  # same version: not offered
+    assert updates.is_newer("v0.0.1-build.40", "0.0.1", build=0)       # a build of the same version
+    assert not updates.is_newer("v0.0.1-build.40", "0.0.1", build=40)  # the same build
+    assert updates.is_newer("v0.0.2", "0.0.1", build=40) and not updates.is_newer("v0.0.1", "0.0.1", build=3)
 
 
 def test_skipped_releases_are_counted_with_a_compare_link(installed, server):
@@ -461,3 +463,13 @@ def test_licence_files_ship_with_the_package_and_the_standalone_app():
     assert 'license = "MIT"' in py and '"LICENSE", "THIRD_PARTY_LICENSES.md"' in py
     build = (root / "packaging" / "build.py").read_text(encoding="utf-8")
     assert '("LICENSE", "THIRD_PARTY_LICENSES.md")' in build
+
+
+def test_stamped_build_number_makes_newer_builds_of_the_same_version_count(monkeypatch):
+    import types
+    monkeypatch.setitem(sys.modules, "helios._build", types.SimpleNamespace(BUILD={"number": 12, "commit": "abc1234"}))
+    assert updates.build_number() == 12
+    assert updates.is_newer("v0.1.0-build.13", "0.1.0") and not updates.is_newer("v0.1.0-build.12", "0.1.0")
+    monkeypatch.delitem(sys.modules, "helios._build")
+    monkeypatch.setitem(sys.modules, "helios._build", None)  # no stamp: a source or pip copy is build 0
+    assert updates.build_number() == 0 and updates.is_newer("v0.1.0-build.1", "0.1.0")

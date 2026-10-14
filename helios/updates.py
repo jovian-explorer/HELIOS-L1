@@ -105,13 +105,25 @@ def release_key(tag: str) -> Tuple[int, ...]:
     return version_tuple(m.group(1)) + (int(m.group(2) or 0),) if m else ()
 
 
-def is_newer(tag: str, version: str = __version__) -> bool:
+def build_number() -> int:
+    """Build number written into a released build by the release workflow (helios/_build.py,
+    not in the repository); 0 for a copy without one (from source, pip, or a version tag)."""
+    try:
+        from helios._build import BUILD
+        return int(BUILD.get("number") or 0)
+    except (ImportError, AttributeError, TypeError, ValueError):
+        return 0
+
+
+def is_newer(tag: str, version: str = __version__, build: Optional[int] = None) -> bool:
     """
-    Whether a release is newer than this copy. Copies carry their version but no build
-    number, so only a higher version counts (builds of the same version are not offered).
+    Whether a release is newer than this copy: a higher version, or the same version with a
+    higher build number ("v0.1.0-build.12" is newer than build 7 of 0.1.0, and than a
+    0.1.0 without a build number). The monthly releases are builds of the current version.
     """
-    rv = parse_tag(tag)
-    return bool(rv) and rv > version_tuple(version)
+    rk = release_key(tag)
+    here = version_tuple(version) + (build_number() if build is None else build,)
+    return bool(rk) and rk > here
 
 
 # ---------------------------------------------------------------- state
@@ -260,9 +272,9 @@ def releases_behind(new_tag: str, tags: Optional[List[str]], releases: List[Dict
     counted when the tag list is available (they outlive the deleted releases), otherwise
     the releases still listed.
     """
-    here, new_key = version_tuple(version), release_key(new_tag)
+    here, new_key = version_tuple(version) + (build_number(),), release_key(new_tag)
     names = tags if tags is not None else [r.get("tag_name", "") for r in releases if not r.get("draft")]
-    newer = {t for t in names if parse_tag(t) and parse_tag(t) > here and release_key(t) <= new_key}
+    newer = {t for t in names if release_key(t) and here < release_key(t) <= new_key}
     old_tag = f"v{version}"
     compare = (f"https://github.com/{REPO}/compare/{old_tag}...{new_tag}"
                if tags is not None and old_tag in tags and new_tag in tags else None)

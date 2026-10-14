@@ -185,7 +185,7 @@ From the [Releases](https://github.com/jovian-explorer/HELIOS-L1/releases) page,
 | macOS (Apple Silicon) | `HELIOS-L1-<version>-macos-arm64.tar.gz` | Extract, then run `HELIOS-L1/HELIOS-L1` |
 | Linux (x86_64) | `HELIOS-L1-<version>-linux-x86_64.tar.gz` | Extract, then run `HELIOS-L1/HELIOS-L1` |
 
-Builds update themselves once a week from the releases page (Settings, *Updates*; see the user guide). The builds are unsigned. On Windows, click **More info → Run anyway** if SmartScreen warns. On macOS, the first time, right-click the executable and choose **Open** (or run `xattr -dr com.apple.quarantine HELIOS-L1`).
+New builds are published about once a month (only the two newest stay on the releases page; each is archived on Zenodo), and installed builds check for them once a week and update themselves (Settings, *Updates*; see the user guide). The builds are unsigned. On Windows, click **More info → Run anyway** if SmartScreen warns. On macOS, the first time, right-click the executable and choose **Open** (or run `xattr -dr com.apple.quarantine HELIOS-L1`).
 
 ### Option 2: Install with pip (Python 3.10+)
 ```bash

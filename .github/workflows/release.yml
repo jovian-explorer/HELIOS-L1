@@ -1,29 +1,118 @@
 name: Release
 
+# Commits go to main continuously (each one tested by the CI workflow), but a release
+# ("HELIOS-L1 0.1.0 build N", built for Windows, macOS and Linux) is published only about
+# once a month: every Monday the "decide" job checks that main has commits since the latest
+# release, that the latest release is at least RELEASE_MIN_DAYS old (repository variable,
+# default 30) and that CI passed on main's head, and publishes only then. Running the
+# workflow by hand publishes main's head if CI passed on it; a pushed version tag (v1.2.3)
+# publishes that version. Only the two newest releases stay downloadable on GitHub: older
+# releases are deleted after publishing, their tags kept (Zenodo's records and the app's
+# "changes since" links point at them). Each build carries its build number
+# (helios/_build.py), so the app's weekly automatic update installs a newer build of the
+# same version too.
+
 on:
+  schedule:
+    - cron: "0 6 * * 1"
   push:
-    tags: ["v*"]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: read                 # the CI result of the commit to publish
+
+concurrency:
+  group: release
+  cancel-in-progress: false     # never stop a release half-way: it is archived on publication
 
 jobs:
+  decide:
+    name: decide whether to publish
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.decide.outputs.publish }}
+      sha: ${{ steps.decide.outputs.sha }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      MIN_DAYS: ${{ vars.RELEASE_MIN_DAYS || '30' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'push' && github.sha || 'main' }}
+          fetch-depth: 0          # history and tags: the commits since the latest release
+      - id: decide
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          ci_passed() {         # a successful CI run on exactly this commit
+            [ "$(gh api "repos/${GH_REPO}/actions/workflows/ci.yml/runs?head_sha=$1&status=success&per_page=1" --jq .total_count)" -gt 0 ]
+          }
+          publish=false
+          case "${GITHUB_EVENT_NAME}" in
+            push)
+              publish=true
+              echo "Version tag ${GITHUB_REF#refs/tags/}: publishing ${sha}." ;;
+            workflow_dispatch)
+              if ci_passed "$sha"; then publish=true; echo "Run by hand: publishing main at ${sha} (CI passed on it)."
+              else echo "Run by hand, but CI has not passed on main's head ${sha}: not publishing."; fi ;;
+            schedule)
+              # (gh release list, not view: view skips pre-releases, and every 0.x build is one)
+              latest=$(gh release list --exclude-drafts --limit 20 --json tagName,publishedAt                 --jq 'sort_by(.publishedAt) | reverse | .[0] | select(.) | .tagName + " " + .publishedAt' 2>/dev/null || true)
+              if [ -z "$latest" ]; then
+                tag=""; age_days=999999; new=$(git rev-list --count HEAD)
+              else
+                tag=${latest%% *}
+                age_days=$(( ( $(date -u +%s) - $(date -u -d "${latest#* }" +%s) ) / 86400 ))
+                if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+                  new=$(git rev-list --count "${tag}..HEAD")
+                else
+                  new=1               # (the latest release's tag is not in this clone: assume changes)
+                fi
+              fi
+              echo "Latest release: ${tag:-none}, ${age_days} days old; ${new} commits on main since; minimum gap ${MIN_DAYS} days."
+              if [ "$new" -eq 0 ]; then echo "No commits since the latest release: not publishing."
+              elif [ "$age_days" -lt "$MIN_DAYS" ]; then echo "The latest release is under ${MIN_DAYS} days old: not publishing."
+              elif ! ci_passed "$sha"; then echo "CI has not passed on main's head ${sha}: not publishing."
+              else publish=true; echo "Publishing main at ${sha}."; fi ;;
+            *)
+              echo "Event ${GITHUB_EVENT_NAME}: not publishing." ;;
+          esac
+          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
   build:
+    name: build (${{ matrix.os }})
+    needs: decide
+    if: needs.decide.outputs.publish == 'true'
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.decide.outputs.sha }}
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
       - name: Install
         run: python -m pip install ".[build,solar]"
+      - name: Stamp the build
+        # a version tag is build 0 of its version; scheduled and manual releases are numbered
+        shell: bash
+        run: |
+          number=${{ github.event_name == 'push' && '0' || github.run_number }}
+          cat > helios/_build.py <<EOF
+          """Written by the release workflow."""
+          BUILD = {"number": ${number}, "commit": "$(git rev-parse --short HEAD)", "date": "$(date -u +%Y-%m-%d)"}
+          EOF
       - name: Build
         run: python packaging/build.py
       - name: Smoke test
@@ -41,12 +130,20 @@ jobs:
           path: |
             dist/*.zip
             dist/*.tar.gz
+          if-no-files-found: error
 
   release:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [decide, build]
+    if: needs.decide.outputs.publish == 'true'
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.decide.outputs.sha }}
+          fetch-depth: 0          # history and tags, for the list of changes
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
@@ -54,25 +151,60 @@ jobs:
       - name: Name the release
         id: name
         shell: bash
-        run: echo "title=HELIOS-L1 ${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(python -c "import re,pathlib;print(re.search(r'__version__\s*=\s*\"([^\"]+)\"', pathlib.Path('helios/__init__.py').read_text()).group(1))")
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+            echo "title=HELIOS-L1 ${version}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v${version}-build.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+            echo "title=HELIOS-L1 ${version} build ${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Write the release notes
+        shell: bash
+        run: |
+          # The changes since the previous release, one line per commit, then where to read more.
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            prev=$(git describe --tags --abbrev=0 --exclude '*-build.*' --match 'v[0-9]*' HEAD^ 2>/dev/null || true)
+          else
+            prev=$(gh release list --exclude-drafts --limit 20 --json tagName,publishedAt               --jq 'sort_by(.publishedAt) | reverse | .[0].tagName // empty' 2>/dev/null || true)
+          fi
+          {
+            echo "Downloads for Windows (x86_64), macOS (Apple Silicon) and Linux (x86_64) are below: unpack and run, no Python needed (see [How to Install and Run](https://github.com/${GH_REPO}/blob/main/README.md#-how-to-install-and-run)). Your cache, logs and settings are kept in separate folders, so replacing an older HELIOS-L1 folder keeps them; installed builds update themselves weekly."
+            echo
+            if [[ -n "$prev" ]] && git rev-parse -q --verify "refs/tags/$prev" >/dev/null && [[ -n "$(git log --format=%h "$prev..HEAD")" ]]; then
+              echo "### Changes since ${prev}"
+              echo
+              git log --no-merges --format='- %s' "$prev..HEAD"
+              echo
+              echo "**Full Changelog**: https://github.com/${GH_REPO}/compare/${prev}...${{ steps.name.outputs.tag }}"
+            else
+              echo "### Latest changes"
+              echo
+              git log --no-merges --format='- %s' -n 10
+            fi
+            echo
+            echo "All changes, grouped by topic: [CHANGELOG.md](https://github.com/${GH_REPO}/blob/main/CHANGELOG.md)."
+          } > release-notes.md
+          cat release-notes.md
       - uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ steps.name.outputs.tag }}
           name: ${{ steps.name.outputs.title }}
+          target_commitish: ${{ needs.decide.outputs.sha }}
           files: artifacts/*
-          generate_release_notes: true
-          # Until the public 1.0.0 release, every build is a pre-release (version 0.x)
-          prerelease: ${{ startsWith(github.ref_name, 'v0.') }}
-      # Release policy: keep only the two newest releases. Runs only after a successful
-      # publish (a failed step stops the job). Older releases are deleted without
-      # --cleanup-tag, so their tags (and the compare links between them) stay; drafts are
-      # left alone. The updater takes the newest release, so older ones are not needed.
-      - name: Keep only the two newest releases
-        env:
-          GH_TOKEN: ${{ github.token }}
+          body_path: release-notes.md
+          # Until 1.0.0 every build is marked a pre-release on GitHub (the app's updater
+          # accepts pre-releases while it is itself a 0.x version)
+          prerelease: ${{ startsWith(steps.name.outputs.tag, 'v0.') }}
+      - name: Keep the two newest releases downloadable
+        # Older releases are deleted from GitHub (drafts left alone); the tags stay (no
+        # --cleanup-tag): Zenodo's records and the compare links point at them.
+        shell: bash
         run: |
-          jq='[.[] | select(.isDraft | not)] | sort_by(.publishedAt) | reverse | .[2:] | .[].tagName'
-          gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName,publishedAt,isDraft --jq "$jq" |
+          gh release list --limit 1000 --exclude-drafts --json tagName,publishedAt \
+            --jq 'sort_by(.publishedAt) | reverse | .[2:] | .[].tagName' |
           while read -r tag; do
-            echo "Deleting release $tag (its tag stays)"
-            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes
+            echo "Deleting release ${tag} (its tag is kept)"
+            gh release delete "$tag" --yes || echo "::warning::could not delete release ${tag}"
           done
