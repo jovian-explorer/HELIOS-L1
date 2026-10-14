@@ -55,6 +55,7 @@ async function loadMLForecast() {
     renderForecastChart(data.predictions_timeline, data.noaa_kp_forecast || []);
 
   } catch (err) {
+    if (!current()) return;
     console.error('Error loading ML forecast:', err);
     const notes = document.getElementById('forecast-assumptions');
     if (notes) notes.innerHTML = `<div class="text-rose-400">Forecast unavailable: ${escapeHtml(err.message)}</div>`;

@@ -1684,6 +1684,7 @@ async function runComparison() {
     renderCompResidualChart(comp);
 
   } catch (err) {
+    if (!current()) return;
     console.error('Error running comparison:', err);
   }
 }
@@ -1878,6 +1879,7 @@ async function loadAuroralForecast() {
                                     b.al_used_nt, pastTime);
     }
   } catch (err) {
+    if (!current()) return;
     console.error('Error loading auroral forecast:', err);
   }
 }
@@ -2887,6 +2889,7 @@ async function loadSpectralAnalysis() {
       }
     });
   } catch (err) {
+    if (!current()) return;
     console.error('Error loading spectral analysis:', err);
   }
 }

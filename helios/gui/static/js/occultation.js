@@ -44,6 +44,7 @@ async function runOccultation() {
       `<div class="text-slate-500">Kernels: ${data.kernels.map(escapeHtml).join(', ')} (spacecraft: ${escapeHtml(data.spacecraft_kernel_source)}).</div>`;
     drawOccultationChart(data.rows);
   } catch (err) {
+    if (!current()) return;
     out.innerText = `Occultation unavailable: ${err.message}`;
   }
 }
@@ -140,6 +141,7 @@ async function matchEvents() {
         : '<div class="text-slate-500">None listed.</div>') +
       `<div class="mt-1 text-slate-500">${escapeHtml(data.method)}. Sources: ${data.sources.map(escapeHtml).join('; ')}.</div>`;
   } catch (err) {
+    if (!current()) return;
     out.innerText = `Matching unavailable: ${err.message}`;
   }
 }

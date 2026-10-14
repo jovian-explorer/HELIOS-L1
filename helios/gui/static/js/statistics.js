@@ -149,6 +149,7 @@
   }
 
   window.stRun = async function () {
+    const current = latestRequest('stRun');  // a second run wins
     const q = query();
     const url = `/api/statistics/omni?${q}`;
     setStatus('Running (the first request for a span of years downloads about 1 MB per year from CDAWeb)...');
@@ -157,8 +158,10 @@
     try {
       const res = await fetch(url);
       body = await res.json().catch(() => null);
+      if (!current()) return;
       if (!res.ok) throw new Error(typeof apiErrorText === 'function' ? apiErrorText(body, res) : `HTTP ${res.status}`);
     } catch (e) {
+      if (!current()) return;
       setStatus(e.message, true);
       return;
     }

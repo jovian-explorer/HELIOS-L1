@@ -53,6 +53,7 @@ async function runPfss() {
       `<div class="text-slate-500">${escapeHtml(data.method)}; ${escapeHtml(data.classes)}. Red: B_r = 0 on the source surface; ` +
       `cyan/pink: open field out/in; yellow: closed.</div>`;
   } catch (err) {
+    if (!current()) return;
     out.innerText = `PFSS unavailable: ${err.message}`;
   }
 }

@@ -119,12 +119,14 @@
   };
 
   window.eaRunShock = async function () {
+    const current = latestRequest('eaRunShock');  // a second run of this form wins
     const q = shockQuery();
     q.set('mission', el('ea-shock-mission').value);
     const url = `/api/analysis/shock?${q}`;
     setStatus('ea-shock-status', 'Fetching native-cadence data from CDAWeb...');
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const r = body.result;
       const pm = r.preferred_method;
       const m = r.methods[pm] || {};
@@ -162,6 +164,7 @@
       });
       showDownload('ea-shock-download', url);
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-shock-status', e.message, true);
     }
   };
@@ -182,10 +185,12 @@
 
   // ---------------------------------------------------------------- IPShocks database
   window.eaListShocks = async function () {
+    const current = latestRequest('eaListShocks');  // a second run of this form wins
     const q = new URLSearchParams({ start: utc('ea-ips-start'), end: utc('ea-ips-end'), spacecraft: el('ea-ips-craft').value });
     setStatus('ea-ips-status', 'Reading the shock list...');
     try {
       const body = await getJSON(`/api/catalogs/shocks?${q}`);
+      if (!current()) return;
       const c = body.catalog;
       setStatus('ea-ips-status', `${body.count} shock${body.count === 1 ? '' : 's'}. ${c.name}, version ${c.version}, licence ${c.licence}. Cite: ${c.citation}.`);
       el('ea-ips-table').innerHTML = body.count ? table(
@@ -198,11 +203,13 @@
       a.href = `/api/catalogs/shocks?${q}&format=csv`;
       a.classList.remove('hidden');
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-ips-status', e.message, true);
     }
   };
 
   window.eaRunTiming = async function () {
+    const current = latestRequest('eaRunTiming');  // a second run of this form wins
     const q = shockQuery();
     const ref = el('ea-shock-mission').value;
     q.set('reference', ref);
@@ -211,6 +218,7 @@
     el('ea-timing-table').innerHTML = '<p class="text-slate-400">Fetching data for the other spacecraft...</p>';
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const ref0 = body.reference;
       const listedAt = x => !x ? 'none' : x.time.slice(11) + (x.minus_observed_s === null ? '' :
         ` (${x.minus_observed_s > 0 ? '+' : ''}${x.minus_observed_s} s)`);
@@ -223,18 +231,21 @@
         table(['Spacecraft', 'Predicted (UTC)', 'Observed (UTC)', 'IPShocks (vs observed)', 'Predicted delay (s)', 'Observed delay (s)', 'Residual (s)', 'Implied V along n (km/s)'], rows) +
         `<p class="text-[10px] text-slate-500 mt-1">${body.note}</p>`;
     } catch (e) {
+      if (!current()) return;
       el('ea-timing-table').innerHTML = `<p class="text-rose-400">${escapeHtml(e.message)}</p>`;
     }
   };
 
   // ---------------------------------------------------------------- MVA
   window.eaRunMva = async function () {
+    const current = latestRequest('eaRunMva');  // a second run of this form wins
     const q = new URLSearchParams({ mission: el('ea-mva-mission').value, start: utc('ea-mva-start'),
       end: utc('ea-mva-end'), average_seconds: el('ea-mva-avg').value });
     const url = `/api/analysis/mva?${q}`;
     setStatus('ea-mva-status', 'Running...');
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const r = body.result;
       const ev = r.eigenvectors, l = r.eigenvalues_nT2, er = r.angular_error_deg;
       setStatus('ea-mva-status', `${r.n_vectors} vectors; λ2/λ3 = ${fmt(r.ratio_intermediate_to_min, 1)}, λ1/λ2 = ${fmt(r.ratio_max_to_intermediate, 1)}` +
@@ -247,17 +258,20 @@
       ]) + (r.bootstrap ? `<p class="text-slate-400 mt-1">Bootstrap (${r.bootstrap.n_samples} resamples): normal ±${fmt(r.bootstrap.normal_toward_max_std_deg, 2)}° toward maximum, ±${fmt(r.bootstrap.normal_toward_intermediate_std_deg, 2)}° toward intermediate; ⟨B⟩·n ${fmt(r.bootstrap.mean_normal_field_nT)} ± ${fmt(r.bootstrap.mean_normal_field_std_nT)} nT.</p>` : '');
       showDownload('ea-mva-download', url);
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-mva-status', e.message, true);
     }
   };
 
   // ---------------------------------------------------------------- deHoffmann-Teller frame
   window.eaRunHt = async function () {
+    const current = latestRequest('eaRunHt');  // a second run of this form wins
     const q = new URLSearchParams({ mission: el('ea-mva-mission').value, start: utc('ea-mva-start'), end: utc('ea-mva-end') });
     const url = `/api/analysis/ht?${q}`;
     setStatus('ea-ht-status', 'Running...');
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const r = body.result;
       setStatus('ea-ht-status', `${r.n_vectors} plasma samples; c(Ec, EHT) = ${fmt(r.correlation_ec_eht, 3)}, D(VHT)/D(0) = ${fmt(r.D.residual_ratio, 3)}` +
         (r.walen ? `; Walén slope ${fmt(r.walen.slope, 2)} (|slope| ≈ 1: rotational, ≈ 0: tangential discontinuity)` : '') + '.' + coverageNote(body.provenance));
@@ -268,18 +282,21 @@
         ...(r.bootstrap ? [row(`Bootstrap, ${r.bootstrap.n_samples} resamples`, r.bootstrap)] : [])]);
       showDownload('ea-mva-download', url);
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-ht-status', e.message, true);
     }
   };
 
   // ---------------------------------------------------------------- coupling functions
   window.eaRunCoupling = async function () {
+    const current = latestRequest('eaRunCoupling');  // a second run of this form wins
     const q = new URLSearchParams({ mission: el('ea-cpl-mission').value, start: utc('ea-cpl-start'), end: utc('ea-cpl-end') });
     const url = `/api/analysis/coupling?${q}`;
     setStatus('ea-cpl-status', 'Running...');
     el('ea-cpl-table').innerHTML = '';
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const r = body.result;
       setStatus('ea-cpl-status', `${r.n_samples} plasma samples` +
         (r.uncertainties_available ? '; archive 1-σ speed and density errors propagated.' : '; this archive gives no per-sample uncertainties (measurement errors not shown).') + coverageNote(body.provenance));
@@ -293,17 +310,20 @@
       el('ea-cpl-table').innerHTML = table(['Quantity', 'Mean', 'Measurement error', '95 % sampling interval', 'n_eff', 'Median per-sample error'], rows);
       showDownload('ea-cpl-download', url);
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-cpl-status', e.message, true);
     }
   };
 
   // ---------------------------------------------------------------- time shift to the bow shock nose
   window.eaRunTimeshift = async function () {
+    const current = latestRequest('eaRunTimeshift');  // a second run of this form wins
     const q = new URLSearchParams({ mission: el('ea-ts-mission').value, start: utc('ea-ts-start'), end: utc('ea-ts-end') });
     const url = `/api/analysis/timeshift?${q}`;
     setStatus('ea-ts-status', 'Fetching the field, plasma and positions (from 3 h before the first arrival) and shifting...');
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const r = body.result, s = r.summary, c = r.omni_comparison, n = s.normals_percent, ser = body.series;
       const cmp = c && c.phase_front ? ` Against OMNI (${c.phase_front.minutes} minutes taken from this spacecraft): median difference ` +
         `${fmt(c.phase_front.median_difference_min, 2)} min, ${fmt(c.phase_front.within_1_min_percent, 0)} % within 1 min and ` +
@@ -331,16 +351,19 @@
       a.classList.remove('hidden');
       showDownload('ea-ts-download', url);
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-ts-status', e.message, true);
     }
   };
 
   // ---------------------------------------------------------------- Richardson & Cane ICME list
   window.eaListIcmes = async function () {
+    const current = latestRequest('eaListIcmes');  // a second run of this form wins
     const q = new URLSearchParams({ start: utc('ea-icme-start'), end: utc('ea-icme-end') });
     setStatus('ea-icme-status', 'Reading the ICME list...');
     try {
       const body = await getJSON(`/api/catalogs/icme?${q}`);
+      if (!current()) return;
       const c = body.catalog;
       setStatus('ea-icme-status', `${body.count} ICMEs. Source: ${c.name}, revision ${c.revision}, ${c.origin}. ` +
         `Licence ${c.licence}. Cite: ${c.citation}.`);
@@ -356,6 +379,7 @@
       a.href = `/api/catalogs/icme?${q}&format=csv`;
       a.classList.remove('hidden');
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-icme-status', e.message, true);
     }
   };
@@ -365,12 +389,14 @@
   const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
   window.eaFindSc = async function () {
+    const current = latestRequest('eaFindSc');  // a second run of this form wins
     const q = new URLSearchParams({ start: utc('ea-sc-start'), end: utc('ea-sc-end') });
     const url = `/api/analysis/sudden_commencements?${q}`;
     setStatus('ea-sc-status', 'Fetching OMNI 1-min SYM-H and pressure by month (up to a minute for a year) and the Ebre lists...');
     el('ea-sc-table').innerHTML = '';
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       scResult = body;
       const r = body.result, c = r.comparison, ser = body.series;
       const lists = Object.entries(c.years).map(([y, k]) => `${y} ${k || 'not readable'}`).join(', ');
@@ -413,6 +439,7 @@
       el('ea-sc-onsets').classList.toggle('hidden', !r.events.some(e => e.detected));
       if (r.events.length) window.eaShowSc(0);
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-sc-status', e.message, true);
     }
   };
@@ -440,6 +467,7 @@
 
   // ---------------------------------------------------------------- magnetic cloud search
   window.eaRunCloudSearch = async function () {
+    const current = latestRequest('eaRunCloudSearch');  // a second run of this form wins
     const mission = el('ea-mcd-mission').value;
     const q = new URLSearchParams({ mission, start: utc('ea-mcd-start'), end: utc('ea-mcd-end'),
       criteria: el('ea-mcd-criteria').value });
@@ -447,6 +475,7 @@
     setStatus('ea-mcd-status', 'Fetching 1-min data and scanning (up to a minute for a month)...');
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const r = body.result;
       const yes = c => c ? 'pass' : '<span class="text-rose-400">fail</span>';
       setStatus('ea-mcd-status', `${r.accepted.length} of ${r.candidates.length} candidate regions pass all tests (${r.criteria} criteria). ${r.notes}` + coverageNote(body.provenance));
@@ -461,6 +490,7 @@
       window.eaCloudCandidates = { mission, list: r.candidates };
       showDownload('ea-mcd-download', url);
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-mcd-status', e.message, true);
     }
   };
@@ -478,12 +508,14 @@
 
   // ---------------------------------------------------------------- flux rope
   window.eaRunFluxRope = async function () {
+    const current = latestRequest('eaRunFluxRope');  // a second run of this form wins
     const q = new URLSearchParams({ mission: el('ea-mc-mission').value, start: utc('ea-mc-start'),
       end: utc('ea-mc-end'), average_minutes: el('ea-mc-avg').value });
     const url = `/api/analysis/fluxrope?${q}`;
     setStatus('ea-mc-status', 'Fitting (a few seconds)...');
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const r = body.result;
       setStatus('ea-mc-status', `${r.n_averages} averages of ${r.average_minutes} min, cloud speed ${fmt(r.speed_kms, 0)} km/s. ${r.conventions}` + coverageNote(body.provenance));
       const u = r.uncertainties || {};
@@ -509,6 +541,7 @@
         options: { scales: { x: axis(`Hours from ${r.start} UTC`), y: axis('B (nT, GSE)') } } });
       showDownload('ea-mc-download', url);
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-mc-status', e.message, true);
     }
   };
@@ -528,6 +561,7 @@
   }
 
   window.eaFindStorms = async function () {
+    const current = latestRequest('eaFindStorms');  // a second run of this form wins
     const p = stormParams();
     const q = new URLSearchParams({ start_year: p.storm_start_year, end_year: p.storm_end_year,
       threshold_nt: p.storm_threshold_nt, separation_hours: p.storm_separation_hours, driver: p.storm_driver });
@@ -535,6 +569,7 @@
     setStatus('ea-storm-status', 'Selecting storms from hourly Dst...');
     try {
       const body = await getJSON(`/api/statistics/storms?${q}`);
+      if (!current()) return;
       const r = body.result, years = omniYearsNote(body.provenance);
       const key = p.storm_epoch === 'minimum' ? 'minimum_time' : 'first_hour_below';
       const list = r.storms.map(st => st[key].replace(' ', 'T')).join('\n');
@@ -550,11 +585,13 @@
         r.storms.map(st => [st.minimum_time, fmt(st.minimum_dst_nt, 0), st.first_hour_below, fmt(st.driver_bz_gsm_nt, 1),
           fmt(st.driver_speed_kms, 0), st.driver_type ? st.driver_type.replace('_', ' ') : '---', describeIcme(st.icme)])) : '';
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-storm-status', e.message, true);
     }
   };
 
   window.eaScoreDstModels = async function () {
+    const current = latestRequest('eaScoreDstModels');  // a second run of this form wins
     const p = stormParams();
     const q = new URLSearchParams({ start_year: p.storm_start_year, end_year: p.storm_end_year,
       threshold_nt: p.storm_threshold_nt, separation_hours: p.storm_separation_hours, driver: p.storm_driver });
@@ -564,6 +601,7 @@
     el('ea-skill-table').innerHTML = '';
     try {
       const body = await getJSON(url);
+      if (!current()) return;
       const r = body.result;
       const cell = (m, k, d) => (m[k].mean === null ? '---' : `${fmt(m[k].mean, d)}${m[k].ci95 ? ` (${fmt(m[k].ci95[0], d)} to ${fmt(m[k].ci95[1], d)})` : ''}`);
       el('ea-skill-table').innerHTML = table(['Model', 'Storms', 'Mean r (95 %)', 'Mean RMSE nT (95 %)', 'Mean bias nT (95 %)', 'Minimum error nT (95 %)'],
@@ -571,11 +609,13 @@
       setStatus('ea-skill-status', `Scored against hourly Dst in each storm window (highest Dst in the 24 h before the minimum to recovery above -50 nT, after Ji et al. 2012); bias and minimum error are model minus observed. Intervals treat the storms as independent` +
         `${omniYearsNote(body.provenance)}.`, omniYearsNote(body.provenance) !== '');
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-skill-status', e.message, true);
     }
   };
 
   window.eaRunSea = async function () {
+    const current = latestRequest('eaRunSea');  // a second run of this form wins
     const onsets = (el('ea-sea-onsets').value || '').split(/[\s,]+/).filter(Boolean).join(',');
     const q = new URLSearchParams({ parameters: el('ea-sea-params').value.replace(/\s+/g, ''),
       before_hours: el('ea-sea-before').value, after_hours: el('ea-sea-after').value, cadence_minutes: el('ea-sea-cad').value });
@@ -587,7 +627,9 @@
     const url = `/api/analysis/superposed?${q}`;
     setStatus('ea-sea-status', 'Fetching OMNI windows...');
     try {
-      seaResult = (await getJSON(url)).result;
+      const seaBody = await getJSON(url);
+      if (!current()) return;
+      seaResult = seaBody.result;
       const sel = el('ea-sea-show');
       sel.innerHTML = seaResult.parameters.map(p => `<option value="${p}">${p}</option>`).join('');
       setStatus('ea-sea-status', `${seaResult.n_events} events, ${seaResult.cadence_minutes}-min bins.`);
@@ -604,6 +646,7 @@
       sel.value = p0;
       window.eaDrawSea();
     } catch (e) {
+      if (!current()) return;
       setStatus('ea-sea-status', e.message, true);
     }
   };

@@ -54,6 +54,7 @@ async function loadImageArchive() {
     archiveFrames.forEach(f => { const im = new Image(); im.src = f.image_url; });
     showArchiveFrame(0);
   } catch (err) {
+    if (!current()) return;
     info.innerText = `Images unavailable: ${err.message}`;
   }
 }
@@ -109,6 +110,7 @@ async function searchArchiveFits(download) {
     const errs = (data.download_errors || []).length ? `<div class="text-amber-300">${data.download_errors.length} file(s) failed to download.</div>` : '';
     box.innerHTML = `<div>${data.n_found} FITS file(s) found (${data.searched_with}).</div>${rows}${got}${errs}`;
   } catch (err) {
+    if (!current()) return;
     box.innerText = err.message;
   }
 }
@@ -142,6 +144,7 @@ async function buildJmap() {
     jmapImage.src = data.png_data_url;
     out.innerText = `${data.label}, PA ${data.pa_deg}°, ${data.n_frames} frames; automatic track: ${data.auto_track.length} points. ${data.method}.`;
   } catch (err) {
+    if (!current()) return;
     out.innerText = `J-map unavailable: ${err.message}`;
   }
 }
@@ -335,6 +338,7 @@ async function runL1Link() {
         plugins: { legend: { labels: { color: '#cbd5e1' } } } }
     });
   } catch (err) {
+    if (!current()) return;
     out.innerText = `Unavailable: ${err.message}`;
   }
 }
