@@ -291,8 +291,9 @@ The mission cards in the Fleet Catalog repeat the data policies as the agencies 
 * **PNG** (*Plot*): the live dashboard charts; archive intervals are exported as CSV.
 * **Summary** (Markdown) and **Bulletin** (HTML): the current alert levels and 24-hour extremes with their provenance.
 * **JSON** from every analysis panel, or add `&download=true` to an analysis URL.
-* **API:** the server answers on `http://127.0.0.1:<port>/api/...` (examples for each analysis are in the README). It accepts only requests addressed to 127.0.0.1/localhost and refuses requests a browser sends for another web site; scripts and `curl` work. POST bodies must be JSON with `Content-Type: application/json`. `GET /api/status` answers `{"status": "online", ...}` and serves as a health check.
+* **API:** the server answers on `http://127.0.0.1:<port>/api/...` (examples for each analysis are in the README; every endpoint with its parameters is listed, and can be tried, at `http://127.0.0.1:<port>/docs`). It accepts only requests addressed to 127.0.0.1/localhost and refuses requests a browser sends for another web site; scripts and `curl` work. POST bodies must be JSON with `Content-Type: application/json`. `GET /api/status` answers `{"status": "online", ...}` and serves as a health check.
 
+* **Python, without the app:** the models are functions in `helios.core` that take plain numbers, lists or NumPy arrays; `examples/headless_basics.py` (offline) shows the magnetopause, coupling, NOAA scales, auroral oval, a Dst run, the Parker spiral and a minimum variance analysis, and `helios.core.downloader.DataDownloader` fetches the same data the app shows (asynchronous).
 ---
 
 ## 12. Troubleshooting
