@@ -334,6 +334,12 @@ class SatelliteComparator:
         optimal_lag = lag_analysis.get("optimal_lag_minutes", 0.0)
         theory_lag = spatial_baseline["theoretical_delay_min"]
         spatial_baseline["lag_discrepancy_min"] = None if theory_lag is None else round(optimal_lag - theory_lag, 1)
+        reach = max((abs(x) for x in lag_analysis.get("lags_minutes", [])), default=0.0)
+        if theory_lag is not None and abs(theory_lag) > reach:
+            # e.g. STEREO-A against an L1 monitor: the same solar wind reaches them days apart
+            spatial_baseline["note"] = (f"The expected delay ({theory_lag:.0f} min) lies outside the lag search "
+                                        f"(+/-{reach:.0f} min): the two series sample different solar wind, so r "
+                                        "and the lag do not describe a calibration.")
 
         # Scatter samples for plotting
         sample_step = max(1, len(aligned_df) // 100)

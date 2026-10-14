@@ -46,3 +46,12 @@ def test_fleet_matrix_leaves_a_spacecraft_without_the_parameter_empty():
     no_b = [{"time_tag": r["time_tag"], "bz_gsm": None, "speed": r["speed"]} for r in rows]
     res = C.compute_fleet_matrix({"A": rows, "B": rows, "SOHO": no_b}, parameter="bz_gsm")
     assert res["matrix_r"][0][0] == 1.0 and res["matrix_r"][2][2] is None and res["matrix_r"][0][2] is None
+
+
+def test_comparison_of_far_apart_spacecraft_says_the_lag_search_cannot_reach():
+    from helios.core.comparator import SatelliteComparator as C
+    rows = [{"time_tag": f"2026-10-13 {h:02d}:{m:02d}:00", "speed": 400.0 + (h * 60 + m) % 37} for h in range(12) for m in range(0, 60, 5)]
+    near = {"x_km": 1.5e6, "y_km": 0.0, "z_km": 0.0, "source": "test"}
+    far = {"x_km": -1.0e8, "y_km": 1.36e8, "z_km": 0.0, "source": "test"}  # like STEREO-A, 70 deg ahead
+    res = C.compare_satellites(rows, rows, "A", "B", "speed", position_a=near, position_b=far)
+    assert "outside the lag search" in res["spatial_baseline"]["note"]

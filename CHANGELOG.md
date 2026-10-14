@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Interface and robustness
+- Comparator API: when the expected solar wind delay between two spacecraft lies outside the ±120-min lag search (e.g. STEREO-A against an L1 monitor, 170 million km apart), the answer says that r and the lag do not describe a calibration.
 - Using HELIOS-L1 from Python: a README section and `examples/headless_basics.py`, which runs offline (magnetopause, Newell coupling, NOAA scales, auroral oval, a Dst run, Parker spiral, minimum variance); the CI runs it on all three systems against the installed package.
 - STEREO-A's live view shows measured solar wind from its space weather beacon (STEREO Science Center daily CDF files, read with cdflib, a new small dependency): PLASTIC speed and density and the IMPACT field magnitude, 5-minute means. STEREO-A is about 70° ahead of Earth, so no GSM components and no travel time to Earth are given. It was simulated from the operational stream.
 - SOHO's live view shows measured solar wind: speed and density from the CELIAS/MTOF Proton Monitor near-real-time file of the University of Maryland (the last two days, 5-minute means; SOHO has no magnetometer, so field values stay empty). It was simulated from the operational stream. On 13 October 2026 19:25 UT it read 645 km/s and 2.4 cm⁻³ against 613 km/s and 3.8 cm⁻³ from the operational L1 stream.
