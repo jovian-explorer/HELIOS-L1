@@ -141,6 +141,12 @@ const TAB_TO_DOMAIN = {
 document.addEventListener('DOMContentLoaded', () => {
   initSettingsAndPreferences();
   showWelcome();
+  // The live view refreshes itself every minute while it is on screen (it loaded once, so a
+  // window left open showed hours-old values as "live"); archive intervals are not refreshed.
+  setInterval(() => {
+    const span = document.getElementById('telemetry-span-select')?.value;
+    if (!document.hidden && currentTab === 'dashboard' && span !== 'archive') loadTelemetry();
+  }, 60000);
   explainTerms();
   startClock();
   renderSubnav('fleet');
