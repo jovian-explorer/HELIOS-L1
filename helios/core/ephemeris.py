@@ -59,6 +59,19 @@ def _windows(t: datetime):
     return [(start - timedelta(days=92), nxt + timedelta(days=92)), (start - timedelta(days=1), nxt + timedelta(days=1))]
 
 
+def _clip_to_coverage(message: str, start: datetime, end: datetime):
+    """Horizons names where a spacecraft's ephemeris ends ("No ephemeris for target ... after
+    A.D. 2026-NOV-02 00:01:09.1825 TDB", or "prior to A.D. ..."): the span cut to it, two hours
+    inside (horizons_spk asks an hour wider), or None when it names no limit."""
+    lim = re.search(r"(after|prior to) A\.D\. (\d{4}-[A-Za-z]{3}-\d{2} \d{2}:\d{2}:\d{2})", message)
+    if not lim:
+        return None
+    at = datetime.strptime(lim.group(2), "%Y-%b-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    if lim.group(1) == "after":
+        return start, min(end, at - timedelta(hours=2))
+    return max(start, at + timedelta(hours=2)), end
+
+
 def _recently_failed(key: str) -> bool:
     with _lock:
         return time.time() - _failed.get(key, 0.0) < FAILURE_RETRY_S
@@ -90,7 +103,8 @@ def planetary_kernel(cache_dir: str) -> Optional[str]:
 
 def spacecraft_kernel(naif_id: str, t: datetime, cache_dir: str) -> Optional[str]:
     """SPK of a spacecraft covering t (Horizons, cached), or None."""
-    for start, end in _windows(t):
+    spans = _windows(t)
+    for start, end in spans:
         key = f"{naif_id}:{start:%Y%m%d}:{end:%Y%m%d}"
         if _recently_failed(key):
             continue
@@ -99,6 +113,9 @@ def spacecraft_kernel(naif_id: str, t: datetime, cache_dir: str) -> Optional[str
         except Exception as exc:  # offline, or Horizons has no ephemeris over this span
             _log.info("Horizons SPK for %s %s-%s unavailable: %s", naif_id, start.date(), end.date(), exc)
             _mark_failed(key)
+            clipped = _clip_to_coverage(str(exc), start, end)
+            if clipped and clipped[0] < t < clipped[1] and clipped not in spans:
+                spans.append(clipped)
             continue
         # A span reaching into the future was written from Horizons' prediction: refresh daily.
         if end > datetime.now(timezone.utc) and time.time() - os.path.getmtime(path) > CURRENT_REFRESH_S:

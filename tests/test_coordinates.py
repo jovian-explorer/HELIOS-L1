@@ -169,3 +169,23 @@ def test_positions_match_horizons(epoch, tmp_path):
         assert np.linalg.norm(mine[0] - ref) < 1.0, body
         checked += 1
     assert checked >= 10
+
+
+def test_kernel_span_is_cut_to_where_horizons_coverage_ends(monkeypatch, tmp_path):
+    """DSCOVR's Horizons ephemeris ended 2 Nov 2026: a span past it is refused, so the retry
+    is cut to the limit Horizons names instead of giving up (DSCOVR showed no position on 15 Oct)."""
+    from datetime import datetime, timedelta, timezone
+    from helios.core import ephemeris
+    asked = []
+
+    def fake_spk(naif, start, end, cache_dir, fetch):
+        asked.append((start, end))
+        if end + timedelta(hours=1) > datetime(2026, 11, 2, tzinfo=timezone.utc):  # Horizons is asked an hour wider
+            raise RuntimeError('No ephemeris for target "DSCOVR (spacecraft)" after A.D. 2026-NOV-02 00:01:09.1825 TDB')
+        return str(tmp_path / "dscovr.bsp")
+
+    (tmp_path / "dscovr.bsp").write_bytes(b"")
+    monkeypatch.setattr(ephemeris.oc, "horizons_spk", fake_spk)
+    t = datetime(2026, 10, 15, tzinfo=timezone.utc)
+    assert ephemeris.spacecraft_kernel("-78", t, str(tmp_path)) == str(tmp_path / "dscovr.bsp")
+    assert asked[-1][1] == datetime(2026, 11, 1, 22, 1, 9, tzinfo=timezone.utc)
