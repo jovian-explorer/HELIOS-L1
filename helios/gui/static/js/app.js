@@ -2909,9 +2909,6 @@ function toggleOrbitGrid(show) {
   if (orbitViewer) orbitViewer.setGseGrid(show);
 }
 
-function toggleOrbitDipole(show) {
-  if (orbitViewer) orbitViewer.setDipoleField(show);
-}
 
 function toggleOrbitSat(key, visible) {
   if (orbitViewer) orbitViewer.setSatelliteVisibility(key, visible);

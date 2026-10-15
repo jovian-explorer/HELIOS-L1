@@ -1,8 +1,6 @@
 /**
- * High-Tech Interactive 2D/3D Orbit and Lagrange Point Canvas Renderer for HELIOS-L1
- * Real-time solar wind flux simulation, Roche lobe equipotentials,
- * magnetopause compression dynamics, 3D out-of-plane Halo projection,
- * and high-precision spacecraft ephemeris rendering.
+ * L1 view: spacecraft near L1 from their ephemerides, the Lagrange points, and Earth's
+ * bow shock and magnetopause from the measured solar wind (own, enlarged scale).
  */
 
 // Magnetospheric boundary models (same equations and coefficients as helios/core/science.py).
@@ -10,6 +8,7 @@
 // L1 spacecraft and tracks: one scale on all three axes (L1 at 260 px; Y and Z were drawn at
 // 1.44 and 1.53 times the X scale). Positions come in 1000 km.
 const L1_PX_PER_KKM = 260 / 1496.0;
+const VIEW_ELEVATION = 35 * Math.PI / 180;
 
 // Shue et al. (1998): r0 = (10.22 + 1.29 tanh(0.184 (Bz + 8.14))) P^(-1/6.6),
 // alpha = (0.58 - 0.007 Bz)(1 + 0.024 ln P)
@@ -110,9 +109,8 @@ class OrbitRenderer {
     this.lagrangeData = null;
     this.hoveredItem = null;
 
-    // GSE Coordinate Grid, Spacecraft Filter Sets, and Dipole Field
+    // GSE Coordinate Grid and Spacecraft Filter Sets
     this.showGseGrid = true;
-    this.showDipoleField = true;
     this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'SWFO_L1', 'IMAP', 'GOES_19']);
 
     this.initStars();
@@ -124,10 +122,6 @@ class OrbitRenderer {
 
   setGseGrid(show) {
     this.showGseGrid = !!show;
-  }
-
-  setDipoleField(show) {
-    this.showDipoleField = !!show;
   }
 
   setSatelliteVisibility(key, visible) {
@@ -225,7 +219,7 @@ class OrbitRenderer {
   }
 
   calculateBoundaries() {
-    const pdyn = Math.max(0.05, this.dynamicPressure || 2.0);
+    const pdyn = Math.max(0.05, this.dynamicPressure);
     const bz = this.bz || 0.0;
     const m = Math.max(1.15, this.machNumber || 8.0);
     const mod = this.boundaryModel || 'chao';
@@ -319,10 +313,9 @@ class OrbitRenderer {
 
   project(x, y, z = 0) {
     if (this.viewMode === '3d') {
-      // Oblique axonometric projection for 3D Halo orbits
-      const px = x - z * 0.35;
-      const py = y * 0.85 - z * 0.65;
-      return { x: px, y: py };
+      // Orthographic view from 35 deg above the ecliptic, looking along +Y: one scale on all
+      // axes (the oblique projection used 1, 0.85 and 0.74 for X, Y and Z).
+      return { x, y: y * Math.sin(VIEW_ELEVATION) - z * Math.cos(VIEW_ELEVATION) };
     }
     return { x, y };
   }
@@ -544,22 +537,6 @@ class OrbitRenderer {
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
     }
-
-    // 3. Equipotential Hill Curves / Roche Lobe around L1
-    ctx.save();
-    ctx.strokeStyle = 'rgba(185, 143, 63, 0.12)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 6]);
-    for (let eq = 1; eq <= 3; eq++) {
-      ctx.beginPath();
-      const rx = 50 * eq;
-      const ry = 80 * eq;
-      const l1P = this.project(-260, 0, 0);
-      ctx.ellipse(l1P.x, l1P.y, rx, ry, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-    ctx.restore();
 
     // 3.5 GSE Metric Coordinate Grid & Principal Axes
     if (this.showGseGrid) {
@@ -841,27 +818,16 @@ class OrbitRenderer {
     ctx.textAlign = 'left';
     ctx.fillText(`MP: ${boundaries.r0_mp.toFixed(1)} RE`, mpSubsolarProj.x + 4, mpSubsolarProj.y - 6);
 
-    // D. Van Allen Radiation Belts (Muted scientific contours)
-    ctx.fillStyle = 'rgba(79, 119, 163, 0.12)';
-    ctx.strokeStyle = 'rgba(102, 144, 191, 0.3)';
-    ctx.lineWidth = 1;
-    for (const side of [-1, 1]) {
-      ctx.beginPath();
-      const beltP = this.project(0, side * 20, 0);
-      ctx.ellipse(beltP.x, beltP.y, 8, 16, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-
-    // Dipole Field Lines, Reconnection X-Point & Nightside Current Sheet
-    this.drawDipoleAndMagnetotail(ctx, earthP, boundaries, scaleRe);
+    // Reconnection marker at the subsolar magnetopause when Bz < 0. (Dipole loops, tail lobes,
+    // a current sheet and belts were drawn here in the ecliptic plane, where they do not lie.)
+    this.drawReconnection(ctx, boundaries, scaleRe);
 
     // E. Geostationary Orbit (GEO ~ 42k km = 6.6 R_E = 25px radius)
     ctx.strokeStyle = boundaries.insideGeo ? 'rgba(194, 98, 98, 0.55)' : 'rgba(154, 158, 165, 0.35)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 4]);
     ctx.beginPath();
-    ctx.ellipse(earthP.x, earthP.y, 25, this.viewMode === '3d' ? 16 : 25, 0, 0, Math.PI * 2);
+    ctx.ellipse(earthP.x, earthP.y, 25, this.viewMode === '3d' ? 25 * Math.sin(VIEW_ELEVATION) : 25, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
 
@@ -1019,149 +985,21 @@ class OrbitRenderer {
     ctx.restore();
   }
 
-  drawDipoleAndMagnetotail(ctx, earthP, boundaries, scaleRe) {
-    if (!this.showDipoleField) return;
-
+  drawReconnection(ctx, boundaries, scaleRe) {
+    if (!(this.bz < 0)) return;
+    // Southward IMF: dayside reconnection near the subsolar magnetopause (static marker).
+    const xPt = this.project(-boundaries.r0_mp * scaleRe, 0, 0);
     ctx.save();
-    const r0_mp = boundaries.r0_mp;
-    const isReconnecting = this.bz < 0.0;
-    const bzMag = Math.abs(this.bz || 0.0);
-
-    // 1. Geomagnetic Dipole L-Shells (Closed loops: L = 2.2, 3.8, 5.2)
-    // Formula: r(lat) = L * cos^2(lat)
-    const lShells = [2.2, 3.8, 5.2];
-    
-    lShells.forEach((L, idx) => {
-      const alpha = 0.32 - idx * 0.06;
-      ctx.strokeStyle = `rgba(127, 165, 207, ${alpha})`;
-      ctx.lineWidth = 1.0;
-      ctx.setLineDash([3, 3]);
-
-      // North & South lobes / hemispheres
-      for (const hemi of [-1, 1]) {
-        const maxLat = Math.acos(Math.sqrt(1.0 / Math.max(1.01, L)));
-        const steps = 32;
-
-        // Sunward branch (compressed inside r0_mp)
-        ctx.beginPath();
-        for (let i = 0; i <= steps; i++) {
-          const lat = (i / steps) * maxLat * hemi;
-          const r = L * Math.pow(Math.cos(lat), 2);
-          const comp = Math.min(1.0, (r0_mp * 0.85) / Math.max(0.1, L));
-          const xWorld = -r * Math.cos(lat) * scaleRe * comp;
-          const yWorld = r * Math.sin(lat) * scaleRe;
-          const proj = this.project(xWorld, yWorld, 0);
-          if (i === 0) ctx.moveTo(proj.x, proj.y);
-          else ctx.lineTo(proj.x, proj.y);
-        }
-        ctx.stroke();
-
-        // Tailward branch (mild tailward stretch)
-        ctx.beginPath();
-        for (let i = 0; i <= steps; i++) {
-          const lat = (i / steps) * maxLat * hemi;
-          const r = L * Math.pow(Math.cos(lat), 2);
-          const stretch = 1.0 + 0.18 * (L / 6.6);
-          const xWorld = r * Math.cos(lat) * scaleRe * stretch;
-          const yWorld = r * Math.sin(lat) * scaleRe;
-          const proj = this.project(xWorld, yWorld, 0);
-          if (i === 0) ctx.moveTo(proj.x, proj.y);
-          else ctx.lineTo(proj.x, proj.y);
-        }
-        ctx.stroke();
-      }
-    });
-    ctx.setLineDash([]);
-
-    // 2. Open Magnetotail Lobe Field Lines (Stretching into nightside +X)
-    const tailLengths = [18.0, 26.0, 34.0];
-    tailLengths.forEach((tailRe, idx) => {
-      const alpha = 0.24 - idx * 0.06;
-      ctx.strokeStyle = `rgba(155, 186, 219, ${alpha})`;
-      ctx.lineWidth = 1.1;
-
-      for (const hemi of [-1, 1]) {
-        ctx.beginPath();
-        // Start from high-latitude polar cusp (r = 1.2 R_E)
-        const startX = 1.2 * scaleRe * 0.45;
-        const startY = hemi * 1.2 * scaleRe * 0.88;
-        const startP = this.project(startX, startY, 0);
-        ctx.moveTo(startP.x, startP.y);
-
-        // Control point curving out and tailward
-        const cpX = 5.5 * scaleRe;
-        const cpY = hemi * (5.0 + idx * 3.0) * scaleRe;
-        const cpP = this.project(cpX, cpY, 0);
-
-        // End point far down magnetotail
-        const endX = tailRe * scaleRe;
-        const endY = hemi * (6.5 + idx * 3.5) * scaleRe;
-        const endP = this.project(endX, endY, 0);
-
-        ctx.quadraticCurveTo(cpP.x, cpP.y, endP.x, endP.y);
-        ctx.stroke();
-      }
-    });
-
-    // 3. Nightside Magnetotail Neutral Current Sheet (X > 0, Z ~ 0)
-    const tailStart = this.project(3.5 * scaleRe, 0, 0);
-    const tailEnd = this.project(34.0 * scaleRe, 0, 0);
-    const sheetGrad = ctx.createLinearGradient(tailStart.x, tailStart.y, tailEnd.x, tailEnd.y);
-    sheetGrad.addColorStop(0, 'rgba(185, 143, 63, 0.5)');
-    sheetGrad.addColorStop(0.35, 'rgba(154, 115, 50, 0.3)');
-    sheetGrad.addColorStop(1, 'rgba(194, 98, 98, 0)');
-
-    ctx.strokeStyle = sheetGrad;
-    ctx.lineWidth = 2.0;
-    ctx.setLineDash([4, 6]);
+    ctx.strokeStyle = '#d77e7e';
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(tailStart.x, tailStart.y);
-    ctx.lineTo(tailEnd.x, tailEnd.y);
+    ctx.moveTo(xPt.x - 6, xPt.y - 6); ctx.lineTo(xPt.x + 6, xPt.y + 6);
+    ctx.moveTo(xPt.x - 6, xPt.y + 6); ctx.lineTo(xPt.x + 6, xPt.y - 6);
     ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Label: "MAGNETOTAIL CURRENT SHEET"
-    const labelP = this.project(15.0 * scaleRe, 0, 0);
-    ctx.fillStyle = 'rgba(210, 170, 87, 0.75)';
-    ctx.font = '600 8px system-ui, sans-serif';
+    ctx.fillStyle = '#d77e7e';
+    ctx.font = '600 9px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Neutral current sheet', labelP.x, labelP.y + 11);
-
-    // 4. Subsolar Magnetic Reconnection X-Point & Energy Influx (when Bz < 0)
-    if (isReconnecting) {
-      const mpSubsolarX = -r0_mp * scaleRe;
-      const xPt = this.project(mpSubsolarX, 0, 0);
-      const pulse = 0.5 + 0.5 * Math.sin(this.timeStep * 0.12);
-      const intensity = Math.min(1.0, bzMag / 15.0);
-
-      // Reconnection X-point glow
-      const xGlow = ctx.createRadialGradient(xPt.x, xPt.y, 1, xPt.x, xPt.y, 14 + pulse * 6);
-      xGlow.addColorStop(0, `rgba(194, 98, 98, ${0.7 + pulse * 0.3})`);
-      xGlow.addColorStop(0.5, `rgba(185, 143, 63, ${0.35 * intensity})`);
-      xGlow.addColorStop(1, 'rgba(194, 98, 98, 0)');
-      ctx.fillStyle = xGlow;
-      ctx.beginPath();
-      ctx.arc(xPt.x, xPt.y, 20, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Sharp Reconnection X-line separatrices
-      ctx.strokeStyle = `rgba(237, 192, 192, ${0.85 + pulse * 0.15})`;
-      ctx.lineWidth = 1.4;
-      const xArm = 7.0 + pulse * 2.5;
-      ctx.beginPath();
-      ctx.moveTo(xPt.x - xArm, xPt.y - xArm);
-      ctx.lineTo(xPt.x + xArm, xPt.y + xArm);
-      ctx.moveTo(xPt.x - xArm, xPt.y + xArm);
-      ctx.lineTo(xPt.x + xArm, xPt.y - xArm);
-      ctx.stroke();
-
-      // Dynamic Reconnection Annotation
-      ctx.fillStyle = '#c26262';
-      ctx.font = 'bold 8.5px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`⚡ RECONNECTION X-POINT (Bz: ${this.bz.toFixed(1)} nT)`, xPt.x, xPt.y - 14);
-    }
-
+    ctx.fillText(`Dayside reconnection (Bz ${this.bz.toFixed(1)} nT)`, xPt.x, xPt.y - 12);
     ctx.restore();
   }
 }

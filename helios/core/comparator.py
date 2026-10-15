@@ -375,8 +375,10 @@ class SatelliteComparator:
         parameter: str = "bz_gsm"
     ) -> Dict[str, Any]:
         """
-        Computes mutual NxN cross-correlation and discrepancy matrices
-        across all active space weather spacecraft.
+        Computes mutual NxN cross-correlation and discrepancy matrices across the spacecraft.
+        r is the peak of the cross-correlation within +-60 min (5-min grid) and matrix_lag_min
+        where it lies: the spacecraft see the same wind minutes apart (the zero-lag r used
+        before understated their agreement). RMSE is at zero lag.
         """
         missions = list(telemetry_map.keys())
         n = len(missions)
@@ -385,6 +387,7 @@ class SatelliteComparator:
         has = [any(r.get(parameter) is not None for r in telemetry_map[m]) for m in missions]
         matrix_r = [[(1.0 if has[i] else None) if i == j else None for j in range(n)] for i in range(n)]
         matrix_rmse = [[(0.0 if has[i] else None) if i == j else None for j in range(n)] for i in range(n)]
+        matrix_lag = [[(0.0 if has[i] else None) if i == j else None for j in range(n)] for i in range(n)]
         pairs_summary = {}
 
         for i in range(n):
@@ -401,21 +404,30 @@ class SatelliteComparator:
                     met = cls.compute_metrics(arr_a, arr_b)
                     r_val = met["correlation_r"]
                     rmse_val = met["rmse"]
+                    lag_val = 0.0 if r_val is not None else None
+                    grid = aligned.asfreq("5min")
+                    lag = cls.cross_correlation_lag(grid["val_a"].to_numpy(), grid["val_b"].to_numpy(), max_lags=12)
+                    if r_val is not None and lag["correlation"] and lag["max_correlation"] > r_val:
+                        r_val, lag_val = lag["max_correlation"], lag["optimal_lag_minutes"]
                 else:  # no common data: nothing to show, not r = 0
                     r_val = None
                     rmse_val = None
+                    lag_val = None
 
                 matrix_r[i][j] = r_val
                 matrix_r[j][i] = r_val
                 matrix_rmse[i][j] = rmse_val
                 matrix_rmse[j][i] = rmse_val
+                matrix_lag[i][j] = lag_val
+                matrix_lag[j][i] = None if lag_val is None else (-lag_val or 0.0)
 
                 pair_key = f"{m_a}__{m_b}"
                 pairs_summary[pair_key] = {
                     "mission_a": m_a,
                     "mission_b": m_b,
                     "r": r_val,
-                    "rmse": rmse_val
+                    "rmse": rmse_val,
+                    "lag_minutes": lag_val
                 }
 
         return {
@@ -423,6 +435,8 @@ class SatelliteComparator:
             "parameter": parameter,
             "matrix_r": matrix_r,
             "matrix_rmse": matrix_rmse,
+            "matrix_lag_min": matrix_lag,
+            "lag_convention": "positive: the column spacecraft sees the wind later than the row one",
             "pairs": pairs_summary
         }
 

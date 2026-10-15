@@ -2,7 +2,7 @@
  * HELIOS-L1: HIGH-RESOLUTION SOLAR DISK & ACTIVE REGION ANALYZER
  * Features:
  * - Schematic disk drawn in EUV / white-light colour scales (not images; real images are in the feed panels)
- * - True Solar Limb Darkening & Coronal Loop Arcs
+ * - Disk seen with B0 = 0 (solar equator edge-on) for both the grid and the regions
  * - Real-time Stonyhurst / Carrington Heliographic Coordinate Grid
  * - Observed active regions (NOAA SWPC solar region summary): position, Mount Wilson class, area
  * - SWPC 24 h C/M/X flare probabilities per region
@@ -23,7 +23,6 @@ class SolarDiskViewer {
     this.wavelength = '193'; // 193, 304, 171, 131, C2, C3
     this.showGrid = true;
     this.showActiveRegions = true;
-    this.showLimbDarkening = true;
     this.selectedRegion = null;
     this.hoveredRegion = null;
 
@@ -314,21 +313,6 @@ class SolarDiskViewer {
     ctx.arc(cx, cy, coronaR, 0, Math.PI * 2);
     ctx.fill();
 
-    // Dynamic Prominence loops around limb
-    const timeRot = this.time * 0.01;
-    ctx.strokeStyle = pal.mid;
-    ctx.lineWidth = 1.6;
-    for (let i = 0; i < 6; i++) {
-      const a = timeRot + (i * Math.PI) / 3;
-      const arcR = 8 + Math.sin(this.time * 0.05 + i) * 3;
-      const px = cx + Math.cos(a) * sunR;
-      const py = cy + Math.sin(a) * sunR;
-
-      ctx.beginPath();
-      ctx.arc(px, py, arcR, a - 0.9, a + 0.9);
-      ctx.stroke();
-    }
-
     ctx.restore();
   }
 
@@ -346,8 +330,8 @@ class SolarDiskViewer {
       // Coronal Streamers expanding outward
       const numStreamers = 8;
       for (let i = 0; i < numStreamers; i++) {
-        const a = (i * Math.PI * 2) / numStreamers + Math.sin(this.time * 0.02) * 0.1;
-        const length = sunR * (1.2 + Math.sin(i * 3 + this.time * 0.03) * 0.3);
+        const a = (i * Math.PI * 2) / numStreamers;
+        const length = sunR * (1.2 + Math.sin(i * 3) * 0.3);
         const ex = cx + Math.cos(a) * length;
         const ey = cy + Math.sin(a) * length;
 
@@ -375,13 +359,9 @@ class SolarDiskViewer {
       return;
     }
 
-    // Photosphere / Coronal Disk Gradient
-    const diskGrad = ctx.createRadialGradient(cx - sunR * 0.15, cy - sunR * 0.15, sunR * 0.05, cx, cy, sunR);
-    diskGrad.addColorStop(0, pal.inner);
-    diskGrad.addColorStop(0.5, pal.mid);
-    diskGrad.addColorStop(0.9, pal.edge);
-    diskGrad.addColorStop(1, '#1e0c03'); // Limb darkening edge
-    ctx.fillStyle = diskGrad;
+    // Plain schematic disk: an EUV corona is brighter, not darker, at the limb, so no
+    // "limb darkening" gradient (real images are in the feed panels).
+    ctx.fillStyle = pal.mid;
 
     ctx.beginPath();
     ctx.arc(cx, cy, sunR, 0, Math.PI * 2);
@@ -415,13 +395,15 @@ class SolarDiskViewer {
     ctx.lineTo(cx, cy + sunR);
     ctx.stroke();
 
-    // Parallels (+30°, +60°, -30°, -60°)
+    // Parallels (+-30, +-60 deg) seen with B0 = 0, as the regions are placed (they were
+    // ellipses as for B0 = 8.6 deg while the regions used 0)
     [-60, -30, 30, 60].forEach(lat => {
       const rad = (lat * Math.PI) / 180;
       const y = cy - sunR * Math.sin(rad);
       const halfW = sunR * Math.cos(rad);
       ctx.beginPath();
-      ctx.ellipse(cx, y, halfW, halfW * 0.15, 0, 0, Math.PI * 2);
+      ctx.moveTo(cx - halfW, y);
+      ctx.lineTo(cx + halfW, y);
       ctx.stroke();
     });
 
@@ -442,13 +424,11 @@ class SolarDiskViewer {
       const isSelected = this.selectedRegion === ar;
       const isHovered = this.hoveredRegion === ar;
 
-      // Pulsing magnetic reticle ring
-      const pulse = (Math.sin(this.time * 0.08) + 1) / 2;
       ctx.strokeStyle = isSelected ? '#7fa5cf' : isHovered ? '#dfc078' : '#d77e7e';
       ctx.lineWidth = isSelected ? 2 : 1.2;
 
       ctx.beginPath();
-      ctx.arc(x, y, 7 + (isSelected || isHovered ? pulse * 5 : 0), 0, Math.PI * 2);
+      ctx.arc(x, y, isSelected || isHovered ? 10 : 7, 0, Math.PI * 2);
       ctx.stroke();
 
       // Core Spot dot

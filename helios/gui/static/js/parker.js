@@ -412,7 +412,7 @@ class ParkerSpiralRenderer {
           <div>Vis-Viva Velocity: <span class="text-cyan-400 font-bold">${s.vKms.toFixed(1)} km/s</span> (${s.vAuDay.toFixed(4)} AU/day)</div>
           <div>True Anomaly (ν): <span class="text-sky-300 font-bold">${s.trueAnomalyDeg.toFixed(1)}°</span></div>
           <div>Perihelion: <span class="text-amber-400">0.28 AU</span> | Aphelion: <span class="text-slate-400">0.91 AU</span></div>
-          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">High-Latitude Solar Wind Probe (Inclination 24-33°)</div>
+          <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">Inclination to the solar equator 17° since the February 2025 Venus flyby; planned 24° from December 2026 and 33° from 2029 (Müller et al. 2020)</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
             <span class="text-slate-400 font-normal">${this.orbitNote(s.isSpice)}</span>
@@ -482,15 +482,14 @@ class ParkerSpiralRenderer {
             <i class="fa-solid fa-satellite text-[10px]"></i>
             <span>NASA STEREO-Ahead</span>
           </strong>
-          <span class="text-[10px] text-purple-300 font-mono font-bold">0.962 AU</span>
+          <span class="text-[10px] text-purple-300 font-mono font-bold">${this.stereo ? this.stereo.heliocentric.distance_au.toFixed(3) + ' AU' : ''}</span>
         </div>
         <div class="text-[11px] font-mono space-y-1 text-slate-200">
           <div>Heliocentric Orbit: <span class="text-slate-100 font-bold">${this.stereoAheadDeg.toFixed(0)}° ahead of Earth</span></div>
-          <div>Orbital Velocity: <span class="text-purple-400 font-bold">30.4 km/s</span></div>
+          <div>Orbital Velocity: <span class="text-purple-400 font-bold">${this.stereo && this.stereo.velocity ? this.stereo.velocity.heliocentric_speed_kms.toFixed(1) + ' km/s' : 'n/a'}</span></div>
           <div>Role: <span class="text-slate-300">Side-view CME coronagraph stereoscopy</span></div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
-            <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
-            <span class="text-slate-400 font-normal">${this.orbitNote(true)}</span>
+            <span><i class="fa-solid fa-satellite-dish"></i> ${this.stereo ? this.stereo.position_source : ''}</span>
           </div>
         </div>
       `;
@@ -874,16 +873,18 @@ class ParkerSpiralRenderer {
     ctx.font = 'bold 9px system-ui, sans-serif';
     ctx.fillText('L1', l1X - 6, l1Y - 12);
 
-    // 3. STEREO-Ahead (Leading Earth in heliocentric orbit ~0.96 AU)
+    // 3. STEREO-A at its ephemeris distance and angle from Earth
     // Angle ahead of Earth from the ephemeris longitudes (Earth is drawn at angle 0).
     const fleet = this.spiceFleetData;
     const stereoAngle = (fleet && fleet.STEREO_A && fleet.EARTH)
       ? (fleet.STEREO_A.heliocentric.ecliptic_longitude_deg - fleet.EARTH.heliocentric.ecliptic_longitude_deg) * Math.PI / 180.0
       : null;
     this.stereoAheadDeg = stereoAngle === null ? null : ((stereoAngle * 180.0 / Math.PI) % 360 + 360) % 360;
+    this.stereo = stereoAngle === null ? null : fleet.STEREO_A;
     if (stereoAngle !== null) {
-      const stereoX = cx + 0.96 * scale * Math.cos(stereoAngle);
-      const stereoY = cy - 0.96 * scale * Math.sin(stereoAngle);
+      const rSta = fleet.STEREO_A.heliocentric.distance_au;
+      const stereoX = cx + rSta * scale * Math.cos(stereoAngle);
+      const stereoY = cy - rSta * scale * Math.sin(stereoAngle);
       this.stereoScreenPos = { x: stereoX, y: stereoY };
       ctx.fillStyle = '#6690bf';
       ctx.beginPath();
@@ -891,7 +892,7 @@ class ParkerSpiralRenderer {
       ctx.fill();
       ctx.fillStyle = '#9bbadb';
       ctx.font = '9px system-ui, sans-serif';
-      ctx.fillText('STEREO-A (0.96 AU)', stereoX + 8, stereoY);
+      ctx.fillText(`STEREO-A (${rSta.toFixed(2)} AU)`, stereoX + 8, stereoY);
     } else {
       this.stereoScreenPos = null;  // no ephemeris: not drawn at a made-up place
     }

@@ -131,3 +131,17 @@ def test_fleet_matrix_has_no_correlation_without_common_data():
     m = SatelliteComparator.compute_fleet_matrix({"A": a, "B": b, "C": flat})
     assert m["matrix_r"][0][1] is None  # was 0.000, read as "measured to disagree"
     assert m["matrix_r"][0][2] is None  # a constant series has no correlation
+
+
+def test_fleet_matrix_finds_the_lag_between_spacecraft():
+    """B sees the wind 15 min after A: r at that lag, not the lower zero-lag r."""
+    import numpy as np
+    from helios.core.comparator import SatelliteComparator
+    rng = np.random.default_rng(3)
+    x = np.cumsum(rng.normal(size=400))
+    t0 = np.datetime64("2026-10-13T00:00")
+    a = [{"time_tag": str(t0 + np.timedelta64(5 * k, "m")), "bz_gsm": float(x[k + 3])} for k in range(300)]
+    b = [{"time_tag": str(t0 + np.timedelta64(5 * k, "m")), "bz_gsm": float(x[k])} for k in range(300)]
+    m = SatelliteComparator.compute_fleet_matrix({"A": a, "B": b})
+    assert m["matrix_lag_min"][0][1] == 15.0 and m["matrix_lag_min"][1][0] == -15.0
+    assert m["matrix_r"][0][1] > 0.99

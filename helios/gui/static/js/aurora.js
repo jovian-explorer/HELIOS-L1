@@ -3,7 +3,7 @@
  * Features:
  * - High-detail global continent cartography in Equirectangular projection
  * - Real-time Astronomical Solar Day/Night Terminator & Twilight Shadow Mask
- * - Dual-Hemisphere Dancing Auroral Curtains (557.7 nm Green, 630.0 nm Red, 427.8 nm Violet)
+ * - Auroral oval band of both hemispheres from the server (no oval until it answers)
  * - Starkov (1994) auroral oval boundaries from the server, mapped for the current UTC
  * - Global Space Weather Ground Observation Station Network with live MLT
  * - Interactive HUD Telemetry Tooltips & Geomagnetic Coordinate Mapping
@@ -254,8 +254,7 @@ class AuroralMapRenderer {
   }
 
   // Auroral oval band: Starkov (1994) equatorward boundary west to east, then the poleward
-  // boundary back east to west (both from the server). Before the first server answer a
-  // schematic Kp ring is drawn around the geomagnetic pole.
+  // boundary back east to west (both from the server); nothing until it has answered.
   generateAuroralOval(isNorth = true) {
     if (this.ovalBoundaries) {
       const hemi = this.ovalBoundaries[isNorth ? 'north' : 'south'];
@@ -263,35 +262,7 @@ class AuroralMapRenderer {
         return hemi.equatorward.concat(hemi.poleward.slice().reverse());
       }
     }
-    const pole = isNorth ? this.magPoleNorth : this.magPoleSouth;
-    const kp = this.kpIndex ?? 3.5;
-    const bzTerm = this.imfBz < 0 ? Math.abs(this.imfBz) * 0.45 : 0;
-    
-    // Equatorward expansion driven by Kp and southward Bz
-    const radiusBase = 18 + kp * 2.2 + bzTerm; 
-    const midnightShift = 4 + kp * 0.6; // Oval is shifted towards magnetic midnight
-
-    const points = [];
-    const steps = 72;
-    const shimmer = Math.sin(this.time * 0.003) * 0.6;
-
-    for (let i = 0; i <= steps; i++) {
-      const angle = (i / steps) * Math.PI * 2;
-      const degAngle = (angle * 180) / Math.PI;
-
-      // Elliptical deformation: elongated along day-night meridian
-      const dayNightMod = Math.cos(angle) * midnightShift;
-      const flutter = Math.sin(angle * 6 + this.time * 0.005) * (0.8 + shimmer);
-      const r = radiusBase + dayNightMod + flutter;
-
-      // Angular coordinates around geomagnetic pole
-      const pLon = pole.lon + r * Math.cos(angle) * 1.5;
-      const pLat = pole.lat + (isNorth ? -r * Math.sin(angle) : r * Math.sin(angle));
-
-      points.push({ lon: pLon, lat: Math.max(-89.9, Math.min(89.9, pLat)) });
-    }
-
-    return points;
+    return null;  // no invented ring before the server's oval arrives
   }
 
   draw() {
@@ -523,19 +494,7 @@ class AuroralMapRenderer {
 
     ctx.save();
 
-    // Outer Layer: 630.0 nm Atomic Oxygen High-Altitude Red Diffuse Halo
-    ctx.beginPath();
-    oval.forEach((pt, i) => {
-      const { x, y } = this.geoToXY(pt.lon, pt.lat);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-    ctx.strokeStyle = 'rgba(194, 98, 98, 0.22)';
-    ctx.lineWidth = 12;
-    ctx.stroke();
-
-    // Mid Layer: 557.7 nm Atomic Oxygen Emerald-Green Main Ionization Curtain
+    // The oval band between the equatorward and poleward boundaries
     ctx.beginPath();
     oval.forEach((pt, i) => {
       const { x, y } = this.geoToXY(pt.lon, pt.lat);
@@ -547,18 +506,6 @@ class AuroralMapRenderer {
     ctx.fill();
     ctx.strokeStyle = 'rgba(82, 155, 110, 0.7)';
     ctx.lineWidth = 3.0;
-    ctx.stroke();
-
-    // Core Layer: 427.8 nm N2+ Molecular Ion Violet Ribbon
-    ctx.beginPath();
-    oval.forEach((pt, i) => {
-      const { x, y } = this.geoToXY(pt.lon, pt.lat);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-    ctx.strokeStyle = 'rgba(102, 144, 191, 0.5)';
-    ctx.lineWidth = 1.2;
     ctx.stroke();
 
     // Equatorward edge of the diffuse aurora (Starkov 1994), dashed
@@ -576,22 +523,6 @@ class AuroralMapRenderer {
       ctx.lineWidth = 1.2;
       ctx.stroke();
       ctx.setLineDash([]);
-    }
-
-    // Pulsing auroral nodes / rays along the oval
-    const pulseIndex = Math.floor((this.time * 0.05) % oval.length);
-    const pulsePt = oval[pulseIndex];
-    if (pulsePt) {
-      const { x: px, y: py } = this.geoToXY(pulsePt.lon, pulsePt.lat);
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(px, py, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(109, 180, 135, 0.8)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(px, py, 9, 0, Math.PI * 2);
-      ctx.stroke();
     }
 
     ctx.restore();
@@ -625,7 +556,6 @@ class AuroralMapRenderer {
 
   drawStations(sun) {
     const ctx = this.ctx;
-    const pulse = (Math.sin(this.time * 0.08) + 1) / 2;
 
     this.stations.forEach(st => {
       const { x, y } = this.geoToXY(st.lon, st.lat);
@@ -643,7 +573,7 @@ class AuroralMapRenderer {
         ctx.strokeStyle = isHovered ? '#7fa5cf' : baseColor;
         ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.arc(x, y, 5 + pulse * 7, 0, Math.PI * 2);
+        ctx.arc(x, y, 9, 0, Math.PI * 2);
         ctx.stroke();
       }
 

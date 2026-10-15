@@ -27,6 +27,7 @@ async function loadFleetMatrix() {
 
     const missions = data.missions;
     const matrix = data.matrix_r;
+    const lagMin = data.matrix_lag_min || [];
     // Missions without measured data in the window are the operational stream with offsets and
     // noise; their high r with DSCOVR says nothing about the instruments, so mark them.
     const prov = data.provenance || {};
@@ -91,7 +92,7 @@ async function loadFleetMatrix() {
               class="rounded-lg py-1.5 px-2.5 cursor-pointer hover:scale-105 transition ${textColor} ${sim ? 'opacity-50 italic' : ''}"
               title="${isDiag ? 'Self-correlation' : `${sim ? 'One side is not measured (simulated or synthetic), so r says nothing about the instruments. ' : ''}Click to cross-correlate ${mRow} vs ${mCol}`}"
             >
-              ${r === null || r === undefined ? 'n/a' : r.toFixed(3)}
+              ${r === null || r === undefined ? 'n/a' : r.toFixed(3)}${!isDiag && lagMin[i] && lagMin[i][j] ? `<div class="text-[9px] text-slate-400 font-normal">${lagMin[i][j] > 0 ? '+' : ''}${lagMin[i][j]} min</div>` : ''}
             </div>
           </td>
         `;
