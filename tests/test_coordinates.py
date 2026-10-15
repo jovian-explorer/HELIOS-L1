@@ -189,3 +189,8 @@ def test_kernel_span_is_cut_to_where_horizons_coverage_ends(monkeypatch, tmp_pat
     t = datetime(2026, 10, 15, tzinfo=timezone.utc)
     assert ephemeris.spacecraft_kernel("-78", t, str(tmp_path)) == str(tmp_path / "dscovr.bsp")
     assert asked[-1][1] == datetime(2026, 11, 1, 22, 1, 9, tzinfo=timezone.utc)
+    # A new session remembers the limit (for a day) and asks only for a span Horizons accepts.
+    asked.clear()
+    ephemeris._failed.clear()
+    assert ephemeris.spacecraft_kernel("-78", t, str(tmp_path)) == str(tmp_path / "dscovr.bsp")
+    assert len(asked) == 1

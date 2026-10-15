@@ -14,6 +14,7 @@ position.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -59,17 +60,53 @@ def _windows(t: datetime):
     return [(start - timedelta(days=92), nxt + timedelta(days=92)), (start - timedelta(days=1), nxt + timedelta(days=1))]
 
 
-def _clip_to_coverage(message: str, start: datetime, end: datetime):
+def _coverage_file(cache_dir: str) -> str:
+    return os.path.join(str(cache_dir), "spice_kernels", "horizons_coverage.json")
+
+
+def _coverage(naif_id: str, cache_dir: str) -> Dict[str, str]:
+    """Coverage limits Horizons named for a spacecraft in the last day ({"after": iso, "prior": iso})."""
+    try:
+        with open(_coverage_file(cache_dir), encoding="utf-8") as f:
+            entry = json.load(f).get(naif_id, {})
+    except (OSError, ValueError):
+        return {}
+    return entry if time.time() - entry.get("saved", 0) < CURRENT_REFRESH_S else {}
+
+
+def _note_coverage(naif_id: str, message: str, cache_dir: str) -> bool:
     """Horizons names where a spacecraft's ephemeris ends ("No ephemeris for target ... after
-    A.D. 2026-NOV-02 00:01:09.1825 TDB", or "prior to A.D. ..."): the span cut to it, two hours
-    inside (horizons_spk asks an hour wider), or None when it names no limit."""
+    A.D. 2026-NOV-02 00:01:09.1825 TDB", or "prior to A.D. ..."). Kept for a day, so that a new
+    session does not ask for spans Horizons refuses (48 refused requests, a minute, per start)."""
     lim = re.search(r"(after|prior to) A\.D\. (\d{4}-[A-Za-z]{3}-\d{2} \d{2}:\d{2}:\d{2})", message)
     if not lim:
-        return None
+        return False
     at = datetime.strptime(lim.group(2), "%Y-%b-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-    if lim.group(1) == "after":
-        return start, min(end, at - timedelta(hours=2))
-    return max(start, at + timedelta(hours=2)), end
+    with _lock:
+        try:
+            with open(_coverage_file(cache_dir), encoding="utf-8") as f:
+                known = json.load(f)
+        except (OSError, ValueError):
+            known = {}
+        entry = known.get(naif_id, {})
+        if time.time() - entry.get("saved", 0) >= CURRENT_REFRESH_S:
+            entry = {}
+        entry.update({lim.group(1).split()[0]: at.isoformat(), "saved": time.time()})
+        known[naif_id] = entry
+        os.makedirs(os.path.dirname(_coverage_file(cache_dir)), exist_ok=True)
+        with open(_coverage_file(cache_dir), "w", encoding="utf-8") as f:
+            json.dump(known, f)
+    return True
+
+
+def _clip(span, coverage: Dict[str, str]):
+    """A span cut two hours inside the known coverage (horizons_spk asks an hour wider)."""
+    start, end = span
+    if "after" in coverage:
+        end = min(end, datetime.fromisoformat(coverage["after"]) - timedelta(hours=2))
+    if "prior" in coverage:
+        start = max(start, datetime.fromisoformat(coverage["prior"]) + timedelta(hours=2))
+    return start, end
 
 
 def _recently_failed(key: str) -> bool:
@@ -103,9 +140,13 @@ def planetary_kernel(cache_dir: str) -> Optional[str]:
 
 def spacecraft_kernel(naif_id: str, t: datetime, cache_dir: str) -> Optional[str]:
     """SPK of a spacecraft covering t (Horizons, cached), or None."""
-    spans = _windows(t)
-    for start, end in spans:
-        key = f"{naif_id}:{start:%Y%m%d}:{end:%Y%m%d}"
+    spans, tried = list(_windows(t)), set()
+    while spans:
+        start, end = _clip(spans.pop(0), _coverage(naif_id, cache_dir))
+        if not start <= t <= end or (start, end) in tried:
+            continue
+        tried.add((start, end))
+        key = f"{naif_id}:{start:%Y%m%d%H}:{end:%Y%m%d%H}"
         if _recently_failed(key):
             continue
         try:
@@ -113,9 +154,8 @@ def spacecraft_kernel(naif_id: str, t: datetime, cache_dir: str) -> Optional[str
         except Exception as exc:  # offline, or Horizons has no ephemeris over this span
             _log.info("Horizons SPK for %s %s-%s unavailable: %s", naif_id, start.date(), end.date(), exc)
             _mark_failed(key)
-            clipped = _clip_to_coverage(str(exc), start, end)
-            if clipped and clipped[0] < t < clipped[1] and clipped not in spans:
-                spans.append(clipped)
+            if _note_coverage(naif_id, str(exc), cache_dir):
+                spans.insert(0, (start, end))  # the same span again, cut to the coverage
             continue
         # A span reaching into the future was written from Horizons' prediction: refresh daily.
         if end > datetime.now(timezone.utc) and time.time() - os.path.getmtime(path) > CURRENT_REFRESH_S:
