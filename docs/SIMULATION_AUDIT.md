@@ -209,3 +209,12 @@ Real-data test: 46 DONKI CMEs (2023 to mid-2025) with one associated interplanet
 | P16 | 905306d | L1 1.498, L2 1.508 million km (restricted three-body solution, μ = 3.0404e-6) |
 | P17 | f7f23c8 | Labels list the craft near L1 (SWFO-L1, ACE, IMAP, WIND, SOHO, Aditya-L1, DSCOVR), no "active" claim; DSCOVR's position ends with its Horizons coverage (2 Nov 2026) |
 | — | a2389a9, baeb2ef | Found while checking: a new session repeated 48 refused Horizons requests (orbit view 62 s, now 1.4 s warm); two first requests at once aborted the server inside CSPICE (engine set up under its lock) |
+| C1 | c69da22 | Defaults Γ = 0.2e-7 km⁻¹, w = 450 km/s (Dumbović et al. 2021, doi:10.3389/fspas.2021.639986, from Vršnak et al. 2013, 2014), not fitted here. 44 DONKI CMEs 2023-01..2025-06 with one shock at L1 (re-fetched 2026-10-15; 46 at the audit), run from 21.5 R☉: bias +9.4 → −6.9 h, MAE 15.5 → 14.4 h (450-800 km/s: −3.2/15.8; 800-1300: −9.5/11.6; >1300: −14.1/15.7). Published: ~14 h for the DBM (Vršnak et al. 2014), ~10 h for propagation models (Dumbović et al. 2021). Presets: Halloween 68.9 → 32.0 h (obs. ~18.5), Bastille 72.2 → 39.7 h (~27.7): extreme events stay late with one Γ. Test `test_drag_based_model_defaults_on_observed_cme_arrivals` |
+| C2 | c69da22 | Mach number and compression removed |
+| C3 | c69da22 | Model starts at 20 R☉, constant speed from the measured height (server and animation) |
+| C4 | c69da22 | Gopalswamy (2001) started at the Sun as in the paper, labelled ejecta arrival; on the DONKI set against shocks: +4.9 / 17.4 h |
+| C5 | 2007199 | Animation: "CME front, drag-based model"; flux rope, shock and "Earth impact" labels removed |
+| C6 | c69da22 | Threat level, Kp and speed class removed |
+| C7 | 2007199 | 30° half-angle schematic cone, flanks meet the arc |
+| C8 | e45d1e0 | Optional half-width: v = v_pos / sin(min(ψ + w, 90°)) (Sun-centred cone front); 40° CME at ψ = 30°: ×1.06 instead of ×2.0; without a width the old formula is flagged |
+| C9 | c69da22 | w and Γ used as given (API range checks only) |
