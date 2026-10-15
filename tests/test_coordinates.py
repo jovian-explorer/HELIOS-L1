@@ -211,3 +211,27 @@ def test_spice_engine_is_set_up_once_when_first_used_from_several_threads(monkey
     for th in threads:
         th.join()
     assert len(calls) == 1
+
+
+def test_a_kernel_is_downloaded_once_when_asked_for_concurrently(monkeypatch, tmp_path):
+    """The L1 and heliosphere views ask together: three parallel downloads of DE440s collided
+    (two failed and were remembered as failures, so the planets had no position for 10 min)."""
+    import threading
+    import time
+    from helios.core import ephemeris
+    calls = []
+
+    def fake_download(url, path, fetch):
+        calls.append(url)
+        time.sleep(0.2)
+        open(path, "wb").close()
+        return path
+
+    monkeypatch.setattr(ephemeris.oc, "_download", fake_download)
+    out = []
+    threads = [threading.Thread(target=lambda: out.append(ephemeris.planetary_kernel(str(tmp_path)))) for _ in range(3)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    assert len(calls) == 1 and len(out) == 3 and all(out)

@@ -49,6 +49,15 @@ def _fetch(url: str) -> bytes:
     return oc._get(url)  # looked up at call time (tests replace it)
 
 _lock = threading.Lock()
+# One download at a time per kernel: concurrent first requests (the L1 and heliosphere views
+# load together) wrote the same file at once; all but one failed and were then remembered as
+# failures for FAILURE_RETRY_S, so planets or spacecraft showed no position for 10 minutes.
+_file_locks: Dict[str, threading.Lock] = {}
+
+
+def _file_lock(key: str) -> threading.Lock:
+    with _lock:
+        return _file_locks.setdefault(key, threading.Lock())
 
 
 def _windows(t: datetime):
@@ -121,6 +130,11 @@ def _mark_failed(key: str) -> None:
 
 def planetary_kernel(cache_dir: str) -> Optional[str]:
     """Local path of DE440s (downloaded once), or None when it cannot be had."""
+    with _file_lock("de440s"):
+        return _planetary_kernel(cache_dir)
+
+
+def _planetary_kernel(cache_dir: str) -> Optional[str]:
     folder = os.path.join(str(cache_dir), "spice_kernels")
     if os.path.isdir(folder):
         have = sorted(f for f in os.listdir(folder) if re.fullmatch(r"de440s\.bsp", f))
@@ -140,6 +154,11 @@ def planetary_kernel(cache_dir: str) -> Optional[str]:
 
 def spacecraft_kernel(naif_id: str, t: datetime, cache_dir: str) -> Optional[str]:
     """SPK of a spacecraft covering t (Horizons, cached), or None."""
+    with _file_lock(naif_id):
+        return _spacecraft_kernel(naif_id, t, cache_dir)
+
+
+def _spacecraft_kernel(naif_id: str, t: datetime, cache_dir: str) -> Optional[str]:
     spans, tried = list(_windows(t)), set()
     while spans:
         start, end = _clip(spans.pop(0), _coverage(naif_id, cache_dir))
