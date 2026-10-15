@@ -738,3 +738,23 @@ def test_spectral_slope_is_fitted_on_log_bins_with_its_error():
     assert abs(r["spectral_slope_alpha"] - 5.0 / 3.0) <= 2 * r["spectral_slope_error"] + 0.05
     assert r["fit_range_hz"][0] >= 1e-4 and r["fit_range_hz"][1] <= 0.25 / 60.0 * 1.01
     assert "Dissipation" not in r["cascade_regime"] and len(r["frequencies_hz"]) == n // 2
+
+
+def test_kp_trajectory_persists_three_hour_means_march_2015():
+    """Issued 17 March 2015 12 UT from OMNI: one sample gave Kp 9.0 "now" and an invented 5 %/h
+    relaxation took the 12-h trajectory down to 4.1 while GFZ Kp stayed 6.0-7.7. The 3-hour mean
+    gives 6.9, persisted: within 0.9 of GFZ Kp at every hour of the next 12 h."""
+    import json
+    from helios.core.downloader import omni_snapshot
+    from helios.core.ml_forecast import SpaceWeatherForecaster as F
+    s = omni_snapshot("st_patricks_2015")
+    recs = [dict(zip(s["columns"], r)) for r in s["rows"] if r[0] < "2015-03-17 12:00"]
+    out = F.forecast_geomagnetic_storm(recs)
+    from pathlib import Path
+    gfz = json.loads((Path(__file__).parent / "data" / "gfz" / "kp_20150316.json").read_text())
+    kp = dict(zip(gfz["datetime"], gfz["Kp"]))
+    assert out["current_coupling"]["newell_kp_now"] == 6.9
+    for p in out["predictions_timeline"]:
+        h = 12 + p["horizon_hours"] - 1
+        obs = kp[f"2015-03-{17 + h // 24}T{(h % 24) // 3 * 3:02d}:00:00Z"]
+        assert abs(p["predicted_kp"] - obs) < 0.9
