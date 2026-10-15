@@ -235,3 +235,10 @@ Real-data test: 46 DONKI CMEs (2023 to mid-2025) with one associated interplanet
 | D8 (CIR, sectors) | 9e269f5 | Invented CIR shock from 0.4 AU and data-free sector wedges deleted, with their checkboxes |
 | D8 (speed) | 9e269f5 | Heliosphere speed follows the measured L1 wind until set by hand (checked: 461 km/s both) |
 | D8 (labels) | 9e269f5 | "Alfvén Surface crossing" at ≤ 12 R☉ and "(Solar Limb)" footpoint removed; NAIF-verified badge and fixed 45-60 min done earlier (61144a3, f7f23c8) |
+| D8 (magnetosphere planes) | 0f560a1 | Dipole loops, tail lobes, current sheet and belts drawn in the ecliptic plane deleted (with the Dipole Field checkbox); a static dayside-reconnection marker remains for Bz < 0 |
+| D8 (3D axes) | 0f560a1 | 3D view orthographic from 35° above the ecliptic, one scale on all axes (oblique 1 / 0.85 / 0.74 before); the figure-8 halo went with the ephemeris tracks (61144a3) |
+| D8 (Hill curves) | 0f560a1 | Invented Hill/Roche ellipses deleted |
+| D8 (solar disk) | 0f560a1 | Grid parallels drawn for B0 = 0 like the regions (were ellipses for 8.6°); no limb-darkening gradient on the EUV disk; spinning prominences deleted; static streamers and markers |
+| D8 (aurora) | 0f560a1 | No invented Kp ring before the server's oval; one oval band instead of 630/557.7/427.8 nm strokes side by side; no running node or pulsing stations |
+| D8 (fleet matrix) | 0f560a1 | r at the peak of the cross-correlation within ±60 min with its lag (live: ACE 5 min after DSCOVR, r 0.956); test with a 15-min shift |
+| D8 (labels) | 0f560a1 | STEREO-A distance and speed from its ephemeris (live 0.967 AU, 30.2 km/s; was a fixed 0.962 AU / 30.4 km/s); Solar Orbiter inclination 17° now, 24° from Dec 2026, 33° from 2029 (Müller et al. 2020); Pdyn fallback 2.0 removed (1.8 nPa default) |
