@@ -22,14 +22,15 @@ class OrbitalMechanics:
         return {
             "L1": {
                 "name": "Sun-Earth L1",
-                "x_mkm": -1.496,  # 1.5 Mkm Sunward (-X in GSE visualizer)
+                "x_mkm": -1.498,  # Sunward (-X in the view); circular restricted three-body problem,
+                # mu = (Earth + Moon) / total = 3.0404e-6: 1.4976 and 1.5077 million km
                 "y_mkm": 0.0,
                 "z_mkm": 0.0,
                 "desc": "Gravitational equilibrium point upstream of Earth. Uninterrupted solar wind view ~1 hour before hitting Earth."
             },
             "L2": {
                 "name": "Sun-Earth L2",
-                "x_mkm": 1.496,   # 1.5 Mkm anti-Sunward (+X in GSE visualizer)
+                "x_mkm": 1.508,   # anti-Sunward (+X in the view)
                 "y_mkm": 0.0,
                 "z_mkm": 0.0,
                 "desc": "Deep space point behind Earth (home of JWST, Euclid)."

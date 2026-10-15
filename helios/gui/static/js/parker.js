@@ -454,7 +454,7 @@ class ParkerSpiralRenderer {
           <span class="text-[10px] text-amber-300 font-mono font-bold">0.990 AU</span>
         </div>
         <div class="text-[11px] font-mono space-y-1 text-slate-200">
-          <div>Distance from Earth: <span class="text-slate-100 font-bold">1.496M km</span> Sunward (~235 R_E)</div>
+          <div>Distance from Earth: <span class="text-slate-100 font-bold">~1.5 million km</span> Sunward (~235 R_E)</div>
           <div>Spacecraft near L1: <span class="text-amber-400 font-bold">SWFO-L1, ACE, IMAP, WIND, SOHO, Aditya-L1, DSCOVR</span></div>
           <div>Warning time: <span class="text-cyan-300 font-bold">~30-60 minutes</span> (solar wind at 800-400 km/s)</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">

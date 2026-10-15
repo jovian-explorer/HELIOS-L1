@@ -105,7 +105,8 @@ def test_orbital_mechanics():
     lagrange = OrbitalMechanics.get_lagrange_points()
     assert "L1" in lagrange
     assert "L2" in lagrange
-    assert lagrange["L1"]["x_mkm"] == -1.496
+    assert lagrange["L1"]["x_mkm"] == -1.498  # three-body solution, Earth + Moon mass
+    assert lagrange["L2"]["x_mkm"] == 1.508   # was drawn at 1.496, as if L2 mirrored L1
 
     orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc="2026-10-10T00:00:00")
     assert "DSCOVR" in orbits

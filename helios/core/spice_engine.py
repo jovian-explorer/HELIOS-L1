@@ -163,7 +163,6 @@ class SpiceEphemerisEngine:
     AU_KM = AU_KM                # IAU 2012 (helios.core.constants)
     R_SUN_KM = R_SUN_KM          # IAU 2015 nominal solar radius
     R_EARTH_KM = 6378.1366        # Earth WGS-84 / SPICE Equatorial Radius in km
-    L1_NOMINAL_KM = 1496547.6     # Nominal Sun-Earth L1 distance from Earth (~0.010 AU)
 
     _instance = None
     _lock = threading.Lock()

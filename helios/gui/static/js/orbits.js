@@ -440,7 +440,7 @@ class OrbitRenderer {
       } else if (found.type === 'l1') {
         this.tooltip.innerHTML = `
           <div class="font-bold text-amber-400 border-b border-amber-500/30 pb-1 mb-1">Sun-Earth L1 Lagrange Point</div>
-          <div class="text-slate-300 text-[11px]">Distance: ~1,496,000 km Sunward</div>
+          <div class="text-slate-300 text-[11px]">Distance: ~1.5 million km Sunward</div>
           <div class="text-slate-400 text-[10px] mt-1">Gravitational equilibrium saddle point</div>
           <div class="text-sky-300 text-[10px] mt-0.5">Spacecraft near L1: SWFO-L1, ACE, IMAP, WIND, SOHO, Aditya-L1, DSCOVR</div>
         `;
