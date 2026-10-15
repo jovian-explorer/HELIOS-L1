@@ -131,9 +131,9 @@ Mission cards: agency, orbit, instruments, cadence, data policy as stated by the
 * **Active region map:** the numbered regions of the latest NOAA SWPC solar region summary (position, Mount Wilson and McIntosh class, area, flares of the day, SWPC 24-hour C/M/X probabilities) on a **drawn** disk. The 193/304/171/131 Å and C2 buttons only change the drawing style; they are not images.
 * **CME solver:** speed from two plane-of-sky heights and the time between them, then arrival at L1 and Earth with the drag-based model of Vršnak et al. (2013) (ambient wind w and drag parameter Γ adjustable) next to the empirical arrival model of Gopalswamy et al. (2001). The presets reproduce the SOHO/LASCO linear speeds of the CDAW catalogue for May 2024 (1280 km/s), Halloween 2003 (2459 km/s) and Bastille Day 2000 (1674 km/s); Carrington and Nominal are illustrative. No projection correction is applied (halo CMEs are faster along the Sun-Earth line than in the sky plane); the shock Mach number and the Kp category are rough estimates and say so.
 
-### Parker Spiral & CIR
+### Parker Spiral
 
-Archimedean spiral field lines for a chosen wind speed, the spiral angle at 1 AU and the longitude of the footpoint magnetically connected to Earth (important for solar energetic particles), with sector boundaries and stream interaction regions drawn schematically, and the orbit of Parker Solar Probe.
+Archimedean spiral field lines (Parker 1958) for a chosen wind speed (it follows the measured L1 speed until set by hand), the spiral angle at 1 AU and the longitude of the footpoint magnetically connected to Earth (important for solar energetic particles), plasma parcels moving radially along them, and the planets, Parker Solar Probe, Solar Orbiter and STEREO-A from their ephemerides, projected on the ecliptic plane. The field tooltip gives the Parker field magnitude scaled to the measured L1 field.
 
 **Coronal magnetic field (PFSS).** A potential field source surface model (sunkit-magex, the successor of pfsspy; Stansby et al. 2020, doi:10.21105/joss.02732) of the latest GONG, ADAPT (realization 0) or HMI synoptic map before a chosen time (HMI needs an e-mail address registered with JSOC). The wind now at Earth is mapped back ballistically (Neugebauer et al. 1998, doi:10.1029/98JA00798): source-surface longitude = sub-Earth Carrington longitude + Ω(1 AU − r_ss)/V. The field line traced down from there gives the solar source (open field in a coronal hole or at the edge of an active region, |B_r| ≥ 50 G at the footpoint), its polarity and its angular distance from the heliospheric current sheet (B_r = 0 on the source surface). Field lines can be traced from any point between 1 R☉ and the source surface. SunPy and sunkit-magex are included in the standalone app; with pip: `pip install "helios-l1[solar]"`.
 
@@ -236,6 +236,18 @@ Equations with DOIs, data portals, licences, a parameter handbook, the in-app gu
 | OMNI statistics (`/api/statistics/omni`) | Distributions, joint histograms, conditional means, correlations, yearly/monthly means with filters | Daily means equal NASA's published daily averages within their rounding for all days of 1995-2024; Xu & Borovsky (2015) classes give 88.5 % ejecta inside the WIND magnetic clouds (87.5 % in Li et al. 2020) |
 
 Known differences that remain: the time shift is built from OMNI's published description (and Weimer's published MVAB-0 routine), not from OMNI's processing code; WIND delays come out 0.3 min longer than OMNI's on median near the Sun-Earth line (0.7 min at Y = +58 R_E), ACE delays within 0.1 min. Planar phase fronts can misplace a shock: on 7 Sep 2017 the WIND shock reaches the bow shock nose at 23:11 in OMNI and 23:12 here while SYM-H jumps from 23:00. The Burton model's RMSE and minimum error differ from Ji et al. (2012), whose Burton constants are not given; the Rankine-Hugoniot shock normal of the CfA database (RH08-RH10) is not implemented.
+
+
+### Reproductions of published results
+
+Published numbers recomputed with HELIOS-L1's own functions on the same input data (tests/test_reproductions.py runs each one).
+
+| Source | Input | Published | HELIOS-L1 | Agreement |
+|---|---|---|---|---|
+| Dumbović et al. (2021), Front. Astron. Space Sci. 8, 639986, Table 2: basic 1D drag-based model | CME of 3 April 2010, R0 = 20 R☉, Γ = 0.2×10⁻⁷ km⁻¹, w = 450 km/s, four lift-off times and speeds | arrival 5 Apr 16:34 to 19:43, 597-620 km/s | 3-3.5 min later on every row, speeds within 0.3 km/s | within 0.1 % of the 52-56 h transits. The fifth column (v0 = 960 km/s) is left out: its published basic-DBM transit equals that of the 920 km/s rows, and HELIOS's 960 km/s result (15:37, 627 km/s) is the paper's flattening-cone value for that column |
+| WIND MFI magnetic cloud table (Lepping et al. 1990 model), cloud of 18-20 Oct 1995 | WIND 1-min field and SWE plasma, 18 Oct 19:48 to 20 Oct 01:18, hour averages | φ 287°, θ −8°, B0 25.9 nT, 2R0 0.257 AU, R, χR 0.143, CA 12 % | φ 290°, θ 1°, B0 24.5 nT, 2R0 0.273 AU, R, χR 0.149, CA 10 % | every parameter within its 1σ uncertainty (Lepping et al. 2003); the same holds for the cloud of 10-11 Jan 1997 (φ 242° vs 247°, θ −9° vs 1°, B0 16.8 vs 17.7 nT, 2R0 0.197 vs 0.190 AU) |
+| Richardson & Cane ICME list (doi:10.7910/DVN/C2MHTH; Cane & Richardson 2003, Richardson & Cane 2010) | hourly OMNI (OMNI2_H0_MRG1HR) over the listed ICME intervals, the 29 ICMEs of 2015 | mean speed, mean \|B\|, minimum Dst per ICME | mean absolute difference 5.9 km/s (the list rounds to 10), 0.62 nT; minimum Dst within 1 nT for 86 % | 2003 and 2015 together (44 ICMEs): 8.4 km/s, 0.7 nT, Dst 1.2 nT. Larger differences only where the ICME runs past the data loaded or the list's Dst minimum is "slightly after" the ICME end |
+| Shue et al. (1998), J. Geophys. Res. 103, 17691 | the model's equations | "D_p needs to be at least 7 nPa" for a geosynchronous magnetopause crossing even for extremely southward IMF; GMS 4 in the magnetosheath from 01:15 UT on 11 Jan 1997 (D_p up to 60 nPa, Bz ~18 nT) | 7.7, 7.5, 7.4 nPa for Bz = −18, −20, −30 nT; subsolar magnetopause 7.7 R_E at 01 UT, 6.2 R_E at ~02 UT | agrees |
 
 ---
 
