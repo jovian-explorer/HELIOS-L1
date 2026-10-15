@@ -947,8 +947,10 @@ async def detect_clouds(
     /api/analysis/fluxrope as its start and end.
     """
     key = mission.upper()
-    if key not in ARCHIVE_SOURCES:
-        raise HTTPException(status_code=404, detail=f"No archive source for '{mission}'. Available: {', '.join(ARCHIVE_SOURCES)}.")
+    with_field = [k for k in ARCHIVE_SOURCES if k not in ("SOHO", "STEREO_A")]  # no GSE field vector
+    if key not in with_field:
+        raise HTTPException(status_code=404, detail=f"No archive field vector for '{mission}' (SOHO has no "
+                            f"magnetometer, STEREO-A's is in RTN). Available: {', '.join(with_field)}.")
     t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
     if t1 - t0 < timedelta(hours=8):
         raise HTTPException(status_code=422, detail="The interval must be at least 8 hours long.")

@@ -207,7 +207,7 @@ def test_archive_api_endpoint(monkeypatch, tmp_path):
     csv_text = client.get("/api/archive/OMNI?start=2024-05-10T17:00&end=2024-05-10T17:06&format=csv").text
     assert "# datasets: OMNI_HRO_1MIN" in csv_text and "713.7" in csv_text
     assert "# coverage_magnetic_field: 100.0 % covered" in csv_text
-    assert client.get("/api/archive/SOHO?start=2024-05-10&end=2024-05-11").status_code == 404
+    assert client.get("/api/archive/GOES_19?start=2024-05-10&end=2024-05-11").status_code == 404
     assert client.get("/api/archive/OMNI?start=2024-05-10&end=2024-05-09").status_code == 422
     assert client.get("/api/archive/OMNI?start=2024-01-01&end=2024-03-01").status_code == 422
     assert client.get("/api/archive/OMNI?start=yesterday&end=2024-03-01").status_code == 422
@@ -305,3 +305,18 @@ def test_unknown_event_id_is_404_not_another_event():
     from helios.api import server
     r = TestClient(server.app, base_url=LOCAL).get("/api/events/may_2042_g9")
     assert r.status_code == 404 and "Unknown event" in r.json()["detail"]
+
+
+def test_soho_and_stereo_a_archive_sources():
+    """CDAWeb SOHO_CELIAS-PM_5MIN (speed, density) and STA_L2_MAGPLASMA_1M (|B| and plasma; the
+    field vector is RTN, so no GSE/GSM components), checked against CDAWeb on 16 Oct 2026."""
+    import pandas as pd
+    from helios.core.archive import ARCHIVE_SOURCES
+    soho = ARCHIVE_SOURCES["SOHO"]["groups"][0][0]
+    sta = ARCHIVE_SOURCES["STEREO_A"]["groups"][0][0]
+    assert soho["id"] == "SOHO_CELIAS-PM_5MIN" and sta["id"] == "STA_L2_MAGPLASMA_1M"
+    idx = pd.to_datetime(["2023-04-23 01:00"], utc=True)
+    out = sta["reduce"](pd.DataFrame({"BTOTAL": [12.4], "Np": [9.1], "Vp": [450.0], "Tp": [7.4e4]}, index=idx))
+    assert list(out.columns) == ["bt", "speed", "density", "temperature"]
+    out = soho["reduce"](pd.DataFrame({"V_p": [455.0], "N_p": [7.0]}, index=idx))
+    assert list(out.columns) == ["speed", "density"]

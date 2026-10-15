@@ -172,6 +172,25 @@ def _dscovr_fc(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _soho_pm(df: pd.DataFrame) -> pd.DataFrame:
+    out = pd.DataFrame(index=df.index)
+    out["speed"] = df["V_p"]
+    out["density"] = df["N_p"]
+    # No temperature: the one from the PM thermal speed was 2-4 times below OMNI's on 17 March
+    # 2015, and the live SOHO view shows none either.
+    return out
+
+
+def _stereo_a(df: pd.DataFrame) -> pd.DataFrame:
+    # |B| only: the vector is in RTN, which is not GSE/GSM (the views would read it as such).
+    out = pd.DataFrame(index=df.index)
+    out["bt"] = df["BTOTAL"]
+    out["speed"] = df["Vp"]
+    out["density"] = df["Np"]
+    out["temperature"] = df["Tp"]
+    return out
+
+
 def _omni(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
     out["bt"] = df["F"]
@@ -223,6 +242,20 @@ ARCHIVE_SOURCES: Dict[str, Dict[str, Any]] = {
                       "Level 2", "DSCOVR MAG 1-s")],
             [_dataset("DSCOVR_H1_FC", ["DQF", "V_GSE", "Np", "THERMAL_TEMP"], _dscovr_fc,
                       "Level 2", "DSCOVR Faraday cup 1-min (2016-2019)")],
+        ],
+    },
+    "SOHO": {
+        "spacecraft": "SOHO",
+        "groups": [
+            [_dataset("SOHO_CELIAS-PM_5MIN", ["V_p", "N_p"], _soho_pm,
+                      "definitive", "SOHO CELIAS/MTOF Proton Monitor 5-min (no magnetometer)")],
+        ],
+    },
+    "STEREO_A": {
+        "spacecraft": "STEREO_A",
+        "groups": [
+            [_dataset("STA_L2_MAGPLASMA_1M", ["BTOTAL", "Np", "Vp", "Tp"], _stereo_a,
+                      "Level 2", "STEREO-A IMPACT/MAG and PLASTIC 1-min (|B| only: the vector is in RTN)")],
         ],
     },
     "OMNI": {

@@ -373,7 +373,7 @@ class DataDownloader:
     async def get_archive_bundle(self, mission_id: str, start: datetime, end: datetime,
                                  cadence_minutes: int = 1) -> Dict[str, Any]:
         """
-        Archive records for [start, end) from CDAWeb (WIND, ACE, DSCOVR, OMNI), as 1-minute
+        Archive records for [start, end) from CDAWeb (WIND, ACE, DSCOVR, SOHO, STEREO-A, OMNI), as 1-minute
         means or `cadence_minutes` block averages. provenance["kind"] is "observed", or
         "unavailable" when the archive has nothing for the interval (or cannot be reached).
         """
@@ -381,7 +381,8 @@ class DataDownloader:
         if mission_id not in ARCHIVE_SOURCES:
             raise KeyError(mission_id)
         name = MISSIONS.get(mission_id, {}).get("name", mission_id)
-        dist = None if mission_id == "OMNI" else MISSIONS.get(mission_id, {}).get("orbit_distance_km", 1500000)
+        # No L1-to-Earth travel time for OMNI (already at the bow shock) or STEREO-A (not at L1)
+        dist = None if mission_id in ("OMNI", "STEREO_A") else MISSIONS.get(mission_id, {}).get("orbit_distance_km", 1500000)
         if start.tzinfo is None:
             start = start.replace(tzinfo=timezone.utc)
         if end.tzinfo is None:
