@@ -55,6 +55,8 @@ class ParkerSpiralRenderer {
     this.spiceAvailable = false;
     this.spiceToolkit = 'CSPICE_N0067';
     this.fetchSpiceEphemeris();
+    // Positions move (PSP up to ~190 km/s near perihelion): ask again every 10 minutes.
+    setInterval(() => this.fetchSpiceEphemeris(), 600000);
 
     this.initEventListeners();
     this.resize();
@@ -453,8 +455,8 @@ class ParkerSpiralRenderer {
         </div>
         <div class="text-[11px] font-mono space-y-1 text-slate-200">
           <div>Distance from Earth: <span class="text-slate-100 font-bold">1.496M km</span> Sunward (~235 R_E)</div>
-          <div>Active Fleet Probes: <span class="text-amber-400 font-bold">Aditya-L1, DSCOVR, ACE, WIND, SOHO</span></div>
-          <div>Early Warning Horizon: <span class="text-cyan-300 font-bold">~45 - 60 minutes</span> upstream</div>
+          <div>Spacecraft near L1: <span class="text-amber-400 font-bold">SWFO-L1, ACE, IMAP, WIND, SOHO, Aditya-L1, DSCOVR</span></div>
+          <div>Warning time: <span class="text-cyan-300 font-bold">~30-60 minutes</span> (solar wind at 800-400 km/s)</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
             <span class="text-slate-400 font-normal">L1 Halo Constellation</span>
@@ -936,7 +938,7 @@ class ParkerSpiralRenderer {
     ctx.font = '9px "JetBrains Mono", monospace';
     ctx.fillText('1.00 AU', earthX + 12, earthY + 8);
 
-    // 2. Sun-Earth L1 (0.99 AU) - DSCOVR, ACE, Aditya-L1
+    // 2. Sun-Earth L1 (0.99 AU)
     const l1X = cx + 0.99 * scale;
     const l1Y = cy;
     this.l1ScreenPos = { x: l1X, y: l1Y };
@@ -951,7 +953,7 @@ class ParkerSpiralRenderer {
 
     ctx.fillStyle = '#ffb703';
     ctx.font = 'bold 9px "JetBrains Mono", monospace';
-    ctx.fillText('L1 (DSCOVR/Aditya)', l1X - 35, l1Y - 12);
+    ctx.fillText('L1', l1X - 6, l1Y - 12);
 
     // 3. STEREO-Ahead (Leading Earth in heliocentric orbit ~0.96 AU)
     // Angle ahead of Earth from the ephemeris longitudes (Earth is drawn at angle 0).

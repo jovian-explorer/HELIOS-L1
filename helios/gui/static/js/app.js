@@ -2904,6 +2904,16 @@ async function initOrbits() {
     console.error('Error initializing orbits:', err);
   }
 }
+// The spacecraft move ~0.5 km/s about L1: refresh the positions every 10 minutes.
+setInterval(async () => {
+  if (!orbitViewer) return;
+  try {
+    const res = await fetch('/api/orbits');
+    if (res.ok) orbitViewer.setOrbitsData(await res.json());
+  } catch (err) {
+    console.warn('Orbit refresh failed:', err);
+  }
+}, 600000);
 
 function animateOrbits() {
   if (orbitViewer && orbitViewer.canvas && orbitViewer.canvas.offsetParent !== null) {

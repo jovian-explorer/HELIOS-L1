@@ -522,3 +522,12 @@ console.log(JSON.stringify([a(), b(), c()]));
     res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert res.returncode == 0, res.stderr
     assert json.loads(res.stdout) == [False, True, True]
+
+
+def test_positions_are_refreshed_while_the_views_are_open():
+    """Positions were fetched once per session: a window left open drew where the craft were
+    hours or days ago (PSP moves up to ~190 km/s near perihelion)."""
+    parker = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
+    assert re.search(r"setInterval\(\(\) => this\.fetchSpiceEphemeris\(\), 600000\)", parker)
+    assert re.search(r"setInterval\(async \(\) => \{\s*if \(!orbitViewer\) return;.*?fetch\('/api/orbits'\).*?\}, 600000\)",
+                     APP_JS.read_text(encoding="utf-8"), re.S)
