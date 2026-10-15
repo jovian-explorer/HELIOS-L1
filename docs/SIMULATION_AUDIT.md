@@ -224,3 +224,14 @@ Real-data test: 46 DONKI CMEs (2023 to mid-2025) with one associated interplanet
 | S11 | 181b77f, fd65593 | Carrington: no time series and no Bz/speed/pressure (−90 and −64.5 nT, 2300 km/s at Earth removed); summary keeps the 17.6 h transit (mean speed ≈ 2360 km/s); Carrington import table removed |
 | S12 | 181b77f | March 1989: OMNI has no solar wind for 12-14 Mar; the event shows SYM-H only (minimum −714 nT); the invented −50 nT / 950 km/s / 42 nPa removed |
 | S13 | fd65593 | Import examples are OMNI 5-min cuts of the bundled data (May 2024, Bastille 2000, March 2015, 7 Dec 2019); the hand-written tables and the 2026-09-21 quiet day are gone |
+| D1 | 4417ea7 | Venus preset at ν = 177.1°, r = 0.723 AU (was 0.10 AU); test |
+| D2 | 4417ea7 | AR 3664 S19W87 (14 May 2024), 3697 S18E35 (1 Jun), 3842 S15E06 (3 Oct), 3848 N12W11 (9 Oct), checked in the NOAA SRS archive; 3842 β-γ-δ; test |
+| D3 | 4417ea7 | Tooltip |B| = Parker (1958) magnitude scaled to the latest L1 |B| at 1 AU |
+| D5 | 4417ea7 | Magnetosphere scale stated on the canvas (3.8 px/R_E vs L1 grid 1.11); Sun labelled not to scale |
+| D6 | 4417ea7 | Earth drawn at 1 R_E |
+| D7 | 4417ea7 | Subsolar point from the Hapgood (1992) ephemeris as the server: < 0.05° over a year (test against coordinates.sun_direction_geo) |
+| P13 (axes) | 4417ea7 | L1 spacecraft and tracks on one scale on all axes (Y, Z were 1.44, 1.53× X) |
+| D8 (parcels) | 9e269f5 | Parcels move radially at their source longitude; step tied to the field lines' rotation (winding k = ΩAU/V, was 30 % off) |
+| D8 (CIR, sectors) | 9e269f5 | Invented CIR shock from 0.4 AU and data-free sector wedges deleted, with their checkboxes |
+| D8 (speed) | 9e269f5 | Heliosphere speed follows the measured L1 wind until set by hand (checked: 461 km/s both) |
+| D8 (labels) | 9e269f5 | "Alfvén Surface crossing" at ≤ 12 R☉ and "(Solar Limb)" footpoint removed; NAIF-verified badge and fixed 45-60 min done earlier (61144a3, f7f23c8) |
