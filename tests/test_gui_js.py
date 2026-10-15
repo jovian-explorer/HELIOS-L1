@@ -536,3 +536,51 @@ def test_positions_are_refreshed_while_the_views_are_open():
     # An archive interval shows the positions at its end (P14 of docs/SIMULATION_AUDIT.md).
     assert re.search(r"setPositionEpoch\(headerTag === ' \(archive end\)'", app)
     assert "epoch=${encodeURIComponent(positionEpoch)}" in parker
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_psp_venus_preset_is_at_venus_distance():
+    """The "Venus leg" preset used nu = 100 deg, which is 0.10 AU on PSP's orbit, not 0.72 AU."""
+    src = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
+    body = re.search(r"static anomalyAtRadius\((.*?)\) \{(.*?)\n  \}", src, re.S)
+    script = (f"function f({body.group(1)}) {{{body.group(2)}}}\n"
+              "const nu = f(0.723) * Math.PI / 180, a = 0.3879, e = 0.8819;\n"
+              "console.log(JSON.stringify([nu * 180 / Math.PI, a * (1 - e * e) / (1 + e * Math.cos(nu))]));")
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    nu, r = json.loads(res.stdout)
+    assert r == pytest.approx(0.723, abs=0.01) and 170 < nu < 180
+
+
+def test_historical_active_regions_are_where_noaa_placed_them():
+    """NOAA SRS of the flare dates (west positive): AR 3842 and AR 3848 were in the wrong hemisphere."""
+    src = (APP_JS.parent / "solar_viewer.js").read_text(encoding="utf-8")
+    got = {m[0]: (float(m[1]), float(m[2])) for m in re.findall(r"id: '(AR \d+)'.*?lat: (-?[\d.]+), lon: (-?[\d.]+)", src)}
+    assert got == {"AR 3664": (-19, 87), "AR 3697": (-18, -35), "AR 3842": (-15, -6), "AR 3848": (12, 11)}
+
+
+def test_heliosphere_field_tooltip_uses_parker_magnitude():
+    """|B| = B_r1 r^-2 sqrt(1 + (Omega r / V)^2) scaled to the L1 field (was 5 / r^2 nT)."""
+    src = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
+    assert "5.0 / (mw.r_au * mw.r_au)" not in src
+    assert "this.b1auNt / wind(1) * wind(mw.r_au) / (mw.r_au * mw.r_au)" in src
+    assert "parkerRenderer.b1auNt = Number(latest.bt)" in APP_JS.read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_aurora_subsolar_point_matches_the_server():
+    """The map's subsolar point (Spencer series, up to 0.44 deg off) now follows the server's
+    Hapgood (1992) ephemeris: within 0.05 deg over a year."""
+    import numpy as np
+    from datetime import datetime, timedelta, timezone
+    from helios.core.coordinates import sun_direction_geo
+    src = (APP_JS.parent / "aurora.js").read_text(encoding="utf-8")
+    body = re.search(r"  getSubsolarPoint\(\) \{(.*?)\n  \}", src, re.S).group(1)
+    times = [datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(hours=37 * k) for k in range(237)]
+    script = (f"function f() {{{body}}}\nconst out = {json.dumps([t.isoformat() for t in times])}"
+              ".map(t => f.call({ mapTime: new Date(t) }));\nconsole.log(JSON.stringify(out));")
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    got = json.loads(res.stdout)
+    ref = sun_direction_geo(times)
+    lat = np.degrees(np.arcsin(ref[:, 2])); lon = np.degrees(np.arctan2(ref[:, 1], ref[:, 0]))
+    dlon = (np.array([g["lon"] for g in got]) - lon + 180) % 360 - 180
+    assert np.max(np.abs(np.array([g["lat"] for g in got]) - lat)) < 0.05 and np.max(np.abs(dlon)) < 0.05

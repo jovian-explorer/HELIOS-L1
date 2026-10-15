@@ -7,6 +7,10 @@
 
 // Magnetospheric boundary models (same equations and coefficients as helios/core/science.py).
 
+// L1 spacecraft and tracks: one scale on all three axes (L1 at 260 px; Y and Z were drawn at
+// 1.44 and 1.53 times the X scale). Positions come in 1000 km.
+const L1_PX_PER_KKM = 260 / 1496.0;
+
 // Shue et al. (1998): r0 = (10.22 + 1.29 tanh(0.184 (Bz + 8.14))) P^(-1/6.6),
 // alpha = (0.58 - 0.007 Bz)(1 + 0.024 ln P)
 function shue1998Magnetopause(pdyn, bz) {
@@ -345,10 +349,10 @@ class OrbitRenderer {
         cx = (pos.x / 42.164) * 25;
         cy = (pos.y / 42.164) * 25;
       } else {
-        cx = (pos.x / 1496.0) * 260;
-        cy = (pos.y / 280.0) * 70;
+        cx = pos.x * L1_PX_PER_KKM;
+        cy = pos.y * L1_PX_PER_KKM;
       }
-      const proj = this.project(cx, cy, pos.z ? (pos.z / 150.0) * 40 : 0);
+      const proj = this.project(cx, cy, pos.z ? pos.z * L1_PX_PER_KKM : 0);
       const dist = Math.hypot(worldX - proj.x, worldY - proj.y);
       if (dist < 18) {
         found = { type: 'sat', data: sat, key };
@@ -735,7 +739,7 @@ class OrbitRenderer {
     ctx.fillStyle = '#ebd6a2';
     ctx.font = '600 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('The Sun (1.0 AU)', sunPos.x, sunPos.y + 50);
+    ctx.fillText('The Sun (1 AU away, not to scale)', sunPos.x, sunPos.y + 50);
 
     // Sun-Earth Interplanetary Axis line
     ctx.strokeStyle = 'rgba(210, 170, 87, 0.2)';
@@ -888,35 +892,26 @@ class OrbitRenderer {
     const hudModel = document.getElementById('hud-model-name');
     if (hudModel) hudModel.innerText = this.boundaryModel === 'shue' ? 'Farris-Russell 1994' : 'Chao 2002';
 
-    // Earth Sphere with Day/Night Lighting (Sun on left illuminates -X)
-    const earthGlow = ctx.createRadialGradient(earthP.x, earthP.y, 8, earthP.x, earthP.y, 18);
-    earthGlow.addColorStop(0, 'rgba(127, 165, 207, 0.4)');
-    earthGlow.addColorStop(0.7, 'rgba(79, 119, 163, 0.1)');
-    earthGlow.addColorStop(1, 'rgba(42, 63, 85, 0)');
-    ctx.fillStyle = earthGlow;
-    ctx.beginPath();
-    ctx.arc(earthP.x, earthP.y, 18, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Day/Night shaded Earth body
-    const earthGrad = ctx.createLinearGradient(earthP.x - 11, earthP.y, earthP.x + 11, earthP.y);
+    // Earth to the magnetosphere's scale: 1 R_E (it was 11 px = 2.9 R_E, with GEO 2.3 R_E above it)
+    const earthR = scaleRe;
+    const earthGrad = ctx.createLinearGradient(earthP.x - earthR, earthP.y, earthP.x + earthR, earthP.y);
     earthGrad.addColorStop(0, '#9bbadb');
     earthGrad.addColorStop(0.45, '#4f77a3');
     earthGrad.addColorStop(0.55, '#2a3f55');
     earthGrad.addColorStop(1, '#141518');
     ctx.fillStyle = earthGrad;
     ctx.beginPath();
-    ctx.arc(earthP.x, earthP.y, 11, 0, Math.PI * 2);
+    ctx.arc(earthP.x, earthP.y, earthR, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.strokeStyle = 'rgba(155, 186, 219, 0.6)';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
 
     ctx.fillStyle = '#bdd2e8';
     ctx.font = '600 10px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Earth', earthP.x, earthP.y + 24);
+    ctx.fillText('Earth', earthP.x, earthP.y + 16);
+    // The magnetosphere has its own, larger scale than the L1 grid (D5 of docs/SIMULATION_AUDIT.md)
+    ctx.fillStyle = '#9a9ea5';
+    ctx.font = '9px system-ui, sans-serif';
+    ctx.fillText(`Magnetosphere enlarged: ${scaleRe.toFixed(1)} px per R_E (L1 grid: ${(6.371 * L1_PX_PER_KKM).toFixed(2)})`, earthP.x, earthP.y + 28);
     ctx.restore();
 
     // 7. Lagrange Points (L1 & L2)
@@ -968,10 +963,10 @@ class OrbitRenderer {
             cx = (pt.x / 42.164) * 25;
             cy = (pt.y / 42.164) * 25;
           } else {
-            cx = (pt.x / 1496.0) * 260;
-            cy = (pt.y / 280.0) * 70;
+            cx = pt.x * L1_PX_PER_KKM;
+            cy = pt.y * L1_PX_PER_KKM;
           }
-          const proj = this.project(cx, cy, pt.z ? (pt.z / 150.0) * 40 : 0);
+          const proj = this.project(cx, cy, pt.z ? pt.z * L1_PX_PER_KKM : 0);
           if (i === 0) ctx.moveTo(proj.x, proj.y);
           else ctx.lineTo(proj.x, proj.y);
         });
@@ -986,10 +981,10 @@ class OrbitRenderer {
             px = (cur.x / 42.164) * 25;
             py = (cur.y / 42.164) * 25;
           } else {
-            px = (cur.x / 1496.0) * 260;
-            py = (cur.y / 280.0) * 70;
+            px = cur.x * L1_PX_PER_KKM;
+            py = cur.y * L1_PX_PER_KKM;
           }
-          const proj = this.project(px, py, cur.z ? (cur.z / 150.0) * 40 : 0);
+          const proj = this.project(px, py, cur.z ? cur.z * L1_PX_PER_KKM : 0);
 
           // Subtle locator ring
           ctx.globalAlpha = 0.3 + 0.2 * Math.sin(this.timeStep * 3);

@@ -32,26 +32,28 @@ class SolarDiskViewer {
     // labelled as such: their disk positions are schematic, not observations.
     this.regionSource = 'historical';
     this.regionDate = null;
+    // Positions from the NOAA SWPC solar region summaries (SRS) of the dates named (west
+    // positive); they were drawn in the wrong hemisphere for AR 3842 and AR 3848.
     this.historicalRegions = [
       {
-        id: 'AR 3664', name: 'Historical example (May 2024)', lat: -18.5, lon: -15.0, area: null,
+        id: 'AR 3664', name: 'Historical example (May 2024)', lat: -19, lon: 87, area: 1170,
         hale: 'β-γ-δ', flareProb: null, recentFlare: 'X8.7 (14 May 2024)',
-        summary: 'Source of the flares and CMEs behind the G5 storm of 10-11 May 2024. Position on this disk is schematic.'
+        summary: 'Source of the flares and CMEs behind the G5 storm of 10-11 May 2024. Shown where NOAA placed it on 14 May 2024 (S19W87), at the limb.'
       },
       {
-        id: 'AR 3697', name: 'Historical example (May-June 2024)', lat: -19.2, lon: 32.0, area: null,
+        id: 'AR 3697', name: 'Historical example (June 2024)', lat: -18, lon: -35, area: 380,
         hale: 'β-γ-δ', flareProb: null, recentFlare: null,
-        summary: 'AR 3664 returning after one solar rotation. Position on this disk is schematic.'
+        summary: 'AR 3664 returning after one solar rotation. Shown where NOAA placed it on 1 June 2024 (S18E35).'
       },
       {
-        id: 'AR 3842', name: 'Historical example (October 2024)', lat: 14.5, lon: -42.0, area: null,
-        hale: 'β-γ', flareProb: null, recentFlare: 'X9.0 (3 Oct 2024)',
-        summary: 'Produced the X7.1 flare of 1 October and the X9.0 flare of 3 October 2024. Position on this disk is schematic.'
+        id: 'AR 3842', name: 'Historical example (October 2024)', lat: -15, lon: -6, area: 380,
+        hale: 'β-γ-δ', flareProb: null, recentFlare: 'X9.0 (3 Oct 2024)',
+        summary: 'Produced the X7.1 flare of 1 October and the X9.0 flare of 3 October 2024. Shown where NOAA placed it on 3 October 2024 (S15E06).'
       },
       {
-        id: 'AR 3848', name: 'Historical example (October 2024)', lat: -12.0, lon: 10.0, area: null,
+        id: 'AR 3848', name: 'Historical example (October 2024)', lat: 12, lon: 11, area: 600,
         hale: 'β-γ-δ', flareProb: null, recentFlare: 'X1.8 (9 Oct 2024)',
-        summary: 'Its X1.8 flare and CME of 9 October 2024 drove the G4 storm of 10 October. Position on this disk is schematic.'
+        summary: 'Its X1.8 flare and CME of 9 October 2024 drove the G4 storm of 10 October. Shown where NOAA placed it on 9 October 2024 (N12W11).'
       }
     ];
     this.activeRegions = this.historicalRegions;

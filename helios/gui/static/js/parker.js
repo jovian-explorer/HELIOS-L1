@@ -22,6 +22,7 @@ class ParkerSpiralRenderer {
 
     // Simulation Parameters
     this.speedKms = 440; // Solar wind speed [km/s]
+    this.b1auNt = 5; // |B| at 1 AU [nT]: the latest L1 measurement once the dashboard has one
     this.omegaSun = 2 * Math.PI / (25.38 * 86400); // sidereal Carrington rate [rad/s] (constants.py)
     this.auKm = 149597870.7; // 1 AU in km
     this.rSunKm = 695700; // IAU 2015 nominal solar radius (constants.py)
@@ -85,6 +86,12 @@ class ParkerSpiralRenderer {
     }
   }
 
+  // True anomaly (deg) at which PSP's final orbit (a = 0.3879 AU, e = 0.8819) is at r AU.
+  static anomalyAtRadius(rAu, aAu = 0.3879, ecc = 0.8819) {
+    const c = (aAu * (1 - ecc * ecc) / rAu - 1) / ecc;
+    return Math.acos(Math.max(-1, Math.min(1, c))) * 180 / Math.PI;
+  }
+
   setPSPAnomaly(deg) {
     this.manualAnomalyDeg = (deg !== null && deg !== undefined && !isNaN(deg)) ? Number(deg) : null;
   }
@@ -97,7 +104,9 @@ class ParkerSpiralRenderer {
       this.manualAnomalyDeg = 180;
       this.isPaused = true;
     } else if (preset === 'venus') {
-      this.manualAnomalyDeg = 100;
+      // Where the orbit crosses Venus's distance (0.723 AU): r = a(1 - e^2) / (1 + e cos nu)
+      // solved for nu, about 177 deg (100 deg put the probe at 0.10 AU).
+      this.manualAnomalyDeg = ParkerSpiralRenderer.anomalyAtRadius(0.723);
       this.isPaused = true;
     } else {
       this.manualAnomalyDeg = null;
@@ -592,7 +601,10 @@ class ParkerSpiralRenderer {
     const distKm = mw.r_au * this.auKm;
     const pitchDeg = Math.atan((this.omegaSun * distKm) / this.speedKms) * (180 / Math.PI);
     const transitHrs = (distKm / this.speedKms) / 3600;
-    const bMag = (5.0 / (mw.r_au * mw.r_au)).toFixed(1); // Dipolar/Parker falloff approximation
+    // Parker (1958): |B| = B_r1 r^-2 sqrt(1 + (Omega r / V)^2), scaled to |B| at 1 AU (it was
+    // 5 / r^2 nT, 1.46x too high at 0.1 AU and 0.77x at 1.5 AU).
+    const wind = r => Math.sqrt(1 + Math.pow(this.omegaSun * r * this.auKm / this.speedKms, 2));
+    const bMag = (this.b1auNt / wind(1) * wind(mw.r_au) / (mw.r_au * mw.r_au)).toFixed(1);
 
     this.tooltip.classList.remove('hidden');
     this.tooltip.innerHTML = `
@@ -604,7 +616,7 @@ class ParkerSpiralRenderer {
         <div>Heliocentric Dist: <span class="text-slate-300">${(distKm / 1e6).toFixed(1)}M km</span></div>
         <div>Parker Pitch Angle: <span class="text-cyan-300">${pitchDeg.toFixed(1)}°</span></div>
         <div>Solar Wind Transit: <span class="text-amber-300">${transitHrs.toFixed(1)} hours</span></div>
-        <div>Model Field |B|: <span class="text-emerald-300">~${bMag} nT</span></div>
+        <div>Model field |B|: <span class="text-emerald-300">~${bMag} nT</span> (Parker spiral, ${this.b1auNt.toFixed(1)} nT at 1 AU)</div>
         <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">Spiral: Archimedean B-r/B-phi</div>
       </div>
     `;

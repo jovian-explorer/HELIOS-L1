@@ -196,20 +196,23 @@ class AuroralMapRenderer {
   // Subsolar point with the equation of time and the declination of the NOAA solar position
   // formulas (Spencer 1971 series; about 0.1 deg): without the equation of time the subsolar
   // longitude was up to 4 deg off, and the terminator and MLT disagreed with the server's oval.
+  // Subsolar point from the low-precision solar ephemeris of Hapgood (1992), the same as the
+  // server's helios.core.coordinates.sun_direction_geo (about 0.01 deg; the Spencer series used
+  // before was up to 0.44 deg off in latitude).
   getSubsolarPoint() {
     const now = this.mapTime || new Date();
-    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-    const startOfYear = Date.UTC(now.getUTCFullYear(), 0, 1);
-    const dayOfYear = Math.floor((now - startOfYear) / 86400000) + 1;
-    const g = (2 * Math.PI / 365) * (dayOfYear - 1 + (utcHours - 12) / 24);
-    const eqTimeMin = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g)
-      - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
-    const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g)
-      + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
-    let sunLon = (12 - utcHours - eqTimeMin / 60) * 15;
-    while (sunLon > 180) sunLon -= 360;
-    while (sunLon < -180) sunLon += 360;
-    return { lon: sunLon, lat: decl * 180 / Math.PI };
+    const d = Math.PI / 180;
+    const mjd = now.getTime() / 86400000 + 40587;
+    const mjd0 = Math.floor(mjd);
+    const hours = (mjd - mjd0) * 24;
+    const t0 = (mjd0 - 51544.5) / 36525;
+    const eps = (23.439 - 0.013 * t0) * d;
+    const m = (357.528 + 35999.050 * t0 + 0.04107 * hours) * d;
+    const lam = (280.460 + 36000.772 * t0 + 0.04107 * hours + (1.915 - 0.0048 * t0) * Math.sin(m) + 0.020 * Math.sin(2 * m)) * d;
+    const xi = Math.cos(lam), yi = Math.cos(eps) * Math.sin(lam), zi = Math.sin(eps) * Math.sin(lam);
+    const theta = (100.461 + 36000.770 * t0 + 15.04107 * hours) * d;
+    const x = Math.cos(theta) * xi + Math.sin(theta) * yi, y = -Math.sin(theta) * xi + Math.cos(theta) * yi;
+    return { lon: Math.atan2(y, x) / d, lat: Math.asin(Math.max(-1, Math.min(1, zi))) / d };
   }
 
   // Centred-dipole latitude (the frame the oval is drawn in; corrected geomagnetic latitude,

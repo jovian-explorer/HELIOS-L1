@@ -1272,6 +1272,7 @@ function updateTelemetryUI(data) {
   const kindNow = (data.provenance || {}).kind;
   const headerTag = String(cls.g_scale || '').startsWith('Archive') ? ' (archive end)'
     : (kindNow === 'simulated' || kindNow === 'synthetic') ? ` (${kindNow})` : '';
+  if (parkerRenderer && Number.isFinite(Number(latest.bt)) && latest.bt !== null) parkerRenderer.b1auNt = Number(latest.bt);
   setPositionEpoch(headerTag === ' (archive end)' && latest.time_tag ? String(latest.time_tag).replace(' ', 'T') : null);
   const bzBadge = document.getElementById('bz-alert-badge');
   const bzText = document.getElementById('bz-alert-text');
