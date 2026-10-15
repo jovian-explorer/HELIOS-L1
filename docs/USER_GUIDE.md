@@ -104,7 +104,7 @@ Compares one quantity (Bz, |B|, speed, density, dynamic pressure) between two sp
 
 The series are compared on a 5-minute grid, so the lag comes in 5-minute steps. A live check on 13 October 2026: the operational stream (SOLAR1) against ACE, 164 000 km apart along the Sun-Earth line (RTSW ephemeris), solar wind 489 km/s, expected delay 5.6 min; measured 5 min for Bz, |B| and By (r = 0.85, 0.97, 0.92). Sub-step refinement of the peak (a parabola through the three highest points) was tried and gave 3.6 min, further from the expected delay, because the correlation peak of real data is broad and lopsided, so it is not used.
 
-The **fleet matrix** at the top shows r for every pair. Missions without measured data in the window are tagged SIMULATED (or SYNTHETIC) and their cells are faded: their values are the operational stream with offsets and noise, so a high r with DSCOVR means nothing about instruments. A warning appears in the same way when one side of a pairwise comparison is not measured.
+The **fleet matrix** at the top shows r for every pair. Missions without data in the window show n/a on their whole row; when the offline model stands in for the operational stream (SYNTHETIC) its cells are faded, since r then says nothing about instruments. A warning appears in the same way when one side of a pairwise comparison is not measured.
 
 An imported file can be compared with the fleet (*Compare with L1 Fleet* in the import tab). If the file ends before the live window, WIND, ACE, DSCOVR and OMNI are taken from the archive for the file's interval. The file carries no spacecraft position, so no baseline is computed for it.
 
@@ -269,7 +269,7 @@ Every record has a `data_source` and every API answer a `provenance` block:
 | Kind | Meaning |
 |---|---|
 | `observed` | Measured: NOAA RTSW or the NASA CDAWeb archive. |
-| `simulated` | No data for this mission and window (Aditya-L1; SOHO and STEREO-A when their feeds cannot be reached; WIND before the archive reaches the window): the operational L1 stream with fixed offsets and noise. Not a measurement. Aditya-L1 Level-2 data are on ISRO's PRADAN portal for registered users only and cannot be fetched without your own login. |
+| `unavailable` | No data for this mission and window (Aditya-L1 always: its Level-2 data are on ISRO's PRADAN portal for registered users only; SOHO and STEREO-A when their feeds cannot be reached; WIND before the archive reaches the window). No values are shown; nothing is simulated in their place. |
 | `synthetic` | Nothing could be reached and nothing was cached: values from the offline solar wind model. |
 | `imported` | Rows from your file. |
 
@@ -314,7 +314,7 @@ The mission cards in the Fleet Catalog repeat the data policies as the agencies 
 |---|---|
 | The window does not open, the dashboard opens in the browser | No window backend: install WebView2 (Windows), or GTK/Qt bindings on Linux (section 1). The browser works the same. |
 | "could not listen on 127.0.0.1:<port>" | Another program holds the port. Start with `--port 8790` (any free port). |
-| Values say SIMULATED or SYNTHETIC | The source has no data for that window or could not be reached (section 9). Check the network; cached data are used when available. |
+| No values, or values say SYNTHETIC | The source has no data for that window or could not be reached (section 9). Check the network; cached data are used when available. |
 | An archive interval is empty | The archive has not reached that date yet (key parameters lag days, Level 2 and OMNI months), or the instrument has no data then (DSCOVR plasma only 2016-2019). Try OMNI or another spacecraft. |
 | "The CDAWeb HAPI server could not be reached" (analyses answer 503) | NASA's SPDF, which hosts CDAWeb and OMNI, is down or unreachable (it was for more than a day on 13-14 October 2026). Intervals already loaded stay in the cache and keep working; the live NOAA views, SOHO and STEREO-A beacon data, solar images, DONKI and the bundled ICME and shock lists do not depend on it (the CDAW CME catalogue, also at Goddard, was down at the same time). Try again later. |
 | The comparator finds no overlap | The two series cover different times; the message gives each side's coverage. For a file, the archive is used for its interval (section 3). |

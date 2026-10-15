@@ -228,7 +228,7 @@
             <select id="telemetry-satellite-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
               <option value="DSCOVR">DSCOVR (Sun-Earth L1)</option>
               <option value="ACE">ACE (Sun-Earth L1)</option>
-              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), simulated</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
               <option value="WIND">WIND (L1 Baseline)</option>
               <option value="SOHO">SOHO (L1, proton monitor: speed and density)</option>
               <option value="STEREO_A">STEREO-A (beacon, far from Earth: speed, density, |B|)</option>
@@ -607,7 +607,7 @@
             <select id="comp-sat-a" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
               <option value="DSCOVR">DSCOVR (L1)</option>
               <option value="ACE">ACE (L1)</option>
-              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), simulated</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
               <option value="WIND">WIND (L1 Baseline)</option>
               <option value="SOHO">SOHO (L1, speed and density)</option>
             </select>
@@ -616,7 +616,7 @@
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Comparative Spacecraft (B)</label>
             <select id="comp-sat-b" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
-              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), simulated</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
               <option value="ACE" selected>ACE (L1)</option>
               <option value="DSCOVR">DSCOVR (L1)</option>
               <option value="WIND">WIND (L1 Baseline)</option>
@@ -3119,12 +3119,12 @@
             <span>Multi-Spacecraft Sensor Fleet Integration</span>
           </h4>
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            What HELIOS-L1 uses from each spacecraft (simulated: no public real-time data, values are the operational stream with offsets):
+            What HELIOS-L1 uses from each spacecraft:
           </p>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono">
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-amber-400 block">Aditya-L1 (ISRO)</strong>
-              <span>Live view simulated (no public real-time data)</span>
+              <span>No public data: no values shown</span>
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-sky-400 block">DSCOVR (NOAA)</strong>
@@ -3148,7 +3148,7 @@
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-purple-400 block">SOHO (ESA/NASA)</strong>
-              <span>LASCO C2/C3 images; in-situ view simulated</span>
+              <span>LASCO C2/C3 images; proton monitor speed and density</span>
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-pink-400 block">GOES-16 (NOAA)</strong>

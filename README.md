@@ -33,7 +33,7 @@ New to the subject? Press `U` for the user guide, `P` for the formulas and the p
 * **ACE** (*NASA*): live RTSW rows tagged ACE; archive MAG and SWEPAM (Level 2 and key parameters) from CDAWeb.
 * **WIND** (*NASA*): archive MFI and SWE from CDAWeb, at the instruments' own cadence for the event analyses.
 * **SOHO** (*ESA/NASA*): live solar wind speed and density from the CELIAS/MTOF Proton Monitor (University of Maryland, the last two days; SOHO has no magnetometer), the archive from CDAWeb (`SOHO_CELIAS-PM_5MIN`), and LASCO C2/C3 coronagraph images (NOAA, Helioviewer).
-* **Aditya-L1** (*ISRO*): no public real-time in-situ data, so its live view is **simulated** (the operational stream with fixed offsets) and labelled so.
+* **Aditya-L1** (*ISRO*): no public in-situ data (ISSDC PRADAN needs a registered login), so its view shows no values and says so.
 * **OMNI** (*NASA*): solar wind time-shifted to Earth's bow shock and geomagnetic indices, 1963 to the present, for history, statistics and model checks.
 
 ### Elsewhere
@@ -128,7 +128,7 @@ Every telemetry record carries a `data_source` field and every API response a `p
 | `data_source` | Meaning |
 |---|---|
 | `observed` | Measured values: the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`) or the NASA CDAWeb archive (HAPI). |
-| `simulated` | No data for the mission and window (Aditya-L1; SOHO and STEREO-A when their feeds cannot be reached; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. Aditya-L1 ASPEX/SWIS and MAG Level-2 data are on ISSDC PRADAN (https://pradan.issdc.gov.in/al1/) for registered users only; there is no public API, so they cannot be fetched without the user's own login. |
+| `unavailable` | No data for the mission and window (Aditya-L1 always: its Level-2 data are on ISSDC PRADAN, https://pradan.issdc.gov.in/al1/, for registered users only, with no public API; SOHO and STEREO-A when their feeds cannot be reached; WIND before the archive reaches the window). No values are shown; nothing is simulated in their place. |
 | `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. |
 | `imported` | Rows from a user file in the Custom Ingestion tab. |
 

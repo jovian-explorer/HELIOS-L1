@@ -495,11 +495,11 @@ def test_research_forms_explain_themselves_in_plain_words():
     assert heads and all(heads), "every Event Analysis form needs an 'In plain words' line"
 
 
-def test_simulated_spacecraft_are_labelled_where_they_are_chosen():
+def test_spacecraft_without_data_are_labelled_where_they_are_chosen():
     import re
     html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
     opts = re.findall(r'<option value="(ADITYA_L1)">([^<]*)</option>', html)
-    assert opts and all(label.endswith("simulated") for _, label in opts)
+    assert opts and all(label.endswith("no public data") for _, label in opts)
     for sel in ("forecast-satellite-select", "turbulence-sat-select"):  # no spectrum or forecast of simulated data
         block = html[html.index(f'id="{sel}"'):html.index("</select>", html.index(f'id="{sel}"'))]
         assert "ADITYA_L1" not in block and "SOHO" not in block

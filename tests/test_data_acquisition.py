@@ -81,9 +81,8 @@ def test_bundle_reports_provenance(monkeypatch):
     assert dscovr["provenance"]["kind"] == "observed"
     assert "SOLAR1" in dscovr["provenance"]["description"]
 
-    wind = asyncio.run(dl.get_telemetry_bundle("WIND"))
-    assert wind["provenance"]["kind"] == "simulated"
-    assert all(r["data_source"] == "simulated" for r in wind["records"])
+    wind = asyncio.run(dl.get_telemetry_bundle("WIND"))  # archive offline: no values, none invented
+    assert wind["provenance"]["kind"] == "unavailable" and wind["records"] == []
 
 
 def test_offline_bundle_is_labelled_synthetic():
@@ -92,7 +91,8 @@ def test_offline_bundle_is_labelled_synthetic():
     assert bundle["provenance"]["kind"] == "synthetic"
     assert bundle["records"] and all(r["data_source"] == "synthetic" for r in bundle["records"])
     aditya = asyncio.run(DataDownloader().get_telemetry_bundle("ADITYA_L1"))
-    assert aditya["provenance"]["kind"] == "synthetic"
+    assert aditya["provenance"]["kind"] == "unavailable" and aditya["records"] == []
+    assert "pradan" in aditya["provenance"]["description"].lower()
 
 
 def test_block_average_means_not_decimation():
@@ -296,10 +296,10 @@ def test_compare_and_matrix_expose_provenance(monkeypatch):
     client = TestClient(app, base_url=LOCAL)
     comp = client.get("/api/compare?mission_a=ACE&mission_b=WIND&parameter=bz_gsm").json()
     assert comp["provenance_a"]["kind"] == "observed"
-    assert comp["provenance_b"]["kind"] == "simulated"
+    assert comp["provenance_b"]["kind"] == "unavailable"
     matrix = client.get("/api/compare/matrix?parameter=bz_gsm").json()
-    assert matrix["provenance"] == {"DSCOVR": "observed", "ACE": "observed", "ADITYA_L1": "simulated",
-                                    "WIND": "simulated", "SOHO": "simulated"}
+    assert matrix["provenance"] == {"DSCOVR": "observed", "ACE": "observed", "ADITYA_L1": "unavailable",
+                                    "WIND": "unavailable", "SOHO": "unavailable"}
 
 
 # Rows from the NOAA RTSW hourly ephemeris feed (json/rtsw/rtsw_ephemerides_1h.json), GSE km.
@@ -408,8 +408,8 @@ def test_custom_csv_export_has_metadata_and_plot_states_provenance(monkeypatch):
         seen["provenance"] = provenance
         return b"png"
     monkeypatch.setattr(DataExporter, "generate_overview_chart", staticmethod(chart))
-    assert client.get("/api/export/plot?mission_id=ADITYA_L1").status_code == 200
-    assert seen["provenance"]["kind"] in ("simulated", "synthetic")
+    assert client.get("/api/export/plot?mission_id=DSCOVR").status_code == 200
+    assert seen["provenance"]["kind"] == "synthetic"
 
 
 def test_unexpected_errors_answer_json(monkeypatch):

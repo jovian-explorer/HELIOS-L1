@@ -148,13 +148,13 @@ def test_archive_unreachable_and_empty_are_reported(tmp_path):
     assert off["provenance"]["kind"] == "unavailable" and "could not be reached" in off["provenance"]["description"]
 
 
-def test_wind_view_without_archive_data_stays_labelled_simulated(tmp_path):
+def test_wind_view_without_archive_data_is_empty(tmp_path):
+    """It was the operational stream with invented offsets (+1.1 km/s) and noise, labelled simulated."""
     dl = DataDownloader()
     dl.archive = ArchiveClient(lambda url: dl.fetch_text(url), tmp_path)
     b = asyncio.run(dl.get_telemetry_bundle("WIND", 1))
-    assert b["provenance"]["kind"] in ("simulated", "synthetic")
+    assert b["provenance"]["kind"] == "unavailable" and b["records"] == []
     assert "could not be reached" in b["provenance"]["description"]
-    assert all(r["data_source"] != "observed" for r in b["records"])
 
 
 def test_historical_event_uses_real_omni_data(tmp_path):

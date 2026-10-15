@@ -798,7 +798,7 @@ def test_every_mission_says_what_helios_uses_from_it():
     from helios.api.server import app
     ms = TestClient(app, base_url="http://127.0.0.1:8765").get("/api/missions").json()
     assert all(m["helios_use"] for m in ms if m.get("agency") != "User Custom Ingestion")
-    assert "Simulated" in next(m for m in ms if "Aditya" in m["name"])["helios_use"]
+    assert "no public data" in next(m for m in ms if "Aditya" in m["name"])["helios_use"]
 
 
 def test_headless_example_runs():

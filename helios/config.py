@@ -311,7 +311,7 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
         # client al1-pradan) and the PRADAN FAQ states that data are accessible "after
         # registering". There is no anonymous API and no CDAWeb/HAPI copy, so HELIOS-L1
         # cannot fetch ASPEX-SWIS or MAG Level-2 data without the user's own account.
-        "data_access": "Registered ISSDC login required (no public API); HELIOS-L1 shows a labelled simulation",
+        "data_access": "ISSDC PRADAN (pradan.issdc.gov.in/al1), registered login required, no public API; HELIOS-L1 shows no values",
         "data_license": "ISRO Open Science Data Policy (Academic & Research Fair Use)",
         "license_badge": "ISRO Open Science",
         "doi": "10.18520/cs/v113/i04/610-612",
@@ -506,7 +506,7 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
 HELIOS_USE: Dict[str, str] = {
     "DSCOVR": "Live NOAA real-time solar wind (the operational stream); magnetometer and Faraday cup archive from NASA CDAWeb.",
     "ACE": "Live NOAA real-time rows tagged ACE; MAG and SWEPAM archive from NASA CDAWeb.",
-    "ADITYA_L1": "Simulated: no public real-time data, so its view is the operational stream with fixed offsets.",
+    "ADITYA_L1": "Nothing: no public data (ISSDC PRADAN needs a registered login), so its view says so and shows no values.",
     "WIND": "MFI and SWE archive from NASA CDAWeb (event analyses at the instruments' own cadence).",
     "SOHO": "Live solar wind speed and density from the CELIAS/MTOF Proton Monitor (University of Maryland); LASCO C2/C3 images (NOAA, Helioviewer) and FITS files.",
     "GOES_16": "X-ray flux and protons from NOAA (status bar R and S scales, flare class, D-RAP) and the magnetometer (Hp, He, Hn) of the primary GOES-East satellite (GOES-19 since April 2025) in the API. It measures no solar wind, so it has no solar wind view.",

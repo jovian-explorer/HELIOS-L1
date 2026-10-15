@@ -37,16 +37,6 @@ from helios.core.event_analysis import EventDataClient
 PRIMARY_FIELDS = ("density", "speed", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt",
                   "bx_gse", "by_gse", "bz_gse")
 
-# Instrument offsets & sensitivities used to *simulate* spacecraft that have no public
-# real-time feed. Those records are labelled data_source = "simulated".
-SIMULATION_OFFSETS = {
-    "ACE": {"speed_bias": 3.2, "dens_bias": -0.15, "mag_noise": 0.35, "time_skew_min": 1.2},
-    "ADITYA_L1": {"speed_bias": -1.8, "dens_bias": 0.22, "mag_noise": 0.28, "time_skew_min": 0.8},
-    "WIND": {"speed_bias": 1.1, "dens_bias": -0.05, "mag_noise": 0.20, "time_skew_min": 2.4},
-    "SOHO": {"speed_bias": 5.0, "dens_bias": 0.50, "mag_noise": 0.40, "time_skew_min": 0.0},
-    "STEREO_A": {"speed_bias": -12.0, "dens_bias": 0.80, "mag_noise": 0.60, "time_skew_min": 180.0}
-}
-
 # Missions that have their own "source"-tagged rows in the NOAA RTSW feed.
 RTSW_SOURCES = {"DSCOVR": "DSCOVR", "ACE": "ACE"}
 
@@ -532,8 +522,7 @@ class DataDownloader:
           "observed"  - measured values: the NOAA RTSW feed (about the last 24 h) and/or the
                         NASA CDAWeb archive (WIND always; DSCOVR and ACE for spans > 1 day,
                         with RTSW filling the hours the archive does not reach yet)
-          "simulated" - no data for this mission and window; values are the operational
-                        L1 stream shifted by fixed calibration offsets plus noise
+          "unavailable" - no data for this mission and window (no records)
           "synthetic" - nothing could be reached (and nothing was cached); values come
                         from the offline solar wind model and are not measurements
         """
@@ -670,19 +659,12 @@ class DataDownloader:
                 description = ("NOAA SWPC archive unreachable and no cached copy: values come from the offline "
                                "solar wind model and are NOT measurements.")
             else:
-                base = await self.get_telemetry_bundle("DSCOVR", span_days)
-                records = self._simulate_from_base(mission_id, base["records"])
-                kind = "simulated" if base["provenance"]["kind"] == "observed" else "synthetic"
-                description = (f"No public real-time feed for {name} is available here; values are simulated from "
-                               "the operational L1 stream with fixed calibration offsets and noise. Not a measurement."
-                               + archive_note)
+                # No data: nothing is shown (it used to be the operational stream with invented offsets and noise).
+                kind = "unavailable"
+                description = f"No data for {name} in this window could be reached here." + archive_note
                 access = MISSIONS.get(mission_id, {}).get("data_access")
                 if access:
                     description += f" Data access: {access}."
-                if kind == "synthetic":
-                    description += " The operational stream itself is synthetic (archive unreachable)."
-                for r in records:
-                    r["data_source"] = kind
 
         return {"records": records, "provenance": self._provenance(kind, description, sources, records, **extra)}
 
@@ -711,43 +693,6 @@ class DataDownloader:
     async def get_satellite_telemetry(self, mission_id: str, span_days: int = 1) -> List[Dict[str, Any]]:
         """Telemetry records for any satellite in the catalog (see get_telemetry_bundle)."""
         return (await self.get_telemetry_bundle(mission_id, span_days))["records"]
-
-    def _simulate_from_base(self, mission_id: str, base_l1: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Instrument-offset simulation of a mission from the operational L1 stream; gaps stay gaps."""
-        calibrated = []
-        offsets = SIMULATION_OFFSETS.get(mission_id, {"speed_bias": 0, "dens_bias": 0, "mag_noise": 0.3, "time_skew_min": 0})
-        rng = random.Random(42)  # Deterministic repeatability for comparisons
-        dist = MISSIONS.get(mission_id, {}).get("orbit_distance_km", 1500000)
-        name = MISSIONS.get(mission_id, {}).get("name", mission_id)
-
-        def noisy(value, sigma, bias=0.0):
-            return None if value is None else value + bias + rng.gauss(0, sigma)
-
-        for item in base_l1:
-            raw_bz, raw_bt = item.get("bz_gsm"), item.get("bt")
-            spd = noisy(item.get("speed"), 1.2, offsets["speed_bias"])
-            dens = noisy(item.get("density"), 0.2, offsets["dens_bias"])
-            dens = max(0.5, dens) if dens is not None else None
-            bz = noisy(raw_bz, offsets["mag_noise"])
-            bt = noisy(raw_bt, offsets["mag_noise"])
-            if bt is not None and bz is not None:
-                bt = max(abs(bz), bt)
-            bx = noisy(item.get("bx_gsm"), 0.2)
-            by = noisy(item.get("by_gsm"), 0.2)
-            rec = {
-                "time_tag": item["time_tag"],
-                "mission": name,
-                "speed": round(spd, 1) if spd is not None else None,
-                "density": round(dens, 2) if dens is not None else None,
-                "temperature": item.get("temperature"),
-                "bx_gsm": round(bx, 2) if bx is not None else None,
-                "by_gsm": round(by, 2) if by is not None else None,
-                "bz_gsm": round(bz, 2) if bz is not None else None,
-                "bt": round(bt, 2) if bt is not None else None,
-                "data_source": "simulated"
-            }
-            calibrated.append(add_derived_fields(rec, dist))
-        return calibrated
 
     # ------------------------------------------------------------------
     # Geomagnetic / solar indices (Kp, GOES X-rays, GOES protons)

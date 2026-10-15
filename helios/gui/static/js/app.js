@@ -1195,7 +1195,7 @@ function updateFeedStatus(data, latency = 0) {
     badgeText.className = 'text-emerald-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-emerald-400 pulse-beacon';
   } else if (kind === 'unavailable') {
-    badgeText.innerText = 'No archive data for this interval';
+    badgeText.innerText = 'No data for this spacecraft and interval';
     badgeText.className = 'text-amber-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-amber-400';
   } else if (kind === 'simulated') {
