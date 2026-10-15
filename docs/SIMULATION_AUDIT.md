@@ -197,4 +197,15 @@ Real-data test: 46 DONKI CMEs (2023 to mid-2025) with one associated interplanet
 
 | ID | Fixed in | Measured after the fix |
 |---|---|---|
-| | | |
+| P1, P2, P3 | 61144a3, 25d38b3 | L1 craft from Horizons SPKs via SPICE: < 1 km from independent Horizons vectors at 2024-05-10, 2024-11-06 and 2026-10-10 (network test `test_positions_match_horizons`); drawn track and marker are one ephemeris |
+| P4 | 61144a3 | GOES-19 (GOES-East) and GOES-18 from their Horizons ephemerides; GOES-16 no longer shown |
+| P5, P6, P7 | 61144a3 | Solar Orbiter, PSP, STEREO-A from SPKs −144, −96, −234: < 1 km; the conics are kept only inside their fitted dates and labelled "approximate" |
+| P8 | 61144a3 | Planets, Earth and Moon from DE440s: < 1 km; GSE axes use the ecliptic pole of date, 0.0005° from SunPy |
+| P9 | 61144a3 | Every position carries `position_source`; `is_spice_verified` only for an ephemeris state; none where no ephemeris exists ("no position is invented") |
+| P10 | 61144a3 | Unknown IDs: 404 |
+| P11 | 61144a3 | Orbital elements only for heliocentric bodies |
+| P12 | 61144a3 | PSP, Solar Orbiter and STEREO-A removed from the L1 view; SWFO-L1 and IMAP added |
+| P14 | f7f23c8 | Positions refreshed every 10 min in both views (archive epochs still not passed) |
+| P16 | 905306d | L1 1.498, L2 1.508 million km (restricted three-body solution, μ = 3.0404e-6) |
+| P17 | f7f23c8 | Labels list the craft near L1 (SWFO-L1, ACE, IMAP, WIND, SOHO, Aditya-L1, DSCOVR), no "active" claim; DSCOVR's position ends with its Horizons coverage (2 Nov 2026) |
+| — | a2389a9, baeb2ef | Found while checking: a new session repeated 48 refused Horizons requests (orbit view 62 s, now 1.4 s warm); two first requests at once aborted the server inside CSPICE (engine set up under its lock) |
