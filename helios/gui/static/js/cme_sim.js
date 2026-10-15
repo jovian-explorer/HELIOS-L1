@@ -202,9 +202,9 @@ class CMESimulator {
 
     // Background gradient
     const bgGrad = ctx.createLinearGradient(0, 0, this.width, 0);
-    bgGrad.addColorStop(0, '#060d26');
-    bgGrad.addColorStop(0.7, '#040817');
-    bgGrad.addColorStop(1, '#02040d');
+    bgGrad.addColorStop(0, '#141518');
+    bgGrad.addColorStop(0.7, '#141518');
+    bgGrad.addColorStop(1, '#141518');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, this.width, this.height);
 
@@ -236,7 +236,7 @@ class CMESimulator {
 
   drawScaleGrid(ctx, auToX, plotCenterY) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.12)';
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 4]);
 
@@ -248,14 +248,14 @@ class CMESimulator {
       ctx.lineTo(x, this.height - 30);
       ctx.stroke();
 
-      ctx.fillStyle = 'rgba(100, 116, 139, 0.6)';
-      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = 'rgba(131, 135, 143, 0.6)';
+      ctx.font = '9px system-ui, sans-serif';
       ctx.fillText(`${au} AU`, x - 12, this.height - 14);
       ctx.fillText(`${(au * 215).toFixed(0)} R☉`, x - 12, 22);
     });
 
     // Central Propagation Axis
-    ctx.strokeStyle = 'rgba(255, 183, 3, 0.25)';
+    ctx.strokeStyle = 'rgba(210, 170, 87, 0.25)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.moveTo(auToX(0), plotCenterY);
@@ -271,23 +271,23 @@ class CMESimulator {
 
     // Sun Corona Flare
     const corona = ctx.createRadialGradient(sunX, plotCenterY, 4, sunX, plotCenterY, sunR);
-    corona.addColorStop(0, '#fef08a');
-    coronaGrad: corona.addColorStop(0.4, '#f59e0b');
-    corona.addColorStop(1, 'rgba(245, 158, 11, 0)');
+    corona.addColorStop(0, '#ebd6a2');
+    coronaGrad: corona.addColorStop(0.4, '#b98f3f');
+    corona.addColorStop(1, 'rgba(185, 143, 63, 0)');
     ctx.fillStyle = corona;
     ctx.beginPath();
     ctx.arc(sunX, plotCenterY, sunR, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#fbbf24';
+    ctx.fillStyle = '#d2aa57';
     ctx.beginPath();
     ctx.arc(sunX, plotCenterY, 8, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#fef08a';
-    ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ebd6a2';
+    ctx.font = '600 9px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('SUN', sunX, plotCenterY + 22);
+    ctx.fillText('Sun', sunX, plotCenterY + 22);
 
     ctx.restore();
   }
@@ -298,40 +298,40 @@ class CMESimulator {
     // 1. Earth at 1.0 AU
     const earthX = auToX(1.0);
     // Earth Bow Shock
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.7)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(earthX, plotCenterY, 14, Math.PI * 0.6, Math.PI * 1.4);
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#7fa5cf';
     ctx.beginPath();
     ctx.arc(earthX, plotCenterY, 6, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#f6f7f8';
+    ctx.font = '600 10px system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('EARTH', earthX + 12, plotCenterY - 4);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.fillText('Earth', earthX + 12, plotCenterY - 4);
+    ctx.fillStyle = '#9a9ea5';
+    ctx.font = '9px system-ui, sans-serif';
     ctx.fillText('1.00 AU', earthX + 12, plotCenterY + 8);
 
     // 2. Sun-Earth L1 at 0.99 AU (~1.5M km sunward)
     const l1X = auToX(0.99);
-    ctx.fillStyle = '#ffb703';
+    ctx.fillStyle = '#d2aa57';
     ctx.beginPath();
     ctx.arc(l1X, plotCenterY, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 183, 3, 0.8)';
+    ctx.strokeStyle = 'rgba(210, 170, 87, 0.8)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.arc(l1X, plotCenterY, 7, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.fillStyle = '#ffb703';
-    ctx.font = 'bold 9px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#d2aa57';
+    ctx.font = 'bold 9px system-ui, sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText('L1', l1X - 8, plotCenterY - 10);
 
@@ -356,17 +356,17 @@ class CMESimulator {
     ctx.lineTo(fx, plotCenterY - dy);
     ctx.arc(sunX, plotCenterY, distPx, -coneAngle, coneAngle);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
+    ctx.fillStyle = 'rgba(194, 98, 98, 0.12)';
     ctx.fill();
 
     ctx.beginPath();
     ctx.arc(sunX, plotCenterY, distPx, -coneAngle, coneAngle);
-    ctx.strokeStyle = '#ef4444';
+    ctx.strokeStyle = '#c26262';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.fillStyle = '#f87171';
-    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#d77e7e';
+    ctx.font = '600 10px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(`CME front, drag-based model (${shock.vKms.toFixed(0)} km/s)`, fx + 8, plotCenterY - dy + 12);
 
@@ -382,37 +382,37 @@ class CMESimulator {
     const hudX = this.width - hudW - 14;
     const hudY = 14;
 
-    ctx.fillStyle = 'rgba(7, 14, 34, 0.92)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.fillStyle = 'rgba(20, 21, 24, 0.92)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.25)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(hudX, hudY, hudW, hudH, 8);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('VRŠNAK (2013) DBM HELIOSPHERIC PROPAGATION', hudX + 10, hudY + 18);
+    ctx.fillStyle = '#7fa5cf';
+    ctx.font = '600 11px system-ui, sans-serif';
+    ctx.fillText('Vršnak (2013) DBM heliospheric propagation', hudX + 10, hudY + 18);
 
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '10px "JetBrains Mono", monospace';
-    ctx.fillText(`ELAPSED TIME: ${this.timeHrs.toFixed(1)} hrs / ${this.maxHrs.toFixed(0)} hrs`, hudX + 10, hudY + 34);
-    ctx.fillText(`HELIOCENTRIC DIST: ${shock.rAu.toFixed(3)} AU (${shock.rSun.toFixed(1)} R☉)`, hudX + 10, hudY + 50);
-    ctx.fillText(`FRONT SPEED: ${shock.vKms.toFixed(0)} km/s | a = ${shock.dragAccelMs2.toFixed(2)} m/s²`, hudX + 10, hudY + 66);
+    ctx.fillStyle = '#f6f7f8';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillText(`Elapsed time: ${this.timeHrs.toFixed(1)} hrs / ${this.maxHrs.toFixed(0)} hrs`, hudX + 10, hudY + 34);
+    ctx.fillText(`Heliocentric dist: ${shock.rAu.toFixed(3)} AU (${shock.rSun.toFixed(1)} R☉)`, hudX + 10, hudY + 50);
+    ctx.fillText(`Front speed: ${shock.vKms.toFixed(0)} km/s | a = ${shock.dragAccelMs2.toFixed(2)} m/s²`, hudX + 10, hudY + 66);
     
-    ctx.fillStyle = '#34d399';
+    ctx.fillStyle = '#6db487';
     const leadMin = (this.leadMinutes ?? Math.max(0, (this.transitEarthHrs - this.transitL1Hrs) * 60)).toFixed(0);
-    ctx.fillText(`TRANSIT: L1 ${this.transitL1Hrs.toFixed(1)}h | Earth ${this.transitEarthHrs.toFixed(1)}h (Lead ${leadMin}m)`, hudX + 10, hudY + 82);
+    ctx.fillText(`Transit: L1 ${this.transitL1Hrs.toFixed(1)}h | Earth ${this.transitEarthHrs.toFixed(1)}h (Lead ${leadMin}m)`, hudX + 10, hudY + 82);
     
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`AMBIENT WIND: ${this.vAmbient} km/s | Γ: ${this.gamma.toExponential(1)} km⁻¹`, hudX + 10, hudY + 98);
+    ctx.fillStyle = '#9a9ea5';
+    ctx.fillText(`Ambient wind: ${this.vAmbient} km/s | Γ: ${this.gamma.toExponential(1)} km⁻¹`, hudX + 10, hudY + 98);
 
     // Alerts for L1 & Earth Interception
     if (shock.isEarthHit) {
-      this.drawAlertBanner(ctx, 'MODEL CME FRONT REACHES EARTH', '#ef4444');
+      this.drawAlertBanner(ctx, 'MODEL CME FRONT REACHES EARTH', '#c26262');
     } else if (shock.isL1Hit) {
       const remainingMin = Math.max(0, (this.transitEarthHrs - this.timeHrs) * 60).toFixed(0);
-      this.drawAlertBanner(ctx, `MODEL CME FRONT AT L1: +${remainingMin} MIN TO EARTH`, '#f59e0b');
+      this.drawAlertBanner(ctx, `MODEL CME FRONT AT L1: +${remainingMin} MIN TO EARTH`, '#b98f3f');
     }
 
     ctx.restore();
@@ -425,7 +425,7 @@ class CMESimulator {
     const bw = 480;
     const bh = 32;
 
-    ctx.fillStyle = 'rgba(7, 14, 34, 0.95)';
+    ctx.fillStyle = 'rgba(20, 21, 24, 0.95)';
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.2;
     ctx.beginPath();
@@ -434,7 +434,7 @@ class CMESimulator {
     ctx.stroke();
 
     ctx.fillStyle = color;
-    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = '600 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(text, this.width / 2, by + 20);
 

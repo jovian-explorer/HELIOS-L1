@@ -177,8 +177,8 @@ function drawJmap() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.imageSmoothingEnabled = false;
   if (jmapImage) ctx.drawImage(jmapImage, m.l, m.t, w, h);
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '10px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#9a9ea5';
+  ctx.font = '10px system-ui, sans-serif';
   for (let k = 0; k <= 4; k++) {
     const rr = r[0] + (r[r.length - 1] - r[0]) * k / 4;
     ctx.fillText(rr.toFixed(1), 4, A.y(rr) + 3);
@@ -194,13 +194,13 @@ function drawJmap() {
     ctx.arc(A.x(p.time), A.y(p.r_rsun), 3.5, 0, 2 * Math.PI);
     ctx.fill();
   };
-  jmapData.auto_track.forEach(p => dot(p, 'rgba(250, 204, 21, 0.6)'));
-  trackPoints.forEach(p => dot(p, '#22d3ee'));
+  jmapData.auto_track.forEach(p => dot(p, 'rgba(210, 170, 87, 0.6)'));
+  trackPoints.forEach(p => dot(p, '#7fa5cf'));
   if (trackFit) {
     // Fitted curve through the columns of the fitted interval.
     const f = trackFit.fit;
     const te = jmapTimeMs(f.time_end), a = (f.acceleration_ms2 || 0) / 1000;
-    ctx.strokeStyle = '#f472b6';
+    ctx.strokeStyle = '#7fa5cf';
     ctx.beginPath();
     let started = false;
     t.forEach(time => {
@@ -325,17 +325,17 @@ async function runL1Link() {
     const lo = Math.min(...ys, p.speed_l1_kms) - 50, hi = Math.max(...ys, p.speed_l1_kms) + 50;
     const shockX = sh ? (Date.parse(sh.time.replace(' ', 'T') + 'Z') - Date.parse(p.arrival_l1.replace(' ', 'T') + 'Z')) / 3.6e6 : null;
     const datasets = [
-      { label: `${data.l1_data.spacecraft} speed (km/s)`, data: pts, borderColor: '#38bdf8', pointRadius: 0, showLine: true },
-      { label: 'Predicted arrival and speed', data: [{ x: 0, y: lo }, { x: 0, y: hi }], borderColor: '#f472b6', borderDash: [6, 4], pointRadius: 0, showLine: true },
-      { label: 'Predicted speed', data: [{ x: 0, y: p.speed_l1_kms }], borderColor: '#f472b6', backgroundColor: '#f472b6', pointRadius: 5, showLine: false }
+      { label: `${data.l1_data.spacecraft} speed (km/s)`, data: pts, borderColor: '#7fa5cf', pointRadius: 0, showLine: true },
+      { label: 'Predicted arrival and speed', data: [{ x: 0, y: lo }, { x: 0, y: hi }], borderColor: '#7fa5cf', borderDash: [6, 4], pointRadius: 0, showLine: true },
+      { label: 'Predicted speed', data: [{ x: 0, y: p.speed_l1_kms }], borderColor: '#7fa5cf', backgroundColor: '#7fa5cf', pointRadius: 5, showLine: false }
     ];
-    if (shockX !== null) datasets.push({ label: 'IPShocks shock', data: [{ x: shockX, y: lo }, { x: shockX, y: hi }], borderColor: '#facc15', pointRadius: 0, showLine: true });
+    if (shockX !== null) datasets.push({ label: 'IPShocks shock', data: [{ x: shockX, y: lo }, { x: shockX, y: hi }], borderColor: '#d2aa57', pointRadius: 0, showLine: true });
     l1Chart = new Chart(ctx, {
       type: 'scatter', data: { datasets },
       options: { animation: false, responsive: true, maintainAspectRatio: false,
-        scales: { x: { title: { display: true, text: 'hours from the predicted arrival' }, ticks: { color: '#94a3b8' } },
-                  y: { min: lo, max: hi, title: { display: true, text: 'km/s' }, ticks: { color: '#94a3b8' } } },
-        plugins: { legend: { labels: { color: '#cbd5e1' } } } }
+        scales: { x: { title: { display: true, text: 'hours from the predicted arrival' }, ticks: { color: '#9a9ea5' } },
+                  y: { min: lo, max: hi, title: { display: true, text: 'km/s' }, ticks: { color: '#9a9ea5' } } },
+        plugins: { legend: { labels: { color: '#b9bcc1' } } } }
     });
   } catch (err) {
     if (!current()) return;

@@ -114,8 +114,8 @@ function renderForecastChart(timeline, noaaKp = []) {
         {
           label: 'Kp, Newell et al. (2008) from persisted L1 wind',
           data: kpVals,
-          borderColor: '#ff2a6d',
-          backgroundColor: 'rgba(255, 42, 109, 0.15)',
+          borderColor: '#d77e7e',
+          backgroundColor: 'rgba(215, 126, 126, 0.15)',
           fill: false,
           borderWidth: 2.5,
           pointRadius: 3,
@@ -124,10 +124,10 @@ function renderForecastChart(timeline, noaaKp = []) {
         {
           label: 'Kp range of the last 3 h (upper)',
           data: kpUpper,
-          borderColor: 'rgba(255, 42, 109, 0.35)',
+          borderColor: 'rgba(215, 126, 126, 0.35)',
           borderDash: [3, 3],
           fill: '+1',
-          backgroundColor: 'rgba(255, 42, 109, 0.08)',
+          backgroundColor: 'rgba(215, 126, 126, 0.08)',
           borderWidth: 1.2,
           pointRadius: 0,
           yAxisID: 'yKp'
@@ -135,7 +135,7 @@ function renderForecastChart(timeline, noaaKp = []) {
         {
           label: 'Kp range of the last 3 h (lower)',
           data: kpLower,
-          borderColor: 'rgba(255, 42, 109, 0.35)',
+          borderColor: 'rgba(215, 126, 126, 0.35)',
           borderDash: [3, 3],
           fill: false,
           borderWidth: 1.2,
@@ -145,7 +145,7 @@ function renderForecastChart(timeline, noaaKp = []) {
         {
           label: 'NOAA SWPC Kp forecast (estimated today, predicted after)',
           data: noaaVals,
-          borderColor: '#facc15',
+          borderColor: '#d2aa57',
           stepped: true,
           fill: false,
           borderWidth: 1.8,
@@ -156,8 +156,8 @@ function renderForecastChart(timeline, noaaKp = []) {
         {
           label: "O'Brien-McPherron Dst [nT]",
           data: dstVals,
-          borderColor: '#00f0ff',
-          backgroundColor: 'rgba(0, 240, 255, 0.08)',
+          borderColor: '#7fa5cf',
+          backgroundColor: 'rgba(127, 165, 207, 0.08)',
           fill: false,
           borderWidth: 2,
           pointRadius: 2.5,
@@ -169,35 +169,35 @@ function renderForecastChart(timeline, noaaKp = []) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: '#94a3b8', font: { size: 10, weight: 'bold' } } },
+        legend: { labels: { color: '#9a9ea5', font: { size: 10, weight: 'bold' } } },
         tooltip: {
-          backgroundColor: '#0f172a',
-          borderColor: '#334155',
+          backgroundColor: '#1e2024',
+          borderColor: '#43464c',
           borderWidth: 1,
-          titleColor: '#38bdf8',
-          bodyColor: '#f1f5f9'
+          titleColor: '#7fa5cf',
+          bodyColor: '#eaebed'
         }
       },
       scales: {
         x: {
-          grid: { color: 'rgba(51, 65, 85, 0.25)' },
-          ticks: { color: '#64748b', font: { size: 9 } }
+          grid: { color: 'rgba(67, 70, 76, 0.25)' },
+          ticks: { color: '#83878f', font: { size: 9 } }
         },
         yKp: {
           type: 'linear',
           position: 'left',
           min: 0,
           max: 9,
-          grid: { color: 'rgba(51, 65, 85, 0.25)' },
-          ticks: { color: '#ff2a6d', stepSize: 1 },
-          title: { display: true, text: 'Geomagnetic Kp Index', color: '#ff2a6d' }
+          grid: { color: 'rgba(67, 70, 76, 0.25)' },
+          ticks: { color: '#d77e7e', stepSize: 1 },
+          title: { display: true, text: 'Geomagnetic Kp Index', color: '#d77e7e' }
         },
         yDst: {
           type: 'linear',
           position: 'right',
           grid: { drawOnChartArea: false },
-          ticks: { color: '#00f0ff' },
-          title: { display: true, text: "O'Brien-McPherron Dst [nT]", color: '#00f0ff' }
+          ticks: { color: '#7fa5cf' },
+          title: { display: true, text: "O'Brien-McPherron Dst [nT]", color: '#7fa5cf' }
         }
       }
     }

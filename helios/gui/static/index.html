@@ -23,61 +23,61 @@
 <body class="bg-space-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white">
 
   <!-- REAL-TIME SPACE WEATHER CONDITION TICKER -->
-  <div class="bg-space-950/95 border-b border-sky-500/20 px-6 py-1.5 flex flex-wrap items-center justify-between text-[11px] font-hud tracking-wider text-slate-400 backdrop-blur z-50">
+  <div class="bg-space-950/95 border-b border-sky-500/20 px-6 py-1.5 flex flex-wrap items-center justify-between text-[11px] font-hud text-slate-400 z-50">
     <div class="flex items-center space-x-4 overflow-x-auto py-0.5">
       <div class="flex items-center space-x-1.5 text-slate-300">
         <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-beacon"></span>
-        <span class="font-bold text-sky-400">NOAA SWPC LIVE:</span>
+        <span class="font-bold text-sky-400">NOAA SWPC live:</span>
       </div>
       <div class="flex items-center space-x-1.5">
-        <span class="text-slate-500">GEOMAGNETIC</span>
+        <span class="text-slate-500">Geomagnetic</span>
         <span id="ticker-g-scale" class="font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">G-</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
-        <span class="text-slate-500">SOLAR RAD</span>
+        <span class="text-slate-500">Solar radiation</span>
         <span id="ticker-s-scale" class="font-bold text-emerald-400">S-</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
-        <span class="text-slate-500">RADIO BLACKOUT</span>
+        <span class="text-slate-500">Radio blackout</span>
         <span id="ticker-r-scale" class="font-bold text-emerald-400">R-</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
-        <span class="text-slate-500">STANDOFF</span>
+        <span class="text-slate-500">Standoff</span>
         <span id="ticker-rmp" class="font-bold text-sky-400 font-hud">--- RE</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
-        <span class="text-slate-500">COUPLING</span>
+        <span class="text-slate-500">Coupling</span>
         <span id="ticker-epsilon" class="font-bold text-amber-400 font-hud">--- GW</span>
       </div>
     </div>
     <div class="flex items-center space-x-3 text-slate-400">
-      <i class="fa-solid fa-satellite-dish text-sky-400 animate-pulse"></i>
+      <i class="fa-solid fa-satellite-dish text-sky-400"></i>
       <button id="clock-toggle-btn" onclick="openTimezoneModal()" title="Select Custom Timezone or press 'T'" class="font-hud font-bold text-sky-300 hover:text-white transition flex items-center space-x-1.5 bg-slate-800/80 hover:bg-slate-700 px-2.5 py-0.5 rounded border border-slate-700/70 cursor-pointer">
         <i class="fa-regular fa-clock text-sky-400 text-[10px]"></i>
         <span id="utc-clock">00:00:00 UTC</span>
-        <span id="clock-tz-badge" class="text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300 uppercase font-mono">UTC</span>
+        <span id="clock-tz-badge" class="text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300 font-mono">UTC</span>
       </button>
-      <span class="px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[10px] uppercase font-bold hidden sm:inline-block">L1 Frame Active</span>
+      
     </div>
   </div>
 
   <!-- TOP APP BAR -->
-  <header class="border-b border-slate-800/80 bg-slate-900/95 backdrop-blur sticky top-0 z-40 px-6 py-2 flex items-center justify-between shadow-lg">
+  <header class="border-b border-slate-800/80 bg-slate-900/95 sticky top-0 z-40 px-6 py-2 flex items-center justify-between">
     <div class="flex items-center space-x-3.5">
       <div class="relative group cursor-pointer" onclick="openAboutModal()" title="HELIOS-L1 Mission Observatory Emblem (Click for Details & Creator Profile)">
-        <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Mission Emblem" class="w-10 h-10 rounded-full shadow-lg border border-amber-500/40 group-hover:border-sky-400 group-hover:scale-105 transition duration-200 object-cover bg-space-950">
-        <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full animate-pulse" title="Telemetry Feed Live"></span>
+        <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Mission Emblem" class="w-10 h-10 rounded-full border border-amber-500/40 group-hover:border-sky-400 group-hover:scale-105 transition duration-200 object-cover bg-space-950">
+        <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full" title="Telemetry Feed Live"></span>
       </div>
       <div>
         <div class="flex items-center space-x-2.5">
           <h1 class="text-xl font-bold tracking-tight text-white flex items-center space-x-2">
             <span>HELIOS-L1</span>
           </h1>
-          <span class="text-[10px] uppercase font-hud font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 tracking-wider">
+          <span class="text-[10px] font-hud font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
             v0.1.0 SciSuite
           </span>
         </div>
@@ -104,20 +104,20 @@
         <i class="fa-solid fa-arrows-rotate text-[11px]" id="refresh-icon"></i>
         <span>Live Fetch</span>
       </button>
-      <button onclick="openBulletinModal()" class="px-2.5 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm" title="Advisory Bulletin (B)">
+      <button onclick="openBulletinModal()" class="px-2.5 py-1.5 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 text-xs font-medium transition flex items-center space-x-1.5" title="Advisory Bulletin (B)">
         <i class="fa-solid fa-file-shield text-[11px]"></i>
         <span>Bulletin</span>
       </button>
-      <button onclick="openReferencesModal()" class="px-2.5 py-1.5 rounded bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-emerald-500/40" title="Scientific DOIs &amp; Portals (P)">
-        <i class="fa-solid fa-book-bookmark text-[11px] text-emerald-300"></i>
+      <button onclick="openReferencesModal()" class="px-2.5 py-1.5 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 text-xs font-medium transition flex items-center space-x-1.5 border border-emerald-500/40" title="Scientific DOIs &amp; Portals (P)">
+        <i class="fa-solid fa-book-bookmark text-[11px] text-slate-300"></i>
         <span>References</span>
       </button>
-      <button onclick="openUserGuideModal()" class="px-2.5 py-1.5 rounded bg-indigo-700/80 hover:bg-indigo-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-indigo-500/40" title="Operator Handbook &amp; Scientific Manual (U)">
-        <i class="fa-solid fa-graduation-cap text-[11px] text-indigo-300"></i>
+      <button onclick="openUserGuideModal()" class="px-2.5 py-1.5 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 text-xs font-medium transition flex items-center space-x-1.5 border border-indigo-500/40" title="Operator Handbook &amp; Scientific Manual (U)">
+        <i class="fa-solid fa-graduation-cap text-[11px] text-slate-300"></i>
         <span>Guide</span>
       </button>
-      <button onclick="openIncidentLogModal()" class="px-2.5 py-1.5 rounded bg-amber-700/80 hover:bg-amber-600 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-sm border border-amber-500/40 relative" title="Mission Incident Log (L)">
-        <i class="fa-solid fa-triangle-exclamation text-[11px] text-amber-300"></i>
+      <button onclick="openIncidentLogModal()" class="px-2.5 py-1.5 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 text-xs font-medium transition flex items-center space-x-1.5 border border-amber-500/40 relative" title="Mission Incident Log (L)">
+        <i class="fa-solid fa-triangle-exclamation text-[11px] text-slate-300"></i>
         <span>Incidents</span>
         <span id="incident-badge-count" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-[10px] font-bold ml-1">0</span>
       </button>
@@ -144,22 +144,18 @@
         <button id="domain-btn-fleet" onclick="switchDomain('fleet')" data-domain="fleet" class="domain-btn active" title="L1 Fleet &amp; Spacecraft In-Situ Telemetry (Key: 1)">
           <i class="fa-solid fa-satellite-dish text-sky-400"></i>
           <span>L1 Fleet &amp; Telemetry</span>
-          <span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono">4 SENSORS</span>
         </button>
         <button id="domain-btn-heliosphere" onclick="switchDomain('heliosphere')" data-domain="heliosphere" class="domain-btn" title="Coronagraph CME Dynamics, Parker Spiral &amp; Turbulence (Key: 2)">
           <i class="fa-solid fa-sun text-amber-400"></i>
           <span>Solar &amp; Heliosphere</span>
-          <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">3 MODELS</span>
         </button>
         <button id="domain-btn-geospace" onclick="switchDomain('geospace')" data-domain="geospace" class="domain-btn" title="Auroral Ovals, Storm Forecasts, Terrestrial Hazards &amp; Events (Key: 3)">
           <i class="fa-solid fa-earth-americas text-emerald-400"></i>
           <span>Geospace &amp; Hazards</span>
-          <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">4 MODULES</span>
         </button>
         <button id="domain-btn-data" onclick="switchDomain('data')" data-domain="data" class="domain-btn" title="OMNI Ingestion Studio, Literature DOIs &amp; Portals (Key: 4)">
           <i class="fa-solid fa-database text-purple-400"></i>
           <span>Data Studio &amp; Science</span>
-          <span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">OPEN SCI</span>
         </button>
       </div>
 
@@ -197,10 +193,6 @@
       <div id="subnav-container" class="flex items-center space-x-1 overflow-x-auto py-0.5">
         <!-- Subnav buttons dynamically rendered by app.js based on active domain -->
       </div>
-      <div class="flex items-center space-x-2 text-[11px] text-slate-500 font-mono hidden md:flex shrink-0">
-        <span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
-        <span id="domain-context-label">DOMAIN: L1 FLEET &amp; TELEMETRY // 4 SENSORS ONLINE</span>
-      </div>
     </div>
   </nav>
 
@@ -232,7 +224,7 @@
       <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center space-x-4">
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Active Spacecraft</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Active Spacecraft</label>
             <select id="telemetry-satellite-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
               <option value="DSCOVR">DSCOVR (Sun-Earth L1)</option>
               <option value="ACE">ACE (Sun-Earth L1)</option>
@@ -243,7 +235,7 @@
             </select>
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Observation Horizon</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Observation Horizon</label>
             <select id="telemetry-span-select" onchange="onTelemetrySpanChange()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
               <option value="1">Last 24 Hours (High Res)</option>
               <option value="7">Last 7 Days (Synoptic)</option>
@@ -252,9 +244,9 @@
           </div>
 
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Physical Regime Filter</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Physical Regime Filter</label>
             <div class="flex items-center space-x-1" id="telemetry-filter-group">
-              <button onclick="setTelemetryFilter('all')" id="btn-filter-all" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white border border-sky-400/30 transition shadow-sm" title="Show all observation points">
+              <button onclick="setTelemetryFilter('all')" id="btn-filter-all" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white border border-sky-400/30 transition" title="Show all observation points">
                 All Data
               </button>
               <button onclick="setTelemetryFilter('bz_south')" id="btn-filter-bz_south" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800/80 text-slate-300 hover:text-rose-300 border border-slate-700/60 transition flex items-center space-x-1" title="Filter to Southward Reconnection intervals (Bz &lt; 0)">
@@ -275,11 +267,11 @@
         </div>
 
         <div class="flex items-center space-x-3">
-          <button onclick="sonifyCurrentTelemetry()" class="px-3 py-2 rounded-xl bg-space-900/80 hover:bg-space-800 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center space-x-2 transition shadow-inner" title="Play the latest solar wind as sound: higher pitch = faster wind, a harsh interval = southward Bz (storm-driving), faster tremolo = denser wind">
+          <button onclick="sonifyCurrentTelemetry()" class="px-3 py-2 rounded-xl bg-space-900/80 hover:bg-space-800 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center space-x-2 transition" title="Play the latest solar wind as sound: higher pitch = faster wind, a harsh interval = southward Bz (storm-driving), faster tremolo = denser wind">
             <i class="fa-solid fa-volume-high text-cyan-400"></i>
             <span>Sonify Plasma</span>
           </button>
-          <div id="satellite-mission-badge" class="flex items-center space-x-3 text-xs bg-space-900/80 px-4 py-2 rounded-xl border border-sky-500/20 shadow-inner">
+          <div id="satellite-mission-badge" class="flex items-center space-x-3 text-xs bg-space-900/80 px-4 py-2 rounded-xl border border-sky-500/20">
             <i class="fa-solid fa-satellite-dish text-sky-400 text-xl"></i>
             <div>
               <div id="sat-name-full" class="font-bold text-slate-200">Deep Space Climate Observatory</div>
@@ -293,7 +285,7 @@
       <div id="archive-controls" class="glass-panel p-4 hidden">
         <div class="flex flex-wrap items-end gap-4">
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Archive Source</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Archive Source</label>
             <select id="archive-mission-select" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
               <option value="OMNI">OMNI 1-min (bow shock nose)</option>
               <option value="WIND">WIND (MFI + SWE)</option>
@@ -302,22 +294,22 @@
             </select>
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Start (UTC)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Start (UTC)</label>
             <input id="archive-start" type="datetime-local" value="2024-05-10T00:00" class="rounded-lg px-3 py-1.5 text-xs font-mono bg-space-950/80 border border-slate-700/60 text-slate-200">
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">End (UTC)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">End (UTC)</label>
             <input id="archive-end" type="datetime-local" value="2024-05-12T00:00" class="rounded-lg px-3 py-1.5 text-xs font-mono bg-space-950/80 border border-slate-700/60 text-slate-200">
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Cadence</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Cadence</label>
             <select id="archive-cadence-select" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
               <option value="1">1-minute means</option>
               <option value="5">5-minute means</option>
               <option value="60">1-hour means</option>
             </select>
           </div>
-          <button onclick="loadArchiveTelemetry()" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold border border-sky-400/40 transition">
+          <button onclick="loadArchiveTelemetry()" class="px-3 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold border border-sky-400/40 transition">
             <i class="fa-solid fa-database mr-1"></i>Load Interval
           </button>
           <button onclick="exportData('csv')" class="px-3 py-2 rounded-xl bg-space-900/80 hover:bg-space-800 text-slate-200 text-xs font-semibold border border-slate-700/60 transition">
@@ -343,7 +335,7 @@
             <i class="fa-solid fa-wind text-amber-400"></i>
           </div>
           <div class="flex items-baseline space-x-1.5">
-            <span id="metric-speed" class="text-3xl font-hud font-black text-amber-300">---</span>
+            <span id="metric-speed" class="text-3xl font-hud font-semibold text-amber-300">---</span>
             <span class="text-xs text-slate-400 font-hud">km/s</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
@@ -368,7 +360,7 @@
             <i class="fa-solid fa-compass text-rose-400"></i>
           </div>
           <div class="flex items-baseline space-x-1.5">
-            <span id="metric-bz" class="text-3xl font-hud font-black text-rose-300">---</span>
+            <span id="metric-bz" class="text-3xl font-hud font-semibold text-rose-300">---</span>
             <span data-term="nT" class="text-xs text-slate-400 font-hud">nT</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
@@ -378,14 +370,14 @@
           <div class="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-800/80">
             <div class="flex items-center space-x-1.5">
               <svg id="clock-angle-svg" width="20" height="20" viewBox="0 0 32 32" class="shrink-0" title="IMF Clock Angle &theta; = atan2(By, Bz) in GSM coordinates">
-                <circle cx="16" cy="16" r="14" fill="#0b1329" stroke="#334155" stroke-width="1.5"/>
-                <path d="M 6 22 A 14 14 0 0 0 26 22" fill="none" stroke="rgba(244, 63, 94, 0.45)" stroke-width="2.5"/>
-                <circle cx="16" cy="3.5" r="1.5" fill="#38bdf8"/>
-                <line id="clock-angle-needle" x1="16" y1="16" x2="16" y2="5" stroke="#f43f5e" stroke-width="2.2" stroke-linecap="round" transform="rotate(0 16 16)"/>
-                <circle cx="16" cy="16" r="2.2" fill="#cbd5e1"/>
+                <circle cx="16" cy="16" r="14" fill="#141518" stroke="#43464c" stroke-width="1.5"/>
+                <path d="M 6 22 A 14 14 0 0 0 26 22" fill="none" stroke="rgba(194, 98, 98, 0.45)" stroke-width="2.5"/>
+                <circle cx="16" cy="3.5" r="1.5" fill="#7fa5cf"/>
+                <line id="clock-angle-needle" x1="16" y1="16" x2="16" y2="5" stroke="#c26262" stroke-width="2.2" stroke-linecap="round" transform="rotate(0 16 16)"/>
+                <circle cx="16" cy="16" r="2.2" fill="#b9bcc1"/>
               </svg>
               <div>
-                <div class="text-[9px] text-slate-500 uppercase font-mono tracking-tighter">Clock &theta;</div>
+                <div class="text-[9px] text-slate-500 font-mono tracking-tighter">Clock &theta;</div>
                 <div id="metric-clock-angle" class="text-[11px] font-hud font-bold text-slate-200">0&deg; (N)</div>
               </div>
             </div>
@@ -409,7 +401,7 @@
             <i class="fa-solid fa-circle-nodes text-sky-400"></i>
           </div>
           <div class="flex items-baseline space-x-1.5">
-            <span id="metric-bt" class="text-3xl font-hud font-black text-sky-300">---</span>
+            <span id="metric-bt" class="text-3xl font-hud font-semibold text-sky-300">---</span>
             <span data-term="nT" class="text-xs text-slate-400 font-hud">nT</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
@@ -434,7 +426,7 @@
             <i class="fa-solid fa-atom text-emerald-400"></i>
           </div>
           <div class="flex items-baseline space-x-1.5">
-            <span id="metric-density" class="text-3xl font-hud font-black text-emerald-300">---</span>
+            <span id="metric-density" class="text-3xl font-hud font-semibold text-emerald-300">---</span>
             <span class="text-xs text-slate-400 font-hud">cm⁻³</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
@@ -459,7 +451,7 @@
             <i class="fa-solid fa-weight-hanging text-orange-400"></i>
           </div>
           <div class="flex items-baseline space-x-1.5">
-            <span id="metric-pdyn" class="text-3xl font-hud font-black text-orange-300">---</span>
+            <span id="metric-pdyn" class="text-3xl font-hud font-semibold text-orange-300">---</span>
             <span data-term="nPa" class="text-xs text-slate-400 font-hud">nPa</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
@@ -484,7 +476,7 @@
             <i class="fa-solid fa-hourglass-half text-cyan-400"></i>
           </div>
           <div class="flex items-baseline space-x-1.5">
-            <span id="metric-delay" class="text-3xl font-hud font-black text-cyan-300">---</span>
+            <span id="metric-delay" class="text-3xl font-hud font-semibold text-cyan-300">---</span>
             <span class="text-xs text-slate-400 font-hud">min</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
@@ -505,7 +497,7 @@
           <div class="flex items-center justify-between mb-3 border-b border-sky-500/15 pb-2">
             <div class="flex items-center space-x-2.5">
               <span class="w-2.5 h-2.5 rounded-full bg-rose-500 pulse-beacon"></span>
-              <h3 class="font-tech font-bold text-sm text-slate-100 tracking-wide">Interplanetary Magnetic Field (IMF Vector in GSM Coordinates)</h3>
+              <h3 class="font-tech font-bold text-sm text-slate-100">Interplanetary Magnetic Field (IMF Vector in GSM Coordinates)</h3>
             </div>
             <span class="text-xs text-slate-400 font-hud">Reconnection Threshold: <strong class="text-rose-400 font-bold">Bz &lt; -10 nT</strong></span>
           </div>
@@ -518,7 +510,7 @@
           <div class="flex items-center justify-between mb-3 border-b border-sky-500/15 pb-2">
             <div class="flex items-center space-x-2.5">
               <span class="w-2.5 h-2.5 rounded-full bg-amber-400 pulse-beacon"></span>
-              <h3 class="font-tech font-bold text-sm text-slate-100 tracking-wide">Solar Wind Bulk Velocity (Vsw) & Proton Density (Np)</h3>
+              <h3 class="font-tech font-bold text-sm text-slate-100">Solar Wind Bulk Velocity (Vsw) & Proton Density (Np)</h3>
             </div>
             <span class="text-xs text-slate-400 font-hud">Fast Stream Threshold: <strong class="text-amber-400 font-bold">&gt; 500 km/s</strong></span>
           </div>
@@ -531,7 +523,7 @@
           <div class="flex items-center justify-between mb-3 border-b border-sky-500/15 pb-2">
             <div class="flex items-center space-x-2.5">
               <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 pulse-beacon"></span>
-              <h3 class="font-tech font-bold text-sm text-slate-100 tracking-wide flex items-center space-x-2">
+              <h3 class="font-tech font-bold text-sm text-slate-100 flex items-center space-x-2">
                 <span>Magnetopause Standoff (R_mp) &amp; Akasofu Coupling (ε)</span>
                 <button onclick="showParameterDetail('standoff')" title="Scientific Handbook: Subsolar Magnetopause Standoff" class="text-slate-500 hover:text-cyan-300 transition px-1 py-0.5 rounded text-[11px]">
                   <i class="fa-solid fa-circle-info"></i> R_mp
@@ -564,7 +556,7 @@
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs border-collapse">
             <thead>
-              <tr class="border-b border-slate-700/80 text-slate-400 uppercase tracking-wider">
+              <tr class="border-b border-slate-700/80 text-slate-400">
                 <th class="py-2 px-3">Arrival Timestamp</th>
                 <th class="py-2 px-3">Classification</th>
                 <th class="py-2 px-3">Velocity Jump (ΔV)</th>
@@ -592,13 +584,13 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
           <div>
             <div class="flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
               <h3 class="font-tech font-bold text-base text-slate-100">Fleet-Wide Mutual Cross-Calibration Heatmap Matrix</h3>
             </div>
             <p class="text-xs text-slate-400">Pairwise Pearson correlation coefficients (r) across the Sun-Earth L1 fleet. Click any cell to cross-calibrate that pair.</p>
-            <p class="text-[11px] text-amber-200/80">In plain words: How closely the spacecraft agree with each other; the time lag between two of them is how long the solar wind took to travel from one to the other.</p>
+            <p class="text-[11px] text-slate-300">In plain words: How closely the spacecraft agree with each other; the time lag between two of them is how long the solar wind took to travel from one to the other.</p>
           </div>
-          <button onclick="loadFleetMatrix()" class="px-3 py-1.5 rounded-lg bg-space-950/80 hover:bg-space-900 text-cyan-400 text-xs font-semibold border border-cyan-500/30 transition flex items-center space-x-1.5 shadow-sm">
+          <button onclick="loadFleetMatrix()" class="px-3 py-1.5 rounded-lg bg-space-950/80 hover:bg-space-900 text-cyan-400 text-xs font-semibold border border-cyan-500/30 transition flex items-center space-x-1.5">
             <i class="fa-solid fa-arrows-rotate"></i>
             <span>Refresh Heatmap</span>
           </button>
@@ -606,10 +598,10 @@
         <div id="fleet-matrix-container" class="w-full"></div>
       </div>
 
-      <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-4 shadow-md">
+      <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-4">
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Primary Spacecraft (A)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Primary Spacecraft (A)</label>
             <select id="comp-sat-a" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
               <option value="DSCOVR">DSCOVR (L1)</option>
               <option value="ACE">ACE (L1)</option>
@@ -620,7 +612,7 @@
           </div>
           <div class="text-slate-500 font-bold self-end pb-2">VS</div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Comparative Spacecraft (B)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Comparative Spacecraft (B)</label>
             <select id="comp-sat-b" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
               <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), simulated</option>
               <option value="ACE" selected>ACE (L1)</option>
@@ -630,7 +622,7 @@
             </select>
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Telemetry Parameter</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Telemetry Parameter</label>
             <select id="comp-param" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
               <option value="bz_gsm">IMF Bz (GSM) [nT]</option>
               <option value="bt">Total IMF |B| [nT]</option>
@@ -641,7 +633,7 @@
           </div>
         </div>
 
-        <button onclick="runComparison()" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center space-x-2 shadow-md shadow-sky-600/30">
+        <button onclick="runComparison()" class="px-4 py-2 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold transition flex items-center space-x-2">
           <i class="fa-solid fa-play"></i>
           <span>Execute Cross-Calibration</span>
         </button>
@@ -654,34 +646,34 @@
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800">
           <div class="text-slate-400 text-xs mb-1 font-semibold">Pearson Correlation (r)</div>
-          <div id="stat-r" class="text-2xl font-black text-sky-400">---</div>
+          <div id="stat-r" class="text-2xl font-semibold text-sky-400">---</div>
           <div id="stat-r-ci" class="text-[10px] text-sky-300/80 font-mono"></div>
           <div class="text-[10px] text-slate-400 mt-1">Instrument linearity</div>
         </div>
-        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800">
           <div class="text-slate-400 text-xs mb-1 font-semibold">Coeff. of Determ. (R²)</div>
-          <div id="stat-r2" class="text-2xl font-black text-emerald-400">---</div>
+          <div id="stat-r2" class="text-2xl font-semibold text-emerald-400">---</div>
           <div class="text-[10px] text-slate-400 mt-1">Variance explained</div>
         </div>
-        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800">
           <div class="text-slate-400 text-xs mb-1 font-semibold">Root Mean Sq. Error</div>
-          <div id="stat-rmse" class="text-2xl font-black text-amber-400">---</div>
+          <div id="stat-rmse" class="text-2xl font-semibold text-amber-400">---</div>
           <div class="text-[10px] text-slate-400 mt-1">Absolute divergence</div>
         </div>
-        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800">
           <div class="text-slate-400 text-xs mb-1 font-semibold">Sensor Bias (A - B)</div>
-          <div id="stat-bias" class="text-2xl font-black text-rose-400">---</div>
+          <div id="stat-bias" class="text-2xl font-semibold text-rose-400">---</div>
           <div class="text-[10px] text-slate-400 mt-1">Zero-level offset</div>
         </div>
-        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800">
           <div class="text-slate-400 text-xs mb-1 font-semibold">Optimal Lag (τ)</div>
-          <div id="stat-lag" class="text-2xl font-black text-cyan-400">---</div>
+          <div id="stat-lag" class="text-2xl font-semibold text-cyan-400">---</div>
           <div id="stat-lag-ci" class="text-[10px] text-cyan-300/80 font-mono"></div>
           <div class="text-[10px] text-slate-400 mt-1">Transit phase offset</div>
         </div>
-        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
+        <div class="bg-space-800/80 p-3.5 rounded-xl border border-slate-800">
           <div class="text-slate-400 text-xs mb-1 font-semibold">Linear Fit Curve</div>
           <div id="stat-fit" class="text-xs font-mono font-bold text-purple-400 truncate mt-2">---</div>
           <div class="text-[10px] text-slate-400 mt-1">Calibration equation</div>
@@ -689,13 +681,13 @@
       </div>
 
       <!-- Inter-Satellite Spatial Baseline & Propagation Analysis Strip -->
-      <div id="comp-baseline-strip" class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4 border-l-4 border-sky-400">
+      <div id="comp-baseline-strip" class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center space-x-3.5">
-          <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-lg shadow-inner">
+          <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-lg">
             <i class="fa-solid fa-arrows-split-up-and-left"></i>
           </div>
           <div>
-            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">Inter-Spacecraft Baseline &amp; Propagation Geometry</div>
+            <div class="text-[11px] text-slate-400 font-bold font-mono">Inter-Spacecraft Baseline &amp; Propagation Geometry</div>
             <div class="text-xs text-slate-200 mt-0.5">
               3D Separation: <strong id="baseline-dist-km" class="text-sky-400 font-hud font-bold">--- km</strong>
               (<span id="baseline-dist-re" class="text-slate-300 font-hud">-- R_E</span>) &bull;
@@ -721,7 +713,7 @@
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-bold text-sm text-slate-200">Synchronized Time-Series Alignment</h3>
             <span class="text-xs text-slate-400" id="comp-overlay-legend">A vs B</span>
@@ -730,7 +722,7 @@
             <canvas id="chart-comp-overlay"></canvas>
           </div>
         </div>
-        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-bold text-sm text-slate-200">Cross-Correlation vs Time Lag (τ)</h3>
             <span class="text-xs text-slate-400">Peak identifies transit delay</span>
@@ -742,7 +734,7 @@
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-bold text-sm text-slate-200">Scatter Cross-Calibration & Regression Line</h3>
             <span class="text-xs text-slate-400">Sensor A vs Sensor B</span>
@@ -751,7 +743,7 @@
             <canvas id="chart-comp-scatter"></canvas>
           </div>
         </div>
-        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-bold text-sm text-slate-200">Residual Discrepancy Over Time (A - B)</h3>
             <span class="text-xs text-slate-400">Zero-line indicates ideal calibration</span>
@@ -771,17 +763,17 @@
         <div class="flex flex-wrap items-center justify-between gap-4 border-b border-sky-500/20 pb-3">
           <div>
             <div class="flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-              <h3 class="font-tech font-bold text-lg text-slate-100 tracking-wide">Sun-Earth L1 Orbital Geometry Simulator</h3>
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+              <h3 class="font-tech font-bold text-lg text-slate-100">Sun-Earth L1 Orbital Geometry Simulator</h3>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Interactive GSE rotating reference frame. Real-time solar wind flux, magnetopause standoff dynamics, and 3D out-of-plane Halo oscillations.</p>
-            <p class="text-[11px] text-amber-200/80">In plain words: Where the spacecraft are between the Sun and Earth, and how far Earth's magnetic shield reaches towards the Sun.</p>
+            <p class="text-[11px] text-slate-300">In plain words: Where the spacecraft are between the Sun and Earth, and how far Earth's magnetic shield reaches towards the Sun.</p>
           </div>
           
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <!-- 2D / 3D Mode Switcher -->
-            <div class="flex items-center bg-space-950/80 p-1 rounded-xl border border-sky-500/30 shadow-inner">
-              <button id="btn-orbit-2d" onclick="toggleOrbitViewMode('2d')" class="px-3 py-1 rounded-lg bg-sky-600 text-white font-bold transition flex items-center space-x-1.5 shadow-sm">
+            <div class="flex items-center bg-space-950/80 p-1 rounded-xl border border-sky-500/30">
+              <button id="btn-orbit-2d" onclick="toggleOrbitViewMode('2d')" class="px-3 py-1 rounded-lg bg-sky-600 text-white font-bold transition flex items-center space-x-1.5">
                 <i class="fa-solid fa-layer-group text-[10px]"></i>
                 <span>2D Ecliptic</span>
               </button>
@@ -793,7 +785,7 @@
 
             <!-- Boundary Physics Model Switcher -->
             <div class="flex items-center space-x-1.5 bg-space-950/80 px-2.5 py-1 rounded-xl border border-sky-500/30">
-              <span class="text-[10px] font-bold text-slate-400 uppercase font-mono"><i class="fa-solid fa-shield-halved text-sky-400 mr-1"></i>Model:</span>
+              <span class="text-[10px] font-bold text-slate-400 font-mono"><i class="fa-solid fa-shield-halved text-sky-400 mr-1"></i>Model:</span>
               <select id="orbit-model-select" onchange="setOrbitBoundaryModel(this.value)" class="bg-space-900 text-sky-300 font-tech font-bold text-xs border border-sky-500/30 rounded-lg px-2 py-0.5 focus:outline-none focus:border-sky-400 cursor-pointer">
                 <option value="chao" selected>Bow shock: Chao et al. (2002)</option>
                 <option value="shue">Bow shock: Farris &amp; Russell (1994)</option>
@@ -802,7 +794,7 @@
 
             <!-- Fast Shock Conditions Injector -->
             <div class="hidden lg:flex items-center space-x-1 bg-space-950/80 p-1 rounded-xl border border-slate-700/60 text-[11px]">
-              <span class="text-[10px] font-bold text-slate-400 uppercase font-mono px-1">Sim:</span>
+              <span class="text-[10px] font-bold text-slate-400 font-mono px-1">Sim:</span>
               <button onclick="setOrbitSolarWindPreset('quiet')" title="Quiet Interplanetary Background (P=1.8 nPa, Bz=0 nT)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Quiet</button>
               <button onclick="setOrbitSolarWindPreset('storm')" title="Moderate Storm Compression (P=8.0 nPa, Bz=-6 nT)" class="px-2 py-0.5 rounded bg-amber-950/60 hover:bg-amber-900/60 text-amber-300 border border-amber-800/40 transition">Storm</button>
               <button onclick="setOrbitSolarWindPreset('severe')" title="Severe Shock: Magnetopause crosses inside GEO! (P=30.0 nPa, Bz=-25 nT)" class="px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 transition font-bold">G5 Shock</button>
@@ -841,13 +833,13 @@
         </div>
 
         <!-- Spacecraft Trajectory Visibility Filter Strip -->
-        <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-space-950/80 border border-slate-800/80 text-xs shadow-inner">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-space-950/80 border border-slate-800/80 text-xs">
           <div class="flex flex-wrap items-center gap-2">
-            <span class="text-[10px] uppercase font-bold text-slate-400 font-mono flex items-center space-x-1 mr-1">
+            <span class="text-[10px] font-bold text-slate-400 font-mono flex items-center space-x-1 mr-1">
               <i class="fa-solid fa-satellite text-sky-400"></i>
               <span>Active Trajectories:</span>
             </span>
-            <button id="orbit-btn-all" onclick="toggleAllOrbitSatellites(true)" class="px-2 py-0.5 rounded bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition shadow-sm">All</button>
+            <button id="orbit-btn-all" onclick="toggleAllOrbitSatellites(true)" class="px-2 py-0.5 rounded bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition">All</button>
             <button onclick="toggleAllOrbitSatellites(false)" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 text-[11px] font-semibold transition">None</button>
             
             <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-sky-500/40 cursor-pointer text-[11px] text-sky-300">
@@ -888,26 +880,26 @@
           </div>
         </div>
 
-        <div class="relative w-full h-[580px] bg-space-950 rounded-xl overflow-hidden border border-sky-500/25 shadow-2xl">
+        <div class="relative w-full h-[580px] bg-space-950 rounded-xl overflow-hidden border border-sky-500/25">
           <canvas id="orbit-canvas" class="w-full h-full block cursor-grab"></canvas>
           <div id="orbit-tooltip" class="hud-tooltip hidden"></div>
 
           <!-- Top-Right Mission HUD Telemetry Box -->
-          <div class="absolute top-4 right-4 bg-space-950/90 backdrop-blur border border-sky-500/30 p-3.5 rounded-xl text-xs space-y-1.5 pointer-events-none shadow-xl min-w-[215px]">
+          <div class="absolute top-4 right-4 bg-space-950/90 border border-sky-500/30 p-3.5 rounded-xl text-xs space-y-1.5 pointer-events-none min-w-[215px]">
             <div class="flex items-center justify-between border-b border-slate-700/60 pb-1.5">
-              <span class="text-[10px] font-tech font-bold uppercase tracking-wider text-sky-400">Orbital Telemetry HUD</span>
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span class="text-[10px] font-tech font-bold text-sky-400">Orbital Telemetry HUD</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             </div>
             <div class="font-hud text-[11px] text-slate-300 space-y-0.5">
-              <div class="flex justify-between"><span>MODEL:</span> <span id="hud-model-name" class="text-sky-300 font-bold">Chao 2002</span></div>
-              <div class="flex justify-between"><span>L1 DISTANCE:</span> <span class="text-amber-400 font-bold">~1.5 million km</span></div>
-              <div class="flex justify-between"><span>SOLAR DIST:</span> <span class="text-yellow-300 font-bold">0.99 AU (Sunward)</span></div>
-              <div class="flex justify-between"><span>SIM FLUX:</span> <span id="hud-flux-speed" class="text-cyan-400 font-bold">--- km/s</span></div>
-              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>BOW SHOCK (R_bs):</span> <span id="hud-bow-standoff" class="text-sky-400 font-bold">--- R_E</span></div>
-              <div class="flex justify-between"><span>MAGNETOPAUSE:</span> <span id="hud-mp-standoff" class="text-amber-400 font-bold">--- R_E</span></div>
-              <div class="flex justify-between"><span>SHEATH (ΔR):</span> <span id="hud-sheath-thick" class="text-cyan-300 font-bold">--- R_E</span></div>
-              <div class="flex justify-between"><span>GEO MARGIN:</span> <span id="hud-geo-margin" class="text-emerald-400 font-bold">--- R_E</span></div>
-              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>EPHEMERIS:</span> <span id="hud-spice-status" class="text-emerald-400 font-mono text-[10px] font-bold"><i class="fa-solid fa-satellite-dish"></i> JPL Horizons (SPICE)</span></div>
+              <div class="flex justify-between"><span>Model:</span> <span id="hud-model-name" class="text-sky-300 font-bold">Chao 2002</span></div>
+              <div class="flex justify-between"><span>L1 distance:</span> <span class="text-amber-400 font-bold">~1.5 million km</span></div>
+              <div class="flex justify-between"><span>Solar dist:</span> <span class="text-yellow-300 font-bold">0.99 AU (Sunward)</span></div>
+              <div class="flex justify-between"><span>Sim flux:</span> <span id="hud-flux-speed" class="text-cyan-400 font-bold">--- km/s</span></div>
+              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>Bow shock (R_bs):</span> <span id="hud-bow-standoff" class="text-sky-400 font-bold">--- R_E</span></div>
+              <div class="flex justify-between"><span>Magnetopause:</span> <span id="hud-mp-standoff" class="text-amber-400 font-bold">--- R_E</span></div>
+              <div class="flex justify-between"><span>Sheath (δr):</span> <span id="hud-sheath-thick" class="text-cyan-300 font-bold">--- R_E</span></div>
+              <div class="flex justify-between"><span>GEO margin:</span> <span id="hud-geo-margin" class="text-emerald-400 font-bold">--- R_E</span></div>
+              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>Ephemeris:</span> <span id="hud-spice-status" class="text-emerald-400 font-mono text-[10px] font-bold"><i class="fa-solid fa-satellite-dish"></i> JPL Horizons (SPICE)</span></div>
             </div>
           </div>
           
@@ -915,7 +907,7 @@
 
         <!-- Magnetospheric Physics & Boundary Metrics Strip -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-          <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
+          <div class="metric-card">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
               <span data-term="bow shock">Collisionless Bow Shock (R₀,bs)</span>
               <i class="fa-solid fa-shield-halved text-sky-400"></i>
@@ -927,7 +919,7 @@
             <div class="text-[10px] text-slate-400 mt-1">Chao et al. (2002) or Farris &amp; Russell (1994): depends on P_dyn, Bz, magnetosonic Mach number and β</div>
           </div>
 
-          <div class="metric-card" style="border-left: 3px solid var(--accent-solar);">
+          <div class="metric-card">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
               <span data-term="magnetopause">Magnetopause Standoff (r₀,mp)</span>
               <i class="fa-solid fa-magnet text-amber-400"></i>
@@ -939,7 +931,7 @@
             <div id="card-mp-geo-status" class="text-[10px] text-emerald-400 mt-1">---</div>
           </div>
 
-          <div class="metric-card" style="border-left: 3px solid #a855f7;">
+          <div class="metric-card">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
               <span data-term="magnetosheath">Magnetosheath Thickness (ΔR)</span>
               <i class="fa-solid fa-arrows-left-right-to-line text-purple-400"></i>
@@ -951,7 +943,7 @@
             <div class="text-[10px] text-slate-400 mt-1">Turbulent plasma sheath barrier separating bow shock from magnetopause</div>
           </div>
 
-          <div class="metric-card" style="border-left: 3px solid #10b981;">
+          <div class="metric-card">
             <div class="text-slate-400 text-[11px] font-semibold flex items-center justify-between">
               <span data-term="flaring">Flaring Parameters (α)</span>
               <i class="fa-solid fa-square-root-variable text-emerald-400"></i>
@@ -971,29 +963,29 @@
     <!-- ========================================================================= -->
     <section id="tab-aurora" class="tab-content hidden space-y-6">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="metric-card" style="border-left: 3px solid var(--accent-emerald);">
+        <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span data-term="equatorward boundary">Equatorward Midnight Boundary</span>
             <i class="fa-solid fa-moon text-emerald-400"></i>
           </div>
-          <div id="aurora-midnight-lat" class="text-3xl font-hud font-black text-emerald-300">---°</div>
+          <div id="aurora-midnight-lat" class="text-3xl font-hud font-semibold text-emerald-300">---°</div>
           <div class="text-[11px] text-slate-400 mt-1">Starkov (1994), corrected geomagnetic latitude at magnetic midnight</div>
           <div id="aurora-al-source" class="text-[10px] text-slate-500 mt-0.5"></div>
         </div>
-        <div class="metric-card" style="border-left: 3px solid var(--accent-solar);">
+        <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span data-term="hemispheric power">Hemispheric Power Index (HPI)</span>
             <i class="fa-solid fa-bolt text-amber-400"></i>
           </div>
-          <div id="aurora-power-gw" class="text-3xl font-hud font-black text-amber-300">--- GW</div>
+          <div id="aurora-power-gw" class="text-3xl font-hud font-semibold text-amber-300">--- GW</div>
           <div class="text-[11px] text-slate-400 mt-1">Estimated from Kp (Zhang &amp; Paxton 2008): 16.82 e<sup>0.32 Kp</sup> - 4.86 GW, linear to 300 GW at Kp 9 above Kp 7. An order of magnitude: about twice NOAA's OVATION value in a quiet-day comparison (user guide).</div>
         </div>
-        <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
+        <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span>Flank (Dawn/Dusk) Latitude</span>
             <i class="fa-solid fa-sun-plant-wilt text-sky-400"></i>
           </div>
-          <div id="aurora-flank-lat" class="text-3xl font-hud font-black text-sky-300">---°</div>
+          <div id="aurora-flank-lat" class="text-3xl font-hud font-semibold text-sky-300">---°</div>
           <div id="aurora-flank-detail" class="text-[11px] text-slate-400 mt-1">Equatorward boundary, mean of MLT 06:00 and 18:00</div>
         </div>
       </div>
@@ -1003,15 +995,15 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
           <div>
             <div class="flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
               <h3 data-term="auroral oval" class="font-tech font-bold text-base text-slate-100">Global Geographic Auroral Oval Visibility Map</h3>
             </div>
             <p class="text-xs text-slate-400">Starkov (1994) auroral oval (green band) and equatorward edge of the diffuse aurora (dashed), mapped with the IGRF dipole for the oval time, with the day/night terminator and ground observatories.</p>
-            <p class="text-[11px] text-amber-200/80">In plain words: Where the aurora is now (the green ring), where night falls, and, if you click the map, what to expect at your place.</p>
+            <p class="text-[11px] text-slate-300">In plain words: Where the aurora is now (the green ring), where night falls, and, if you click the map, what to expect at your place.</p>
           </div>
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
-              <input type="checkbox" id="aurora-toggle-shadow" checked onchange="toggleAuroraLayer('shadow', this.checked)" class="rounded text-sky-500">
+              <input type="checkbox" id="aurora-toggle-shadow" checked onchange="toggleAuroraLayer('', this.checked)" class="rounded text-sky-500">
               <span class="text-slate-300">Night Shadow</span>
             </label>
             <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
@@ -1038,7 +1030,7 @@
           <button onclick="loadAuroralForecast()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30">Draw oval</button>
           <span id="aurora-oval-note" class="text-slate-500"></span>
         </div>
-        <div class="relative w-full h-[420px] bg-space-950 rounded-xl overflow-hidden border border-emerald-500/30 shadow-2xl">
+        <div class="relative w-full h-[420px] bg-space-950 rounded-xl overflow-hidden border border-emerald-500/30">
           <canvas id="aurora-map-canvas" class="w-full h-full block"></canvas>
           <div id="aurora-tooltip" class="hud-tooltip hidden"></div>
         </div>
@@ -1056,7 +1048,7 @@
 
       <!-- Visibility Regions & Dst Ring Current Forecast -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800">
           <div class="flex items-center space-x-2 mb-3">
             <i class="fa-solid fa-earth-americas text-emerald-400"></i>
             <h3 class="font-bold text-sm text-slate-200">Current Auroral Visibility Horizon</h3>
@@ -1067,7 +1059,7 @@
           </ul>
         </div>
 
-        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center space-x-2">
               <i class="fa-solid fa-wave-square text-rose-400"></i>
@@ -1085,7 +1077,7 @@
             <canvas id="chart-dst"></canvas>
           </div>
           <p id="dst-skill-text" class="text-[10px] text-slate-400 mt-2 font-mono">Model driven by L1 solar wind shifted to Earth; observed: WDC Kyoto real-time Dst.</p>
-          <p class="text-[11px] text-amber-200/80">In plain words: during a magnetic storm a ring of electric current around Earth weakens the field at the equator; Dst measures by how much (more negative = stronger storm), here measured and as the model predicts it from the solar wind.</p>
+          <p class="text-[11px] text-slate-300">In plain words: during a magnetic storm a ring of electric current around Earth weakens the field at the equator; Dst measures by how much (more negative = stronger storm), here measured and as the model predicts it from the solar wind.</p>
         </div>
       </div>
     </section>
@@ -1095,7 +1087,7 @@
     <!-- ========================================================================= -->
     <section id="tab-coronagraph" class="tab-content hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <div class="font-bold text-xs text-rose-400">SOHO / LASCO C2 (L1)</div>
             <span class="text-[10px] text-slate-400">2.0 - 6.0 R☉</span>
@@ -1106,7 +1098,7 @@
           <p class="text-[11px] text-slate-400 mt-2">Inner coronagraph tracking CME inception.</p>
         </div>
 
-        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <div class="font-bold text-xs text-sky-400">SOHO / LASCO C3 (L1)</div>
             <span class="text-[10px] text-slate-400">3.7 - 32.0 R☉</span>
@@ -1117,7 +1109,7 @@
           <p class="text-[11px] text-slate-400 mt-2">Wide-angle coronagraph tracking halo CMEs towards Earth.</p>
         </div>
 
-        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg">
+        <div class="bg-space-800/80 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <div class="font-bold text-xs text-amber-400">GOES / SUVI 195 Å (EUV)</div>
             <span class="text-[10px] text-slate-400">1.25 Million K Corona</span>
@@ -1134,7 +1126,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 class="font-tech font-bold text-base text-slate-100">Solar Image Archive</h3>
           <p class="text-xs text-slate-400">SDO, SOHO, STEREO-A and Solar Orbiter images for any interval, Sun-centred at a fixed scale per instrument (Helioviewer Project). The science FITS files of the same interval can be listed and downloaded through SunPy.</p>
-          <p class="text-[11px] text-amber-200/80">In plain words: Pictures of the Sun and its corona for any date, played as a film: watch a flare or a CME leave the Sun.</p>
+          <p class="text-[11px] text-slate-300">In plain words: Pictures of the Sun and its corona for any date, played as a film: watch a flare or a CME leave the Sun.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Instrument
@@ -1145,7 +1137,7 @@
             <input id="ia-end" type="datetime-local" value="2024-05-09T14:00" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">Frames
             <input id="ia-n" type="number" min="1" max="48" value="12" class="w-16 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
-          <button onclick="loadImageArchive()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Load images</button>
+          <button onclick="loadImageArchive()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold">Load images</button>
           <button onclick="searchArchiveFits(0)" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200 hover:bg-slate-800">List FITS</button>
           <button onclick="searchArchiveFits(3)" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200 hover:bg-slate-800">Download 3 FITS</button>
         </div>
@@ -1179,7 +1171,7 @@
             <label class="flex flex-col gap-1 text-slate-400">To (R☉)<input id="jm-rmax" type="number" value="29" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
             <label class="flex flex-col gap-1 text-slate-400">Difference
               <select id="jm-mode" class="rounded-lg px-2 py-1.5 bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="running">running</option><option value="base">base (first frame)</option><option value="direct">none</option></select></label>
-            <button onclick="buildJmap()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Build J-map</button>
+            <button onclick="buildJmap()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold">Build J-map</button>
             <button onclick="useAutoTrack()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Use automatic track</button>
             <button onclick="clearTrack()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Clear points</button>
           </div>
@@ -1192,8 +1184,8 @@
             <label class="flex flex-col gap-1 text-slate-400">Source lon (° W+, from Earth)<input id="jm-lon" type="number" step="1" placeholder="optional" class="w-28 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
             <label class="flex flex-col gap-1 text-slate-400">Source lat (°)<input id="jm-lat" type="number" step="1" placeholder="optional" class="w-24 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
             <label class="flex flex-col gap-1 text-slate-400">CME half-width (°)<input id="jm-hw" min="0" max="90" type="number" step="1" placeholder="optional" class="w-24 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
-            <button onclick="fitTrack()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Fit</button>
-            <button onclick="sendTrackToSolver()" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-semibold">Send to CME solver</button>
+            <button onclick="fitTrack()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold">Fit</button>
+            <button onclick="sendTrackToSolver()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold">Send to CME solver</button>
           </div>
           <div id="jm-result" class="text-[11px] text-slate-300"></div>
         </div>
@@ -1204,7 +1196,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 data-term="radio occultation" class="font-tech font-bold text-base text-slate-100">Radio Occultation by the Corona</h3>
           <p class="text-xs text-slate-400">SPICE ray geometry between a spacecraft and a ground station (closest approach to the Sun, elongation), and along the ray the electron column, Faraday rotation and Doppler shift through a coronal density and magnetic field model.</p>
-          <p class="text-[11px] text-amber-200/80">In plain words: When a spacecraft's radio signal passes close to the Sun, the corona delays and twists it; this computes by how much.</p>
+          <p class="text-[11px] text-slate-300">In plain words: When a spacecraft's radio signal passes close to the Sun, the corona delays and twists it; this computes by how much.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Spacecraft<select id="occ-spacecraft" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></select></label>
@@ -1218,7 +1210,7 @@
           <label class="flex flex-col gap-1 text-slate-400">Polarity (Parker)<select id="occ-polarity" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="1">outward</option><option value="-1">inward</option></select></label>
           <label class="flex flex-col gap-1 text-slate-400">Wind (km/s)<input id="occ-wind" type="number" value="400" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">SPK URL (optional, NAIF/ESA)<input id="occ-spk" type="url" placeholder="Horizons vectors if empty" class="w-56 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
-          <button onclick="runOccultation()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Compute</button>
+          <button onclick="runOccultation()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold">Compute</button>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="lg:col-span-2 h-[300px] bg-space-950 rounded-lg border border-slate-800 p-2"><canvas id="occ-chart"></canvas></div>
@@ -1237,14 +1229,14 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 class="font-tech font-bold text-base text-slate-100">Event Correlation</h3>
           <p class="text-xs text-slate-400">CMEs of the SOHO/LASCO CDAW catalogue, CACTus and DONKI that reach a given height at a given position angle (from solar north through east, seen from Earth) near a time, e.g. a disturbance in a radio occultation or a coronagraph image, and the GOES and DONKI flares of the day before.</p>
-          <p class="text-[11px] text-amber-200/80">In plain words: Which catalogued CMEs and flares could explain a disturbance seen at a given place and time near the Sun.</p>
+          <p class="text-[11px] text-slate-300">In plain words: Which catalogued CMEs and flares could explain a disturbance seen at a given place and time near the Sun.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Time (UTC)<input id="em-time" type="datetime-local" value="2017-09-10T16:42" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">Height (R☉)<input id="em-height" type="number" value="15.8" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">PA (°)<input id="em-pa" type="number" value="262" min="0" max="360" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">Window (± h)<input id="em-window" type="number" value="3" min="0.5" max="48" step="0.5" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
-          <button onclick="matchEvents()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Match</button>
+          <button onclick="matchEvents()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold">Match</button>
           <button onclick="useOccultationForMatch()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Use the occultation's closest approach</button>
         </div>
         <div id="em-result" class="text-[11px] text-slate-300 overflow-x-auto"></div>
@@ -1255,7 +1247,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 class="font-tech font-bold text-base text-slate-100">Corona to L1</h3>
           <p class="text-xs text-slate-400">A CME from a measured height, time and speed (drag-based model), or a solar wind stream from the source surface (constant speed), followed to L1 and compared with the shocks of the IPShocks database and the speed measured there.</p>
-          <p class="text-[11px] text-amber-200/80">In plain words: Follows a CME or a solar wind stream from near the Sun out to L1 and compares the predicted arrival with what the spacecraft measured.</p>
+          <p class="text-[11px] text-slate-300">In plain words: Follows a CME or a solar wind stream from near the Sun out to L1 and compares the predicted arrival with what the spacecraft measured.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Follow<select id="ll-mode" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option value="cme">CME (drag-based model)</option><option value="stream">stream (constant speed)</option></select></label>
@@ -1265,7 +1257,7 @@
           <label class="flex flex-col gap-1 text-slate-400">Ambient wind (km/s)<input id="ll-w" type="number" value="450" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">Γ (10⁻⁷ /km)<input id="ll-gamma" type="number" value="0.2" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">L1 data<select id="ll-sc" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></label>
-          <button onclick="runL1Link()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Follow to L1</button>
+          <button onclick="runL1Link()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold">Follow to L1</button>
           <button onclick="useSolverForL1()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Use the J-map fit</button>
           <button onclick="clearArrivalMarkers()" title="Predicted arrivals are drawn as dashed lines on the dashboard and archive time series" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Clear arrival markers</button>
         </div>
@@ -1280,7 +1272,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/20 pb-2.5">
           <div>
             <div class="flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
               <h3 class="font-tech font-bold text-base text-slate-100">Active Region Map (NOAA SWPC) on a Schematic Solar Disk</h3>
             </div>
             <p class="text-xs text-slate-400">Numbered active regions, their Mount Wilson class and SWPC flare probabilities from the latest solar region summary. The disk and corona are drawn, not imaged: the colour buttons change the drawing style only. Real images are in the panels above.</p>
@@ -1296,7 +1288,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="lg:col-span-2 relative h-[380px] bg-space-950 rounded-xl overflow-hidden border border-amber-500/25 shadow-2xl">
+          <div class="lg:col-span-2 relative h-[380px] bg-space-950 rounded-xl overflow-hidden border border-amber-500/25">
             <canvas id="solar-disk-canvas" class="w-full h-full block cursor-crosshair"></canvas>
             <div id="solar-tooltip" class="hud-tooltip hidden"></div>
           </div>
@@ -1335,27 +1327,27 @@
         </div>
       </div>
 
-      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-xl space-y-4">
+      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
           <div>
             <h3 data-term="CME" class="font-bold text-sm text-slate-200">CME Plane-of-Sky Kinematic Solver &amp; Drag-Based Propagation</h3>
             <p class="text-xs text-slate-400">Plane-of-sky speed from two heights, then transit to L1 and Earth with the Vršnak et al. (2013) drag-based model, compared with the Gopalswamy et al. (2001) empirical arrival model. Presets set heights and Δt that give the speed on the button: the SOHO/LASCO linear speed from the CDAW CME catalogue for the 2000, 2003 and 2024 events; Carrington and Nominal are illustrative.</p>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
-            <span class="text-[10px] uppercase font-bold text-slate-400 font-mono mr-1">CME Benchmark Presets:</span>
-            <button onclick="setCMEPreset(2.5, 9.8, 66.128, 'May 2024 Extreme Superstorm (AR 3664)')" title="CDAW catalogue: halo CME 2024-05-09 09:24 UT, linear speed 1280 km/s, the fastest of the 8-9 May CMEs that merged before reaching Earth on 10 May" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition shadow-sm">
+            <span class="text-[10px] font-bold text-slate-400 font-mono mr-1">CME Benchmark Presets:</span>
+            <button onclick="setCMEPreset(2.5, 9.8, 66.128, 'May 2024 Extreme Superstorm (AR 3664)')" title="CDAW catalogue: halo CME 2024-05-09 09:24 UT, linear speed 1280 km/s, the fastest of the 8-9 May CMEs that merged before reaching Earth on 10 May" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition">
               May 2024 (1280 km/s)
             </button>
-            <button onclick="setCMEPreset(2.2, 8.5, 29.707, 'Halloween 2003 Storms (AR 10486)')" title="CDAW catalogue: halo CME 2003-10-28 11:30 UT, linear speed 2459 km/s (the 2003-10-29 20:54 UT halo had 2029 km/s)" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.2, 8.5, 29.707, 'Halloween 2003 Storms (AR 10486)')" title="CDAW catalogue: halo CME 2003-10-28 11:30 UT, linear speed 2459 km/s (the 2003-10-29 20:54 UT halo had 2029 km/s)" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition">
               Halloween 2003 (2459 km/s)
             </button>
-            <button onclick="setCMEPreset(2.0, 7.5, 38.096, 'Bastille Day 2000 CME')" title="CDAW catalogue: halo CME 2000-07-14 10:54 UT, linear speed 1674 km/s" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.0, 7.5, 38.096, 'Bastille Day 2000 CME')" title="CDAW catalogue: halo CME 2000-07-14 10:54 UT, linear speed 1674 km/s" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-sky-300 border border-sky-500/40 text-[11px] font-semibold transition">
               Bastille Day (1674 km/s)
             </button>
-            <button onclick="setCMEPreset(2.0, 11.5, 47.9, 'Carrington 1859 Event')" title="Illustrative: there are no coronagraph data for 1859; the CME took about 17.6 h to reach Earth, a mean speed near 2360 km/s" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-purple-300 border border-purple-500/40 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.0, 11.5, 47.9, 'Carrington 1859 Event')" title="Illustrative: there are no coronagraph data for 1859; the CME took about 17.6 h to reach Earth, a mean speed near 2360 km/s" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-purple-300 border border-purple-500/40 text-[11px] font-semibold transition">
               Carrington 1859 (~2300 km/s, illustrative)
             </button>
-            <button onclick="setCMEPreset(2.0, 4.2, 39.3, 'Nominal Coronal Transient')" title="Illustrative moderate CME" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px] font-semibold transition shadow-sm">
+            <button onclick="setCMEPreset(2.0, 4.2, 39.3, 'Nominal Coronal Transient')" title="Illustrative moderate CME" class="px-2.5 py-1 rounded bg-space-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px] font-semibold transition">
               Nominal (~650 km/s)
             </button>
           </div>
@@ -1363,31 +1355,31 @@
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Height 1 (r1 in R☉)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Height 1 (r1 in R☉)</label>
             <input type="number" id="cme-r1" value="2.5" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Height 2 (r2 in R☉)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Height 2 (r2 in R☉)</label>
             <input type="number" id="cme-r2" value="6.0" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Time Elapsed (Δt in minutes)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Time Elapsed (Δt in minutes)</label>
             <input type="number" id="cme-dt" value="35" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Time of the second height (UTC, empty: now)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Time of the second height (UTC, empty: now)</label>
             <input type="datetime-local" id="cme-t2" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Ambient wind w (km/s, DBM)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Ambient wind w (km/s, DBM)</label>
             <input type="number" id="cme-w" value="450" min="100" max="1500" step="10" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div>
-            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Drag Γ (10⁻⁷ km⁻¹, DBM)</label>
+            <label class="text-[11px] text-slate-400 font-bold block mb-1">Drag Γ (10⁻⁷ km⁻¹, DBM)</label>
             <input type="number" id="cme-gamma" value="0.2" min="0.01" max="100" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div class="flex items-end">
-            <button onclick="calculateCMEKinematics()" class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-md shadow-amber-600/30 flex items-center justify-center space-x-2">
+            <button onclick="calculateCMEKinematics()" class="w-full py-2 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold transition flex items-center justify-center space-x-2">
               <i class="fa-solid fa-meteor"></i>
               <span>Simulate CME Transit</span>
             </button>
@@ -1398,21 +1390,21 @@
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
               <div class="text-[11px] text-slate-400 font-semibold">Expansion Velocity</div>
-              <div id="cme-v-init" class="text-xl font-black text-sky-400 mt-1">--- km/s</div>
+              <div id="cme-v-init" class="text-xl font-semibold text-sky-400 mt-1">--- km/s</div>
             </div>
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
               <div class="text-[11px] text-slate-400 font-semibold">Transit to L1 Point</div>
-              <div id="cme-transit-l1" class="text-xl font-black text-emerald-400 mt-1">--- hrs</div>
+              <div id="cme-transit-l1" class="text-xl font-semibold text-emerald-400 mt-1">--- hrs</div>
               <div id="cme-arrival-l1" class="text-[10px] text-slate-400 mt-0.5">Arrival date</div>
             </div>
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
               <div class="text-[11px] text-slate-400 font-semibold">Transit to Earth (1 AU)</div>
-              <div id="cme-transit-earth" class="text-xl font-black text-rose-400 mt-1">--- hrs</div>
+              <div id="cme-transit-earth" class="text-xl font-semibold text-rose-400 mt-1">--- hrs</div>
               <div id="cme-arrival-earth" class="text-[10px] text-slate-400 mt-0.5">Impact date</div>
             </div>
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
               <div class="text-[11px] text-slate-400 font-semibold">L1 Warning Lead Time</div>
-              <div id="cme-lead-time" class="text-xl font-black text-cyan-400 mt-1">--- min</div>
+              <div id="cme-lead-time" class="text-xl font-semibold text-cyan-400 mt-1">--- min</div>
               <div class="text-[10px] text-slate-400 mt-0.5">Actionable mitigation window</div>
             </div>
           </div>
@@ -1422,11 +1414,11 @@
           <div class="space-y-2 border-t border-slate-800 pt-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center space-x-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                 <span class="font-tech font-bold text-slate-200 text-sm">2D Interplanetary Propagation Radar</span>
               </div>
               <div class="flex items-center space-x-2 text-xs">
-                <button onclick="toggleCMEPlay()" id="btn-cme-play" class="px-3 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white font-bold transition flex items-center space-x-1.5">
+                <button onclick="toggleCMEPlay()" id="btn-cme-play" class="px-3 py-1 rounded bg-sky-700 hover:bg-sky-600 text-white font-bold transition flex items-center space-x-1.5">
                   <i id="icon-cme-play" class="fa-solid fa-play"></i>
                   <span id="text-cme-play">Play</span>
                 </button>
@@ -1440,7 +1432,7 @@
               </div>
             </div>
 
-            <div class="relative w-full h-80 bg-space-950 rounded-xl overflow-hidden border border-rose-500/25 shadow-2xl">
+            <div class="relative w-full h-80 bg-space-950 rounded-xl overflow-hidden border border-rose-500/25">
               <canvas id="cme-radar-canvas" class="w-full h-full block"></canvas>
             </div>
           </div>
@@ -1456,17 +1448,17 @@
         <div class="flex flex-wrap items-center justify-between gap-4 border-b border-sky-500/20 pb-3">
           <div>
             <div class="flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
               <h3 data-term="Parker spiral" class="font-tech font-bold text-base text-slate-100">Heliospheric Parker Spiral & Solar Wind Stream Simulator</h3>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Archimedean magnetic field lines wound by solar rotation. Corotating Interaction Regions (CIRs) and Solar Energetic Particle (SEP) connectivity.</p>
-            <p class="text-[11px] text-amber-200/80">In plain words: The Sun's rotation winds its magnetic field into a spiral; this shows the spiral and which part of the Sun is magnetically connected to Earth.</p>
+            <p class="text-[11px] text-slate-300">In plain words: The Sun's rotation winds its magnetic field into a spiral; this shows the spiral and which part of the Sun is magnetically connected to Earth.</p>
           </div>
           
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <!-- Speed Slider Control -->
-            <div class="flex items-center space-x-2.5 bg-space-950/80 px-3 py-1.5 rounded-xl border border-sky-500/30 shadow-inner">
-              <span class="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Solar Wind:</span>
+            <div class="flex items-center space-x-2.5 bg-space-950/80 px-3 py-1.5 rounded-xl border border-sky-500/30">
+              <span class="text-slate-400 font-bold text-[10px]">Solar Wind:</span>
               <input type="range" id="parker-speed-slider" min="250" max="1100" step="10" value="440" oninput="onParkerSpeedChange(this.value)" class="w-28 accent-cyan-400 cursor-pointer">
               <span id="parker-speed-readout" class="font-hud font-bold text-cyan-400 w-16 text-right">440 km/s</span>
             </div>
@@ -1537,7 +1529,7 @@
           </div>
         </div>
 
-        <div class="relative w-full h-[540px] bg-space-950 rounded-xl overflow-hidden border border-cyan-500/25 shadow-2xl">
+        <div class="relative w-full h-[540px] bg-space-950 rounded-xl overflow-hidden border border-cyan-500/25">
           <canvas id="parker-canvas" class="w-full h-full block cursor-grab"></canvas>
           <div id="parker-tooltip" class="hud-tooltip hidden"></div>
         </div>
@@ -1547,7 +1539,7 @@
         <div class="border-b border-sky-500/20 pb-2.5">
           <h3 data-term="PFSS" class="font-tech font-bold text-base text-slate-100">Coronal Magnetic Field (PFSS)</h3>
           <p class="text-xs text-slate-400">Potential field source surface model from a GONG, ADAPT or HMI synoptic magnetogram: the solar source of the wind now at Earth, field lines from any point, the heliospheric current sheet and the distance to it.</p>
-          <p class="text-[11px] text-amber-200/80">In plain words: The Sun's magnetic field computed from a map of its surface: where the solar wind now reaching Earth comes from.</p>
+          <p class="text-[11px] text-slate-300">In plain words: The Sun's magnetic field computed from a map of its surface: where the solar wind now reaching Earth comes from.</p>
         </div>
         <div class="flex flex-wrap items-end gap-2 text-xs">
           <label class="flex flex-col gap-1 text-slate-400">Map
@@ -1557,7 +1549,7 @@
           <label class="flex flex-col gap-1 text-slate-400">r_ss (R☉)<input id="pfss-rss" type="number" value="2.5" step="0.1" min="1.5" max="4" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">Trace from r, lon, lat (Carrington; optional)<input id="pfss-point" type="text" placeholder="1.5, 120, 20" class="w-36 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">JSOC e-mail (HMI only)<input id="pfss-email" type="email" class="w-44 rounded-lg px-2 py-1.5 bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
-          <button onclick="runPfss()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Compute</button>
+          <button onclick="runPfss()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold">Compute</button>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div class="lg:col-span-2 bg-black rounded-lg border border-slate-800 min-h-[200px] flex items-center justify-center">
@@ -1587,7 +1579,7 @@
           </div>
           <div class="flex items-center space-x-2">
             <input type="file" id="import-file-input" accept=".csv,.tsv,.txt,.dat,.asc,.lst,.json,text/csv,application/json" onchange="handleFileUpload(event)" class="hidden">
-            <button onclick="document.getElementById('import-file-input').click()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition flex items-center space-x-1.5 shadow-sm">
+            <button onclick="document.getElementById('import-file-input').click()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition flex items-center space-x-1.5">
               <i class="fa-solid fa-folder-open text-sky-400"></i>
               <span>Upload Local File</span>
             </button>
@@ -1600,7 +1592,7 @@
         <!-- Historical Benchmark Presets Strip -->
         <div class="space-y-2">
           <div class="flex items-center justify-between text-xs text-slate-400">
-            <span class="text-[11px] uppercase tracking-wider font-semibold font-mono text-slate-400 flex items-center space-x-1.5">
+            <span class="text-[11px] font-semibold font-mono text-slate-400 flex items-center space-x-1.5">
               <i class="fa-solid fa-bookmark text-amber-400"></i>
               <span>Illustrative Storm &amp; Quiet Baseline Profiles (not measured data):</span>
             </span>
@@ -1618,7 +1610,7 @@
 
             <button onclick="loadCustomPreset('bastille_2000')" class="p-2.5 rounded-lg bg-slate-900/90 hover:bg-slate-850 border border-amber-500/30 hover:border-amber-500/60 text-left transition group">
               <div class="flex items-center justify-between text-[10px] font-mono mb-1">
-                <span class="text-amber-400 font-bold">G5 CME SHOCK</span>
+                <span class="text-amber-400 font-bold">G5 CME shock</span>
                 <span class="text-slate-500">2000</span>
               </div>
               <div class="font-bold text-xs text-slate-200 group-hover:text-amber-300 transition">Bastille Day 2000</div>
@@ -1658,11 +1650,11 @@
         <div class="space-y-3">
           <div class="flex flex-wrap items-center gap-3">
             <div class="flex-1 min-w-[240px]">
-              <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Spacecraft / Dataset Identifier</label>
+              <label class="text-[11px] text-slate-400 font-bold block mb-1">Spacecraft / Dataset Identifier</label>
               <input type="text" id="import-mission-name" value="May 10-11, 2024 G5 Superstorm" class="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-sky-400">
             </div>
             <div class="w-full sm:w-auto self-end flex items-center space-x-2">
-              <button id="btn-submit-import" onclick="submitCustomImport()" class="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-md shadow-sky-600/30">
+              <button id="btn-submit-import" onclick="submitCustomImport()" class="px-5 py-2 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold transition flex items-center space-x-2">
                 <i class="fa-solid fa-microchip text-xs"></i>
                 <span id="btn-submit-import-text">Ingest &amp; Process Telemetry</span>
               </button>
@@ -1671,7 +1663,7 @@
 
           <div>
             <div class="flex items-center justify-between mb-1">
-              <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">Telemetry Data Buffer (CSV, TSV, or Delimited Text)</label>
+              <label class="text-[11px] text-slate-400 font-bold font-mono">Telemetry Data Buffer (CSV, TSV, or Delimited Text)</label>
               <span class="text-[10px] text-slate-500 font-mono">Supported columns: time, speed, density, bx_gsm, by_gsm, bz_gsm, bt</span>
             </div>
             <textarea id="import-content" rows="7" placeholder="time,speed,density,bx_gsm,by_gsm,bz_gsm,bt&#10;2024-05-10 12:00:00,412.3,4.8,2.1,3.4,-1.2,4.4&#10;2024-05-10 17:00:00,740.5,28.4,-12.4,18.5,-32.8,39.6" class="w-full bg-slate-950 font-mono text-xs text-slate-200 border border-slate-700/80 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-sky-400"></textarea>
@@ -1684,37 +1676,37 @@
           <!-- 6-card HUD KPI Strip -->
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Total Epochs</div>
+              <div class="text-[10px] text-slate-400 font-mono">Total Epochs</div>
               <div class="text-lg font-bold text-slate-100 font-mono mt-0.5" id="import-kpi-records">0</div>
               <div class="text-[10px] text-slate-500 font-mono truncate" id="import-kpi-time-span">--</div>
             </div>
 
             <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Max Bulk Velocity</div>
+              <div class="text-[10px] text-slate-400 font-mono">Max Bulk Velocity</div>
               <div class="text-lg font-bold text-cyan-400 font-mono mt-0.5"><span id="import-kpi-speed-max">--</span> <span class="text-xs font-normal text-slate-400">km/s</span></div>
               <div class="text-[10px] text-slate-500 font-mono">Mean: <span id="import-kpi-speed-mean">--</span> km/s</div>
             </div>
 
             <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Peak Southward Bz</div>
+              <div class="text-[10px] text-slate-400 font-mono">Peak Southward Bz</div>
               <div class="text-lg font-bold text-rose-400 font-mono mt-0.5"><span id="import-kpi-bz-min">--</span> <span class="text-xs font-normal text-slate-400">nT</span></div>
               <div class="text-[10px] text-slate-500 font-mono">Max: <span id="import-kpi-bz-max">--</span> nT</div>
             </div>
 
             <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Peak Dyn Pressure</div>
+              <div class="text-[10px] text-slate-400 font-mono">Peak Dyn Pressure</div>
               <div class="text-lg font-bold text-amber-400 font-mono mt-0.5"><span id="import-kpi-pdyn-max">--</span> <span class="text-xs font-normal text-slate-400">nPa</span></div>
               <div class="text-[10px] text-slate-500 font-mono">Momentum flux</div>
             </div>
 
             <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Min Magnetopause</div>
+              <div class="text-[10px] text-slate-400 font-mono">Min Magnetopause</div>
               <div class="text-lg font-bold text-emerald-400 font-mono mt-0.5"><span id="import-kpi-standoff-min">--</span> <span class="text-xs font-normal text-slate-400">R_E</span></div>
               <div class="text-[10px] text-slate-500 font-mono" id="import-kpi-geo-alert">Nominal cavity</div>
             </div>
 
             <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Shocks Detected</div>
+              <div class="text-[10px] text-slate-400 font-mono">Shocks Detected</div>
               <div class="text-lg font-bold text-purple-400 font-mono mt-0.5" id="import-kpi-shocks-count">0</div>
               <div class="text-[10px] text-slate-500 font-mono">Rankine-Hugoniot</div>
             </div>
@@ -1779,7 +1771,7 @@
               </div>
 
               <div class="space-y-2">
-                <button onclick="injectCustomToComparator()" class="w-full px-3 py-2 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold text-xs transition flex items-center justify-center space-x-2 shadow-sm">
+                <button onclick="injectCustomToComparator()" class="w-full px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold text-xs transition flex items-center justify-center space-x-2">
                   <i class="fa-solid fa-code-compare text-xs"></i>
                   <span>Compare with L1 Fleet</span>
                 </button>
@@ -1806,7 +1798,7 @@
     <section id="tab-events" class="tab-content hidden space-y-6">
       <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3" id="event-cards-container"></div>
 
-      <div id="event-detail-card" class="bg-space-800/80 p-6 rounded-xl border border-slate-800 shadow-xl space-y-4">
+      <div id="event-detail-card" class="bg-space-800/80 p-6 rounded-xl border border-slate-800 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
           <div>
             <h3 id="event-title" class="text-lg font-bold text-slate-100">May 10-12, 2024 Extreme G5 Solar Superstorm</h3>
@@ -1821,19 +1813,19 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
             <span class="text-slate-400 text-xs">Peak Kp Index</span>
-            <div id="event-peak-kp" class="text-xl font-black text-rose-400 mt-0.5">---</div>
+            <div id="event-peak-kp" class="text-xl font-semibold text-rose-400 mt-0.5">---</div>
           </div>
           <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
             <span class="text-slate-400 text-xs">Minimum IMF Bz</span>
-            <div id="event-min-bz" class="text-xl font-black text-rose-400 mt-0.5">--- nT</div>
+            <div id="event-min-bz" class="text-xl font-semibold text-rose-400 mt-0.5">--- nT</div>
           </div>
           <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
             <span class="text-slate-400 text-xs">Peak Solar Wind Velocity</span>
-            <div id="event-peak-v" class="text-xl font-black text-sky-400 mt-0.5">--- km/s</div>
+            <div id="event-peak-v" class="text-xl font-semibold text-sky-400 mt-0.5">--- km/s</div>
           </div>
           <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
             <span class="text-slate-400 text-xs">Peak Dynamic Pressure</span>
-            <div id="event-peak-pdyn" class="text-xl font-black text-amber-400 mt-0.5">--- nPa</div>
+            <div id="event-peak-pdyn" class="text-xl font-semibold text-amber-400 mt-0.5">--- nPa</div>
           </div>
         </div>
 
@@ -1855,21 +1847,21 @@
     <!-- ========================================================================= -->
     <section id="tab-turbulence" class="tab-content hidden space-y-6">
       <!-- Toolbar -->
-      <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4 border-l-4 border-purple-500">
+      <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center space-x-3.5">
-          <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-lg shadow-inner">
+          <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-lg">
             <i class="fa-solid fa-chart-line"></i>
           </div>
           <div>
-            <h3 data-term="power spectrum" class="font-tech font-bold text-base text-slate-100 tracking-wide">Solar Wind MHD Turbulence &amp; Power Spectral Density (PSD)</h3>
+            <h3 data-term="power spectrum" class="font-tech font-bold text-base text-slate-100">Solar Wind MHD Turbulence &amp; Power Spectral Density (PSD)</h3>
             <p class="text-xs text-slate-400">Fast Fourier Transform (FFT) analysis of IMF &amp; plasma fluctuations. Benchmarks Kolmogorov f⁻⁵/³ inertial subrange vs Iroshnikov-Kraichnan f⁻³/².</p>
-            <p class="text-[11px] text-amber-200/80">In plain words: How the solar wind's ripples are spread over time scales; the slope tells what kind of turbulence carries the energy.</p>
+            <p class="text-[11px] text-slate-300">In plain words: How the solar wind's ripples are spread over time scales; the slope tells what kind of turbulence carries the energy.</p>
           </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3 text-xs">
           <div>
-            <label class="text-[10px] uppercase font-mono font-bold text-slate-400 block mb-0.5">Spacecraft</label>
+            <label class="text-[10px] font-mono font-bold text-slate-400 block mb-0.5">Spacecraft</label>
             <select id="turbulence-sat-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none bg-space-950 border border-slate-700 text-slate-200">
               <option value="DSCOVR">DSCOVR (L1)</option>
               <option value="ACE">ACE (L1)</option>
@@ -1877,7 +1869,7 @@
             </select>
           </div>
           <div>
-            <label class="text-[10px] uppercase font-mono font-bold text-slate-400 block mb-0.5">Observable</label>
+            <label class="text-[10px] font-mono font-bold text-slate-400 block mb-0.5">Observable</label>
             <select id="turbulence-param-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none bg-space-950 border border-slate-700 text-slate-200">
               <option value="bz_gsm">Bz (GSM Reconnection)</option>
               <option value="by_gsm">By (GSM Transverse)</option>
@@ -1888,7 +1880,7 @@
             </select>
           </div>
           <div>
-            <label class="text-[10px] uppercase font-mono font-bold text-slate-400 block mb-0.5">Time Window</label>
+            <label class="text-[10px] font-mono font-bold text-slate-400 block mb-0.5">Time Window</label>
             <select id="turbulence-span-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none bg-space-950 border border-slate-700 text-slate-200">
               <option value="1">24 Hours (Synoptic)</option>
               <option value="3">3 Days (Multi-Regime)</option>
@@ -1896,7 +1888,7 @@
             </select>
           </div>
           <div class="self-end">
-            <button onclick="loadSpectralAnalysis()" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition flex items-center space-x-1.5 shadow-sm">
+            <button onclick="loadSpectralAnalysis()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold transition flex items-center space-x-1.5">
               <i class="fa-solid fa-arrows-rotate"></i>
               <span>Recompute FFT</span>
             </button>
@@ -1906,37 +1898,37 @@
 
       <!-- Turbulence Diagnostics HUD Strip -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
-        <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
-          <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">SPECTRAL INDEX (α)</div>
+        <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+          <div class="text-[10px] text-slate-400 font-bold">SPECTRAL INDEX (α)</div>
           <div class="flex items-baseline space-x-2 mt-1">
-            <span id="psd-stat-alpha" class="text-2xl font-black text-purple-400 font-hud">---</span>
+            <span id="psd-stat-alpha" class="text-2xl font-semibold text-purple-400 font-hud">---</span>
             <span class="text-xs text-slate-400">P(f) ∝ f⁻ᵅ</span>
           </div>
           <div id="psd-stat-regime" class="text-[11px] text-emerald-400 font-semibold mt-1 truncate">Analyzing cascade...</div>
         </div>
 
-        <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
-          <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">LOG-LOG FIT QUALITY (R²)</div>
+        <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+          <div class="text-[10px] text-slate-400 font-bold">LOG-LOG FIT QUALITY (R²)</div>
           <div class="flex items-baseline space-x-2 mt-1">
-            <span id="psd-stat-r2" class="text-2xl font-black text-sky-400 font-hud">---</span>
+            <span id="psd-stat-r2" class="text-2xl font-semibold text-sky-400 font-hud">---</span>
             <span class="text-xs text-slate-400">variance</span>
           </div>
           <div class="text-[11px] text-slate-400 mt-1">Inertial subrange fit</div>
         </div>
 
-        <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
-          <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">RMS FLUCTUATION (δB)</div>
+        <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+          <div class="text-[10px] text-slate-400 font-bold">RMS FLUCTUATION (δB)</div>
           <div class="flex items-baseline space-x-2 mt-1">
-            <span id="psd-stat-rms" class="text-2xl font-black text-amber-400 font-hud">---</span>
+            <span id="psd-stat-rms" class="text-2xl font-semibold text-amber-400 font-hud">---</span>
             <span id="psd-stat-rms-unit" class="text-xs text-slate-400">nT</span>
           </div>
           <div class="text-[11px] text-slate-400 mt-1">Detrended variance σ</div>
         </div>
 
-        <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800 shadow-md">
-          <div class="text-[10px] uppercase text-slate-400 font-bold tracking-wider">TAYLOR SCALE (λ @ 1 mHz)</div>
+        <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
+          <div class="text-[10px] text-slate-400 font-bold">TAYLOR SCALE (λ @ 1 mHz)</div>
           <div class="flex items-baseline space-x-2 mt-1">
-            <span id="psd-stat-taylor-km" class="text-2xl font-black text-cyan-400 font-hud">---</span>
+            <span id="psd-stat-taylor-km" class="text-2xl font-semibold text-cyan-400 font-hud">---</span>
             <span class="text-xs text-slate-400">km</span>
           </div>
           <div class="text-[11px] text-slate-400 mt-1">≈ <strong id="psd-stat-taylor-re" class="text-slate-200 font-hud">--</strong> R_E frozen scale</div>
@@ -1944,10 +1936,10 @@
       </div>
 
       <!-- Chart Panel -->
-      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-lg space-y-4">
+      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 space-y-4">
         <div class="flex flex-wrap items-center justify-between border-b border-slate-700/60 pb-2 gap-2">
           <div class="flex items-center space-x-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
             <h4 class="font-bold text-sm text-slate-200">Log-Log Power Spectral Density &amp; Universal Cascade Slopes</h4>
           </div>
           <div class="flex flex-wrap items-center gap-3 text-xs font-mono">
@@ -1965,7 +1957,7 @@
 
       <!-- Scientific Reference Panel for Turbulence -->
       <div class="bg-space-900/60 p-4 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-2">
-        <div class="font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-2 font-mono text-[11px]">
+        <div class="font-bold text-slate-200 flex items-center space-x-2 font-mono text-[11px]">
           <i class="fa-solid fa-atom text-purple-400"></i>
           <span>Heliophysical Turbulence &amp; Energy Cascade Physics:</span>
         </div>
@@ -1990,15 +1982,15 @@
     <!-- TAB 10: FLEET CATALOG -->
     <!-- ========================================================================= -->
     <section id="tab-analysis" class="tab-content hidden space-y-6">
-      <div class="glass-panel p-4 border-l-4 border-indigo-500">
-        <h3 class="font-tech font-bold text-base text-slate-100 tracking-wide">Event Analysis on Archive Data</h3>
+      <div class="glass-panel p-4">
+        <h3 class="font-tech font-bold text-base text-slate-100">Event Analysis on Archive Data</h3>
         <p class="text-xs text-slate-400">WIND, ACE and DSCOVR at the instruments' own cadence and OMNI 1-min from NASA CDAWeb (HAPI). All vectors GSE, all times UTC (YYYY-MM-DDTHH:MM). Every result can be saved as JSON with the datasets, HAPI requests, parameters and software version behind it.</p>
       </div>
 
       <!-- Shock analysis and multi-spacecraft timing -->
       <div class="glass-panel p-4 space-y-3">
         <h4 data-term="theta Bn" class="font-tech font-bold text-sm text-slate-100">Interplanetary shock: normal, speed, θ<sub>Bn</sub>, Mach numbers and timing</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: Which way a shock front faces, how fast it moves and how strong it is, and when it should reach the other spacecraft.</p>
+        <p class="text-[11px] text-slate-300">In plain words: Which way a shock front faces, how fast it moves and how strong it is, and when it should reach the other spacecraft.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-shock-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2029,7 +2021,7 @@
       <!-- Minimum variance -->
       <div class="glass-panel p-4 space-y-3">
         <h4 data-term="minimum variance" class="font-tech font-bold text-sm text-slate-100">Minimum variance analysis of the magnetic field</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: Finds the direction in which the magnetic field changes least across a boundary: the boundary's orientation.</p>
+        <p class="text-[11px] text-slate-300">In plain words: Finds the direction in which the magnetic field changes least across a boundary: the boundary's orientation.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-mva-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2049,7 +2041,7 @@
       <!-- Coupling functions with errors -->
       <div class="glass-panel p-4 space-y-3">
         <h4 data-term="proton beta" class="font-tech font-bold text-sm text-slate-100">Coupling functions, proton beta and Alfv&eacute;n Mach number with uncertainties</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: How strongly the solar wind of an interval drives Earth's magnetosphere, and whether its plasma or its field dominates.</p>
+        <p class="text-[11px] text-slate-300">In plain words: How strongly the solar wind of an interval drives Earth's magnetosphere, and whether its plasma or its field dominates.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-cpl-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2066,7 +2058,7 @@
       <!-- Time shift to the bow shock nose -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Time shift to the bow shock nose (OMNI method)</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: Moves spacecraft data to the time they would reach Earth's bow shock, as NASA's OMNI dataset does.</p>
+        <p class="text-[11px] text-slate-300">In plain words: Moves spacecraft data to the time they would reach Earth's bow shock, as NASA's OMNI dataset does.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-ts-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2084,7 +2076,7 @@
       <!-- Magnetic cloud search -->
       <div class="glass-panel p-4 space-y-3">
         <h4 data-term="magnetic cloud" class="font-tech font-bold text-sm text-slate-100">Magnetic cloud search (Lepping et al. 2005)</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: Looks for magnetic clouds, the twisted-field cores of CMEs that cause many of the strongest storms.</p>
+        <p class="text-[11px] text-slate-300">In plain words: Looks for magnetic clouds, the twisted-field cores of CMEs that cause many of the strongest storms.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-mcd-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option><option>OMNI</option></select></div>
@@ -2102,7 +2094,7 @@
       <!-- Flux rope -->
       <div class="glass-panel p-4 space-y-3">
         <h4 data-term="flux rope" class="font-tech font-bold text-sm text-slate-100">Magnetic cloud: Lundquist flux rope fit</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: Fits a twisted magnetic tube (flux rope) to a magnetic cloud: its axis direction, size and twist.</p>
+        <p class="text-[11px] text-slate-300">In plain words: Fits a twisted magnetic tube (flux rope) to a magnetic cloud: its axis direction, size and twist.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Spacecraft</label>
             <select id="ea-mc-mission" class="ea-input"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></div>
@@ -2122,7 +2114,7 @@
       <!-- Sudden commencements -->
       <div class="glass-panel p-4 space-y-3">
         <h4 data-term="sudden commencement" class="font-tech font-bold text-sm text-slate-100">Sudden commencements in SYM-H (OMNI 1-min)</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: Finds the sudden jumps in the ground magnetic field when a shock or pressure pulse hits the magnetosphere.</p>
+        <p class="text-[11px] text-slate-300">In plain words: Finds the sudden jumps in the ground magnetic field when a shock or pressure pulse hits the magnetosphere.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Start (UTC)</label><input id="ea-sc-start" type="text" class="ea-input w-32" value="2015-03-01"></div>
           <div><label class="ea-label">End (UTC, up to 366 days)</label><input id="ea-sc-end" type="text" class="ea-input w-32" value="2015-07-01"></div>
@@ -2141,7 +2133,7 @@
       <!-- Superposed epoch -->
       <div class="glass-panel p-4 space-y-3">
         <h4 data-term="superposed epoch" class="font-tech font-bold text-sm text-slate-100">Superposed epoch analysis (OMNI 1-min)</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: Lines up many storms at their start (or minimum) and averages them, to show what a typical storm looks like.</p>
+        <p class="text-[11px] text-slate-300">In plain words: Lines up many storms at their start (or minimum) and averages them, to show what a typical storm looks like.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div class="flex-1 min-w-[16rem]"><label class="ea-label">Onset times (UTC, one per line or comma-separated)</label>
             <textarea id="ea-sea-onsets" rows="2" class="ea-input w-full font-mono">2015-03-17T04:45
@@ -2186,7 +2178,7 @@
       <!-- Richardson & Cane ICME list -->
       <div class="glass-panel p-4 space-y-3">
         <h4 data-term="ICME" class="font-tech font-bold text-sm text-slate-100">Near-Earth ICMEs since 1996 (Richardson &amp; Cane list)</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: The published list of CMEs that reached Earth since 1996, with their start, end and the storm each caused.</p>
+        <p class="text-[11px] text-slate-300">In plain words: The published list of CMEs that reached Earth since 1996, with their start, end and the storm each caused.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Start (UTC)</label><input id="ea-icme-start" type="text" class="ea-input w-32" value="2003-10-20"></div>
           <div><label class="ea-label">End (UTC)</label><input id="ea-icme-end" type="text" class="ea-input w-32" value="2003-11-25"></div>
@@ -2201,7 +2193,7 @@
       <!-- IPShocks database -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">Interplanetary shocks at L1 (IPShocks database, University of Helsinki)</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: The catalogue of shocks measured at the L1 spacecraft, with their speeds and strengths.</p>
+        <p class="text-[11px] text-slate-300">In plain words: The catalogue of shocks measured at the L1 spacecraft, with their speeds and strengths.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">Start (UTC)</label><input id="ea-ips-start" type="text" class="ea-input w-32" value="2015-03-01"></div>
           <div><label class="ea-label">End (UTC)</label><input id="ea-ips-end" type="text" class="ea-input w-32" value="2015-07-01"></div>
@@ -2218,7 +2210,7 @@
       <!-- OMNI statistics -->
       <div class="glass-panel p-4 space-y-3">
         <h4 class="font-tech font-bold text-sm text-slate-100">OMNI statistics (hourly, 1963 to the present)</h4>
-        <p class="text-[11px] text-amber-200/80">In plain words: Distributions, averages and correlations of six decades of near-Earth solar wind and geomagnetic indices.</p>
+        <p class="text-[11px] text-slate-300">In plain words: Distributions, averages and correlations of six decades of near-Earth solar wind and geomagnetic indices.</p>
         <div class="flex flex-wrap items-end gap-3 text-xs">
           <div><label class="ea-label">From year</label><input id="st-y0" type="number" min="1963" max="2100" class="ea-input w-20" value="1995"></div>
           <div><label class="ea-label">To year</label><input id="st-y1" type="number" min="1963" max="2100" class="ea-input w-20" value="2024"></div>
@@ -2285,23 +2277,23 @@
       <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div class="flex items-center space-x-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
             <h3 class="font-tech font-bold text-base text-slate-100">Magnetospheric Coupling &amp; Storm Horizon</h3>
           </div>
           <p class="text-xs text-slate-400 mt-0.5">Newell coupling, a 12-hour Kp (Newell et al. 2008) and Dst (O'Brien &amp; McPherron 2000) trajectory from persisted L1 solar wind, and NOAA SWPC's storm probabilities and Kp forecast.</p>
-          <p class="text-[11px] text-amber-200/80">In plain words: How hard the solar wind is driving Earth's magnetic field now, and where Kp and Dst would go in the next 12 hours if the wind stayed as it is.</p>
+          <p class="text-[11px] text-slate-300">In plain words: How hard the solar wind is driving Earth's magnetic field now, and where Kp and Dst would go in the next 12 hours if the wind stayed as it is.</p>
         </div>
 
         <div class="flex items-center space-x-3 text-xs">
           <div>
-            <label class="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Observation Telemetry Source</label>
+            <label class="text-[10px] text-slate-400 font-bold block mb-1">Observation Telemetry Source</label>
             <select id="forecast-satellite-select" onchange="loadMLForecast()" class="rounded-lg px-3 py-1.5 text-xs font-semibold focus:outline-none">
               <option value="DSCOVR">DSCOVR (L1 Primary)</option>
               <option value="ACE">ACE (L1 Secondary)</option>
               <option value="WIND">WIND (Baseline)</option>
             </select>
           </div>
-          <button onclick="loadMLForecast()" class="self-end px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold transition flex items-center space-x-1.5 shadow-md shadow-purple-600/30">
+          <button onclick="loadMLForecast()" class="self-end px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold transition flex items-center space-x-1.5">
             <i class="fa-solid fa-arrows-rotate"></i>
             <span>Recompute</span>
           </button>
@@ -2310,25 +2302,25 @@
 
       <!-- Live Coupling & Storm Probability Gauges -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5">
-        <div class="metric-card" style="border-left: 3px solid var(--accent-sky);">
+        <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span data-term="coupling function">Newell Coupling dΦ/dt</span>
             <i class="fa-solid fa-bolt text-cyan-400"></i>
           </div>
-          <div id="forecast-newell-val" class="text-2xl font-hud font-black text-cyan-300">---</div>
+          <div id="forecast-newell-val" class="text-2xl font-hud font-semibold text-cyan-300">---</div>
           <div id="forecast-newell-state" class="text-[10px] text-slate-400 mt-1">Calculating coupling...</div>
         </div>
 
-        <div class="metric-card" style="border-left: 3px solid #38bdf8;">
+        <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span data-term="Dst">Current Ring Current Dst</span>
             <i class="fa-solid fa-circle-dot text-sky-400"></i>
           </div>
-          <div id="forecast-dst-val" class="text-2xl font-hud font-black text-sky-300">--- nT</div>
+          <div id="forecast-dst-val" class="text-2xl font-hud font-semibold text-sky-300">--- nT</div>
           <div id="forecast-dst-source" class="text-[10px] text-slate-400 mt-1">Observed Kyoto Dst, else O'Brien-McPherron model</div>
         </div>
 
-        <div class="metric-card" style="border-left: 3px solid #eab308;">
+        <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span data-term="Kp">Minor Storm (G1, Kp 5)</span>
             <span id="gauge-g1-val" class="text-xs font-hud font-bold text-yellow-400">---%</span>
@@ -2339,7 +2331,7 @@
           <div id="gauge-source" class="text-[10px] text-slate-400 mt-1">NOAA SWPC forecast, next UTC day</div>
         </div>
 
-        <div class="metric-card" style="border-left: 3px solid #f97316;">
+        <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span>Moderate Storm (G2, Kp 6)</span>
             <span id="gauge-g3-val" class="text-xs font-hud font-bold text-orange-400">---%</span>
@@ -2350,7 +2342,7 @@
           <div class="text-[10px] text-slate-400 mt-1">NOAA SWPC forecast, next UTC day</div>
         </div>
 
-        <div class="metric-card" style="border-left: 3px solid #ef4444;">
+        <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
             <span>Strong-Extreme (G3-G5, Kp ≥ 7)</span>
             <span id="gauge-g5-val" class="text-xs font-hud font-bold text-rose-400">---%</span>
@@ -2363,7 +2355,7 @@
       </div>
 
       <!-- Predictive 12-Hour Horizon Chart -->
-      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 shadow-xl space-y-3">
+      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
             <i class="fa-solid fa-chart-line text-purple-400"></i>
@@ -2379,7 +2371,7 @@
 
       <!-- Critical Infrastructure Hazard Advisories -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div id="hazard-gic" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg space-y-2">
+        <div id="hazard-gic" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
           <div class="flex items-center justify-between">
             <div class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
               <i class="fa-solid fa-tower-broadcast text-sky-400"></i>
@@ -2390,7 +2382,7 @@
           <p id="hazard-gic-desc" class="text-xs text-slate-400 leading-relaxed">No high-latitude transmission line fluctuations anticipated.</p>
         </div>
 
-        <div id="hazard-aviation" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg space-y-2">
+        <div id="hazard-aviation" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
           <div class="flex items-center justify-between">
             <div class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
               <i class="fa-solid fa-plane-departure text-amber-400"></i>
@@ -2401,7 +2393,7 @@
           <p id="hazard-aviation-desc" class="text-xs text-slate-400 leading-relaxed">Normal trans-polar communications and navigational accuracy.</p>
         </div>
 
-        <div id="hazard-satellite" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 shadow-lg space-y-2">
+        <div id="hazard-satellite" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
           <div class="flex items-center justify-between">
             <div class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
               <i class="fa-solid fa-satellite text-rose-400"></i>
@@ -2428,11 +2420,11 @@
             <div>
               <h3 class="font-tech font-bold text-base text-slate-100">Terrestrial Space Weather Hazards &amp; Solar Cycle 25 Observatory</h3>
               <p class="text-xs text-slate-400">Critical Infrastructure Impact: D-Region HF Radio Absorption (D-RAP), Ground Geoelectric Currents (GIC), and 11-Year Solar Cycle Progression.</p>
-              <p class="text-[11px] text-amber-200/80">In plain words: The Sun's 11-year activity cycle (sunspots and radio brightness) and where we are in it.</p>
+              <p class="text-[11px] text-slate-300">In plain words: The Sun's 11-year activity cycle (sunspots and radio brightness) and where we are in it.</p>
             </div>
           </div>
           <div class="flex items-center space-x-2">
-            <button onclick="loadHazardsAndCycle()" class="px-3 py-1.5 rounded-lg bg-space-950/80 hover:bg-space-900 text-amber-400 text-xs font-semibold border border-amber-500/30 transition flex items-center space-x-1.5 shadow-sm">
+            <button onclick="loadHazardsAndCycle()" class="px-3 py-1.5 rounded-lg bg-space-950/80 hover:bg-space-900 text-amber-400 text-xs font-semibold border border-amber-500/30 transition flex items-center space-x-1.5">
               <i class="fa-solid fa-arrows-rotate"></i>
               <span>Refresh Hazards</span>
             </button>
@@ -2450,37 +2442,37 @@
 
         <!-- 1. Solar Cycle 25 Tracker Gauges -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 pt-1">
-          <div class="metric-card" style="border-left: 3px solid #f59e0b;">
+          <div class="metric-card">
             <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
               <span data-term="sunspot number">Smoothed Sunspot No. (SSN)</span>
               <i class="fa-solid fa-sun text-amber-400"></i>
             </div>
             <div class="flex items-baseline space-x-1.5">
-              <span id="sc25-ssn" class="text-2xl font-hud font-black text-amber-300">---</span>
+              <span id="sc25-ssn" class="text-2xl font-hud font-semibold text-amber-300">---</span>
               <span class="text-xs text-slate-400 font-hud">SSN</span>
             </div>
             <div id="sc25-ssn-note" class="text-[10px] text-slate-400 mt-1">13-month smoothed (SILSO)</div>
           </div>
 
-          <div class="metric-card" style="border-left: 3px solid #38bdf8;">
+          <div class="metric-card">
             <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
               <span data-term="F10.7">10.7 cm Solar Radio Flux</span>
               <i class="fa-solid fa-satellite-dish text-sky-400"></i>
             </div>
             <div class="flex items-baseline space-x-1.5">
-              <span id="sc25-f107" class="text-2xl font-hud font-black text-sky-300">---</span>
+              <span id="sc25-f107" class="text-2xl font-hud font-semibold text-sky-300">---</span>
               <span class="text-xs text-slate-400 font-hud">s.f.u.</span>
             </div>
             <div id="sc25-f107-note" class="text-[10px] text-slate-400 mt-1">Coronal EUV proxy (2800 MHz)</div>
           </div>
 
-          <div class="metric-card" style="border-left: 3px solid #10b981;">
+          <div class="metric-card">
             <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
               <span>Solar Cycle 25 Progress</span>
               <i class="fa-solid fa-chart-pie text-emerald-400"></i>
             </div>
             <div class="flex items-baseline space-x-1.5">
-              <span id="sc25-progress" class="text-2xl font-hud font-black text-emerald-300">---%</span>
+              <span id="sc25-progress" class="text-2xl font-hud font-semibold text-emerald-300">---%</span>
               <span class="text-xs text-slate-400 font-hud">11-yr Schwabe</span>
             </div>
             <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-1.5 overflow-hidden border border-slate-700/40">
@@ -2488,7 +2480,7 @@
             </div>
           </div>
 
-          <div class="metric-card" style="border-left: 3px solid #a855f7;">
+          <div class="metric-card">
             <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
               <span>Observed Cycle 25 Maximum</span>
               <i class="fa-solid fa-mountain-sun text-purple-400"></i>
@@ -2522,24 +2514,24 @@
               <h3 data-term="D-RAP" class="font-tech font-bold text-base text-slate-100">D-Region Ionospheric Radio Absorption (D-RAP) &amp; HF Blackout Simulator</h3>
             </div>
             <p class="text-xs text-slate-400">Quantifies 3–30 MHz signal attenuation and Highest Affected Frequency (HAF) with the NOAA SWPC D-RAP flare relation HAF = 10 log₁₀(Fx) + 65 MHz (the proton part of D-RAP, Sauer &amp; Wilkinson 2008, is not modelled).</p>
-            <p class="text-[11px] text-amber-200/80">In plain words: Solar flares charge up the lowest part of the ionosphere on the day side, which then swallows shortwave radio; this estimates which frequencies are lost.</p>
+            <p class="text-[11px] text-slate-300">In plain words: Solar flares charge up the lowest part of the ionosphere on the day side, which then swallows shortwave radio; this estimates which frequencies are lost.</p>
           </div>
 
           <!-- Controls -->
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <div class="flex items-center space-x-1.5 bg-space-950/80 p-1 rounded-xl border border-slate-700/60">
-              <span class="text-slate-400 text-[10px] font-bold uppercase px-2">X-Ray Flare:</span>
+              <span class="text-slate-400 text-[10px] font-bold px-2">X-Ray Flare:</span>
               <button onclick="setDrapXrayPreset(1e-7)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-slate-300 transition">B-Class</button>
               <button onclick="setDrapXrayPreset(2e-6)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-slate-300 transition">C2</button>
               <button onclick="setDrapXrayPreset(1e-5)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-yellow-400 font-bold transition">M1 (R1)</button>
               <button onclick="setDrapXrayPreset(5e-5)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-amber-400 font-bold transition">M5 (R2)</button>
               <button onclick="setDrapXrayPreset(1e-4)" class="px-2 py-1 rounded text-[11px] bg-rose-700 text-white font-bold transition">X1 (R3)</button>
               <button onclick="setDrapXrayPreset(1e-3)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-rose-400 font-bold transition">X10 (R4)</button>
-              <button onclick="setDrapXrayPreset(2e-3)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-rose-500 font-black transition">X20+ (R5)</button>
+              <button onclick="setDrapXrayPreset(2e-3)" class="px-2 py-1 rounded text-[11px] hover:bg-slate-700 text-rose-400 font-semibold transition">X20+ (R5)</button>
             </div>
 
             <div class="flex items-center space-x-2 bg-space-950/80 px-3 py-1.5 rounded-xl border border-slate-700/60">
-              <span class="text-slate-400 text-[10px] font-bold uppercase">Solar Zenith (χ):</span>
+              <span class="text-slate-400 text-[10px] font-bold">Solar Zenith (χ):</span>
               <input type="range" id="drap-zenith-slider" min="0" max="85" step="5" value="30" oninput="onDrapZenithChange(this.value)" class="w-20 accent-rose-500 cursor-pointer">
               <span id="drap-zenith-val" class="font-hud font-bold text-rose-400 w-10 text-right">30°</span>
             </div>
@@ -2550,19 +2542,19 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">NOAA Radio Scale</div>
-            <div id="drap-r-scale" class="text-xl font-hud font-black text-rose-400">---</div>
+            <div id="drap-r-scale" class="text-xl font-hud font-semibold text-rose-400">---</div>
             <div id="drap-hazard-desc" class="text-[10px] text-slate-400 mt-0.5">Wide Area Loss of HF Radio</div>
           </div>
 
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">Highest Affected Freq (HAF)</div>
-            <div id="drap-haf" class="text-xl font-hud font-black text-amber-400">--- MHz</div>
+            <div id="drap-haf" class="text-xl font-hud font-semibold text-amber-400">--- MHz</div>
             <div class="text-[10px] text-slate-400 mt-0.5">Frequencies below suffer &gt;1 dB loss</div>
           </div>
 
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">10 MHz Signal Attenuation</div>
-            <div id="drap-att10" class="text-xl font-hud font-black text-sky-400">--- dB</div>
+            <div id="drap-att10" class="text-xl font-hud font-semibold text-sky-400">--- dB</div>
             <div id="drap-att10-loss" class="text-[10px] text-slate-400 mt-0.5">--- signal power lost</div>
           </div>
 
@@ -2597,13 +2589,13 @@
               <h3 data-term="GIC" class="font-tech font-bold text-base text-slate-100">Geomagnetically Induced Currents (GIC) &amp; Surface Geoelectric Field Model</h3>
             </div>
             <p class="text-xs text-slate-400">Simulates horizontal electric field induction (E_H = √(ρ / (μ₀ω)) · |dB/dt|) and transformer quasi-DC neutral saturation based on Boteler &amp; Pirjola (2017).</p>
-            <p class="text-[11px] text-amber-200/80">In plain words: Magnetic storms induce electric fields in the ground that push currents through power lines; this gives a first estimate of their size.</p>
+            <p class="text-[11px] text-slate-300">In plain words: Magnetic storms induce electric fields in the ground that push currents through power lines; this gives a first estimate of their size.</p>
           </div>
 
           <!-- GIC Controls -->
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <div class="flex items-center space-x-2 bg-space-950/80 px-3 py-1.5 rounded-xl border border-slate-700/60">
-              <span class="text-slate-400 text-[10px] font-bold uppercase">Rate of Change (dB/dt):</span>
+              <span class="text-slate-400 text-[10px] font-bold">Rate of Change (dB/dt):</span>
               <input type="range" id="gic-dbdt-slider" min="20" max="600" step="20" value="180" oninput="onGicDbDtChange(this.value)" class="w-28 accent-cyan-400 cursor-pointer">
               <span id="gic-dbdt-val" class="font-hud font-bold text-cyan-400 w-16 text-right">180 nT/min</span>
             </div>
@@ -2622,19 +2614,19 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">Induced Electric Field (E_H)</div>
-            <div id="gic-efield" class="text-2xl font-hud font-black text-cyan-400">--- V/km</div>
+            <div id="gic-efield" class="text-2xl font-hud font-semibold text-cyan-400">--- V/km</div>
             <div class="text-[10px] text-slate-400 mt-0.5">Horizontal ground gradient</div>
           </div>
 
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">Line Potential (200 km Line)</div>
-            <div id="gic-voltage" class="text-2xl font-hud font-black text-amber-400">--- Volts</div>
+            <div id="gic-voltage" class="text-2xl font-hud font-semibold text-amber-400">--- Volts</div>
             <div class="text-[10px] text-slate-400 mt-0.5">End-to-end induced EMF</div>
           </div>
 
           <div class="bg-space-900/80 p-3.5 rounded-xl border border-slate-800">
             <div class="text-slate-400 text-xs font-semibold mb-1">Transformer Neutral DC Current</div>
-            <div id="gic-neutral-amps" class="text-2xl font-hud font-black text-rose-400">--- Amps</div>
+            <div id="gic-neutral-amps" class="text-2xl font-hud font-semibold text-rose-400">--- Amps</div>
             <div class="text-[10px] text-slate-400 mt-0.5">Quasi-DC saturation current</div>
           </div>
 
@@ -2675,8 +2667,8 @@
   </main>
 
   <!-- SPACE WEATHER BULLETIN & EXECUTIVE SUMMARY MODAL -->
-  <div id="bulletin-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-    <div class="bg-space-900 border border-sky-500/40 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="bulletin-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 p-4">
+    <div class="bg-space-900 border border-sky-500/40 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden">
       <div class="p-4 border-b border-slate-700/80 flex items-center justify-between bg-space-950 flex-wrap gap-2">
         <div class="flex items-center space-x-2.5">
           <i class="fa-solid fa-file-shield text-sky-400 text-lg"></i>
@@ -2716,7 +2708,7 @@
             <i class="fa-solid fa-file-arrow-down text-indigo-400"></i>
             <span>Export Brief (.md)</span>
           </button>
-          <button onclick="downloadBulletinHTML()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 transition">
+          <button onclick="downloadBulletinHTML()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold flex items-center space-x-1.5 transition">
             <i class="fa-solid fa-download"></i>
             <span>Download HTML</span>
           </button>
@@ -2730,8 +2722,8 @@
   </div>
 
   <!-- SCIENTIFIC LITERATURE, DATA OBSERVATORIES & OPEN LICENSES MODAL -->
-  <div id="modal-references" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
-    <div class="bg-space-900 border border-slate-700 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="modal-references" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/85 p-4">
+    <div class="bg-space-900 border border-slate-700 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden">
       <!-- Modal Header -->
       <div class="p-4 border-b border-slate-800 bg-space-950/95 flex items-center justify-between">
         <div class="flex items-center space-x-3">
@@ -2751,7 +2743,7 @@
       <!-- Filter Tabs & Real-Time Search -->
       <div class="border-b border-slate-800 bg-space-950/60 px-5 py-2 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div class="flex space-x-1" id="ref-modal-tabs">
-          <button id="tab-btn-ref-equations" onclick="switchReferencesTab('equations')" class="px-3 py-1.5 rounded-lg font-semibold bg-sky-600 text-white transition flex items-center space-x-1.5 shadow-sm">
+          <button id="tab-btn-ref-equations" onclick="switchReferencesTab('equations')" class="px-3 py-1.5 rounded-lg font-semibold bg-sky-600 text-white transition flex items-center space-x-1.5">
             <i class="fa-solid fa-square-root-variable text-[11px]"></i>
             <span>Governing Equations &amp; Citations</span>
           </button>
@@ -2804,8 +2796,8 @@
   <!-- ========================================================================= -->
   <!-- MODAL: KEYBOARD SHORTCUTS COMMAND CHEATSHEET -->
   <!-- ========================================================================= -->
-  <div id="modal-shortcuts" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col font-sans">
+  <div id="modal-shortcuts" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-xl max-w-lg w-full overflow-hidden flex flex-col font-sans">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-space-950/80">
         <div class="flex items-center space-x-2.5">
           <div class="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
@@ -2823,7 +2815,7 @@
 
       <div class="p-5 space-y-4 text-xs font-sans">
         <div class="space-y-2">
-          <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">Mission Scientific Domains</div>
+          <div class="text-[11px] text-slate-400 font-bold font-mono">Mission Scientific Domains</div>
           <div class="grid grid-cols-2 gap-2">
             <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
               <span class="text-slate-300">L1 Fleet &amp; Telemetry</span>
@@ -2845,7 +2837,7 @@
         </div>
 
         <div class="space-y-2">
-          <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">Operations &amp; Views</div>
+          <div class="text-[11px] text-slate-400 font-bold font-mono">Operations &amp; Views</div>
           <div class="grid grid-cols-2 gap-2">
             <div class="flex items-center justify-between p-2 rounded bg-slate-800/60 border border-slate-700/50">
               <span class="text-slate-300">Live Telemetry Fetch</span>
@@ -2892,7 +2884,7 @@
       </div>
 
       <div class="p-3 bg-space-950 border-t border-slate-800 flex justify-end">
-        <button onclick="closeShortcutsModal()" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition">
+        <button onclick="closeShortcutsModal()" class="px-4 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold text-xs transition">
           Got it
         </button>
       </div>
@@ -2902,8 +2894,8 @@
   <!-- ========================================================================= -->
   <!-- MODAL: MISSION ALERT & INCIDENT LOG MONITOR -->
   <!-- ========================================================================= -->
-  <div id="modal-incidents" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-space-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
+  <div id="modal-incidents" class="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-space-900 border border-slate-700/80 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-space-950/90 flex-wrap gap-2">
         <div class="flex items-center space-x-3">
           <div class="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
@@ -2961,8 +2953,8 @@
   <!-- ========================================================================= -->
   <!-- MODAL: STATION SETTINGS, HARDWARE PERFORMANCE & THEME CONFIGURATION -->
   <!-- ========================================================================= -->
-  <div id="modal-settings" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
+  <div id="modal-settings" class="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
         <div class="flex items-center space-x-3">
           <div class="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
@@ -3069,7 +3061,7 @@
             </div>
             <div class="text-right shrink-0">
               <div class="text-xl font-bold font-hud text-emerald-400" id="settings-cores-display">4</div>
-              <div class="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Dedicated Workers</div>
+              <div class="text-[10px] text-slate-500 font-mono">Dedicated Workers</div>
             </div>
           </div>
         </div>
@@ -3123,7 +3115,7 @@
           Reset to Defaults
         </button>
         <div class="flex items-center space-x-2">
-          <button onclick="saveAndApplySettings()" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition">
+          <button onclick="saveAndApplySettings()" class="px-4 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold transition">
             Apply &amp; Save Settings
           </button>
           <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
@@ -3137,11 +3129,11 @@
   <!-- ========================================================================= -->
   <!-- MODAL: ABOUT HELIOS-L1 & CREATOR PROFILE -->
   <!-- ========================================================================= -->
-  <div id="modal-about" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden font-sans">
+  <div id="modal-about" class="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden font-sans">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
         <div class="flex items-center space-x-3">
-          <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Mission Patch" class="w-10 h-10 rounded-full border border-amber-500/40 shadow-md object-cover bg-space-950">
+          <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Mission Patch" class="w-10 h-10 rounded-full border border-amber-500/40 object-cover bg-space-950">
           <div>
             <h3 class="font-tech font-bold text-slate-100 text-sm">About HELIOS-L1 &amp; Scientific Directorate</h3>
             <p class="text-[11px] text-slate-400">Mission Overview, Operational Usecases, Mathematical Formalisms &amp; Creator Profile</p>
@@ -3154,14 +3146,14 @@
 
       <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs font-sans">
         <!-- 1. SOFTWARE IDENTITY & ARCHITECTURE -->
-        <div class="p-4 rounded-xl bg-gradient-to-r from-space-950 via-slate-900 to-space-950 border border-slate-800 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+        <div class="p-4 rounded-xl bg-space-900 border border-slate-800 flex flex-col sm:flex-row items-center sm:items-start gap-4">
           <div class="relative shrink-0">
-            <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Official Insignia" class="w-24 h-24 rounded-full border-2 border-amber-500/50 shadow-2xl object-cover bg-space-950 hover:scale-105 transition duration-300">
+            <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Official Insignia" class="w-24 h-24 rounded-full border-2 border-amber-500/50 object-cover bg-space-950 hover:scale-105 transition duration-300">
             <span class="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-mono font-bold">L1 SUITE</span>
           </div>
           <div class="space-y-2 flex-1">
             <div class="flex items-center space-x-2">
-              <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[10px] font-mono font-bold">SOVEREIGN SCIENTIFIC SUITE</span>
+              <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[10px] font-mono font-bold">Sovereign scientific suite</span>
               <h4 class="font-bold text-slate-100 text-sm">HELIOS-L1 Mission Architecture</h4>
             </div>
             <p class="text-[11px] text-slate-300 leading-relaxed">
@@ -3304,9 +3296,9 @@
         </div>
 
         <!-- 5. ABOUT THE CREATOR (DR. KESHAV AGGARWAL) -->
-        <div class="p-4 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-amber-500/40 space-y-3">
+        <div class="p-4 rounded-xl bg-space-900 border border-amber-500/40 space-y-3">
           <div class="flex items-center space-x-3">
-            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xl shrink-0 shadow-sm">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xl shrink-0">
               <i class="fa-solid fa-user-astronaut"></i>
             </div>
             <div>
@@ -3378,8 +3370,8 @@
   <!-- ========================================================================= -->
   <!-- MODAL: TIMEZONE SELECTOR -->
   <!-- ========================================================================= -->
-  <div id="modal-timezone" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col font-sans">
+  <div id="modal-timezone" class="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full overflow-hidden flex flex-col font-sans">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
         <div class="flex items-center space-x-3">
           <div class="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
@@ -3399,11 +3391,11 @@
         <!-- Live Clock Preview Card -->
         <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
           <div>
-            <div class="text-[10px] text-slate-400 uppercase tracking-wider font-mono">Current Active Clock</div>
+            <div class="text-[10px] text-slate-400 font-mono">Current Active Clock</div>
             <div id="tz-modal-clock-preview" class="text-lg font-bold font-hud text-sky-400">00:00:00 UTC</div>
           </div>
           <div class="text-right">
-            <span id="tz-modal-current-badge" class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[10px] font-bold border border-sky-500/30 uppercase">UTC</span>
+            <span id="tz-modal-current-badge" class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[10px] font-bold border border-sky-500/30">UTC</span>
           </div>
         </div>
 
@@ -3459,7 +3451,7 @@
           <label class="font-bold text-slate-300 text-xs">Custom IANA Timezone Identifier</label>
           <div class="flex items-center space-x-2">
             <input type="text" id="tz-custom-input" placeholder="e.g. America/Toronto, Asia/Dubai, Pacific/Auckland" class="flex-1 rounded-lg px-3 py-1.5 text-xs font-mono">
-            <button onclick="applyCustomTimezone()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition">
+            <button onclick="applyCustomTimezone()" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white font-semibold text-xs transition">
               Apply
             </button>
           </div>
@@ -3482,31 +3474,31 @@
         <i class="fa-solid fa-sun text-amber-400"></i>
         <span>HELIOS-L1 Science Suite</span>
       </span>
-      <span class="text-slate-600">|</span>
+      <span class="text-slate-500">|</span>
       <button onclick="openReferencesModal('equations')" class="hover:text-sky-300 underline underline-offset-2 transition text-slate-300">
         Governing Equations (DOIs)
       </button>
-      <span class="text-slate-600">•</span>
+      <span class="text-slate-500">•</span>
       <button onclick="openReferencesModal('providers')" class="hover:text-sky-300 underline underline-offset-2 transition text-slate-300">
         Data Observatories &amp; Portals
       </button>
-      <span class="text-slate-600">•</span>
+      <span class="text-slate-500">•</span>
       <button onclick="openReferencesModal('licenses')" class="hover:text-sky-300 underline underline-offset-2 transition text-slate-300">
         Open Science Licenses
       </button>
-      <span class="text-slate-600">•</span>
+      <span class="text-slate-500">•</span>
       <button onclick="openReferencesModal('handbook')" class="hover:text-sky-300 underline underline-offset-2 transition text-slate-300">
         Parameter Handbook
       </button>
-      <span class="text-slate-600">•</span>
+      <span class="text-slate-500">•</span>
       <button onclick="openUserGuideModal()" class="hover:text-indigo-300 font-semibold underline underline-offset-2 transition text-indigo-400">
         Operator User Guide
       </button>
-      <span class="text-slate-600">•</span>
+      <span class="text-slate-500">•</span>
       <button onclick="openSettingsModal()" class="hover:text-sky-300 font-semibold underline underline-offset-2 transition text-sky-400">
         Settings
       </button>
-      <span class="text-slate-600">•</span>
+      <span class="text-slate-500">•</span>
       <button onclick="openAboutModal()" class="hover:text-amber-300 font-semibold underline underline-offset-2 transition text-amber-400">
         About &amp; Creator
       </button>
@@ -3523,8 +3515,8 @@
   <!-- ========================================================================= -->
   <!-- MODAL: WHAT'S NEW AND SETTINGS REVIEW (once per version, see settings_review.py) -->
   <!-- ========================================================================= -->
-  <div id="modal-review" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
+  <div id="modal-review" class="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden font-sans">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/90">
         <div>
           <h3 class="font-tech font-bold text-slate-100 text-sm" id="review-title">What's new and what changed in the settings</h3>
@@ -3537,7 +3529,7 @@
       <div id="review-body" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-slate-300"></div>
       <div class="p-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-2">
         <span id="review-status" class="text-[11px] text-slate-400"></span>
-        <button onclick="acknowledgeSettingsReview()" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition">Keep these settings</button>
+        <button onclick="acknowledgeSettingsReview()" class="px-4 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold transition">Keep these settings</button>
       </div>
     </div>
   </div>

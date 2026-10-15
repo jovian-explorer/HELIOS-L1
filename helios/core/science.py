@@ -524,33 +524,33 @@ class SpaceWeatherPhysics:
         # 1. Geomagnetic Storm (G-Scale)
         g_scale = "G0 (Quiet)"
         g_level = 0
-        g_color = "#10b981"
+        g_color = "#529b6e"
         # Kp 5- (4.67) is already G1: the scale used to start at Kp 5.0, one third too high.
         level = SpaceWeatherPhysics.noaa_g_level(kp)
         if kp is None:
-            g_scale, g_color = "G-- (No Kp data)", "#64748b"
+            g_scale, g_color = "G-- (No Kp data)", "#83878f"
         elif level:
             g_scale, g_level, g_color = {
-                5: ("G5 (Extreme)", 5, "#dc2626"), 4: ("G4 (Severe)", 4, "#ea580c"),
-                3: ("G3 (Strong)", 3, "#f59e0b"), 2: ("G2 (Moderate)", 2, "#eab308"),
-                1: ("G1 (Minor)", 1, "#3b82f6")}[level]
+                5: ("G5 (Extreme)", 5, "#a44e4e"), 4: ("G4 (Severe)", 4, "#9a7332"),
+                3: ("G3 (Strong)", 3, "#b98f3f"), 2: ("G2 (Moderate)", 2, "#b98f3f"),
+                1: ("G1 (Minor)", 1, "#6690bf")}[level]
 
         # 2. Southward Bz Alert Level
         bz_alert = "Northward (Shielded)"
-        bz_color = "#10b981"
+        bz_color = "#529b6e"
         if bz_gsm is not None:
             if bz_gsm <= -15.0:
                 bz_alert = "CRITICAL: Intense Southward Reconnection (Bz <= -15 nT)"
-                bz_color = "#dc2626"
+                bz_color = "#a44e4e"
             elif bz_gsm <= -10.0:
                 bz_alert = "WARNING: Strong Southward IMF (Bz <= -10 nT)"
-                bz_color = "#ea580c"
+                bz_color = "#9a7332"
             elif bz_gsm < 0.0:
                 bz_alert = "CAUTION: Moderate Southward Component (Bz < 0 nT)"
-                bz_color = "#f59e0b"
+                bz_color = "#b98f3f"
             else:
                 bz_alert = "NOMINAL: Northward IMF (Magnetosphere Stable)"
-                bz_color = "#10b981"
+                bz_color = "#529b6e"
 
         # 3. Solar Flare Radio Blackout (R-Scale based on GOES X-ray W/m^2)
         # Thresholds: R1 >= M1, R2 >= M5, R3 >= X1, R4 >= X10, R5 >= X20.
@@ -568,20 +568,20 @@ class SpaceWeatherPhysics:
         # No measurement means no classification: never substitute a made-up flux.
         s_scale = "S0 (Nominal)"
         s_level = 0
-        s_color = "#10b981"
+        s_color = "#529b6e"
         pfu_val = float(proton_flux) if (proton_flux is not None and proton_flux >= 0) else None
         if pfu_val is None:
-            s_scale, s_color = "S-- (No proton data)", "#64748b"
+            s_scale, s_color = "S-- (No proton data)", "#83878f"
         elif pfu_val >= 1e5:
-            s_scale, s_level, s_color = "S5 (Extreme)", 5, "#dc2626"
+            s_scale, s_level, s_color = "S5 (Extreme)", 5, "#a44e4e"
         elif pfu_val >= 1e4:
-            s_scale, s_level, s_color = "S4 (Severe)", 4, "#ea580c"
+            s_scale, s_level, s_color = "S4 (Severe)", 4, "#9a7332"
         elif pfu_val >= 1e3:
-            s_scale, s_level, s_color = "S3 (Strong)", 3, "#f59e0b"
+            s_scale, s_level, s_color = "S3 (Strong)", 3, "#b98f3f"
         elif pfu_val >= 100.0:
-            s_scale, s_level, s_color = "S2 (Moderate)", 2, "#eab308"
+            s_scale, s_level, s_color = "S2 (Moderate)", 2, "#b98f3f"
         elif pfu_val >= 10.0:
-            s_scale, s_level, s_color = "S1 (Minor)", 1, "#3b82f6"
+            s_scale, s_level, s_color = "S1 (Minor)", 1, "#6690bf"
 
         return {
             "g_scale": g_scale,

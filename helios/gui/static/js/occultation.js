@@ -59,19 +59,19 @@ function drawOccultationChart(rows) {
     data: {
       labels,
       datasets: [
-        { label: 'Impact parameter (R☉)', data: rows.map(r => r.impact_rsun), borderColor: '#38bdf8', yAxisID: 'y', pointRadius: 0 },
-        { label: 'Faraday rotation (°)', data: rows.map(r => r.faraday_rotation_deg), borderColor: '#f472b6', yAxisID: 'y1', pointRadius: 0 },
-        { label: 'Plasma Doppler (Hz)', data: rows.map(r => r.doppler_plasma_hz), borderColor: '#facc15', yAxisID: 'y1', pointRadius: 0, hidden: true }
+        { label: 'Impact parameter (R☉)', data: rows.map(r => r.impact_rsun), borderColor: '#7fa5cf', yAxisID: 'y', pointRadius: 0 },
+        { label: 'Faraday rotation (°)', data: rows.map(r => r.faraday_rotation_deg), borderColor: '#7fa5cf', yAxisID: 'y1', pointRadius: 0 },
+        { label: 'Plasma Doppler (Hz)', data: rows.map(r => r.doppler_plasma_hz), borderColor: '#d2aa57', yAxisID: 'y1', pointRadius: 0, hidden: true }
       ]
     },
     options: {
       animation: false, responsive: true, maintainAspectRatio: false,
       scales: {
-        y: { type: 'logarithmic', title: { display: true, text: 'R☉' }, ticks: { color: '#94a3b8' } },
-        y1: { position: 'right', title: { display: true, text: '° / Hz' }, grid: { drawOnChartArea: false }, ticks: { color: '#94a3b8' } },
-        x: { ticks: { color: '#94a3b8', maxTicksLimit: 10 } }
+        y: { type: 'logarithmic', title: { display: true, text: 'R☉' }, ticks: { color: '#9a9ea5' } },
+        y1: { position: 'right', title: { display: true, text: '° / Hz' }, grid: { drawOnChartArea: false }, ticks: { color: '#9a9ea5' } },
+        x: { ticks: { color: '#9a9ea5', maxTicksLimit: 10 } }
       },
-      plugins: { legend: { labels: { color: '#cbd5e1' } } }
+      plugins: { legend: { labels: { color: '#b9bcc1' } } }
     }
   });
 }

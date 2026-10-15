@@ -533,7 +533,7 @@ class ParkerSpiralRenderer {
       this.tooltip.innerHTML = `
         <div class="border-b border-rose-500/40 pb-1 mb-1.5 flex items-center justify-between">
           <strong class="text-rose-300 font-bold text-xs flex items-center space-x-1.5">
-            <i class="fa-solid fa-circle text-[10px] text-rose-500"></i>
+            <i class="fa-solid fa-circle text-[10px] text-rose-400"></i>
             <span>Mars (Ares)</span>
           </strong>
           <span class="text-[10px] text-rose-300 font-mono font-bold">${m.rAu.toFixed(4)} AU</span>
@@ -673,15 +673,15 @@ class ParkerSpiralRenderer {
       this.width / 2, this.height / 2, 40,
       this.width / 2, this.height / 2, this.width * 0.8
     );
-    grad.addColorStop(0, '#060c22');
-    grad.addColorStop(0.5, '#030714');
-    grad.addColorStop(1, '#01030a');
+    grad.addColorStop(0, '#141518');
+    grad.addColorStop(0.5, '#141518');
+    grad.addColorStop(1, '#141518');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, this.width, this.height);
 
     // Coordinate concentric AU grid rings
     ctx.save();
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.08)';
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 4]);
     const cx = this.width / 2 + this.panX;
@@ -693,13 +693,13 @@ class ParkerSpiralRenderer {
       ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
       ctx.stroke();
 
-      ctx.fillStyle = 'rgba(100, 116, 139, 0.5)';
-      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = 'rgba(131, 135, 143, 0.5)';
+      ctx.font = '9px system-ui, sans-serif';
       ctx.fillText(`${r} AU`, cx + r * scale + 4, cy - 4);
     });
 
     // Sun-Earth Ecliptic Axis
-    ctx.strokeStyle = 'rgba(255, 183, 3, 0.2)';
+    ctx.strokeStyle = 'rgba(210, 170, 87, 0.2)';
     ctx.beginPath();
     ctx.moveTo(cx - 1.6 * scale, cy);
     ctx.lineTo(cx + 1.6 * scale, cy);
@@ -722,7 +722,7 @@ class ParkerSpiralRenderer {
       const aEnd = aStart + (Math.PI * 2) / numSectors;
       const isAway = i % 2 === 0;
 
-      ctx.fillStyle = isAway ? 'rgba(56, 189, 248, 0.03)' : 'rgba(244, 63, 94, 0.03)';
+      ctx.fillStyle = isAway ? 'rgba(127, 165, 207, 0.03)' : 'rgba(194, 98, 98, 0.03)';
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, maxR, aStart, aEnd);
@@ -737,10 +737,10 @@ class ParkerSpiralRenderer {
     ctx.save();
 
     const orbits = [
-      { name: 'Mercury (0.39 AU)', r: 0.387, color: 'rgba(148, 163, 184, 0.4)' },
-      { name: 'Venus (0.72 AU)', r: 0.723, color: 'rgba(251, 191, 36, 0.4)' },
-      { name: 'Earth (1.00 AU)', r: 1.000, color: 'rgba(56, 189, 248, 0.65)', isEarth: true },
-      { name: 'Mars (1.52 AU)', r: 1.524, color: 'rgba(244, 63, 94, 0.4)' }
+      { name: 'Mercury (0.39 AU)', r: 0.387, color: 'rgba(154, 158, 165, 0.4)' },
+      { name: 'Venus (0.72 AU)', r: 0.723, color: 'rgba(210, 170, 87, 0.4)' },
+      { name: 'Earth (1.00 AU)', r: 1.000, color: 'rgba(127, 165, 207, 0.65)', isEarth: true },
+      { name: 'Mars (1.52 AU)', r: 1.524, color: 'rgba(194, 98, 98, 0.4)' }
     ];
 
     orbits.forEach(orb => {
@@ -753,7 +753,7 @@ class ParkerSpiralRenderer {
       ctx.stroke();
 
       ctx.fillStyle = orb.color;
-      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.font = '9px system-ui, sans-serif';
       ctx.fillText(orb.name, cx + 8, cy - orb.r * scale - 4);
     });
 
@@ -767,7 +767,7 @@ class ParkerSpiralRenderer {
     const rot = (this.time * 0.002);
     const cirAngle = rot + 1.2;
 
-    ctx.strokeStyle = 'rgba(255, 183, 3, 0.7)';
+    ctx.strokeStyle = 'rgba(210, 170, 87, 0.7)';
     ctx.lineWidth = 2.5;
     ctx.setLineDash([6, 3]);
 
@@ -784,7 +784,7 @@ class ParkerSpiralRenderer {
     ctx.stroke();
 
     // Compression Glow Region between Shocks
-    ctx.fillStyle = 'rgba(255, 183, 3, 0.08)';
+    ctx.fillStyle = 'rgba(210, 170, 87, 0.08)';
     ctx.beginPath();
     for (let r_au = 0.4; r_au <= 1.55; r_au += 0.02) {
       const deltaTheta = (this.omegaSun * r_au * this.auKm) / (this.speedKms * 0.85);
@@ -809,9 +809,9 @@ class ParkerSpiralRenderer {
     const midTheta = cirAngle - (this.omegaSun * midR * this.auKm) / (this.speedKms * 0.85);
     const lx = cx + midR * scale * Math.cos(midTheta);
     const ly = cy - midR * scale * Math.sin(midTheta);
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('CIR FORWARD SHOCK', lx + 10, ly);
+    ctx.fillStyle = '#b98f3f';
+    ctx.font = '600 9px system-ui, sans-serif';
+    ctx.fillText('CIR forward shock', lx + 10, ly);
 
     ctx.restore();
   }
@@ -851,19 +851,19 @@ class ParkerSpiralRenderer {
 
       if (isEarthConnected) {
         // High-priority SEP Highway to Earth
-        ctx.strokeStyle = '#38bdf8';
+        ctx.strokeStyle = '#7fa5cf';
         ctx.lineWidth = 2.2;
         ctx.stroke();
 
         // Trace footpoint tag back on Sun
         const fpX = cx + 0.05 * scale * Math.cos(phi_0);
         const fpY = cy - 0.05 * scale * Math.sin(phi_0);
-        ctx.fillStyle = '#38bdf8';
+        ctx.fillStyle = '#7fa5cf';
         ctx.beginPath();
         ctx.arc(fpX, fpY, 3, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
+        ctx.strokeStyle = 'rgba(131, 135, 143, 0.4)';
         ctx.lineWidth = 1.2;
         ctx.shadowBlur = 0;
         ctx.stroke();
@@ -895,8 +895,8 @@ class ParkerSpiralRenderer {
       // Color shifts from solar gold to interplanetary cyan
       const alpha = Math.max(0.15, Math.min(0.9, 1.2 - p.r_au * 0.65));
       ctx.fillStyle = p.streamIndex === 0 
-        ? `rgba(0, 240, 255, ${alpha})`
-        : `rgba(255, 183, 3, ${alpha * 0.75})`;
+        ? `rgba(127, 165, 207, ${alpha})`
+        : `rgba(210, 170, 87, ${alpha * 0.75})`;
 
       ctx.beginPath();
       ctx.arc(x, y, p.size, 0, Math.PI * 2);
@@ -916,7 +916,7 @@ class ParkerSpiralRenderer {
     this.earthScreenPos = { x: earthX, y: earthY };
 
     // Magnetosphere bow shock front
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.75)';
     ctx.lineWidth = 1.6;
     ctx.beginPath();
     ctx.arc(earthX, earthY, 14, Math.PI * 0.6, Math.PI * 1.4);
@@ -924,22 +924,22 @@ class ParkerSpiralRenderer {
 
     // Earth Body
     const earthGrad = ctx.createRadialGradient(earthX - 2, earthY - 2, 1, earthX, earthY, 7);
-    earthGrad.addColorStop(0, '#60a5fa');
-    earthGrad.addColorStop(0.7, '#1d4ed8');
-    earthGrad.addColorStop(1, '#0f172a');
+    earthGrad.addColorStop(0, '#7fa5cf');
+    earthGrad.addColorStop(0.7, '#3f5f83');
+    earthGrad.addColorStop(1, '#1e2024');
     ctx.fillStyle = earthGrad;
     ctx.beginPath();
     ctx.arc(earthX, earthY, 6.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#93c5fd';
+    ctx.strokeStyle = '#9bbadb';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('EARTH', earthX + 12, earthY - 4);
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#f6f7f8';
+    ctx.font = '600 10px system-ui, sans-serif';
+    ctx.fillText('Earth', earthX + 12, earthY - 4);
+    ctx.fillStyle = '#7fa5cf';
+    ctx.font = '9px system-ui, sans-serif';
     ctx.fillText('1.00 AU', earthX + 12, earthY + 8);
 
     // 2. Sun-Earth L1 (0.99 AU)
@@ -947,16 +947,16 @@ class ParkerSpiralRenderer {
     const l1Y = cy;
     this.l1ScreenPos = { x: l1X, y: l1Y };
 
-    ctx.fillStyle = '#ffb703';
+    ctx.fillStyle = '#d2aa57';
     ctx.beginPath();
     ctx.arc(l1X, l1Y, 3.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#fef08a';
+    ctx.strokeStyle = '#ebd6a2';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#ffb703';
-    ctx.font = 'bold 9px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#d2aa57';
+    ctx.font = 'bold 9px system-ui, sans-serif';
     ctx.fillText('L1', l1X - 6, l1Y - 12);
 
     // 3. STEREO-Ahead (Leading Earth in heliocentric orbit ~0.96 AU)
@@ -970,12 +970,12 @@ class ParkerSpiralRenderer {
       const stereoX = cx + 0.96 * scale * Math.cos(stereoAngle);
       const stereoY = cy - 0.96 * scale * Math.sin(stereoAngle);
       this.stereoScreenPos = { x: stereoX, y: stereoY };
-      ctx.fillStyle = '#a855f7';
+      ctx.fillStyle = '#6690bf';
       ctx.beginPath();
       ctx.arc(stereoX, stereoY, 3, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#d8b4fe';
-      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#9bbadb';
+      ctx.font = '9px system-ui, sans-serif';
       ctx.fillText('STEREO-A (0.96 AU)', stereoX + 8, stereoY);
     } else {
       this.stereoScreenPos = null;  // no ephemeris: not drawn at a made-up place
@@ -988,7 +988,7 @@ class ParkerSpiralRenderer {
     this.pspScreenPos = { x: pspX, y: pspY, state: psp };
 
     // Draw PSP Elliptical Orbit Track (subtle rose dashed line)
-    ctx.strokeStyle = 'rgba(244, 63, 94, 0.3)';
+    ctx.strokeStyle = 'rgba(194, 98, 98, 0.3)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 4]);
     ctx.beginPath();
@@ -1005,16 +1005,16 @@ class ParkerSpiralRenderer {
     ctx.setLineDash([]);
 
     // PSP Spacecraft Dot
-    ctx.fillStyle = '#f43f5e';
+    ctx.fillStyle = '#c26262';
     ctx.beginPath();
     ctx.arc(pspX, pspY, 3.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#fda4af';
+    ctx.strokeStyle = '#e29c9c';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    ctx.fillStyle = '#fecdd3';
-    ctx.font = 'bold 9px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#edc0c0';
+    ctx.font = 'bold 9px system-ui, sans-serif';
     ctx.fillText(`PSP: ${psp.rSun.toFixed(1)} R☉ (${psp.vKms.toFixed(0)} km/s)`, pspX + 6, pspY - 4);
 
     // Sync scrubber UI slider if operator is not manually scrubbing
@@ -1032,7 +1032,7 @@ class ParkerSpiralRenderer {
     this.soloScreenPos = { x: soloX, y: soloY, state: solo };
 
     // Draw SolO Elliptical Orbit Track (subtle cyan dashed line)
-    ctx.strokeStyle = 'rgba(6, 182, 212, 0.25)';
+    ctx.strokeStyle = 'rgba(102, 144, 191, 0.25)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 4]);
     ctx.beginPath();
@@ -1049,16 +1049,16 @@ class ParkerSpiralRenderer {
     ctx.setLineDash([]);
 
     // SolO Spacecraft Dot
-    ctx.fillStyle = '#06b6d4';
+    ctx.fillStyle = '#6690bf';
     ctx.beginPath();
     ctx.arc(soloX, soloY, 3, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#67e8f9';
+    ctx.strokeStyle = '#9bbadb';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#a5f3fc';
-    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#bdd2e8';
+    ctx.font = '9px system-ui, sans-serif';
     ctx.fillText(`SolO (${solo.vKms.toFixed(0)} km/s)`, soloX + 6, soloY + 11);
 
     // Determine Earth reference ecliptic longitude from SPICE
@@ -1090,30 +1090,30 @@ class ParkerSpiralRenderer {
 
     // Venus Glow & Body
     const venusAtmosphere = ctx.createRadialGradient(venusX, venusY, 2, venusX, venusY, 10);
-    venusAtmosphere.addColorStop(0, 'rgba(251, 191, 36, 0.45)');
-    venusAtmosphere.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    venusAtmosphere.addColorStop(0, 'rgba(210, 170, 87, 0.45)');
+    venusAtmosphere.addColorStop(1, 'rgba(210, 170, 87, 0)');
     ctx.fillStyle = venusAtmosphere;
     ctx.beginPath();
     ctx.arc(venusX, venusY, 10, 0, Math.PI * 2);
     ctx.fill();
 
     const venusGrad = ctx.createRadialGradient(venusX - 1.5, venusY - 1.5, 0.8, venusX, venusY, 5.5);
-    venusGrad.addColorStop(0, '#fef08a');
-    venusGrad.addColorStop(0.6, '#fbbf24');
-    venusGrad.addColorStop(1, '#b45309');
+    venusGrad.addColorStop(0, '#ebd6a2');
+    venusGrad.addColorStop(0.6, '#d2aa57');
+    venusGrad.addColorStop(1, '#7b5a29');
     ctx.fillStyle = venusGrad;
     ctx.beginPath();
     ctx.arc(venusX, venusY, 5.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#fde68a';
+    ctx.strokeStyle = '#ebd6a2';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#fef3c7';
-    ctx.font = '600 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('VENUS', venusX + 8, venusY - 3);
-    ctx.fillStyle = '#fcd34d';
-    ctx.font = '8.5px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#f4e8c8';
+    ctx.font = '600 9.5px system-ui, sans-serif';
+    ctx.fillText('Venus', venusX + 8, venusY - 3);
+    ctx.fillStyle = '#dfc078';
+    ctx.font = '8.5px system-ui, sans-serif';
     ctx.fillText(`${rVenusAu.toFixed(2)} AU (${vVenusKms.toFixed(0)} km/s)`, venusX + 8, venusY + 8);
 
     // 7. MARS (1.524 AU)
@@ -1140,30 +1140,30 @@ class ParkerSpiralRenderer {
 
     // Mars Atmosphere & Body
     const marsAtmosphere = ctx.createRadialGradient(marsX, marsY, 2, marsX, marsY, 9);
-    marsAtmosphere.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
-    marsAtmosphere.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    marsAtmosphere.addColorStop(0, 'rgba(194, 98, 98, 0.4)');
+    marsAtmosphere.addColorStop(1, 'rgba(194, 98, 98, 0)');
     ctx.fillStyle = marsAtmosphere;
     ctx.beginPath();
     ctx.arc(marsX, marsY, 9, 0, Math.PI * 2);
     ctx.fill();
 
     const marsGrad = ctx.createRadialGradient(marsX - 1.5, marsY - 1.5, 0.8, marsX, marsY, 4.8);
-    marsGrad.addColorStop(0, '#fca5a5');
-    marsGrad.addColorStop(0.65, '#dc2626');
-    marsGrad.addColorStop(1, '#7f1d1d');
+    marsGrad.addColorStop(0, '#e29c9c');
+    marsGrad.addColorStop(0.65, '#a44e4e');
+    marsGrad.addColorStop(1, '#5b2f2f');
     ctx.fillStyle = marsGrad;
     ctx.beginPath();
     ctx.arc(marsX, marsY, 4.8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#f87171';
+    ctx.strokeStyle = '#d77e7e';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#fee2e2';
-    ctx.font = '600 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('MARS', marsX + 8, marsY - 3);
-    ctx.fillStyle = '#f87171';
-    ctx.font = '8.5px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#f6dddd';
+    ctx.font = '600 9.5px system-ui, sans-serif';
+    ctx.fillText('Mars', marsX + 8, marsY - 3);
+    ctx.fillStyle = '#d77e7e';
+    ctx.font = '8.5px system-ui, sans-serif';
     ctx.fillText(`${rMarsAu.toFixed(2)} AU (${vMarsKms.toFixed(0)} km/s)`, marsX + 8, marsY + 8);
 
     // 8. MERCURY (0.387 AU)
@@ -1190,22 +1190,22 @@ class ParkerSpiralRenderer {
 
     // Mercury Body
     const mercGrad = ctx.createRadialGradient(mercX - 1, mercY - 1, 0.5, mercX, mercY, 3.8);
-    mercGrad.addColorStop(0, '#e2e8f0');
-    mercGrad.addColorStop(0.7, '#64748b');
-    mercGrad.addColorStop(1, '#1e293b');
+    mercGrad.addColorStop(0, '#d6d8db');
+    mercGrad.addColorStop(0.7, '#83878f');
+    mercGrad.addColorStop(1, '#141518');
     ctx.fillStyle = mercGrad;
     ctx.beginPath();
     ctx.arc(mercX, mercY, 3.8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#94a3b8';
+    ctx.strokeStyle = '#9a9ea5';
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('MERCURY', mercX + 7, mercY - 2);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '8px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#d6d8db';
+    ctx.font = '600 9px system-ui, sans-serif';
+    ctx.fillText('Mercury', mercX + 7, mercY - 2);
+    ctx.fillStyle = '#9a9ea5';
+    ctx.font = '8px system-ui, sans-serif';
     ctx.fillText(`${rMercAu.toFixed(2)} AU (${vMercKms.toFixed(0)} km/s)`, mercX + 7, mercY + 7);
 
     ctx.restore();
@@ -1218,24 +1218,24 @@ class ParkerSpiralRenderer {
     // Multi-layer glowing corona
     const coronaR = 26;
     const coronaGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, coronaR);
-    coronaGrad.addColorStop(0, '#fef08a');
-    coronaGrad.addColorStop(0.3, '#f59e0b');
-    coronaGrad.addColorStop(0.7, 'rgba(245, 158, 11, 0.25)');
-    coronaGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+    coronaGrad.addColorStop(0, '#ebd6a2');
+    coronaGrad.addColorStop(0.3, '#b98f3f');
+    coronaGrad.addColorStop(0.7, 'rgba(185, 143, 63, 0.25)');
+    coronaGrad.addColorStop(1, 'rgba(185, 143, 63, 0)');
     ctx.fillStyle = coronaGrad;
     ctx.beginPath();
     ctx.arc(cx, cy, coronaR, 0, Math.PI * 2);
     ctx.fill();
 
     // Solar Disk
-    ctx.fillStyle = '#fbbf24';
+    ctx.fillStyle = '#d2aa57';
     ctx.beginPath();
     ctx.arc(cx, cy, 9, 0, Math.PI * 2);
     ctx.fill();
 
     // Dynamic solar flares / prominence arcs
     const rot = this.time * 0.04;
-    ctx.strokeStyle = '#fef08a';
+    ctx.strokeStyle = '#ebd6a2';
     ctx.lineWidth = 1.2;
     for (let i = 0; i < 4; i++) {
       const a = rot + (i * Math.PI) / 2;
@@ -1244,10 +1244,10 @@ class ParkerSpiralRenderer {
       ctx.stroke();
     }
 
-    ctx.fillStyle = '#fef08a';
-    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ebd6a2';
+    ctx.font = '600 10px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('SUN', cx, cy + 24);
+    ctx.fillText('Sun', cx, cy + 24);
 
     ctx.restore();
   }
@@ -1257,36 +1257,36 @@ class ParkerSpiralRenderer {
     ctx.save();
 
     // Top-Left Simulation Badge
-    ctx.fillStyle = 'rgba(7, 14, 34, 0.85)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.fillStyle = 'rgba(20, 21, 24, 0.85)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(14, 14, 280, 68, 8);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('PARKER HELIOSPHERIC SPIRAL DYNAMICS', 24, 32);
+    ctx.fillStyle = '#7fa5cf';
+    ctx.font = '600 11px system-ui, sans-serif';
+    ctx.fillText('Parker heliospheric spiral dynamics', 24, 32);
 
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#b9bcc1';
+    ctx.font = '10px system-ui, sans-serif';
     const pitch = Math.atan((this.omegaSun * this.auKm) / this.speedKms) * (180 / Math.PI);
     const fp = (this.omegaSun * this.auKm / this.speedKms) * (180 / Math.PI);
     ctx.fillText(`V_SW: ${this.speedKms} km/s • 1 AU PITCH: ${pitch.toFixed(1)}°`, 24, 48);
-    ctx.fillText(`CONNECTED FOOTPOINT: ~${fp.toFixed(1)}° W (Solar Limb)`, 24, 64);
+    ctx.fillText(`Connected footpoint: ~${fp.toFixed(1)}° W (Solar Limb)`, 24, 64);
 
     // Well-connected highlight legend
-    ctx.fillStyle = 'rgba(7, 14, 34, 0.85)';
+    ctx.fillStyle = 'rgba(20, 21, 24, 0.85)';
     ctx.beginPath();
     ctx.roundRect(14, this.height - 42, 310, 28, 6);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#00f0ff';
+    ctx.fillStyle = '#7fa5cf';
     ctx.fillRect(24, this.height - 30, 14, 3);
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#d6d8db';
+    ctx.font = '10px system-ui, sans-serif';
     ctx.fillText('Cyan Spiral = Magnetic Highway to Earth/L1', 46, this.height - 24);
 
     ctx.restore();

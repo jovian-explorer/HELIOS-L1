@@ -73,14 +73,14 @@
     if (charts[id]) charts[id].destroy();
     config.options = Object.assign({
       responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
-      plugins: { legend: { labels: { color: '#cbd5e1', boxWidth: 12, font: { size: 10 } } } },
+      plugins: { legend: { labels: { color: '#b9bcc1', boxWidth: 12, font: { size: 10 } } } },
     }, config.options || {});
     charts[id] = new Chart(ctx, config);
   }
 
   function axis(title, extra = {}) {
-    return Object.assign({ type: 'linear', title: { display: true, text: title, color: '#94a3b8' },
-      ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.12)' } }, extra);
+    return Object.assign({ type: 'linear', title: { display: true, text: title, color: '#9a9ea5' },
+      ticks: { color: '#9a9ea5' }, grid: { color: 'rgba(154, 158, 165,0.12)' } }, extra);
   }
 
   function minutesFrom(tags, t0) {
@@ -154,10 +154,10 @@
       drawChart('ea-shock-chart', {
         type: 'line',
         data: { datasets: [
-          { label: '|B| (nT)', data: fx.map((x, i) => ({ x, y: f.bt[i] })), borderColor: '#38bdf8', borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
-          { label: 'N (cm⁻³)', data: px.map((x, i) => ({ x, y: p.n[i] })), borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 2, yAxisID: 'y1' },
+          { label: '|B| (nT)', data: fx.map((x, i) => ({ x, y: f.bt[i] })), borderColor: '#7fa5cf', borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
+          { label: 'N (cm⁻³)', data: px.map((x, i) => ({ x, y: p.n[i] })), borderColor: '#b98f3f', borderWidth: 1.5, pointRadius: 2, yAxisID: 'y1' },
           { label: 'Averaging windows', data: [{ x: w.before[0], y: bmax }, { x: w.before[1], y: bmax }, { x: NaN, y: NaN },
-            { x: w.after[0], y: bmax }, { x: w.after[1], y: bmax }], borderColor: '#10b981', borderWidth: 4, pointRadius: 0, spanGaps: false, yAxisID: 'y' },
+            { x: w.after[0], y: bmax }, { x: w.after[1], y: bmax }], borderColor: '#529b6e', borderWidth: 4, pointRadius: 0, spanGaps: false, yAxisID: 'y' },
         ] },
         options: { scales: { x: axis(`Minutes from ${r.shock_time} UTC`), y: axis('|B| (nT)'),
           y1: axis('N (cm⁻³)', { position: 'right', grid: { drawOnChartArea: false } }) } },
@@ -337,11 +337,11 @@
       const hx = ser.time_tags.map(t => (Date.parse(t.replace(' ', 'T') + 'Z') - t0) / 3.6e6);
       const pts = key => hx.map((x, i) => ({ x, y: ser[key][i] }));
       const datasets = [
-        { label: 'Phase front delay (min)', data: pts('delay_min'), borderColor: '#38bdf8', borderWidth: 1, pointRadius: 0 },
-        { label: 'Flat delay ΔX/Vx (min)', data: pts('flat_delay_min'), borderColor: '#94a3b8', borderDash: [4, 3], borderWidth: 1, pointRadius: 0 },
+        { label: 'Phase front delay (min)', data: pts('delay_min'), borderColor: '#7fa5cf', borderWidth: 1, pointRadius: 0 },
+        { label: 'Flat delay ΔX/Vx (min)', data: pts('flat_delay_min'), borderColor: '#9a9ea5', borderDash: [4, 3], borderWidth: 1, pointRadius: 0 },
       ];
       if (ser.omni_delay_min) {
-        datasets.push({ label: 'OMNI time shift (min)', data: pts('omni_delay_min'), borderColor: '#f59e0b', backgroundColor: '#f59e0b',
+        datasets.push({ label: 'OMNI time shift (min)', data: pts('omni_delay_min'), borderColor: '#b98f3f', backgroundColor: '#b98f3f',
           showLine: false, pointRadius: 1 });
       }
       drawChart('ea-ts-chart', { type: 'line', data: { datasets },
@@ -425,11 +425,11 @@
       const marks = (pick) => r.events.filter(pick).map(e => ({ x: xOf(e.time), y: e.window.sym_h[60] }));
       drawChart('ea-sc-chart', { type: 'line', data: { datasets: [
         { label: `SYM-H (nT, ${ser.cadence_minutes}-min)`, data: ser.time_tags.map((t, i) => ({ x: xOf(t), y: ser.sym_h[i] })),
-          borderColor: '#38bdf8', borderWidth: 1, pointRadius: 0, order: 1 },
+          borderColor: '#7fa5cf', borderWidth: 1, pointRadius: 0, order: 1 },
         { label: 'Detected onset', data: marks(e => e.detected), showLine: false, pointRadius: 4, pointStyle: 'triangle',
-          borderColor: '#f59e0b', backgroundColor: '#f59e0b' },
+          borderColor: '#b98f3f', backgroundColor: '#b98f3f' },
         { label: 'Listed, not detected', data: marks(e => !e.detected), showLine: false, pointRadius: 4, pointStyle: 'crossRot',
-          borderColor: '#f43f5e', backgroundColor: '#f43f5e', borderWidth: 2 },
+          borderColor: '#c26262', backgroundColor: '#c26262', borderWidth: 2 },
       ] }, options: { scales: { x: axis(`${days ? 'Days' : 'Hours'} from ${ser.time_tags[0]} UTC`, { min: 0, max: xOf(ser.time_tags[ser.time_tags.length - 1]) }),
         y: axis('SYM-H (nT)') } } });
       const a = el('ea-sc-csv');
@@ -450,10 +450,10 @@
     const m = scResult.series.window_minutes;
     const ys = e.window.sym_h.filter(v => v !== null);
     drawChart('ea-sc-event-chart', { type: 'line', data: { datasets: [
-      { label: 'SYM-H (nT)', data: m.map((x, k) => ({ x, y: e.window.sym_h[k] })), borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, yAxisID: 'y' },
-      { label: 'Flow pressure (nPa, OMNI)', data: m.map((x, k) => ({ x, y: e.window.pressure[k] })), borderColor: '#f59e0b', borderWidth: 1, pointRadius: 0, yAxisID: 'y1' },
+      { label: 'SYM-H (nT)', data: m.map((x, k) => ({ x, y: e.window.sym_h[k] })), borderColor: '#7fa5cf', borderWidth: 1.5, pointRadius: 0, yAxisID: 'y' },
+      { label: 'Flow pressure (nPa, OMNI)', data: m.map((x, k) => ({ x, y: e.window.pressure[k] })), borderColor: '#b98f3f', borderWidth: 1, pointRadius: 0, yAxisID: 'y1' },
       { label: e.detected ? 'Onset' : 'Listed onset', data: ys.length ? [{ x: 0, y: Math.min(...ys) }, { x: 0, y: Math.max(...ys) }] : [],
-        borderColor: '#94a3b8', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
+        borderColor: '#9a9ea5', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
     ] }, options: { scales: { x: axis(`Minutes from ${e.time} UTC`, { min: m[0], max: m[m.length - 1] }), y: axis('SYM-H (nT)'),
       y1: axis('Pressure (nPa)', { position: 'right', grid: { drawOnChartArea: false } }) } } });
   };
@@ -529,7 +529,7 @@
         ['χR (unit vectors)', `${fmt(r.chi_r, 3)} (noise level ${fmt(u.noise_level_nT, 1)} nT)`]]) +
         `<p class="text-[10px] text-slate-400 mt-1">Uncertainties from the error study of Lepping et al. (2003) as tabulated for the WIND clouds (Lepping et al. 2006).${(u.warnings || []).map(w => ' ' + escapeHtml(w)).join('')}</p>`;
       const hx = hoursFrom(r.model.time_tags, r.start.replace(' ', 'T'));
-      const comp = ['Bx', 'By', 'Bz'], colors = ['#38bdf8', '#10b981', '#f43f5e'];
+      const comp = ['Bx', 'By', 'Bz'], colors = ['#7fa5cf', '#529b6e', '#c26262'];
       const ds = [];
       comp.forEach((c, k) => {
         ds.push({ label: `${c} observed`, data: hx.map((x, i) => ({ x, y: r.model.observed_gse_nT[i][k] })), borderColor: colors[k],
@@ -659,13 +659,13 @@
     drawChart('ea-sea-chart', {
       type: 'line',
       data: { datasets: [
-        { label: 'Upper quartile', data: pts(st.q75), borderColor: 'rgba(56,189,248,0.4)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(56,189,248,0.12)' },
-        { label: 'Lower quartile', data: pts(st.q25), borderColor: 'rgba(56,189,248,0.4)', borderWidth: 1, pointRadius: 0 },
-        { label: 'Median', data: pts(st.median), borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0 },
-        { label: 'Mean', data: pts(st.mean), borderColor: '#f59e0b', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0 },
+        { label: 'Upper quartile', data: pts(st.q75), borderColor: 'rgba(127, 165, 207,0.4)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(127, 165, 207,0.12)' },
+        { label: 'Lower quartile', data: pts(st.q25), borderColor: 'rgba(127, 165, 207,0.4)', borderWidth: 1, pointRadius: 0 },
+        { label: 'Median', data: pts(st.median), borderColor: '#7fa5cf', borderWidth: 2, pointRadius: 0 },
+        { label: 'Mean', data: pts(st.mean), borderColor: '#b98f3f', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0 },
         ...(st.mean_ci95_low ? [
-          { label: 'Mean 95 % CI (bootstrap)', data: pts(st.mean_ci95_high), borderColor: 'rgba(245,158,11,0.5)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(245,158,11,0.10)' },
-          { label: 'Mean 95 % CI low', data: pts(st.mean_ci95_low), borderColor: 'rgba(245,158,11,0.5)', borderWidth: 1, pointRadius: 0 },
+          { label: 'Mean 95 % CI (bootstrap)', data: pts(st.mean_ci95_high), borderColor: 'rgba(185, 143, 63,0.5)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(185, 143, 63,0.10)' },
+          { label: 'Mean 95 % CI low', data: pts(st.mean_ci95_low), borderColor: 'rgba(185, 143, 63,0.5)', borderWidth: 1, pointRadius: 0 },
         ] : []),
       ] },
       options: { scales: { x: axis('Epoch time (hours from onset)', { min: x[0], max: x[x.length - 1] }), y: axis(p) } },

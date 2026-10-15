@@ -152,7 +152,7 @@ class OrbitRenderer {
         size: Math.random() * 1.6 + 0.4,
         alpha: Math.random() * 0.7 + 0.3,
         twinkleSpeed: Math.random() * 0.04 + 0.01,
-        color: Math.random() > 0.8 ? '#38bdf8' : (Math.random() > 0.6 ? '#fef08a' : '#f8fafc')
+        color: Math.random() > 0.8 ? '#7fa5cf' : (Math.random() > 0.6 ? '#ebd6a2' : '#f6f7f8')
       });
     }
   }
@@ -533,7 +533,7 @@ class OrbitRenderer {
     ctx.globalAlpha = 1.0;
 
     // 2. Draw Subtle Heliocentric Radial Grid
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.07)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.07)';
     ctx.lineWidth = 1;
     for (let r = 100; r <= 800; r += 140) {
       ctx.beginPath();
@@ -543,7 +543,7 @@ class OrbitRenderer {
 
     // 3. Equipotential Hill Curves / Roche Lobe around L1
     ctx.save();
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.12)';
+    ctx.strokeStyle = 'rgba(185, 143, 63, 0.12)';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 6]);
     for (let eq = 1; eq <= 3; eq++) {
@@ -561,7 +561,7 @@ class OrbitRenderer {
     if (this.showGseGrid) {
       ctx.save();
       ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+      ctx.strokeStyle = 'rgba(127, 165, 207, 0.08)';
       ctx.setLineDash([2, 5]);
 
       // Orthogonal grid lines along X (every 500k km ~ 87px)
@@ -575,8 +575,8 @@ class OrbitRenderer {
 
         // Distance label along ecliptic
         const pLabel = this.project(gx, 192, 0);
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
-        ctx.font = '500 8.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = 'rgba(154, 158, 165, 0.45)';
+        ctx.font = '500 8.5px system-ui, sans-serif';
         ctx.textAlign = 'center';
         const distKmK = Math.round((gx / 260) * 1496);
         ctx.fillText(`${distKmK > 0 ? '+' : ''}${distKmK}k km`, pLabel.x, pLabel.y);
@@ -599,39 +599,39 @@ class OrbitRenderer {
 
       // +X_GSE (Sunward, -X in canvas geometry)
       const xGseEnd = this.project(-120, 0, 0);
-      ctx.strokeStyle = 'rgba(234, 179, 8, 0.65)';
+      ctx.strokeStyle = 'rgba(185, 143, 63, 0.65)';
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       ctx.moveTo(earthP.x, earthP.y);
       ctx.lineTo(xGseEnd.x, xGseEnd.y);
       ctx.stroke();
-      ctx.fillStyle = '#fde047';
-      ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#dfc078';
+      ctx.font = 'bold 9px system-ui, sans-serif';
       ctx.textAlign = 'right';
       ctx.fillText('+X_GSE (Sunward)', xGseEnd.x - 6, xGseEnd.y - 4);
 
       // +Y_GSE (Duskward)
       const yGseEnd = this.project(0, 75, 0);
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+      ctx.strokeStyle = 'rgba(127, 165, 207, 0.65)';
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       ctx.moveTo(earthP.x, earthP.y);
       ctx.lineTo(yGseEnd.x, yGseEnd.y);
       ctx.stroke();
-      ctx.fillStyle = '#38bdf8';
+      ctx.fillStyle = '#7fa5cf';
       ctx.textAlign = 'left';
       ctx.fillText('+Y_GSE (Dusk)', yGseEnd.x + 8, yGseEnd.y + 3);
 
       if (this.viewMode === '3d') {
         // +Z_GSE (Ecliptic Northward)
         const zGseEnd = this.project(0, 0, 65);
-        ctx.strokeStyle = 'rgba(168, 85, 247, 0.7)';
+        ctx.strokeStyle = 'rgba(102, 144, 191, 0.7)';
         ctx.lineWidth = 1.6;
         ctx.beginPath();
         ctx.moveTo(earthP.x, earthP.y);
         ctx.lineTo(zGseEnd.x, zGseEnd.y);
         ctx.stroke();
-        ctx.fillStyle = '#c084fc';
+        ctx.fillStyle = '#7fa5cf';
         ctx.textAlign = 'left';
         ctx.fillText('+Z_GSE (North)', zGseEnd.x + 8, zGseEnd.y + 3);
       }
@@ -708,10 +708,10 @@ class OrbitRenderer {
 
     // Soft solar corona
     const coronaGlow = ctx.createRadialGradient(sunPos.x, sunPos.y, 25, sunPos.x, sunPos.y, 110);
-    coronaGlow.addColorStop(0, 'rgba(245, 158, 11, 0.45)');
-    coronaGlow.addColorStop(0.35, 'rgba(245, 158, 11, 0.15)');
-    coronaGlow.addColorStop(0.7, 'rgba(234, 179, 8, 0.05)');
-    coronaGlow.addColorStop(1, 'rgba(245, 158, 11, 0)');
+    coronaGlow.addColorStop(0, 'rgba(185, 143, 63, 0.45)');
+    coronaGlow.addColorStop(0.35, 'rgba(185, 143, 63, 0.15)');
+    coronaGlow.addColorStop(0.7, 'rgba(185, 143, 63, 0.05)');
+    coronaGlow.addColorStop(1, 'rgba(185, 143, 63, 0)');
     ctx.fillStyle = coronaGlow;
     ctx.beginPath();
     ctx.arc(sunPos.x, sunPos.y, 110, 0, Math.PI * 2);
@@ -719,26 +719,26 @@ class OrbitRenderer {
 
     // Solid Sun Core with Solar Limb Darkening
     const sunCore = ctx.createRadialGradient(sunPos.x - 5, sunPos.y - 5, 4, sunPos.x, sunPos.y, 34);
-    sunCore.addColorStop(0, '#fffbeb');
-    sunCore.addColorStop(0.3, '#fde047');
-    sunCore.addColorStop(0.75, '#f59e0b');
-    sunCore.addColorStop(1, '#b45309');
+    sunCore.addColorStop(0, '#fbf6ea');
+    sunCore.addColorStop(0.3, '#dfc078');
+    sunCore.addColorStop(0.75, '#b98f3f');
+    sunCore.addColorStop(1, '#7b5a29');
     ctx.fillStyle = sunCore;
     ctx.beginPath();
     ctx.arc(sunPos.x, sunPos.y, 34, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(253, 224, 71, 0.4)';
+    ctx.strokeStyle = 'rgba(223, 192, 120, 0.4)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.fillStyle = '#fef08a';
-    ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ebd6a2';
+    ctx.font = '600 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('THE SUN (1.0 AU)', sunPos.x, sunPos.y + 50);
+    ctx.fillText('The Sun (1.0 AU)', sunPos.x, sunPos.y + 50);
 
     // Sun-Earth Interplanetary Axis line
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.2)';
+    ctx.strokeStyle = 'rgba(210, 170, 87, 0.2)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 6]);
     ctx.beginPath();
@@ -775,16 +775,16 @@ class OrbitRenderer {
       const bsSubsolar = this.project(-boundaries.r0_bs * scaleRe, 0, 0);
       const mpSubsolar = this.project(-boundaries.r0_mp * scaleRe, 0, 0);
       const sheathGrad = ctx.createLinearGradient(bsSubsolar.x, 0, mpSubsolar.x, 0);
-      sheathGrad.addColorStop(0, 'rgba(56, 189, 248, 0.16)');
-      sheathGrad.addColorStop(0.5, 'rgba(14, 165, 233, 0.08)');
-      sheathGrad.addColorStop(1, 'rgba(234, 179, 8, 0.04)');
+      sheathGrad.addColorStop(0, 'rgba(127, 165, 207, 0.16)');
+      sheathGrad.addColorStop(0.5, 'rgba(102, 144, 191, 0.08)');
+      sheathGrad.addColorStop(1, 'rgba(185, 143, 63, 0.04)');
       ctx.fillStyle = sheathGrad;
       ctx.fill();
       ctx.restore();
     }
 
     // B. Collisionless Planetary Bow Shock Front
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.85)';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     boundaries.bsPts.forEach((p, i) => {
@@ -795,19 +795,19 @@ class OrbitRenderer {
     ctx.stroke();
 
     // Subtle Bow Shock outer glow
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.2)';
     ctx.lineWidth = 4.0;
     ctx.stroke();
 
     // Bow Shock Subsolar Standoff Dot
     const bsSubsolarProj = this.project(-boundaries.r0_bs * scaleRe, 0, 0);
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#7fa5cf';
     ctx.beginPath();
     ctx.arc(bsSubsolarProj.x, bsSubsolarProj.y, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
     // C. Terrestrial Magnetopause Boundary Current Sheet
-    const mpColor = boundaries.insideGeo ? 'rgba(239, 68, 68, 0.9)' : 'rgba(234, 179, 8, 0.8)';
+    const mpColor = boundaries.insideGeo ? 'rgba(194, 98, 98, 0.9)' : 'rgba(185, 143, 63, 0.8)';
     ctx.strokeStyle = mpColor;
     ctx.lineWidth = 1.6;
     ctx.setLineDash([4, 4]);
@@ -822,24 +822,24 @@ class OrbitRenderer {
 
     // Magnetopause Subsolar Standoff Dot
     const mpSubsolarProj = this.project(-boundaries.r0_mp * scaleRe, 0, 0);
-    ctx.fillStyle = boundaries.insideGeo ? '#ef4444' : '#f59e0b';
+    ctx.fillStyle = boundaries.insideGeo ? '#c26262' : '#b98f3f';
     ctx.beginPath();
     ctx.arc(mpSubsolarProj.x, mpSubsolarProj.y, 3, 0, Math.PI * 2);
     ctx.fill();
 
     // Subsolar Distance Label Callouts
-    ctx.font = '600 8.5px "JetBrains Mono", monospace';
-    ctx.fillStyle = '#38bdf8';
+    ctx.font = '600 8.5px system-ui, sans-serif';
+    ctx.fillStyle = '#7fa5cf';
     ctx.textAlign = 'right';
     ctx.fillText(`BS: ${boundaries.r0_bs.toFixed(1)} RE`, bsSubsolarProj.x - 4, bsSubsolarProj.y - 6);
 
-    ctx.fillStyle = boundaries.insideGeo ? '#f87171' : '#fbbf24';
+    ctx.fillStyle = boundaries.insideGeo ? '#d77e7e' : '#d2aa57';
     ctx.textAlign = 'left';
     ctx.fillText(`MP: ${boundaries.r0_mp.toFixed(1)} RE`, mpSubsolarProj.x + 4, mpSubsolarProj.y - 6);
 
     // D. Van Allen Radiation Belts (Muted scientific contours)
-    ctx.fillStyle = 'rgba(147, 51, 234, 0.12)';
-    ctx.strokeStyle = 'rgba(168, 85, 247, 0.3)';
+    ctx.fillStyle = 'rgba(79, 119, 163, 0.12)';
+    ctx.strokeStyle = 'rgba(102, 144, 191, 0.3)';
     ctx.lineWidth = 1;
     for (const side of [-1, 1]) {
       ctx.beginPath();
@@ -853,7 +853,7 @@ class OrbitRenderer {
     this.drawDipoleAndMagnetotail(ctx, earthP, boundaries, scaleRe);
 
     // E. Geostationary Orbit (GEO ~ 42k km = 6.6 R_E = 25px radius)
-    ctx.strokeStyle = boundaries.insideGeo ? 'rgba(239, 68, 68, 0.55)' : 'rgba(148, 163, 184, 0.35)';
+    ctx.strokeStyle = boundaries.insideGeo ? 'rgba(194, 98, 98, 0.55)' : 'rgba(154, 158, 165, 0.35)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 4]);
     ctx.beginPath();
@@ -863,10 +863,10 @@ class OrbitRenderer {
 
     // Sub-GEO Warning Callout if compressed
     if (boundaries.insideGeo) {
-      ctx.fillStyle = '#ef4444';
-      ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#c26262';
+      ctx.font = 'bold 9px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('SUB-GEO COMPRESSION', earthP.x, earthP.y - 32);
+      ctx.fillText('Sub-GEO compression', earthP.x, earthP.y - 32);
     }
 
     // Update DOM Telemetry HUD elements if present
@@ -875,7 +875,7 @@ class OrbitRenderer {
     const hudMp = document.getElementById('hud-mp-standoff');
     if (hudMp) {
       hudMp.innerText = `${boundaries.r0_mp.toFixed(1)} R_E`;
-      hudMp.className = boundaries.insideGeo ? 'text-rose-400 font-bold animate-pulse' : 'text-amber-400 font-bold';
+      hudMp.className = boundaries.insideGeo ? 'text-rose-400 font-bold ' : 'text-amber-400 font-bold';
     }
     const hudSheath = document.getElementById('hud-sheath-thick');
     if (hudSheath) hudSheath.innerText = `${boundaries.sheathRe.toFixed(1)} R_E`;
@@ -883,16 +883,16 @@ class OrbitRenderer {
     if (hudMargin) {
       const margin = boundaries.r0_mp - 6.6;
       hudMargin.innerText = `${margin >= 0 ? '+' : ''}${margin.toFixed(1)} R_E`;
-      hudMargin.className = margin < 0 ? 'text-rose-400 font-bold animate-pulse' : 'text-emerald-400 font-bold';
+      hudMargin.className = margin < 0 ? 'text-rose-400 font-bold ' : 'text-emerald-400 font-bold';
     }
     const hudModel = document.getElementById('hud-model-name');
     if (hudModel) hudModel.innerText = this.boundaryModel === 'shue' ? 'Farris-Russell 1994' : 'Chao 2002';
 
     // Earth Sphere with Day/Night Lighting (Sun on left illuminates -X)
     const earthGlow = ctx.createRadialGradient(earthP.x, earthP.y, 8, earthP.x, earthP.y, 18);
-    earthGlow.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
-    earthGlow.addColorStop(0.7, 'rgba(37, 99, 235, 0.1)');
-    earthGlow.addColorStop(1, 'rgba(30, 58, 138, 0)');
+    earthGlow.addColorStop(0, 'rgba(127, 165, 207, 0.4)');
+    earthGlow.addColorStop(0.7, 'rgba(79, 119, 163, 0.1)');
+    earthGlow.addColorStop(1, 'rgba(42, 63, 85, 0)');
     ctx.fillStyle = earthGlow;
     ctx.beginPath();
     ctx.arc(earthP.x, earthP.y, 18, 0, Math.PI * 2);
@@ -900,30 +900,30 @@ class OrbitRenderer {
 
     // Day/Night shaded Earth body
     const earthGrad = ctx.createLinearGradient(earthP.x - 11, earthP.y, earthP.x + 11, earthP.y);
-    earthGrad.addColorStop(0, '#93c5fd');
-    earthGrad.addColorStop(0.45, '#2563eb');
-    earthGrad.addColorStop(0.55, '#1e3a8a');
-    earthGrad.addColorStop(1, '#090d16');
+    earthGrad.addColorStop(0, '#9bbadb');
+    earthGrad.addColorStop(0.45, '#4f77a3');
+    earthGrad.addColorStop(0.55, '#2a3f55');
+    earthGrad.addColorStop(1, '#141518');
     ctx.fillStyle = earthGrad;
     ctx.beginPath();
     ctx.arc(earthP.x, earthP.y, 11, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(147, 197, 253, 0.6)';
+    ctx.strokeStyle = 'rgba(155, 186, 219, 0.6)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    ctx.fillStyle = '#bae6fd';
-    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#bdd2e8';
+    ctx.font = '600 10px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('EARTH', earthP.x, earthP.y + 24);
+    ctx.fillText('Earth', earthP.x, earthP.y + 24);
     ctx.restore();
 
     // 7. Lagrange Points (L1 & L2)
     ctx.save();
     const lagrangePoints = [
-      { id: 'L1', x: -260, y: 0, label: 'L1 Lagrange (~1.5M km)', color: '#f59e0b' },
-      { id: 'L2', x: 260, y: 0, label: 'L2 Lagrange (~1.5M km)', color: '#8b5cf6' }
+      { id: 'L1', x: -260, y: 0, label: 'L1 Lagrange (~1.5M km)', color: '#b98f3f' },
+      { id: 'L2', x: 260, y: 0, label: 'L2 Lagrange (~1.5M km)', color: '#6690bf' }
     ];
 
     for (const lp of lagrangePoints) {
@@ -942,7 +942,7 @@ class OrbitRenderer {
       ctx.stroke();
 
       ctx.fillStyle = lp.color;
-      ctx.font = '600 10px "JetBrains Mono", monospace';
+      ctx.font = '600 10px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(lp.id, proj.x, proj.y - 10);
     }
@@ -955,7 +955,7 @@ class OrbitRenderer {
         if (this.visibleSatellites && !this.visibleSatellites.has(key)) continue;
 
         ctx.save();
-        const satColor = sat.color || '#38bdf8';
+        const satColor = sat.color || '#7fa5cf';
         ctx.strokeStyle = satColor;
         ctx.lineWidth = 1.2;
         ctx.globalAlpha = 0.6;
@@ -1011,8 +1011,8 @@ class OrbitRenderer {
           ctx.stroke();
 
           // Crisp Monospace Label
-          ctx.fillStyle = '#e2e8f0';
-          ctx.font = '500 9.5px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#d6d8db';
+          ctx.font = '500 9.5px system-ui, sans-serif';
           ctx.textAlign = 'left';
           ctx.fillText(sat.name, proj.x + 8, proj.y + 3);
         }
@@ -1038,7 +1038,7 @@ class OrbitRenderer {
     
     lShells.forEach((L, idx) => {
       const alpha = 0.32 - idx * 0.06;
-      ctx.strokeStyle = `rgba(96, 165, 250, ${alpha})`;
+      ctx.strokeStyle = `rgba(127, 165, 207, ${alpha})`;
       ctx.lineWidth = 1.0;
       ctx.setLineDash([3, 3]);
 
@@ -1082,7 +1082,7 @@ class OrbitRenderer {
     const tailLengths = [18.0, 26.0, 34.0];
     tailLengths.forEach((tailRe, idx) => {
       const alpha = 0.24 - idx * 0.06;
-      ctx.strokeStyle = `rgba(147, 197, 253, ${alpha})`;
+      ctx.strokeStyle = `rgba(155, 186, 219, ${alpha})`;
       ctx.lineWidth = 1.1;
 
       for (const hemi of [-1, 1]) {
@@ -1112,9 +1112,9 @@ class OrbitRenderer {
     const tailStart = this.project(3.5 * scaleRe, 0, 0);
     const tailEnd = this.project(34.0 * scaleRe, 0, 0);
     const sheetGrad = ctx.createLinearGradient(tailStart.x, tailStart.y, tailEnd.x, tailEnd.y);
-    sheetGrad.addColorStop(0, 'rgba(245, 158, 11, 0.5)');
-    sheetGrad.addColorStop(0.35, 'rgba(234, 88, 12, 0.3)');
-    sheetGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    sheetGrad.addColorStop(0, 'rgba(185, 143, 63, 0.5)');
+    sheetGrad.addColorStop(0.35, 'rgba(154, 115, 50, 0.3)');
+    sheetGrad.addColorStop(1, 'rgba(194, 98, 98, 0)');
 
     ctx.strokeStyle = sheetGrad;
     ctx.lineWidth = 2.0;
@@ -1127,10 +1127,10 @@ class OrbitRenderer {
 
     // Label: "MAGNETOTAIL CURRENT SHEET"
     const labelP = this.project(15.0 * scaleRe, 0, 0);
-    ctx.fillStyle = 'rgba(251, 191, 36, 0.75)';
-    ctx.font = '600 8px "JetBrains Mono", monospace';
+    ctx.fillStyle = 'rgba(210, 170, 87, 0.75)';
+    ctx.font = '600 8px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('NEUTRAL CURRENT SHEET', labelP.x, labelP.y + 11);
+    ctx.fillText('Neutral current sheet', labelP.x, labelP.y + 11);
 
     // 4. Subsolar Magnetic Reconnection X-Point & Energy Influx (when Bz < 0)
     if (isReconnecting) {
@@ -1141,16 +1141,16 @@ class OrbitRenderer {
 
       // Reconnection X-point glow
       const xGlow = ctx.createRadialGradient(xPt.x, xPt.y, 1, xPt.x, xPt.y, 14 + pulse * 6);
-      xGlow.addColorStop(0, `rgba(239, 68, 68, ${0.7 + pulse * 0.3})`);
-      xGlow.addColorStop(0.5, `rgba(249, 115, 22, ${0.35 * intensity})`);
-      xGlow.addColorStop(1, 'rgba(239, 68, 68, 0)');
+      xGlow.addColorStop(0, `rgba(194, 98, 98, ${0.7 + pulse * 0.3})`);
+      xGlow.addColorStop(0.5, `rgba(185, 143, 63, ${0.35 * intensity})`);
+      xGlow.addColorStop(1, 'rgba(194, 98, 98, 0)');
       ctx.fillStyle = xGlow;
       ctx.beginPath();
       ctx.arc(xPt.x, xPt.y, 20, 0, Math.PI * 2);
       ctx.fill();
 
       // Sharp Reconnection X-line separatrices
-      ctx.strokeStyle = `rgba(254, 202, 202, ${0.85 + pulse * 0.15})`;
+      ctx.strokeStyle = `rgba(237, 192, 192, ${0.85 + pulse * 0.15})`;
       ctx.lineWidth = 1.4;
       const xArm = 7.0 + pulse * 2.5;
       ctx.beginPath();
@@ -1161,8 +1161,8 @@ class OrbitRenderer {
       ctx.stroke();
 
       // Dynamic Reconnection Annotation
-      ctx.fillStyle = '#ef4444';
-      ctx.font = 'bold 8.5px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#c26262';
+      ctx.font = 'bold 8.5px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(`⚡ RECONNECTION X-POINT (Bz: ${this.bz.toFixed(1)} nT)`, xPt.x, xPt.y - 14);
     }

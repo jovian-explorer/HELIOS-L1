@@ -299,9 +299,9 @@ class AuroralMapRenderer {
       this.width / 2, this.height / 2, 50,
       this.width / 2, this.height / 2, this.width * 0.75
     );
-    oceanGrad.addColorStop(0, '#0a1636');
-    oceanGrad.addColorStop(0.6, '#060d24');
-    oceanGrad.addColorStop(1, '#020512');
+    oceanGrad.addColorStop(0, '#141518');
+    oceanGrad.addColorStop(0.6, '#141518');
+    oceanGrad.addColorStop(1, '#141518');
     this.ctx.fillStyle = oceanGrad;
     this.ctx.fillRect(0, 0, this.width, this.height);
 
@@ -336,14 +336,14 @@ class AuroralMapRenderer {
     if (this.home) {
       const { x, y } = this.geoToXY(this.home.lon, this.home.lat);
       this.ctx.save();
-      this.ctx.strokeStyle = '#facc15';
+      this.ctx.strokeStyle = '#d2aa57';
       this.ctx.lineWidth = 2;
       this.ctx.beginPath();
       this.ctx.arc(x, y, 6, 0, Math.PI * 2);
       this.ctx.stroke();
-      this.ctx.fillStyle = '#facc15';
-      this.ctx.font = 'bold 9px "JetBrains Mono", monospace';
-      this.ctx.fillText('YOU', x + 8, y + 3);
+      this.ctx.fillStyle = '#d2aa57';
+      this.ctx.font = 'bold 9px system-ui, sans-serif';
+      this.ctx.fillText('You', x + 8, y + 3);
       this.ctx.restore();
     }
 
@@ -354,7 +354,7 @@ class AuroralMapRenderer {
   drawGraticule() {
     const ctx = this.ctx;
     ctx.save();
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.12)';
     ctx.lineWidth = 0.8;
     ctx.setLineDash([2, 3]);
 
@@ -366,8 +366,8 @@ class AuroralMapRenderer {
       ctx.lineTo(this.width, y);
       ctx.stroke();
 
-      ctx.fillStyle = lat === 0 ? 'rgba(0, 240, 255, 0.7)' : 'rgba(100, 116, 139, 0.6)';
-      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = lat === 0 ? 'rgba(127, 165, 207, 0.7)' : 'rgba(131, 135, 143, 0.6)';
+      ctx.font = '9px system-ui, sans-serif';
       ctx.fillText(lat === 0 ? 'EQUATOR 0°' : `${Math.abs(lat)}°${lat > 0 ? 'N' : 'S'}`, 8, y - 3);
     });
 
@@ -380,14 +380,14 @@ class AuroralMapRenderer {
       ctx.stroke();
 
       if (lon === 0) {
-        ctx.fillStyle = 'rgba(255, 183, 3, 0.7)';
-        ctx.font = '9px "JetBrains Mono", monospace';
-        ctx.fillText('PRIME MERIDIAN 0°', x + 4, this.height - 8);
+        ctx.fillStyle = 'rgba(210, 170, 87, 0.7)';
+        ctx.font = '9px system-ui, sans-serif';
+        ctx.fillText('Prime meridian 0°', x + 4, this.height - 8);
       }
     });
 
     // Arctic / Antarctic Circles (66.5° N / S)
-    ctx.strokeStyle = 'rgba(0, 255, 157, 0.22)';
+    ctx.strokeStyle = 'rgba(109, 180, 135, 0.22)';
     ctx.setLineDash([4, 4]);
     [66.5, -66.5].forEach(lat => {
       const { y } = this.geoToXY(0, lat);
@@ -395,7 +395,7 @@ class AuroralMapRenderer {
       ctx.moveTo(0, y);
       ctx.lineTo(this.width, y);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(0, 255, 157, 0.45)';
+      ctx.fillStyle = 'rgba(109, 180, 135, 0.45)';
       ctx.fillText(lat > 0 ? 'ARCTIC CIRCLE 66.5°N' : 'ANTARCTIC CIRCLE 66.5°S', 8, y - 3);
     });
 
@@ -406,9 +406,9 @@ class AuroralMapRenderer {
     const ctx = this.ctx;
     ctx.save();
     ctx.fillStyle = 'rgba(17, 30, 62, 0.82)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.35)';
     ctx.lineWidth = 1.2;
-    ctx.shadowColor = 'rgba(56, 189, 248, 0.15)';
+    ctx.shadowColor = 'rgba(127, 165, 207, 0.15)';
     ctx.shadowBlur = 4;
 
     for (const poly of this.continents) {
@@ -474,7 +474,7 @@ class AuroralMapRenderer {
     ctx.closePath();
 
     // Night shadow fill
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.62)';
+    ctx.fillStyle = 'rgba(20, 21, 24, 0.62)';
     ctx.fill();
 
     // Glowing Golden Twilight Boundary Line
@@ -484,31 +484,31 @@ class AuroralMapRenderer {
       if (idx === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
-    ctx.strokeStyle = 'rgba(255, 183, 3, 0.45)';
+    ctx.strokeStyle = 'rgba(210, 170, 87, 0.45)';
     ctx.lineWidth = 1.8;
-    ctx.shadowColor = 'rgba(255, 183, 3, 0.6)';
+    ctx.shadowColor = 'rgba(210, 170, 87, 0.6)';
     ctx.shadowBlur = 8;
     ctx.stroke();
 
     // Subsolar Point Indicator (Day Center)
     const { x: sx, y: sy } = this.geoToXY(sun.lon, sun.lat);
     const sunGrad = ctx.createRadialGradient(sx, sy, 2, sx, sy, 18);
-    sunGrad.addColorStop(0, '#fef08a');
-    sunGrad.addColorStop(0.3, '#f59e0b');
-    sunGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+    sunGrad.addColorStop(0, '#ebd6a2');
+    sunGrad.addColorStop(0.3, '#b98f3f');
+    sunGrad.addColorStop(1, 'rgba(185, 143, 63, 0)');
     ctx.fillStyle = sunGrad;
     ctx.beginPath();
     ctx.arc(sx, sy, 18, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#fbbf24';
+    ctx.fillStyle = '#d2aa57';
     ctx.beginPath();
     ctx.arc(sx, sy, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#fde68a';
-    ctx.font = 'bold 9px "JetBrains Mono", monospace';
-    ctx.fillText('SUBSOLAR PT', sx + 10, sy + 3);
+    ctx.fillStyle = '#ebd6a2';
+    ctx.font = 'bold 9px system-ui, sans-serif';
+    ctx.fillText('Subsolar point', sx + 10, sy + 3);
 
     ctx.restore();
   }
@@ -528,7 +528,7 @@ class AuroralMapRenderer {
       else ctx.lineTo(x, y);
     });
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(244, 63, 94, 0.22)';
+    ctx.strokeStyle = 'rgba(194, 98, 98, 0.22)';
     ctx.lineWidth = 12;
     ctx.stroke();
 
@@ -540,9 +540,9 @@ class AuroralMapRenderer {
       else ctx.lineTo(x, y);
     });
     ctx.closePath();
-    ctx.fillStyle = 'rgba(34, 197, 94, 0.14)';
+    ctx.fillStyle = 'rgba(82, 155, 110, 0.14)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(34, 197, 94, 0.7)';
+    ctx.strokeStyle = 'rgba(82, 155, 110, 0.7)';
     ctx.lineWidth = 3.0;
     ctx.stroke();
 
@@ -554,7 +554,7 @@ class AuroralMapRenderer {
       else ctx.lineTo(x, y);
     });
     ctx.closePath();
-    ctx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+    ctx.strokeStyle = 'rgba(102, 144, 191, 0.5)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
@@ -569,7 +569,7 @@ class AuroralMapRenderer {
         else ctx.lineTo(x, y);
       });
       ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = 'rgba(250, 204, 21, 0.6)';
+      ctx.strokeStyle = 'rgba(210, 170, 87, 0.6)';
       ctx.lineWidth = 1.2;
       ctx.stroke();
       ctx.setLineDash([]);
@@ -584,7 +584,7 @@ class AuroralMapRenderer {
       ctx.beginPath();
       ctx.arc(px, py, 3, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(0, 255, 157, 0.8)';
+      ctx.strokeStyle = 'rgba(109, 180, 135, 0.8)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(px, py, 9, 0, Math.PI * 2);
@@ -598,8 +598,8 @@ class AuroralMapRenderer {
     const ctx = this.ctx;
     ctx.save();
     [
-      { pole: this.magPoleNorth, label: 'N. MAG POLE', color: '#ff2a6d' },
-      { pole: this.magPoleSouth, label: 'S. MAG POLE', color: '#00f0ff' }
+      { pole: this.magPoleNorth, label: 'N. MAG POLE', color: '#d77e7e' },
+      { pole: this.magPoleSouth, label: 'S. MAG POLE', color: '#7fa5cf' }
     ].forEach(p => {
       const { x, y } = this.geoToXY(p.pole.lon, p.pole.lat);
       ctx.fillStyle = p.color;
@@ -613,8 +613,8 @@ class AuroralMapRenderer {
       ctx.arc(x, y, 8, 0, Math.PI * 2);
       ctx.stroke();
 
-      ctx.fillStyle = '#f8fafc';
-      ctx.font = 'bold 9px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#f6f7f8';
+      ctx.font = 'bold 9px system-ui, sans-serif';
       ctx.fillText(p.label, x + 10, y + 3);
     });
     ctx.restore();
@@ -631,13 +631,13 @@ class AuroralMapRenderer {
       const isCivilTwilight = zenith >= 90 && zenith <= 96;
 
       const isHovered = this.hoveredStation === st;
-      const baseColor = isNight ? '#00ff9d' : isCivilTwilight ? '#ffb703' : '#64748b';
+      const baseColor = isNight ? '#6db487' : isCivilTwilight ? '#d2aa57' : '#83878f';
 
       ctx.save();
 
       // Radar ping ring
       if (isNight || isHovered) {
-        ctx.strokeStyle = isHovered ? '#00f0ff' : baseColor;
+        ctx.strokeStyle = isHovered ? '#7fa5cf' : baseColor;
         ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.arc(x, y, 5 + pulse * 7, 0, Math.PI * 2);
@@ -652,8 +652,8 @@ class AuroralMapRenderer {
 
       // Label
       if (isHovered || isNight) {
-        ctx.fillStyle = isHovered ? '#00f0ff' : '#cbd5e1';
-        ctx.font = `${isHovered ? 'bold ' : ''}9px "JetBrains Mono", monospace`;
+        ctx.fillStyle = isHovered ? '#7fa5cf' : '#b9bcc1';
+        ctx.font = `${isHovered ? 'bold ' : ''}9px system-ui, sans-serif`;
         ctx.fillText(st.id, x + 7, y - 4);
       }
 
@@ -666,22 +666,22 @@ class AuroralMapRenderer {
     ctx.save();
 
     // Top-Left Mini HUD
-    ctx.fillStyle = 'rgba(7, 14, 34, 0.85)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.fillStyle = 'rgba(20, 21, 24, 0.85)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(10, 10, 260, 56, 8);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#7fa5cf';
+    ctx.font = '600 10px system-ui, sans-serif';
     ctx.fillText(this.ovalBoundaries ? 'AURORAL OVAL (STARKOV 1994)' : 'AURORAL OVAL (SCHEMATIC, LOADING)', 18, 26);
 
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#9a9ea5';
+    ctx.font = '9px system-ui, sans-serif';
     const eqMid = this.eqMidnightLat !== null && this.eqMidnightLat !== undefined ? this.eqMidnightLat : null;
-    ctx.fillText(`EQUATORWARD MIDNIGHT: ${eqMid === null ? 'n/a' : eqMid.toFixed(1) + '° CGM LAT'}`, 18, 40);
+    ctx.fillText(`Equatorward midnight: ${eqMid === null ? 'n/a' : eqMid.toFixed(1) + '° CGM LAT'}`, 18, 40);
     const kpText = this.kpIndex === null ? 'n/a' : this.kpIndex.toFixed(1);
     const alText = this.alUsed === null || this.alUsed === undefined ? '' : `|AL| ${this.alUsed.toFixed(0)} nT • `;
     ctx.fillText(`${alText}KP: ${kpText} • HPI: ${this.hemisphericPower === null ? 'n/a' : this.hemisphericPower + ' GW'}` +
@@ -691,13 +691,13 @@ class AuroralMapRenderer {
     if (this.mouseGeo) {
       const mlt = this.getMLT(this.mouseGeo.lon, this.mouseGeo.lat);
       const text = `GEO: ${Math.abs(this.mouseGeo.lat).toFixed(1)}°${this.mouseGeo.lat >= 0 ? 'N' : 'S'}, ${Math.abs(this.mouseGeo.lon).toFixed(1)}°${this.mouseGeo.lon >= 0 ? 'E' : 'W'} | MLT: ${mlt.toFixed(1)}h`;
-      ctx.fillStyle = 'rgba(7, 14, 34, 0.85)';
+      ctx.fillStyle = 'rgba(20, 21, 24, 0.85)';
       ctx.beginPath();
       ctx.roundRect(this.width - 280, this.height - 30, 270, 22, 6);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#7fa5cf';
+      ctx.font = '9px system-ui, sans-serif';
       ctx.fillText(text, this.width - 272, this.height - 15);
     }
 

@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Interface and robustness
+- Calmer look: neutral dark grey instead of navy, one accent colour (all decorative hues map to it in the Tailwind palette), muted green / amber / red only for levels and alerts; one font family (system UI, tabular figures; no fonts fetched from Google); no glows, shadows, blur, gradients, pulsing or blinking, coloured card stripes, all-capitals labels or decorative badges; header buttons neutral; chart grids and axes subdued and no decorative fills under lines; canvas drawings use the same palette. Text meets WCAG AA contrast (4.5:1) on the panels; motion is off when the system asks for reduced motion.
 - Header: the Bz badge and the stand-off and ε tickers say "(archive end)" or "(simulated)" when they come from an archive interval or a simulated view (they read as current conditions), and show --- when the spacecraft has no such value (they kept the previous spacecraft's numbers, e.g. after switching to SOHO).
 - Incident log: only live measurements raise incidents. Loading an archive interval (e.g. May 2024) logged "critical" incidents stamped with the current time, and simulated or synthetic views logged incidents that described no real conditions.
 - The live dashboard refreshes itself every minute while it is on screen (the server asks NOAA at most every 3 minutes); it loaded once, so a window left open showed hours-old values as live. Archive intervals and hidden windows are not refreshed.

@@ -236,7 +236,7 @@ class SolarDiskViewer {
   }
 
   drawBackground(ctx) {
-    ctx.fillStyle = '#030612';
+    ctx.fillStyle = '#141518';
     ctx.fillRect(0, 0, this.width, this.height);
 
     // Subtle star dots
@@ -254,44 +254,44 @@ class SolarDiskViewer {
     switch (this.wavelength) {
       case '304': // Chromosphere (Crimson / Orange Red)
         return {
-          inner: '#fef08a',
-          mid: '#f97316',
-          edge: '#dc2626',
-          corona: 'rgba(220, 38, 38, 0.25)',
+          inner: '#ebd6a2',
+          mid: '#b98f3f',
+          edge: '#a44e4e',
+          corona: 'rgba(164, 78, 78, 0.25)',
           name: 'Schematic disk, 304 Å colours (He II ~50,000 K: chromosphere, filaments)'
         };
       case '171': // Quiet Corona (Gold / Yellow)
         return {
           inner: '#ffffff',
-          mid: '#fde047',
-          edge: '#eab308',
-          corona: 'rgba(234, 179, 8, 0.28)',
+          mid: '#dfc078',
+          edge: '#b98f3f',
+          corona: 'rgba(185, 143, 63, 0.28)',
           name: 'Schematic disk, 171 Å colours (Fe IX ~0.6 MK: quiet corona, loops)'
         };
       case '131': // Hot Flare Plasma (Teal / Cyan)
         return {
-          inner: '#f0fdfa',
-          mid: '#2dd4bf',
-          edge: '#0f766e',
-          corona: 'rgba(45, 212, 191, 0.25)',
+          inner: '#eff4fa',
+          mid: '#7fa5cf',
+          edge: '#3f5f83',
+          corona: 'rgba(127, 165, 207, 0.25)',
           name: 'Schematic disk, 131 Å colours (Fe XXI ~10 MK: flaring plasma)'
         };
       case 'C2': // SOHO LASCO C2 Coronagraph (Red White-Light)
         return {
           inner: '#000000',
-          mid: '#f43f5e',
-          edge: '#881337',
-          corona: 'rgba(244, 63, 94, 0.35)',
+          mid: '#c26262',
+          edge: '#5b2f2f',
+          corona: 'rgba(194, 98, 98, 0.35)',
           isCoronagraph: true,
           name: 'Schematic corona, LASCO C2 style (white light 2-6 R☉)'
         };
       case '193': // Coronal Holes (Bronze / Gold)
       default:
         return {
-          inner: '#fffbeb',
-          mid: '#d97706',
-          edge: '#78350f',
-          corona: 'rgba(217, 119, 6, 0.28)',
+          inner: '#fbf6ea',
+          mid: '#9a7332',
+          edge: '#523c21',
+          corona: 'rgba(154, 115, 50, 0.28)',
           name: 'Schematic disk, 193 Å colours (Fe XII ~1.5 MK: coronal holes)'
         };
     }
@@ -305,7 +305,7 @@ class SolarDiskViewer {
     const coronaR = sunR * 1.35;
     const coronaGrad = ctx.createRadialGradient(cx, cy, sunR * 0.9, cx, cy, coronaR);
     coronaGrad.addColorStop(0, pal.corona);
-    coronaGrad.addColorStop(0.7, 'rgba(245, 158, 11, 0.08)');
+    coronaGrad.addColorStop(0.7, 'rgba(185, 143, 63, 0.08)');
     coronaGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = coronaGrad;
     ctx.beginPath();
@@ -336,7 +336,7 @@ class SolarDiskViewer {
 
     if (pal.isCoronagraph) {
       // Occulting disc for LASCO
-      ctx.fillStyle = '#0f172a';
+      ctx.fillStyle = '#1e2024';
       ctx.beginPath();
       ctx.arc(cx, cy, sunR, 0, Math.PI * 2);
       ctx.fill();
@@ -349,7 +349,7 @@ class SolarDiskViewer {
         const ex = cx + Math.cos(a) * length;
         const ey = cy + Math.sin(a) * length;
 
-        ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
+        ctx.strokeStyle = 'rgba(194, 98, 98, 0.4)';
         ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(a) * sunR, cy + Math.sin(a) * sunR);
@@ -366,9 +366,9 @@ class SolarDiskViewer {
       ctx.stroke();
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.font = '9px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('SOLAR DISK (OCCULTED)', cx, cy + 3);
+      ctx.fillText('Solar disk (occulted)', cx, cy + 3);
       ctx.restore();
       return;
     }
@@ -442,7 +442,7 @@ class SolarDiskViewer {
 
       // Pulsing magnetic reticle ring
       const pulse = (Math.sin(this.time * 0.08) + 1) / 2;
-      ctx.strokeStyle = isSelected ? '#00f0ff' : isHovered ? '#fde047' : '#ff2a6d';
+      ctx.strokeStyle = isSelected ? '#7fa5cf' : isHovered ? '#dfc078' : '#d77e7e';
       ctx.lineWidth = isSelected ? 2 : 1.2;
 
       ctx.beginPath();
@@ -456,15 +456,15 @@ class SolarDiskViewer {
       ctx.fill();
 
       // Flaring micro-loops in active region
-      ctx.strokeStyle = 'rgba(254, 240, 138, 0.8)';
+      ctx.strokeStyle = 'rgba(235, 214, 162, 0.8)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(x, y - 2, 4.5, 0, Math.PI);
       ctx.stroke();
 
       // Label
-      ctx.fillStyle = isSelected ? '#00f0ff' : '#f8fafc';
-      ctx.font = `${isSelected ? 'bold ' : ''}9px "JetBrains Mono", monospace`;
+      ctx.fillStyle = isSelected ? '#7fa5cf' : '#f6f7f8';
+      ctx.font = `${isSelected ? 'bold ' : ''}9px system-ui, sans-serif`;
       ctx.fillText(ar.id, x + 9, y - 4);
     });
     ctx.restore();
@@ -474,20 +474,20 @@ class SolarDiskViewer {
     const pal = this.getColorPalettes();
     ctx.save();
 
-    ctx.fillStyle = 'rgba(7, 14, 34, 0.88)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.fillStyle = 'rgba(20, 21, 24, 0.88)';
+    ctx.strokeStyle = 'rgba(127, 165, 207, 0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(14, 14, 330, 48, 6);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#7fa5cf';
+    ctx.font = '600 10px system-ui, sans-serif';
     ctx.fillText(this.regionSource === 'observed' ? `NOAA ACTIVE REGIONS ${this.regionDate} (SCHEMATIC DISK)` : 'HISTORICAL REGIONS (SCHEMATIC DISK)', 24, 30);
 
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#d6d8db';
+    ctx.font = '9px system-ui, sans-serif';
     ctx.fillText(pal.name, 24, 48);
 
     ctx.restore();

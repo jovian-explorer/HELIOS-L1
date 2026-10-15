@@ -67,19 +67,19 @@ async function loadFleetMatrix() {
         let textColor = '';
 
         if (isDiag || r === null || r === undefined) {  // no common data: n/a, not r = 0
-          bgStyle = 'background: rgba(15, 23, 42, 0.6);';
+          bgStyle = 'background: rgba(30, 32, 36, 0.6);';
           textColor = 'text-slate-500';
         } else if (r >= 0.85) {
-          bgStyle = 'background: rgba(0, 240, 255, 0.18); border: 1px solid rgba(0, 240, 255, 0.3);';
+          bgStyle = 'background: rgba(127, 165, 207, 0.18); border: 1px solid rgba(127, 165, 207, 0.3);';
           textColor = 'text-cyan-300 font-bold';
         } else if (r >= 0.70) {
-          bgStyle = 'background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.25);';
+          bgStyle = 'background: rgba(82, 155, 110, 0.16); border: 1px solid rgba(82, 155, 110, 0.25);';
           textColor = 'text-emerald-300 font-bold';
         } else if (r >= 0.40) {
-          bgStyle = 'background: rgba(251, 191, 36, 0.14); border: 1px solid rgba(251, 191, 36, 0.2);';
+          bgStyle = 'background: rgba(210, 170, 87, 0.14); border: 1px solid rgba(210, 170, 87, 0.2);';
           textColor = 'text-amber-300 font-semibold';
         } else {
-          bgStyle = 'background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.2);';
+          bgStyle = 'background: rgba(194, 98, 98, 0.12); border: 1px solid rgba(194, 98, 98, 0.2);';
           textColor = 'text-rose-300 font-semibold';
         }
 
@@ -88,7 +88,7 @@ async function loadFleetMatrix() {
             <div 
               onclick="selectMatrixPair('${mRow}', '${mCol}')" 
               style="${bgStyle}" 
-              class="rounded-lg py-1.5 px-2.5 cursor-pointer hover:scale-105 transition shadow-sm ${textColor} ${sim ? 'opacity-50 italic' : ''}"
+              class="rounded-lg py-1.5 px-2.5 cursor-pointer hover:scale-105 transition ${textColor} ${sim ? 'opacity-50 italic' : ''}"
               title="${isDiag ? 'Self-correlation' : `${sim ? 'One side is not measured (simulated or synthetic), so r says nothing about the instruments. ' : ''}Click to cross-correlate ${mRow} vs ${mCol}`}"
             >
               ${r === null || r === undefined ? 'n/a' : r.toFixed(3)}

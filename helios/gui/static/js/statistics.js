@@ -33,11 +33,11 @@
   }
 
   function axis(title, type = 'linear') {
-    const ticks = { color: '#94a3b8' };
+    const ticks = { color: '#9a9ea5' };
     if (type === 'logarithmic') {  // label the decades only
       ticks.callback = (v) => (Math.abs(Math.log10(v) - Math.round(Math.log10(v))) < 1e-6 ? String(Number(v)) : '');
     }
-    return { type, title: { display: true, text: title, color: '#94a3b8' }, ticks, grid: { color: 'rgba(148,163,184,0.12)' } };
+    return { type, title: { display: true, text: title, color: '#9a9ea5' }, ticks, grid: { color: 'rgba(154, 158, 165,0.12)' } };
   }
 
   function resetCanvas(show = true) {
@@ -54,7 +54,7 @@
     const c = resetCanvas();
     if (typeof Chart === 'undefined') return;
     config.options = Object.assign({ responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
-      plugins: { legend: { labels: { color: '#cbd5e1', boxWidth: 12, font: { size: 10 },
+      plugins: { legend: { labels: { color: '#b9bcc1', boxWidth: 12, font: { size: 10 },
         filter: (item) => !/ low$/.test(item.text) } } } }, config.options || {});  // lower band edges need no legend entry
     chart = new Chart(c.getContext('2d'), config);
   }
@@ -80,8 +80,8 @@
         ctx.fillRect(m.l + i * pw, h - m.b - (j + 1) * ph, Math.ceil(pw), Math.ceil(ph));
       }
     }
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px JetBrains Mono, monospace';
+    ctx.fillStyle = '#9a9ea5';
+    ctx.font = '10px system-ui, sans-serif';
     for (let i = 0; i <= nx; i += Math.max(1, Math.round(nx / 6))) {
       ctx.fillText(num(r.x_edges[i], 3), m.l + i * pw - 10, h - m.b + 14);
     }
@@ -99,7 +99,7 @@
       ctx.fillStyle = `hsl(${240 - 200 * f}, 85%, ${25 + 35 * f}%)`;
       ctx.fillRect(w - m.r + 15, h - m.b - (k + 1) * (h - m.t - m.b) / 100, 12, Math.ceil((h - m.t - m.b) / 100));
     }
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = '#9a9ea5';
     ctx.fillText(`${maxC}`, w - m.r + 30, m.t + 8);
     ctx.fillText('1', w - m.r + 30, h - m.b);
     ctx.fillText('hours', w - m.r + 12, h - m.b + 14);
@@ -181,7 +181,7 @@
 
     if (out.analysis === 'distribution') {
       const pts = r.counts.map((n, i) => ({ x: logX ? Math.sqrt(r.edges[i] * r.edges[i + 1]) : (r.edges[i] + r.edges[i + 1]) / 2, y: n }));
-      draw({ type: 'bar', data: { datasets: [{ label: `Hours per bin of ${x}`, data: pts, backgroundColor: 'rgba(56,189,248,0.6)', barPercentage: 1.0, categoryPercentage: 1.0 }] },
+      draw({ type: 'bar', data: { datasets: [{ label: `Hours per bin of ${x}`, data: pts, backgroundColor: 'rgba(127, 165, 207,0.6)', barPercentage: 1.0, categoryPercentage: 1.0 }] },
         options: { scales: { x: axis(label(x), logX ? 'logarithmic' : 'linear'), y: axis('Hours') } } });
       const p = r.percentiles;
       el('st-summary').innerHTML = table(['Statistic', 'Value'], [
@@ -196,12 +196,12 @@
     } else if (out.analysis === 'conditional') {
       const pts = (k) => r.x_center.map((c, i) => ({ x: c, y: r[k][i] })).filter(p => p.y !== null);
       draw({ type: 'line', data: { datasets: [
-        { label: 'Upper quartile', data: pts('q75'), borderColor: 'rgba(148,163,184,0.5)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(148,163,184,0.10)' },
-        { label: 'Lower quartile', data: pts('q25'), borderColor: 'rgba(148,163,184,0.5)', borderWidth: 1, pointRadius: 0 },
-        { label: 'Mean 95 % interval', data: pts('mean_ci95_high'), borderColor: 'rgba(245,158,11,0.5)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(245,158,11,0.18)' },
-        { label: 'Mean 95 % low', data: pts('mean_ci95_low'), borderColor: 'rgba(245,158,11,0.5)', borderWidth: 1, pointRadius: 0 },
-        { label: `Mean of ${y}`, data: pts('mean'), borderColor: '#f59e0b', borderWidth: 2, pointRadius: 2 },
-        { label: `Median of ${y}`, data: pts('median'), borderColor: '#38bdf8', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0 },
+        { label: 'Upper quartile', data: pts('q75'), borderColor: 'rgba(154, 158, 165,0.5)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(154, 158, 165,0.10)' },
+        { label: 'Lower quartile', data: pts('q25'), borderColor: 'rgba(154, 158, 165,0.5)', borderWidth: 1, pointRadius: 0 },
+        { label: 'Mean 95 % interval', data: pts('mean_ci95_high'), borderColor: 'rgba(185, 143, 63,0.5)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(185, 143, 63,0.18)' },
+        { label: 'Mean 95 % low', data: pts('mean_ci95_low'), borderColor: 'rgba(185, 143, 63,0.5)', borderWidth: 1, pointRadius: 0 },
+        { label: `Mean of ${y}`, data: pts('mean'), borderColor: '#b98f3f', borderWidth: 2, pointRadius: 2 },
+        { label: `Median of ${y}`, data: pts('median'), borderColor: '#7fa5cf', borderWidth: 1.5, borderDash: [4, 3], pointRadius: 0 },
       ] }, options: { scales: { x: axis(label(x), logX ? 'logarithmic' : 'linear'), y: axis(label(y)) } } });
       el('st-summary').innerHTML = table([`${x} (bin centre)`, 'Hours', `Mean ${y}`, '95 % interval', 'Median', 'Quartiles'],
         r.x_center.map((c, i) => [num(c), r.n[i].toLocaleString(), num(r.mean[i]),
@@ -215,11 +215,11 @@
       const per = r.periods.filter(p => p.mean !== null);
       const t = (p) => (r.resolution === 'year' ? Number(p.period) + 0.5 : Number(p.period.slice(0, 4)) + (Number(p.period.slice(5, 7)) - 0.5) / 12);
       draw({ type: 'line', data: { datasets: [
-        { label: '95 % interval', data: per.filter(p => p.mean_ci95).map(p => ({ x: t(p), y: p.mean_ci95[1] })), borderColor: 'rgba(245,158,11,0.4)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(245,158,11,0.18)', yAxisID: 'y' },
-        { label: '95 % low', data: per.filter(p => p.mean_ci95).map(p => ({ x: t(p), y: p.mean_ci95[0] })), borderColor: 'rgba(245,158,11,0.4)', borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
-        { label: `Mean ${x}`, data: per.map(p => ({ x: t(p), y: p.mean })), borderColor: '#f59e0b', borderWidth: 2, pointRadius: 2, yAxisID: 'y' },
-        { label: 'Sunspot number', data: r.periods.filter(p => p.sunspot_number !== null).map(p => ({ x: t(p), y: p.sunspot_number })), borderColor: '#94a3b8', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, yAxisID: 'y2' },
-      ] }, options: { scales: { x: Object.assign(axis('Year'), { ticks: { color: '#94a3b8', callback: (v) => String(v) } }), y: axis(label(x)), y2: Object.assign(axis('Sunspot number'), { position: 'right', grid: { drawOnChartArea: false } }) } } });
+        { label: '95 % interval', data: per.filter(p => p.mean_ci95).map(p => ({ x: t(p), y: p.mean_ci95[1] })), borderColor: 'rgba(185, 143, 63,0.4)', borderWidth: 1, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(185, 143, 63,0.18)', yAxisID: 'y' },
+        { label: '95 % low', data: per.filter(p => p.mean_ci95).map(p => ({ x: t(p), y: p.mean_ci95[0] })), borderColor: 'rgba(185, 143, 63,0.4)', borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
+        { label: `Mean ${x}`, data: per.map(p => ({ x: t(p), y: p.mean })), borderColor: '#b98f3f', borderWidth: 2, pointRadius: 2, yAxisID: 'y' },
+        { label: 'Sunspot number', data: r.periods.filter(p => p.sunspot_number !== null).map(p => ({ x: t(p), y: p.sunspot_number })), borderColor: '#9a9ea5', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, yAxisID: 'y2' },
+      ] }, options: { scales: { x: Object.assign(axis('Year'), { ticks: { color: '#9a9ea5', callback: (v) => String(v) } }), y: axis(label(x)), y2: Object.assign(axis('Sunspot number'), { position: 'right', grid: { drawOnChartArea: false } }) } } });
       const c = r.correlation;
       el('st-summary').innerHTML = table(['Statistic', 'Value'], c ? [
         [`r of ${r.resolution}ly means with the sunspot number`, `${num(c.r_with_sunspot_number)} (95 %: ${c.ci95 ? `${num(c.ci95[0])} to ${num(c.ci95[1])}` : 'too few independent periods'})`],

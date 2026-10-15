@@ -35,31 +35,37 @@ let parkerRenderer = null;
 let cmeSimulator = null;
 let solarDiskViewer = null;
 
+// Subdued axes and grid so the data stand out; one font family everywhere.
+if (window.Chart) {
+  Chart.defaults.font.family = 'system-ui, sans-serif';
+  Chart.defaults.color = '#9a9ea5';
+  Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.06)';
+}
 const darkChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
-  animation: { duration: 400 },
+  animation: false,
   plugins: {
     legend: {
-      labels: { color: '#94a3b8', font: { size: 10, weight: 'bold' } }
+      labels: { color: '#b9bcc1', font: { size: 11 }, boxWidth: 14, boxHeight: 2 }
     },
     tooltip: {
-      backgroundColor: '#0f172a',
-      borderColor: '#334155',
+      backgroundColor: '#1f2125',
+      borderColor: '#141518',
       borderWidth: 1,
-      titleColor: '#38bdf8',
-      bodyColor: '#f1f5f9',
+      titleColor: '#e4e6e9',
+      bodyColor: '#d6d8db',
       padding: 8
     }
   },
   scales: {
     x: {
-      grid: { color: 'rgba(51, 65, 85, 0.25)' },
-      ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 12 }
+      grid: { color: 'rgba(255, 255, 255, 0.05)' },
+      ticks: { color: '#9a9ea5', font: { size: 10 }, maxTicksLimit: 12 }
     },
     y: {
-      grid: { color: 'rgba(51, 65, 85, 0.25)' },
-      ticks: { color: '#64748b', font: { size: 9 } }
+      grid: { color: 'rgba(255, 255, 255, 0.05)' },
+      ticks: { color: '#9a9ea5', font: { size: 10 } }
     }
   }
 };
@@ -76,8 +82,6 @@ const DOMAINS = {
   fleet: {
     id: 'fleet',
     name: 'L1 Fleet & Telemetry',
-    badge: '4 SENSORS',
-    context: 'DOMAIN: L1 FLEET & TELEMETRY // REAL-TIME IN-SITU OBSERVATORY',
     views: [
       { id: 'dashboard', label: 'L1 Telemetry', icon: 'fa-gauge-high', color: 'text-sky-400' },
       { id: 'comparator', label: 'Multi-Satellite Comparator', icon: 'fa-code-compare', color: 'text-cyan-400' },
@@ -88,8 +92,6 @@ const DOMAINS = {
   heliosphere: {
     id: 'heliosphere',
     name: 'Solar & Heliosphere',
-    badge: '3 MODELS',
-    context: 'DOMAIN: SOLAR & HELIOSPHERE // CORONA, PARKER SPIRAL & TURBULENCE',
     views: [
       { id: 'coronagraph', label: 'Coronagraph & CME', icon: 'fa-sun', color: 'text-amber-400' },
       { id: 'parker', label: 'Parker Spiral & CIR', icon: 'fa-wind', color: 'text-cyan-400' },
@@ -99,8 +101,6 @@ const DOMAINS = {
   geospace: {
     id: 'geospace',
     name: 'Geospace & Hazards',
-    badge: '4 MODULES',
-    context: 'DOMAIN: GEOSPACE & HAZARDS // STARKOV OVAL, STORM FORECAST, D-RAP & GIC',
     views: [
       { id: 'aurora', label: 'Auroral Oval & Map', icon: 'fa-earth-americas', color: 'text-emerald-400' },
       { id: 'forecast', label: 'Storm Forecast', icon: 'fa-chart-line', color: 'text-blue-400' },
@@ -111,8 +111,6 @@ const DOMAINS = {
   data: {
     id: 'data',
     name: 'Data Studio & Science',
-    badge: 'OPEN SCI',
-    context: 'DOMAIN: DATA STUDIO & SCIENCE // CUSTOM OMNI & PEER-REVIEWED DOIS',
     views: [
       { id: 'import', label: 'Custom Ingestion & OMNI', icon: 'fa-database', color: 'text-indigo-400' },
       { id: 'analysis', label: 'Event Analysis', icon: 'fa-microscope', color: 'text-indigo-400' },
@@ -159,7 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initVisualizers();
   missionIncidentLogger = new MissionIncidentLogger();
   keepNavBelowHeader();
-  keepUnitCase();
   document.getElementById('settings-auto-update')?.addEventListener('change', e => { e.target.dataset.touched = '1'; });
   showSettingsReview();
 
@@ -304,38 +301,6 @@ async function acknowledgeSettingsReview() {
   } catch (e) {
     if (status) status.innerText = `Not saved: ${e.message}`;
   }
-}
-
-// Many form labels are styled in capitals (CSS text-transform), which also capitalised their
-// units and symbols: "1 mHz" read as "1 MHZ", "dB/dt" as "DB/DT" (decibels), "(s)" as "(S)",
-// "nT" as "NT" and the Greek α as "Α". The bracketed part of such a label and symbols with a
-// slash keep their case.
-function keepUnitCase(root = document.body) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const nodes = [];
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    const parent = n.parentElement;
-    if (!parent || !/\(|\//.test(n.textContent) || !/[a-zα-ωμ]/.test(n.textContent)) continue;
-    if (getComputedStyle(parent).textTransform !== 'uppercase') continue;
-    nodes.push(n);
-  }
-  nodes.forEach(n => {
-    const parts = n.textContent.split(/(\([^()]*\)|\S+\/\S+)/);
-    if (parts.length < 2) return;
-    const frag = document.createDocumentFragment();
-    parts.forEach((part, i) => {
-      if (!part) return;
-      if (i % 2 === 1) {
-        const span = document.createElement('span');
-        span.style.textTransform = 'none';
-        span.textContent = part;
-        frag.appendChild(span);
-      } else {
-        frag.appendChild(document.createTextNode(part));
-      }
-    });
-    n.parentNode.replaceChild(frag, n);
-  });
 }
 
 // The header is sticky and wraps onto two or three lines in narrow windows, so the sticky
@@ -524,8 +489,8 @@ function updateClock() {
   if (badge) {
     badge.innerText = badgeStr;
     badge.className = selectedTimezone === 'UTC'
-      ? 'text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300 uppercase font-mono'
-      : 'text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 uppercase font-mono';
+      ? 'text-[9px] px-1 py-0.2 rounded bg-sky-500/20 text-sky-300  font-mono'
+      : 'text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300  font-mono';
   }
   if (preview) preview.innerText = timeStr;
   if (previewBadge) previewBadge.innerText = badgeStr;
@@ -802,11 +767,6 @@ function renderSubnav(domainKey) {
   }).join('');
 
   container.innerHTML = html;
-
-  const ctxLabel = document.getElementById('domain-context-label');
-  if (ctxLabel) {
-    ctxLabel.innerText = domain.context;
-  }
 }
 
 function switchDomain(domainKey) {
@@ -930,17 +890,17 @@ function initCharts() {
   const ctxMag = document.getElementById('chart-mag')?.getContext('2d');
   if (ctxMag) {
     const bzGradient = ctxMag.createLinearGradient(0, 0, 0, 240);
-    bzGradient.addColorStop(0, 'rgba(244, 63, 94, 0.28)');
-    bzGradient.addColorStop(1, 'rgba(244, 63, 94, 0.0)');
+    bzGradient.addColorStop(0, 'rgba(194, 98, 98, 0.28)');
+    bzGradient.addColorStop(1, 'rgba(194, 98, 98, 0.0)');
 
     chartMag = new Chart(ctxMag, {
       type: 'line',
       data: {
         labels: [],
         datasets: [
-          { label: 'IMF Bz (GSM)', data: [], borderColor: '#f43f5e', backgroundColor: bzGradient, fill: true, borderWidth: 2, pointRadius: 0, tension: 0.2 },
-          { label: 'IMF By (GSM)', data: [], borderColor: '#38bdf8', borderWidth: 1.2, pointRadius: 0, borderDash: [3, 3], tension: 0.2 },
-          { label: 'Total |B|', data: [], borderColor: '#cbd5e1', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+          { label: 'IMF Bz (GSM)', data: [], borderColor: '#c26262', backgroundColor: bzGradient, fill: false, borderWidth: 2, pointRadius: 0, tension: 0.2 },
+          { label: 'IMF By (GSM)', data: [], borderColor: '#7fa5cf', borderWidth: 1.2, pointRadius: 0, borderDash: [3, 3], tension: 0.2 },
+          { label: 'Total |B|', data: [], borderColor: '#b9bcc1', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
         ]
       },
       options: {
@@ -949,7 +909,7 @@ function initCharts() {
           ...darkChartOptions.scales,
           y: {
             ...darkChartOptions.scales.y,
-            title: { display: true, text: 'Magnetic Field Vector [nT]', color: '#94a3b8', font: { size: 10, weight: 'bold' } }
+            title: { display: true, text: 'Magnetic Field Vector [nT]', color: '#9a9ea5', font: { size: 10, weight: 'bold' } }
           }
         }
       }
@@ -959,16 +919,16 @@ function initCharts() {
   const ctxPlasma = document.getElementById('chart-plasma')?.getContext('2d');
   if (ctxPlasma) {
     const speedGradient = ctxPlasma.createLinearGradient(0, 0, 0, 240);
-    speedGradient.addColorStop(0, 'rgba(245, 158, 11, 0.25)');
-    speedGradient.addColorStop(1, 'rgba(245, 158, 11, 0.0)');
+    speedGradient.addColorStop(0, 'rgba(185, 143, 63, 0.25)');
+    speedGradient.addColorStop(1, 'rgba(185, 143, 63, 0.0)');
 
     chartPlasma = new Chart(ctxPlasma, {
       type: 'line',
       data: {
         labels: [],
         datasets: [
-          { label: 'Solar Wind Speed Vsw [km/s]', data: [], borderColor: '#f59e0b', backgroundColor: speedGradient, fill: true, yAxisID: 'ySpeed', borderWidth: 2, pointRadius: 0, tension: 0.2 },
-          { label: 'Proton Density Np [cm⁻³]', data: [], borderColor: '#10b981', yAxisID: 'yDensity', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+          { label: 'Solar Wind Speed Vsw [km/s]', data: [], borderColor: '#b98f3f', backgroundColor: speedGradient, fill: false, yAxisID: 'ySpeed', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+          { label: 'Proton Density Np [cm⁻³]', data: [], borderColor: '#529b6e', yAxisID: 'yDensity', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
         ]
       },
       options: {
@@ -978,16 +938,16 @@ function initCharts() {
           ySpeed: {
             type: 'linear',
             position: 'left',
-            grid: { color: 'rgba(51, 65, 85, 0.25)' },
-            ticks: { color: '#f59e0b', font: { size: 9, family: 'JetBrains Mono' } },
-            title: { display: true, text: 'Bulk Speed [km/s]', color: '#f59e0b', font: { size: 10, weight: 'bold' } }
+            grid: { color: 'rgba(67, 70, 76, 0.25)' },
+            ticks: { color: '#b98f3f', font: { size: 9, family: 'system-ui' } },
+            title: { display: true, text: 'Bulk Speed [km/s]', color: '#b98f3f', font: { size: 10, weight: 'bold' } }
           },
           yDensity: {
             type: 'linear',
             position: 'right',
             grid: { drawOnChartArea: false },
-            ticks: { color: '#10b981', font: { size: 9, family: 'JetBrains Mono' } },
-            title: { display: true, text: 'Ion Density [cm⁻³]', color: '#10b981', font: { size: 10, weight: 'bold' } }
+            ticks: { color: '#529b6e', font: { size: 9, family: 'system-ui' } },
+            title: { display: true, text: 'Ion Density [cm⁻³]', color: '#529b6e', font: { size: 10, weight: 'bold' } }
           }
         }
       }
@@ -997,16 +957,16 @@ function initCharts() {
   const ctxMagSphere = document.getElementById('chart-magnetosphere')?.getContext('2d');
   if (ctxMagSphere) {
     const rmpGradient = ctxMagSphere.createLinearGradient(0, 0, 0, 240);
-    rmpGradient.addColorStop(0, 'rgba(56, 189, 248, 0.22)');
-    rmpGradient.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+    rmpGradient.addColorStop(0, 'rgba(127, 165, 207, 0.22)');
+    rmpGradient.addColorStop(1, 'rgba(127, 165, 207, 0.0)');
 
     chartMagnetosphere = new Chart(ctxMagSphere, {
       type: 'line',
       data: {
         labels: [],
         datasets: [
-          { label: 'Magnetopause Standoff (R_mp) [R_E]', data: [], borderColor: '#38bdf8', backgroundColor: rmpGradient, fill: true, yAxisID: 'yRmp', borderWidth: 2, pointRadius: 0, tension: 0.2 },
-          { label: 'Akasofu Epsilon [GW]', data: [], borderColor: '#a855f7', yAxisID: 'yEps', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+          { label: 'Magnetopause Standoff (R_mp) [R_E]', data: [], borderColor: '#7fa5cf', backgroundColor: rmpGradient, fill: false, yAxisID: 'yRmp', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+          { label: 'Akasofu Epsilon [GW]', data: [], borderColor: '#6690bf', yAxisID: 'yEps', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
         ]
       },
       options: {
@@ -1016,16 +976,16 @@ function initCharts() {
           yRmp: {
             type: 'linear',
             position: 'left',
-            grid: { color: 'rgba(51, 65, 85, 0.25)' },
-            ticks: { color: '#38bdf8', font: { size: 9, family: 'JetBrains Mono' } },
-            title: { display: true, text: 'Standoff Distance [Earth Radii]', color: '#38bdf8', font: { size: 10, weight: 'bold' } }
+            grid: { color: 'rgba(67, 70, 76, 0.25)' },
+            ticks: { color: '#7fa5cf', font: { size: 9, family: 'system-ui' } },
+            title: { display: true, text: 'Standoff Distance [Earth Radii]', color: '#7fa5cf', font: { size: 10, weight: 'bold' } }
           },
           yEps: {
             type: 'linear',
             position: 'right',
             grid: { drawOnChartArea: false },
-            ticks: { color: '#a855f7', font: { size: 9, family: 'JetBrains Mono' } },
-            title: { display: true, text: 'Energy Coupling [GW]', color: '#a855f7', font: { size: 10, weight: 'bold' } }
+            ticks: { color: '#6690bf', font: { size: 9, family: 'system-ui' } },
+            title: { display: true, text: 'Energy Coupling [GW]', color: '#6690bf', font: { size: 10, weight: 'bold' } }
           }
         }
       }
@@ -1039,8 +999,8 @@ function initCharts() {
       data: {
         labels: [],
         datasets: [
-          { label: 'Model Dst [nT]', data: [], borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
-          { label: 'Observed Dst, Kyoto [nT]', data: [], borderColor: '#38bdf8', backgroundColor: '#38bdf8', showLine: true, spanGaps: true, borderWidth: 1.5, pointRadius: 2.5 }
+          { label: 'Model Dst [nT]', data: [], borderColor: '#c26262', backgroundColor: 'rgba(194, 98, 98, 0.1)', fill: false, borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+          { label: 'Observed Dst, Kyoto [nT]', data: [], borderColor: '#7fa5cf', backgroundColor: '#7fa5cf', showLine: true, spanGaps: true, borderWidth: 1.5, pointRadius: 2.5 }
         ]
       },
       options: {
@@ -1049,7 +1009,7 @@ function initCharts() {
           ...darkChartOptions.scales,
           y: {
             ...darkChartOptions.scales.y,
-            title: { display: true, text: 'Dst Index [nT]', color: '#f43f5e' }
+            title: { display: true, text: 'Dst Index [nT]', color: '#c26262' }
           }
         }
       }
@@ -1180,7 +1140,7 @@ function setTelemetryFilter(filterKey) {
     const btn = document.getElementById(`btn-filter-${k}`);
     if (!btn) return;
     if (k === filterKey) {
-      btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white border border-sky-400/40 transition shadow-sm';
+      btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white border border-sky-400/40 transition ';
     } else {
       btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/60 transition';
     }
@@ -1302,9 +1262,9 @@ function updateTelemetryUI(data) {
   const gText = document.getElementById('g-scale-text');
   if (gBadge && gText) {
     gText.innerText = cls.g_scale || 'G scale n/a';
-    gBadge.style.color = cls.g_color || '#10b981';
-    gBadge.style.borderColor = (cls.g_color || '#10b981') + '66';
-    gBadge.style.backgroundColor = (cls.g_color || '#10b981') + '1a';
+    gBadge.style.color = cls.g_color || '#529b6e';
+    gBadge.style.borderColor = (cls.g_color || '#529b6e') + '66';
+    gBadge.style.backgroundColor = (cls.g_color || '#529b6e') + '1a';
   }
 
   // The header reads as current conditions: values from an archive interval or a simulated
@@ -1317,26 +1277,26 @@ function updateTelemetryUI(data) {
   const bzText = document.getElementById('bz-alert-text');
   if (bzBadge && bzText) {
     bzText.innerText = (latest.bz_gsm != null ? `Bz: ${latest.bz_gsm} nT${headerTag}` : 'Bz n/a');
-    bzBadge.style.color = cls.bz_color || '#10b981';
-    bzBadge.style.borderColor = (cls.bz_color || '#10b981') + '66';
-    bzBadge.style.backgroundColor = (cls.bz_color || '#10b981') + '1a';
+    bzBadge.style.color = cls.bz_color || '#529b6e';
+    bzBadge.style.borderColor = (cls.bz_color || '#529b6e') + '66';
+    bzBadge.style.backgroundColor = (cls.bz_color || '#529b6e') + '1a';
   }
 
   // Update Top Space Weather Condition Ticker
   const tickG = document.getElementById('ticker-g-scale');
   if (tickG) {
     tickG.innerText = cls.g_scale ? cls.g_scale.toUpperCase() : 'G N/A';
-    tickG.style.color = cls.g_color || '#10b981';
+    tickG.style.color = cls.g_color || '#529b6e';
   }
   const tickS = document.getElementById('ticker-s-scale');
   if (tickS) {
     tickS.innerText = cls.s_scale ? cls.s_scale.toUpperCase() : 'S N/A';
-    tickS.style.color = cls.s_color || '#10b981';
+    tickS.style.color = cls.s_color || '#529b6e';
   }
   const tickR = document.getElementById('ticker-r-scale');
   if (tickR) {
     tickR.innerText = cls.r_scale ? cls.r_scale.toUpperCase() : 'R N/A';
-    tickR.style.color = cls.r_level > 0 ? '#f59e0b' : '#10b981';
+    tickR.style.color = cls.r_level > 0 ? '#b98f3f' : '#529b6e';
   }
   const tickRmp = document.getElementById('ticker-rmp');
   if (tickRmp) tickRmp.innerText = latest.magnetopause_re != null ? `${latest.magnetopause_re} RE${headerTag}` : '---';
@@ -1444,7 +1404,7 @@ function updateTelemetryUI(data) {
   if (recBadge) {
     if (bz < -5) {
       recBadge.innerText = 'RECONNECTING';
-      recBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/25 text-rose-400 border border-rose-500/40 animate-pulse';
+      recBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/25 text-rose-400 border border-rose-500/40 ';
     } else if (bz < 0) {
       recBadge.innerText = 'WEAK REC';
       recBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30';
@@ -1553,7 +1513,7 @@ const arrivalMarkerPlugin = {
       const i0 = Math.floor(idx);
       const x = xs.getPixelForValue(i0) + (idx - i0) * (xs.getPixelForValue(Math.min(i0 + 1, tags.length - 1)) - xs.getPixelForValue(i0));
       ctx.save();
-      ctx.strokeStyle = k % 2 ? '#facc15' : '#f472b6';
+      ctx.strokeStyle = k % 2 ? '#d2aa57' : '#7fa5cf';
       ctx.setLineDash([6, 4]);
       ctx.beginPath();
       ctx.moveTo(x, chartArea.top);
@@ -1561,7 +1521,7 @@ const arrivalMarkerPlugin = {
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = ctx.strokeStyle;
-      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.font = '10px system-ui, sans-serif';
       ctx.fillText(m.label, Math.min(x + 4, chartArea.right - 160), chartArea.top + 12 + 12 * k);
       ctx.restore();
     });
@@ -1704,8 +1664,8 @@ function renderCompOverlayChart(comp) {
     data: {
       labels: labels,
       datasets: [
-        { label: `${comp.mission_a} (${comp.parameter})`, data: dataA, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
-        { label: `${comp.mission_b} (${comp.parameter})`, data: dataB, borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, borderDash: [3, 2], tension: 0.1 }
+        { label: `${comp.mission_a} (${comp.parameter})`, data: dataA, borderColor: '#7fa5cf', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+        { label: `${comp.mission_b} (${comp.parameter})`, data: dataB, borderColor: '#b98f3f', borderWidth: 1.5, pointRadius: 0, borderDash: [3, 2], tension: 0.1 }
       ]
     },
     options: darkChartOptions
@@ -1722,14 +1682,14 @@ function renderCompLagChart(lagData) {
     data: {
       labels: lagData.lags_minutes.map(l => `${l}m`),
       datasets: [
-        { label: 'Cross-Correlation r(τ)', data: lagData.correlation, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, borderWidth: 1.5, pointRadius: 1.5 }
+        { label: 'Cross-Correlation r(τ)', data: lagData.correlation, borderColor: '#529b6e', backgroundColor: 'rgba(82, 155, 110, 0.1)', fill: false, borderWidth: 1.5, pointRadius: 1.5 }
       ]
     },
     options: {
       ...darkChartOptions,
       scales: {
-        x: { ...darkChartOptions.scales.x, title: { display: true, text: 'Time Lag τ [minutes]', color: '#64748b' } },
-        y: { ...darkChartOptions.scales.y, title: { display: true, text: 'Correlation r', color: '#64748b' }, min: -1, max: 1 }
+        x: { ...darkChartOptions.scales.x, title: { display: true, text: 'Time Lag τ [minutes]', color: '#83878f' } },
+        y: { ...darkChartOptions.scales.y, title: { display: true, text: 'Correlation r', color: '#83878f' }, min: -1, max: 1 }
       }
     }
   });
@@ -1761,9 +1721,9 @@ function renderCompScatterChart(comp) {
     type: 'scatter',
     data: {
       datasets: [
-        { label: 'Paired Sensor Readings', data: pts, backgroundColor: 'rgba(0, 240, 255, 0.75)', borderColor: 'rgba(0, 240, 255, 0.3)', borderWidth: 1, pointRadius: 3.5, pointHoverRadius: 6 },
-        { label: `Linear Fit: A = ${m.slope}B ${m.intercept >= 0 ? '+' : ''}${m.intercept} (R² = ${m.r_squared})`, data: linePts, type: 'line', borderColor: '#ff2a6d', borderWidth: 2.2, pointRadius: 0 },
-        { label: 'Ideal 1:1 Identity Reference (A = B)', data: identityLine, type: 'line', borderColor: 'rgba(148, 163, 184, 0.45)', borderDash: [4, 4], borderWidth: 1.2, pointRadius: 0 }
+        { label: 'Paired Sensor Readings', data: pts, backgroundColor: 'rgba(127, 165, 207, 0.75)', borderColor: 'rgba(127, 165, 207, 0.3)', borderWidth: 1, pointRadius: 3.5, pointHoverRadius: 6 },
+        { label: `Linear Fit: A = ${m.slope}B ${m.intercept >= 0 ? '+' : ''}${m.intercept} (R² = ${m.r_squared})`, data: linePts, type: 'line', borderColor: '#d77e7e', borderWidth: 2.2, pointRadius: 0 },
+        { label: 'Ideal 1:1 Identity Reference (A = B)', data: identityLine, type: 'line', borderColor: 'rgba(154, 158, 165, 0.45)', borderDash: [4, 4], borderWidth: 1.2, pointRadius: 0 }
       ]
     },
     options: {
@@ -1771,8 +1731,8 @@ function renderCompScatterChart(comp) {
       scales: {
         // The fit and identity lines are 'line' datasets, which would make x a category axis
         // and stack every point at the left edge: force a numeric axis.
-        x: { ...darkChartOptions.scales.x, type: 'linear', position: 'bottom', title: { display: true, text: `${comp.mission_b} [${comp.parameter}]`, color: '#64748b' } },
-        y: { ...darkChartOptions.scales.y, type: 'linear', title: { display: true, text: `${comp.mission_a} [${comp.parameter}]`, color: '#64748b' } }
+        x: { ...darkChartOptions.scales.x, type: 'linear', position: 'bottom', title: { display: true, text: `${comp.mission_b} [${comp.parameter}]`, color: '#83878f' } },
+        y: { ...darkChartOptions.scales.y, type: 'linear', title: { display: true, text: `${comp.mission_a} [${comp.parameter}]`, color: '#83878f' } }
       }
     }
   });
@@ -2253,7 +2213,7 @@ function renderCustomIngestUI(data) {
   if (elStandoff) {
     elStandoff.innerText = orDash(summary.standoff_min);
     if (typeof summary.standoff_min === 'number' && summary.standoff_min < 6.6) {
-      elStandoff.className = "text-lg font-bold text-rose-500 font-mono mt-0.5";
+      elStandoff.className = "text-lg font-bold text-rose-400 font-mono mt-0.5";
       if (elGeoAlert) {
         elGeoAlert.innerText = "Model: magnetopause inside GEO (< 6.6 R_E)";
         elGeoAlert.className = "text-[10px] text-rose-400 font-mono font-bold";
@@ -2320,8 +2280,8 @@ function renderCustomTimeseriesChart(records) {
         {
           label: 'Speed (km/s)',
           data: speeds,
-          borderColor: '#38bdf8',
-          backgroundColor: 'rgba(56, 189, 248, 0.08)',
+          borderColor: '#7fa5cf',
+          backgroundColor: 'rgba(127, 165, 207, 0.08)',
           borderWidth: 2,
           pointRadius: records.length > 50 ? 0 : 3,
           pointHoverRadius: 5,
@@ -2331,7 +2291,7 @@ function renderCustomTimeseriesChart(records) {
         {
           label: 'IMF Bz (nT)',
           data: bzs,
-          borderColor: '#fb7185',
+          borderColor: '#d77e7e',
           backgroundColor: 'transparent',
           borderWidth: 1.8,
           pointRadius: records.length > 50 ? 0 : 2,
@@ -2342,7 +2302,7 @@ function renderCustomTimeseriesChart(records) {
         {
           label: 'Pdyn (nPa)',
           data: pdyns,
-          borderColor: '#fbbf24',
+          borderColor: '#d2aa57',
           backgroundColor: 'transparent',
           borderWidth: 1.8,
           borderDash: [3, 3],
@@ -2360,36 +2320,36 @@ function renderCustomTimeseriesChart(records) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(15, 23, 42, 0.95)',
-          titleColor: '#e2e8f0',
-          bodyColor: '#cbd5e1',
-          borderColor: 'rgba(56, 189, 248, 0.3)',
+          backgroundColor: 'rgba(30, 32, 36, 0.95)',
+          titleColor: '#d6d8db',
+          bodyColor: '#b9bcc1',
+          borderColor: 'rgba(127, 165, 207, 0.3)',
           borderWidth: 1,
           padding: 8,
-          titleFont: { family: '"JetBrains Mono", monospace', size: 10 },
-          bodyFont: { family: '"JetBrains Mono", monospace', size: 10 }
+          titleFont: { family: 'system-ui, sans-serif', size: 10 },
+          bodyFont: { family: 'system-ui, sans-serif', size: 10 }
         }
       },
       scales: {
         x: {
-          grid: { color: 'rgba(51, 65, 85, 0.25)' },
-          ticks: { color: '#64748b', font: { family: '"JetBrains Mono", monospace', size: 9 }, maxTicksLimit: 12 }
+          grid: { color: 'rgba(67, 70, 76, 0.25)' },
+          ticks: { color: '#83878f', font: { family: 'system-ui, sans-serif', size: 9 }, maxTicksLimit: 12 }
         },
         y: {
           type: 'linear',
           display: true,
           position: 'left',
-          title: { display: true, text: 'Speed (km/s)', color: '#38bdf8', font: { size: 9 } },
-          grid: { color: 'rgba(51, 65, 85, 0.25)' },
-          ticks: { color: '#38bdf8', font: { family: '"JetBrains Mono", monospace', size: 9 } }
+          title: { display: true, text: 'Speed (km/s)', color: '#7fa5cf', font: { size: 9 } },
+          grid: { color: 'rgba(67, 70, 76, 0.25)' },
+          ticks: { color: '#7fa5cf', font: { family: 'system-ui, sans-serif', size: 9 } }
         },
         y1: {
           type: 'linear',
           display: true,
           position: 'right',
-          title: { display: true, text: 'Bz (nT)', color: '#fb7185', font: { size: 9 } },
+          title: { display: true, text: 'Bz (nT)', color: '#d77e7e', font: { size: 9 } },
           grid: { drawOnChartArea: false },
-          ticks: { color: '#fb7185', font: { family: '"JetBrains Mono", monospace', size: 9 } }
+          ticks: { color: '#d77e7e', font: { family: 'system-ui, sans-serif', size: 9 } }
         },
         y2: {
           type: 'linear',
@@ -2444,7 +2404,7 @@ async function loadMissions() {
     // The custom mission's name comes from the imported file's name or the import form;
     // escape every text field before it goes into HTML.
     container.innerHTML = missions.map(escapeHtmlDeep).map(m => `
-      <div class="mission-card bg-space-800/90 p-5 rounded-xl border border-slate-800 hover:border-slate-700 shadow-xl flex flex-col justify-between space-y-4">
+      <div class="mission-card bg-space-800/90 p-5 rounded-xl border border-slate-800 hover:border-slate-700 flex flex-col justify-between space-y-4">
         <div>
           <!-- Card Header -->
           <div class="flex items-center justify-between gap-2 mb-2.5 pb-2.5 border-b border-slate-800/80">
@@ -2463,7 +2423,7 @@ async function loadMissions() {
 
           <!-- Mission Name & Launch -->
           <h4 class="font-bold text-sm text-slate-100 mb-1">${m.full_name}</h4>
-          ${m.helios_use ? `<p class="text-[11px] text-amber-200/80 mb-2">In HELIOS-L1: ${m.helios_use}</p>` : ''}
+          ${m.helios_use ? `<p class="text-[11px] text-slate-300 mb-2">In HELIOS-L1: ${m.helios_use}</p>` : ''}
           <p class="text-xs text-slate-400 mb-3 flex items-center space-x-2">
             <span>Launched: <strong class="text-slate-200">${m.launch_year}</strong></span>
             <span>•</span>
@@ -2498,7 +2458,7 @@ async function loadMissions() {
 
           <!-- Key Scientific Payloads -->
           <div class="space-y-1.5 mb-3.5">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <div class="text-[11px] font-bold text-slate-400 flex items-center justify-between">
               <span>Scientific Payloads &amp; Sensors:</span>
               <span class="text-slate-500 font-normal">(${m.instruments.length} onboard)</span>
             </div>
@@ -2553,9 +2513,9 @@ async function loadEvents() {
     if (!container) return;
 
     container.innerHTML = events.map(ev => `
-      <div id="card-event-${ev.id}" onclick="selectEvent('${ev.id}')" class="event-benchmark-card cursor-pointer bg-space-900/90 hover:bg-space-800 p-3 rounded-xl border border-slate-800 hover:border-sky-400/80 transition shadow-md flex flex-col justify-between">
+      <div id="card-event-${ev.id}" onclick="selectEvent('${ev.id}')" class="event-benchmark-card cursor-pointer bg-space-900/90 hover:bg-space-800 p-3 rounded-xl border border-slate-800 hover:border-sky-400/80 transition flex flex-col justify-between">
         <div>
-          <div class="flex items-center space-x-1.5 text-xs font-bold font-mono mb-1" style="color: ${ev.badge_color || '#f43f5e'}">
+          <div class="flex items-center space-x-1.5 text-xs font-bold font-mono mb-1" style="color: ${ev.badge_color || '#c26262'}">
             <i class="fa-solid ${ev.icon}"></i>
             <span class="text-[10px]">${ev.severity}</span>
           </div>
@@ -2637,8 +2597,8 @@ async function selectEvent(eventId) {
       data: {
         labels: labels,
         datasets: [
-          { label: 'IMF Bz [nT]', data: bzVals, borderColor: '#f43f5e', yAxisID: 'yBz', borderWidth: 1.5, pointRadius: 0 },
-          { label: 'Solar Wind Speed [km/s]', data: vVals, borderColor: '#38bdf8', yAxisID: 'yV', borderWidth: 1.5, pointRadius: 0 }
+          { label: 'IMF Bz [nT]', data: bzVals, borderColor: '#c26262', yAxisID: 'yBz', borderWidth: 1.5, pointRadius: 0 },
+          { label: 'Solar Wind Speed [km/s]', data: vVals, borderColor: '#7fa5cf', yAxisID: 'yV', borderWidth: 1.5, pointRadius: 0 }
         ]
       },
       options: {
@@ -2648,16 +2608,16 @@ async function selectEvent(eventId) {
           yBz: {
             type: 'linear',
             position: 'left',
-            grid: { color: 'rgba(51, 65, 85, 0.25)' },
-            ticks: { color: '#f43f5e' },
-            title: { display: true, text: 'IMF Bz [nT]', color: '#f43f5e' }
+            grid: { color: 'rgba(67, 70, 76, 0.25)' },
+            ticks: { color: '#c26262' },
+            title: { display: true, text: 'IMF Bz [nT]', color: '#c26262' }
           },
           yV: {
             type: 'linear',
             position: 'right',
             grid: { drawOnChartArea: false },
-            ticks: { color: '#38bdf8' },
-            title: { display: true, text: 'Vsw [km/s]', color: '#38bdf8' }
+            ticks: { color: '#7fa5cf' },
+            title: { display: true, text: 'Vsw [km/s]', color: '#7fa5cf' }
           }
         }
       }
@@ -2756,9 +2716,9 @@ function renderEventDst(ev) {
     data: {
       labels: cmp.time_tags.map(t => String(t).slice(5, 16)),
       datasets: [
-        { label: 'SYM-H observed [nT]', data: cmp.observed, borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0 },
-        { label: cmp.models.obrien.name, data: cmp.models.obrien.series, borderColor: '#f43f5e', borderWidth: 1.2, pointRadius: 0 },
-        { label: cmp.models.burton.name, data: cmp.models.burton.series, borderColor: '#eab308', borderWidth: 1.2, pointRadius: 0, borderDash: [4, 3] }
+        { label: 'SYM-H observed [nT]', data: cmp.observed, borderColor: '#7fa5cf', borderWidth: 1.5, pointRadius: 0 },
+        { label: cmp.models.obrien.name, data: cmp.models.obrien.series, borderColor: '#c26262', borderWidth: 1.2, pointRadius: 0 },
+        { label: cmp.models.burton.name, data: cmp.models.burton.series, borderColor: '#b98f3f', borderWidth: 1.2, pointRadius: 0, borderDash: [4, 3] }
       ]
     },
     options: darkChartOptions
@@ -2824,9 +2784,9 @@ async function loadSpectralAnalysis() {
       {
         label: `Observed PSD [${sat} • ${param}] (${unit})`,
         data: xy(psd.power_density),
-        borderColor: '#a855f7',
-        backgroundColor: 'rgba(168, 85, 247, 0.12)',
-        fill: true,
+        borderColor: '#6690bf',
+        backgroundColor: 'rgba(102, 144, 191, 0.12)',
+        fill: false,
         borderWidth: 2.0,
         pointRadius: 0,
         tension: 0.1
@@ -2837,7 +2797,7 @@ async function loadSpectralAnalysis() {
       datasets.push({
         label: 'Kolmogorov Inertial Cascade (f⁻⁵/³)',
         data: xy(psd.kolmogorov_psd),
-        borderColor: '#38bdf8',
+        borderColor: '#7fa5cf',
         borderWidth: 1.6,
         borderDash: [5, 5],
         fill: false,
@@ -2849,7 +2809,7 @@ async function loadSpectralAnalysis() {
       datasets.push({
         label: 'Iroshnikov-Kraichnan MHD (f⁻³/²)',
         data: xy(psd.iroshnikov_psd),
-        borderColor: '#10b981',
+        borderColor: '#529b6e',
         borderWidth: 1.6,
         borderDash: [3, 4],
         fill: false,
@@ -2868,12 +2828,12 @@ async function loadSpectralAnalysis() {
           x: {
             ...darkChartOptions.scales.x,
             type: 'logarithmic',
-            title: { display: true, text: 'Frequency (mHz) — [Taylor frozen scale λ = v_sw / f]', color: '#94a3b8' }
+            title: { display: true, text: 'Frequency (mHz) — [Taylor frozen scale λ = v_sw / f]', color: '#9a9ea5' }
           },
           y: {
             ...darkChartOptions.scales.y,
             type: 'logarithmic',
-            title: { display: true, text: `Power Spectral Density (${unit})`, color: '#94a3b8' }
+            title: { display: true, text: `Power Spectral Density (${unit})`, color: '#9a9ea5' }
           }
         },
         plugins: {
@@ -2987,7 +2947,7 @@ function setOrbitSolarWindPreset(presetKey) {
   }
   const btnSync = document.getElementById('btn-orbit-sync');
   if (btnSync) {
-    btnSync.classList.add('animate-pulse', 'bg-amber-950/80', 'text-amber-300');
+    btnSync.classList.add('bg-amber-950/80', 'text-amber-300');
     btnSync.classList.remove('bg-sky-950/60', 'text-sky-300');
   }
 }
@@ -3003,7 +2963,7 @@ function syncOrbitLiveTelemetry() {
   }
   const btnSync = document.getElementById('btn-orbit-sync');
   if (btnSync) {
-    btnSync.classList.remove('animate-pulse', 'bg-amber-950/80', 'text-amber-300');
+    btnSync.classList.remove('bg-amber-950/80', 'text-amber-300');
     btnSync.classList.add('bg-sky-950/60', 'text-sky-300');
   }
 }
@@ -3020,7 +2980,7 @@ function updateBoundaryCards(b) {
   const cardMpStatus = document.getElementById('card-mp-geo-status');
   if (cardMp) {
     cardMp.innerText = `${b.r0_mp.toFixed(1)} RE`;
-    cardMp.className = b.insideGeo ? 'text-2xl font-hud font-bold text-rose-400 animate-pulse' : 'text-2xl font-hud font-bold text-amber-300';
+    cardMp.className = b.insideGeo ? 'text-2xl font-hud font-bold text-rose-400 ' : 'text-2xl font-hud font-bold text-amber-300';
   }
   if (cardMpKm) cardMpKm.innerText = `~${Math.round(b.r0_mp * 6371).toLocaleString()} km`;
   if (cardMpStatus) {
@@ -3125,11 +3085,11 @@ function setBulletinViewFormat(fmt) {
   const btnMd = document.getElementById('btn-bulletin-fmt-md');
   if (btnHtml && btnMd) {
     if (fmt === 'html') {
-      btnHtml.className = 'px-3 py-1 rounded-md bg-sky-600 text-white font-semibold transition shadow-sm';
+      btnHtml.className = 'px-3 py-1 rounded-md bg-sky-600 text-white font-semibold transition ';
       btnMd.className = 'px-3 py-1 rounded-md text-slate-400 hover:text-white font-semibold transition';
     } else {
       btnHtml.className = 'px-3 py-1 rounded-md text-slate-400 hover:text-white font-semibold transition';
-      btnMd.className = 'px-3 py-1 rounded-md bg-sky-600 text-white font-semibold transition shadow-sm';
+      btnMd.className = 'px-3 py-1 rounded-md bg-sky-600 text-white font-semibold transition ';
     }
   }
   renderBulletinContent();
@@ -3267,7 +3227,7 @@ function updateRefTabButtons() {
     const btn = document.getElementById(`tab-btn-ref-${t}`);
     if (btn) {
       if (t === currentRefTab) {
-        btn.className = 'px-3 py-1.5 rounded-lg font-semibold bg-sky-600 text-white transition flex items-center space-x-1.5 shadow-sm';
+        btn.className = 'px-3 py-1.5 rounded-lg font-semibold bg-sky-600 text-white transition flex items-center space-x-1.5 ';
       } else {
         btn.className = 'px-3 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition flex items-center space-x-1.5';
       }
@@ -3334,9 +3294,9 @@ function renderEquationsTab(container) {
     </div>
     <div class="space-y-4">
       ${filtered.map(r => `
-        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition shadow-lg space-y-3">
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
-            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/50 uppercase tracking-wider">${r.category}</span>
+            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/50">${r.category}</span>
             <div class="text-xs text-slate-400 font-medium">
               <span class="text-slate-200 font-semibold">${r.journal}</span> (${r.year})
               ${r.volume ? `• Vol. ${r.volume}` : ''}
@@ -3351,11 +3311,11 @@ function renderEquationsTab(container) {
 
           <!-- Mathematical Formulation -->
           <div class="bg-space-950/90 p-3 rounded-lg border border-slate-800 font-mono text-xs space-y-1.5">
-            <div class="text-[10px] uppercase font-bold tracking-wider text-amber-400 flex items-center space-x-1.5">
+            <div class="text-[10px] font-bold text-amber-400 flex items-center space-x-1.5">
               <i class="fa-solid fa-square-root-variable"></i>
               <span>Governing Mathematical Formulation:</span>
             </div>
-            <div class="text-amber-300 text-xs font-semibold pl-2 border-l-2 border-amber-500/50 py-0.5 overflow-x-auto">${r.formula}</div>
+            <div class="text-amber-300 text-xs font-semibold pl-2 border-l-2 border-slate-600 py-0.5 overflow-x-auto">${r.formula}</div>
             ${r.parameters ? `
               <div class="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
                 <span class="font-bold text-slate-300">Variables:</span> ${r.parameters.join(' • ')}
@@ -3369,7 +3329,7 @@ function renderEquationsTab(container) {
           <!-- Action Footer -->
           <div class="pt-2.5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
             ${r.doi ? `
-              <a href="${r.doi_url || ('https://doi.org/' + r.doi)}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300 text-xs font-mono font-semibold flex items-center space-x-1.5 bg-sky-950/60 hover:bg-sky-900/60 px-3 py-1.5 rounded-lg border border-sky-800/50 transition shadow-sm">
+              <a href="${r.doi_url || ('https://doi.org/' + r.doi)}" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300 text-xs font-mono font-semibold flex items-center space-x-1.5 bg-sky-950/60 hover:bg-sky-900/60 px-3 py-1.5 rounded-lg border border-sky-800/50 transition">
                 <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                 <span>doi:${r.doi}</span>
               </a>
@@ -3409,7 +3369,7 @@ function renderProvidersTab(container) {
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       ${filtered.map(p => `
-        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition shadow-lg flex flex-col justify-between space-y-4">
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition flex flex-col justify-between space-y-4">
           <div>
             <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800">
               <span class="text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/50">${p.id}</span>
@@ -3423,7 +3383,7 @@ function renderProvidersTab(container) {
             <p class="text-xs text-slate-400 mb-3 font-medium">${p.agency}</p>
 
             <div class="space-y-1.5 mb-3.5">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Data Products &amp; Telemetry Sets:</div>
+              <div class="text-[11px] font-bold text-slate-400">Data Products &amp; Telemetry Sets:</div>
               ${p.data_products ? p.data_products.map(prod => `
                 <div class="text-xs text-slate-300 flex items-start space-x-1.5 bg-space-950/60 p-1.5 rounded border border-slate-800/50">
                   <i class="fa-solid fa-satellite-dish text-sky-400 text-[10px] mt-0.5 shrink-0"></i>
@@ -3601,11 +3561,11 @@ function renderHandbookTab(container) {
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       ${entries.map(([k, p]) => `
-        <div id="param-card-${k}" class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-sky-500/50 transition shadow-lg flex flex-col justify-between space-y-3">
+        <div id="param-card-${k}" class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-sky-500/50 transition flex flex-col justify-between space-y-3">
           <div>
             <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800">
               <div class="flex items-baseline space-x-2">
-                <span class="font-hud font-black text-lg text-sky-400">${p.symbol}</span>
+                <span class="font-hud font-semibold text-lg text-sky-400">${p.symbol}</span>
                 <span class="text-xs font-hud text-slate-400 font-semibold">[${p.unit}]</span>
               </div>
               <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">${k}</span>
@@ -3725,11 +3685,11 @@ function renderUserGuideTab(container) {
           </p>
 
           <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-2">
-            <div class="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
+            <div class="text-[11px] font-bold text-amber-400 flex items-center space-x-1.5">
               <i class="fa-solid fa-calculator"></i>
               <span>Governing Equations</span>
             </div>
-            <div class="font-mono text-xs text-amber-300 space-y-1 pl-2 border-l-2 border-amber-500/50">
+            <div class="font-mono text-xs text-amber-300 space-y-1 pl-2 border-l-2 border-slate-600">
               <div>Magnetopause, Shue et al. (1998): r = r₀ (2 / (1 + cos θ))^α</div>
               <div>r₀ = (10.22 + 1.29 tanh(0.184 (Bz + 8.14))) · P_dyn^(-1/6.6),&nbsp;&nbsp;α = (0.58 − 0.007 Bz)(1 + 0.024 ln P_dyn)</div>
               <div>Bow shock, Chao et al. (2002): r = r₀ ((1 + ε) / (1 + ε cos θ))^α,&nbsp;&nbsp;ε = 1.029</div>
@@ -3804,7 +3764,7 @@ function renderUserGuideTab(container) {
             The Custom Ingestion tab reads your own CSV, tab- or space-delimited text and JSON files (OMNI listings, CDAWeb text output, HELIOS exports) and computes the derived quantities. Measured OMNI data for any interval come from the dashboard's Archive Interval loader instead.
           </p>
           <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-2">
-            <div class="text-[11px] font-bold text-purple-300 uppercase tracking-wider">Illustrative profiles (hand-written, not measured data):</div>
+            <div class="text-[11px] font-bold text-purple-300">Illustrative profiles (hand-written, not measured data):</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
               <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-rose-400">May 2024 G5 Superstorm:</strong> Strongest geomagnetic storm in about 20 years.</div>
               <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-amber-400">Bastille Day 2000:</strong> X5.7 solar flare with extreme CME shock wave, V &gt; 1,000 km/s.</div>
@@ -3949,10 +3909,10 @@ function renderUserGuideTab(container) {
 
     <div class="space-y-4">
       ${filtered.map(sec => `
-        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition shadow-lg space-y-3">
+        <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 hover:border-slate-700 transition space-y-3">
           <div class="flex items-center space-x-2.5 border-b border-slate-800 pb-2">
             <i class="fa-solid ${sec.icon} ${sec.color} text-sm"></i>
-            <h4 class="font-bold text-slate-100 text-sm tracking-wide">${sec.title}</h4>
+            <h4 class="font-bold text-slate-100 text-sm">${sec.title}</h4>
           </div>
           <p class="text-xs text-slate-400 italic">${sec.summary}</p>
           <div class="pt-1">${sec.content}</div>
@@ -4093,7 +4053,7 @@ function renderSandboxTab(container) {
 
       <!-- Scenarios Presets -->
       <div class="flex flex-wrap items-center gap-2 text-xs bg-space-950/80 p-2.5 rounded-xl border border-slate-800">
-        <span class="text-[10px] uppercase font-bold text-slate-400 font-mono">Scenario Benchmarks:</span>
+        <span class="text-[10px] font-bold text-slate-400 font-mono">Scenario Benchmarks:</span>
         <button onclick="setSandboxPreset('quiet')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">Quiet Background</button>
         <button onclick="setSandboxPreset('cir')" class="px-2 py-0.5 rounded bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-800/40 text-[11px] transition">Corotating Interaction Region (CIR)</button>
         <button onclick="setSandboxPreset('cme_g5')" class="px-2 py-0.5 rounded bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/40 text-[11px] transition font-bold">Extreme CME Shock (G5)</button>
@@ -4103,7 +4063,7 @@ function renderSandboxTab(container) {
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <!-- Controls Column (5 cols) -->
         <div class="lg:col-span-5 bg-space-950/90 p-4 rounded-xl border border-slate-800 space-y-4">
-          <div class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5 border-b border-slate-800 pb-2">
+          <div class="text-xs font-bold text-slate-200 flex items-center space-x-1.5 border-b border-slate-800 pb-2">
             <i class="fa-solid fa-sliders text-sky-400"></i>
             <span>Upstream Solar Wind Parameters</span>
           </div>
@@ -4168,7 +4128,7 @@ function renderSandboxTab(container) {
           <!-- Top Standoff Dual Banner -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="bg-space-950 p-3.5 rounded-xl border border-sky-500/30 space-y-1">
-              <div class="text-[10px] uppercase font-bold text-sky-400 flex items-center justify-between">
+              <div class="text-[10px] font-bold text-sky-400 flex items-center justify-between">
                 <span>Shue et al. (1998) Magnetopause</span>
                 <span id="sbx-chao-mp-geo" class="text-[9px] px-1.5 py-0.2 rounded font-mono ${res.inside_geo ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${res.inside_geo ? 'SUB-GEO' : 'CLEAR'}</span>
               </div>
@@ -4180,7 +4140,7 @@ function renderSandboxTab(container) {
             </div>
 
             <div class="bg-space-950 p-3.5 rounded-xl border border-sky-500/30 space-y-1">
-              <div class="text-[10px] uppercase font-bold text-cyan-400 flex items-center justify-between">
+              <div class="text-[10px] font-bold text-cyan-400 flex items-center justify-between">
                 <span>Chao et al. (2002) Bow Shock</span>
                 <span class="text-[9px] text-slate-400 font-mono">M_ms (OMNI): <strong id="sbx-mach-badge" class="text-cyan-300">${res.mms_omni.toFixed(1)}</strong> β: <strong id="sbx-beta-badge" class="text-cyan-300">${res.beta.toFixed(2)}</strong></span>
               </div>
@@ -4196,7 +4156,7 @@ function renderSandboxTab(container) {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <!-- Dynamic Pressure -->
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
-              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Solar Wind Dynamic Pressure (P_dyn)</div>
+              <div class="text-[10px] font-bold text-slate-400 font-mono">Solar Wind Dynamic Pressure (P_dyn)</div>
               <div class="flex items-baseline space-x-2">
                 <span id="sbx-pdyn" class="text-lg font-bold font-hud text-amber-300">${res.pdyn.toFixed(2)} nPa</span>
               </div>
@@ -4205,7 +4165,7 @@ function renderSandboxTab(container) {
 
             <!-- Shue comparison -->
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
-              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Shue (1997) Model Standoff</div>
+              <div class="text-[10px] font-bold text-slate-400 font-mono">Shue (1997) Model Standoff</div>
               <div class="flex items-baseline space-x-2">
                 <span id="sbx-shue-re" class="text-lg font-bold font-hud text-slate-200">${res.shue97_r0.toFixed(2)} R_E</span>
                 <span id="sbx-shue-delta" class="text-[11px] text-slate-400 font-mono">Δ: ${(res.mp_r0 - res.shue97_r0).toFixed(2)} R_E</span>
@@ -4215,7 +4175,7 @@ function renderSandboxTab(container) {
 
             <!-- Wave Speeds -->
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
-              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">MHD Wave Speeds &amp; Mach</div>
+              <div class="text-[10px] font-bold text-slate-400 font-mono">MHD Wave Speeds &amp; Mach</div>
               <div class="space-y-0.5 text-[11px] font-mono text-slate-300">
                 <div>Alfvén V_A: <strong id="sbx-va" class="text-sky-300">${res.va.toFixed(1)} km/s</strong> (M_A: <span id="sbx-ma">${res.ma.toFixed(2)}</span>)</div>
                 <div>Magnetosonic V_ms: <strong id="sbx-vms" class="text-purple-300">${res.vms.toFixed(1)} km/s</strong> (M_ms: <span id="sbx-mms">${res.mms.toFixed(2)}</span>)</div>
@@ -4224,7 +4184,7 @@ function renderSandboxTab(container) {
 
             <!-- Energy Coupling -->
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
-              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Akasofu Poynting Flux (ε)</div>
+              <div class="text-[10px] font-bold text-slate-400 font-mono">Akasofu Poynting Flux (ε)</div>
               <div class="flex items-baseline space-x-2">
                 <span id="sbx-eps" class="text-lg font-bold font-hud ${res.akasofu_gw >= 100 ? 'text-amber-400' : 'text-slate-300'}">${res.akasofu_gw.toFixed(1)} GW</span>
                 <span id="sbx-dphi" class="text-[10px] text-slate-400 font-mono">Newell: ${Math.round(res.dphi).toLocaleString()}</span>
@@ -4234,7 +4194,7 @@ function renderSandboxTab(container) {
 
             <!-- Polar Cap Potential -->
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
-              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Polar Cap Potential (Φ_PC)</div>
+              <div class="text-[10px] font-bold text-slate-400 font-mono">Polar Cap Potential (Φ_PC)</div>
               <div class="flex items-baseline space-x-2">
                 <span id="sbx-phi" class="text-lg font-bold font-hud ${res.phi_pc >= 90 ? 'text-rose-400' : 'text-indigo-300'}">${res.phi_pc.toFixed(1)} kV</span>
               </div>
@@ -4243,7 +4203,7 @@ function renderSandboxTab(container) {
 
             <!-- AE & Convective Electric Field -->
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
-              <div class="text-[10px] font-bold text-slate-400 uppercase font-mono">Auroral Electrojet &amp; E_y Field</div>
+              <div class="text-[10px] font-bold text-slate-400 font-mono">Auroral Electrojet &amp; E_y Field</div>
               <div class="space-y-0.5 text-[11px] font-mono text-slate-300">
                 <div title="Rough HELIOS-L1 scaling of the Newell coupling, not a published fit; observed AE is in the OMNI archive data">AE Proxy (rough): <strong id="sbx-ae" class="${res.ae >= 500 ? 'text-amber-400 font-bold' : 'text-slate-200'}">${res.ae.toFixed(0)} nT</strong></div>
                 <div>E_y Convective: <strong id="sbx-ey" class="${res.ey > 0 ? 'text-rose-400' : 'text-emerald-400'}">${res.ey > 0 ? '+' : ''}${res.ey.toFixed(2)} mV/m</strong></div>
@@ -4279,7 +4239,7 @@ function onSandboxParamChange(param, val) {
   const elChaoMpRe = document.getElementById('sbx-chao-mp-re');
   if (elChaoMpRe) {
     elChaoMpRe.innerText = `${res.mp_r0.toFixed(2)} R_E`;
-    elChaoMpRe.className = `text-xl font-bold font-hud ${res.inside_geo ? 'text-rose-400 animate-pulse' : 'text-sky-300'}`;
+    elChaoMpRe.className = `text-xl font-bold font-hud ${res.inside_geo ? 'text-rose-400 ' : 'text-sky-300'}`;
   }
   const elChaoMpKm = document.getElementById('sbx-chao-mp-km');
   if (elChaoMpKm) elChaoMpKm.innerText = `~${Math.round(res.mp_r0 * 6371).toLocaleString()} km`;
@@ -4501,7 +4461,7 @@ function updateGicReadouts(gic) {
   const eFieldEl = document.getElementById('gic-efield');
   if (eFieldEl) {
     eFieldEl.innerText = `${gic.geoelectric_field_v_km} V/km`;
-    eFieldEl.style.color = gic.status_color || '#38bdf8';
+    eFieldEl.style.color = gic.status_color || '#7fa5cf';
   }
 
   const vEl = document.getElementById('gic-voltage');
@@ -4513,7 +4473,7 @@ function updateGicReadouts(gic) {
   const statEl = document.getElementById('gic-hazard-status');
   if (statEl) {
     statEl.innerText = gic.hazard_classification;
-    statEl.style.color = gic.status_color || '#eab308';
+    statEl.style.color = gic.status_color || '#b98f3f';
   }
 
   const descEl = document.getElementById('gic-hazard-desc');
@@ -4605,9 +4565,9 @@ function renderSolarCycleChart(timeline) {
         {
           label: observed ? 'Cycle 25, 13-month smoothed SSN (observed)' : 'Cycle 25 SSN (MODEL, NOAA data unavailable)',
           data: ssnVals,
-          borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.15)',
-          fill: true,
+          borderColor: '#b98f3f',
+          backgroundColor: 'rgba(185, 143, 63, 0.15)',
+          fill: false,
           borderWidth: 2,
           pointRadius: 0,
           tension: 0.3
@@ -4615,7 +4575,7 @@ function renderSolarCycleChart(timeline) {
         {
           label: observed ? 'Cycle 24, smoothed SSN (months since its Dec 2008 minimum)' : 'Cycle 24 (MODEL: 0.68 x cycle 25)',
           data: c24Vals,
-          borderColor: '#64748b',
+          borderColor: '#83878f',
           borderDash: [4, 4],
           borderWidth: 1.5,
           pointRadius: 0,
@@ -4624,14 +4584,14 @@ function renderSolarCycleChart(timeline) {
         ...(observed ? [{
           label: 'Monthly mean SSN',
           data: monthlyVals,
-          borderColor: 'rgba(251, 191, 36, 0.45)',
+          borderColor: 'rgba(210, 170, 87, 0.45)',
           borderWidth: 1,
           pointRadius: 0,
           tension: 0
         }, {
           label: 'NOAA SWPC predicted SSN',
           data: predVals,
-          borderColor: '#a78bfa',
+          borderColor: '#7fa5cf',
           borderDash: [6, 3],
           borderWidth: 1.5,
           pointRadius: 0,
@@ -4651,7 +4611,7 @@ function renderSolarCycleChart(timeline) {
         },
         y: {
           ...darkChartOptions.scales.y,
-          title: { display: true, text: 'Smoothed Sunspot Number', color: '#94a3b8' }
+          title: { display: true, text: 'Smoothed Sunspot Number', color: '#9a9ea5' }
         }
       }
     }
@@ -4675,8 +4635,8 @@ function renderDrapSpectrumChart(spectrum) {
         {
           label: 'HF Signal Attenuation (dB)',
           data: atts,
-          backgroundColor: atts.map(a => a >= 10.0 ? 'rgba(244, 63, 94, 0.75)' : (a >= 3.0 ? 'rgba(245, 158, 11, 0.75)' : 'rgba(56, 189, 248, 0.65)')),
-          borderColor: atts.map(a => a >= 10.0 ? '#f43f5e' : (a >= 3.0 ? '#f59e0b' : '#38bdf8')),
+          backgroundColor: atts.map(a => a >= 10.0 ? 'rgba(194, 98, 98, 0.75)' : (a >= 3.0 ? 'rgba(185, 143, 63, 0.75)' : 'rgba(127, 165, 207, 0.65)')),
+          borderColor: atts.map(a => a >= 10.0 ? '#c26262' : (a >= 3.0 ? '#b98f3f' : '#7fa5cf')),
           borderWidth: 1,
           borderRadius: 4
         }
@@ -4689,7 +4649,7 @@ function renderDrapSpectrumChart(spectrum) {
         y: {
           ...darkChartOptions.scales.y,
           beginAtZero: true,
-          title: { display: true, text: 'Signal Attenuation [dB]', color: '#f43f5e' }
+          title: { display: true, text: 'Signal Attenuation [dB]', color: '#c26262' }
         }
       }
     }
@@ -4946,11 +4906,11 @@ class MissionIncidentLogger {
       const timeStr = new Date(inc.timestamp).toLocaleString();
 
       return `
-        <div class="bg-space-950/80 p-3.5 rounded-xl border ${borderClr} shadow-md space-y-2 ${inc.acknowledged ? 'opacity-70' : ''}">
+        <div class="bg-space-950/80 p-3.5 rounded-xl border ${borderClr} space-y-2 ${inc.acknowledged ? 'opacity-70' : ''}">
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
             <div class="flex items-center space-x-2">
               <i class="fa-solid ${icon} text-sm"></i>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${badgeBg}">${inc.level}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${badgeBg}">${inc.level}</span>
               <span class="text-xs font-bold text-slate-200">${inc.title}</span>
             </div>
             <div class="flex items-center space-x-2">
@@ -4969,7 +4929,7 @@ class MissionIncidentLogger {
               <strong class="text-slate-200 ml-1">${inc.paramName} = ${inc.paramValue}</strong>
               <span class="text-slate-500 ml-2">(Threshold: ${inc.threshold})</span>
             </div>
-            <span class="text-slate-600 text-[10px]">ID: ${inc.id}</span>
+            <span class="text-slate-500 text-[10px]">ID: ${inc.id}</span>
           </div>
         </div>
       `;

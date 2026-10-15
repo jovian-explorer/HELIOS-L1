@@ -374,7 +374,7 @@ async def get_missions():
                 {"id": "USER_INST", "name": "Custom Spacecraft Sensor Suite", "measures": "In-situ plasma & magnetic field"}
             ],
             "primary_params": ["bz_gsm", "bt", "speed", "density"],
-            "color": "#a855f7"
+            "color": "#6690bf"
         })
     return missions
 
@@ -1831,13 +1831,13 @@ async def omni_statistics_quantities():
 @app.get("/api/events")
 async def get_events():
     return [
-        {"id": "may_2024_g5", "title": "May 2024 Extreme G5 Superstorm (AR 3664)", "severity": "Extreme G5 (Kp=9)", "icon": "fa-bolt", "badge_color": "#dc2626"},
-        {"id": "halloween_2003", "title": "Halloween 2003 Storms (X17+ Flare)", "severity": "Extreme G5 (Kp=9)", "icon": "fa-radiation", "badge_color": "#dc2626"},
-        {"id": "bastille_2000", "title": "Bastille Day 2000 Superstorm (X5.7)", "severity": "Extreme G5 / S4 (Kp=9)", "icon": "fa-fire-flame-curved", "badge_color": "#ea580c"},
-        {"id": "quebec_1989", "title": "Hydro-Québec Blackout (March 1989)", "severity": "Extreme G5 (Dst -589)", "icon": "fa-plug-circle-xmark", "badge_color": "#e11d48"},
-        {"id": "carrington_1859", "title": "Carrington Event (September 1859)", "severity": "Superstorm (Dst <-850)", "icon": "fa-meteor", "badge_color": "#9333ea"},
-        {"id": "st_patricks_2015", "title": "St. Patrick's Day Storm (March 2015)", "severity": "Severe G4 (Kp=8-)", "icon": "fa-cloud-bolt", "badge_color": "#f59e0b"},
-        {"id": "quiet_baseline", "title": "Quiet Sun Solar Wind Baseline", "severity": "Quiet G0 (Kp=1)", "icon": "fa-sun", "badge_color": "#10b981"}
+        {"id": "may_2024_g5", "title": "May 2024 Extreme G5 Superstorm (AR 3664)", "severity": "Extreme G5 (Kp=9)", "icon": "fa-bolt", "badge_color": "#a44e4e"},
+        {"id": "halloween_2003", "title": "Halloween 2003 Storms (X17+ Flare)", "severity": "Extreme G5 (Kp=9)", "icon": "fa-radiation", "badge_color": "#a44e4e"},
+        {"id": "bastille_2000", "title": "Bastille Day 2000 Superstorm (X5.7)", "severity": "Extreme G5 / S4 (Kp=9)", "icon": "fa-fire-flame-curved", "badge_color": "#9a7332"},
+        {"id": "quebec_1989", "title": "Hydro-Québec Blackout (March 1989)", "severity": "Extreme G5 (Dst -589)", "icon": "fa-plug-circle-xmark", "badge_color": "#a44e4e"},
+        {"id": "carrington_1859", "title": "Carrington Event (September 1859)", "severity": "Superstorm (Dst <-850)", "icon": "fa-meteor", "badge_color": "#4f77a3"},
+        {"id": "st_patricks_2015", "title": "St. Patrick's Day Storm (March 2015)", "severity": "Severe G4 (Kp=8-)", "icon": "fa-cloud-bolt", "badge_color": "#b98f3f"},
+        {"id": "quiet_baseline", "title": "Quiet Sun Solar Wind Baseline", "severity": "Quiet G0 (Kp=1)", "icon": "fa-sun", "badge_color": "#529b6e"}
     ]
 
 @app.get("/api/event/{event_id}")
@@ -2625,7 +2625,7 @@ async def serve_index():
     if index_file.exists():
         return FileResponse(str(index_file))
     return Response(
-        content="<html><body style='background:#060a12;color:#38bdf8;font-family:sans-serif;padding:40px;'>"
+        content="<html><body style='background:#141518;color:#7fa5cf;font-family:sans-serif;padding:40px;'>"
                 "<h2>HELIOS-L1 Science Engine Online</h2>"
                 "<p>API is active. Static GUI assets directory not located.</p></body></html>",
         media_type="text/html"
