@@ -89,7 +89,8 @@ def test_icme_means_reproduce_the_richardson_cane_list():
     import numpy as np
     import pandas as pd
     df = pd.read_csv(DATA / "omni_hourly_2015_v_b_dst.csv.gz", comment="#", index_col="time", parse_dates=True)
-    events = json.loads((Path(__file__).parent.parent / "helios" / "data" / "icme_richardson_cane.json")
+    import helios
+    events = json.loads((Path(helios.__file__).parent / "data" / "icme_richardson_cane.json")
                         .read_text(encoding="utf-8"))["events"]
     dv, db, same_dst = [], [], []
     for e in events:
