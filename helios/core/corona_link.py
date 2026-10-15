@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from helios.core import shock_catalog
-from helios.core.coronagraph import CoronagraphAnalyzer
+from helios.core.coronagraph import DBM_GAMMA_PER_KM, DBM_W_KMS, CoronagraphAnalyzer
 from helios.core.constants import R_SUN_KM
 from helios.core.timeutil import utc as _utc
 
@@ -26,8 +26,8 @@ SEARCH_HOURS = 24.0
 L1_FROM_SUN_KM = CoronagraphAnalyzer.L1_DIST_KM
 
 
-def predict_cme(t0: datetime, h0_rsun: float, v0_kms: float, w_kms: float = 420.0,
-                gamma_per_km: float = 1.0e-7) -> Dict[str, Any]:
+def predict_cme(t0: datetime, h0_rsun: float, v0_kms: float, w_kms: float = DBM_W_KMS,
+                gamma_per_km: float = DBM_GAMMA_PER_KM) -> Dict[str, Any]:
     """DBM arrival at L1 of a CME at h0 (R_sun) moving at v0 at time t0 (the solver's two-height input)."""
     r1 = h0_rsun - v0_kms * 600.0 / R_SUN_KM
     k = CoronagraphAnalyzer.calculate_cme_kinematics(r1, h0_rsun, 10.0, _utc(t0).strftime("%Y-%m-%dT%H:%M:%S"),

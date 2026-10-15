@@ -48,7 +48,7 @@ from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
 from helios.core.exporter import DataExporter
 from helios.core.aurora_model import AuroralModel
-from helios.core.coronagraph import CoronagraphAnalyzer
+from helios.core.coronagraph import DBM_GAMMA_PER_KM, DBM_W_KMS, CoronagraphAnalyzer
 from helios.core.parker_spiral import ParkerSpiralModel
 from helios.core.report_generator import ScientificReportGenerator
 from helios.core.importer import TelemetryImporter
@@ -202,8 +202,8 @@ class CMEKinematicsRequest(BaseModel):
     r2_rsun: float = Field(6.0, gt=1.0, le=300.0, allow_inf_nan=False)
     dt_minutes: float = Field(30.0, gt=0.0, le=10080.0, allow_inf_nan=False)
     launch_time_iso: Optional[str] = Field(None, max_length=64)
-    ambient_wind_kms: float = Field(420.0, ge=100.0, le=1500.0, allow_inf_nan=False)
-    gamma_drag: float = Field(1.0e-7, gt=0.0, le=1.0e-5, allow_inf_nan=False)
+    ambient_wind_kms: float = Field(DBM_W_KMS, ge=100.0, le=1500.0, allow_inf_nan=False)
+    gamma_drag: float = Field(DBM_GAMMA_PER_KM, gt=0.0, le=1.0e-5, allow_inf_nan=False)
 
 class JmapRequest(BaseModel):
     instrument: str = Field("lasco_c3", max_length=32)
@@ -272,8 +272,8 @@ class L1LinkRequest(BaseModel):
     time: str = Field(..., max_length=40)
     height_rsun: float = Field(20.0, gt=1.0, le=215.0, allow_inf_nan=False)
     speed_kms: float = Field(..., gt=50.0, le=5000.0, allow_inf_nan=False)
-    ambient_wind_kms: float = Field(420.0, ge=100.0, le=1500.0, allow_inf_nan=False)
-    gamma_drag: float = Field(1.0e-7, gt=0.0, le=1.0e-5, allow_inf_nan=False)
+    ambient_wind_kms: float = Field(DBM_W_KMS, ge=100.0, le=1500.0, allow_inf_nan=False)
+    gamma_drag: float = Field(DBM_GAMMA_PER_KM, gt=0.0, le=1.0e-5, allow_inf_nan=False)
     rss_rsun: float = Field(2.5, ge=1.5, le=4.0, allow_inf_nan=False)
     spacecraft: str = Field("WIND", max_length=8)
 

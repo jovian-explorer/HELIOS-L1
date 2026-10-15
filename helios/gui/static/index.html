@@ -1261,8 +1261,8 @@
           <label class="flex flex-col gap-1 text-slate-400">Time (UTC)<input id="ll-time" type="datetime-local" value="2017-09-10T17:30" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">Height (R☉, CME)<input id="ll-height" type="number" value="22.9" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">Speed (km/s)<input id="ll-speed" type="number" value="2480" class="w-24 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
-          <label class="flex flex-col gap-1 text-slate-400">Ambient wind (km/s)<input id="ll-w" type="number" value="420" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
-          <label class="flex flex-col gap-1 text-slate-400">Γ (10⁻⁷ /km)<input id="ll-gamma" type="number" value="1.0" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Ambient wind (km/s)<input id="ll-w" type="number" value="450" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
+          <label class="flex flex-col gap-1 text-slate-400">Γ (10⁻⁷ /km)<input id="ll-gamma" type="number" value="0.2" step="0.1" class="w-20 rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"></label>
           <label class="flex flex-col gap-1 text-slate-400">L1 data<select id="ll-sc" class="rounded-lg px-2 py-1.5 font-mono bg-space-950/80 border border-slate-700/60 text-slate-200"><option>WIND</option><option>ACE</option><option>DSCOVR</option></select></label>
           <button onclick="runL1Link()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold">Follow to L1</button>
           <button onclick="useSolverForL1()" class="px-3 py-1.5 rounded-lg bg-space-900 border border-slate-700 text-slate-200">Use the J-map fit</button>
@@ -1379,11 +1379,11 @@
           </div>
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Ambient wind w (km/s, DBM)</label>
-            <input type="number" id="cme-w" value="420" min="250" max="900" step="10" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            <input type="number" id="cme-w" value="450" min="100" max="1500" step="10" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Drag Γ (10⁻⁷ km⁻¹, DBM)</label>
-            <input type="number" id="cme-gamma" value="1.0" min="0.1" max="3.0" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            <input type="number" id="cme-gamma" value="0.2" min="0.01" max="100" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
           </div>
           <div class="flex items-end">
             <button onclick="calculateCMEKinematics()" class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-md shadow-amber-600/30 flex items-center justify-center space-x-2">
@@ -1398,7 +1398,6 @@
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
               <div class="text-[11px] text-slate-400 font-semibold">Expansion Velocity</div>
               <div id="cme-v-init" class="text-xl font-black text-sky-400 mt-1">--- km/s</div>
-              <div id="cme-class" class="text-[10px] text-amber-400 mt-0.5">Fast CME</div>
             </div>
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
               <div class="text-[11px] text-slate-400 font-semibold">Transit to L1 Point</div>

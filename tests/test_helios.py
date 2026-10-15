@@ -562,7 +562,10 @@ def test_vrsnak_dbm_cme_kinematics():
     assert fast_cme["v_arrival_earth_kms"] > 420.0  # Asymptotes to ambient wind
     assert 30.0 < fast_cme["transit_to_earth_hours"] < 90.0  # Realistic DBM transit time
     assert 20.0 < fast_cme["l1_to_earth_lead_time_minutes"] < 70.0  # Realistic warning window
-    assert fast_cme["shock_compression_ratio"] >= 1.0
+    # Removed: a Mach number from an assumed 50 km/s Alfven speed (1.0 for every CME at the old
+    # default) and a threat level / Kp from the plane-of-sky speed alone.
+    for gone in ("shock_mach_number", "shock_compression_ratio", "threat_level", "estimated_kp", "speed_classification"):
+        assert gone not in fast_cme
 
     # Test slow CME entrained and accelerated by fast solar wind stream
     slow_cme = CoronagraphAnalyzer.calculate_cme_kinematics(

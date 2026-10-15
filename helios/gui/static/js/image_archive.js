@@ -302,7 +302,7 @@ async function runL1Link() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode: v('ll-mode'), time: v('ll-time'), height_rsun: parseFloat(v('ll-height')),
         speed_kms: parseFloat(v('ll-speed')), ambient_wind_kms: parseFloat(v('ll-w')),
-        gamma_drag: (parseFloat(v('ll-gamma')) || 1.0) * 1e-7, spacecraft: v('ll-sc') })
+        gamma_drag: (parseFloat(v('ll-gamma')) || 0.2) * 1e-7, spacecraft: v('ll-sc') })
     });
     const data = await res.json();
     if (!current()) return;

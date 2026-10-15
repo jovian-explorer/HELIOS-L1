@@ -5,8 +5,20 @@ and empirical CME deceleration and shock arrival forecasting.
 """
 import math
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from helios.core.constants import AU_KM, R_SUN_KM
+
+# Drag-based model defaults of the Hvar Observatory DBM tools (Dumbovic et al. 2021, Front.
+# Astron. Space Sci. 8, 639986, doi:10.3389/fspas.2021.639986): gamma = 0.2e-7 /km with
+# w = 450 km/s, "found as an optimal value" in the statistics of Vrsnak et al. (2013, 2014),
+# and a start at >= 20 R_sun. The earlier default 1e-7 /km slowed every CME to the ambient
+# wind (on 44 DONKI CMEs of 2023-2025: shocks at L1 predicted +9.4 h late on average, mean
+# absolute error 15.5 h; with these values -6.9 h and 14.4 h, close to the ~14 h reported
+# for the model by Vrsnak et al. 2014).
+DBM_GAMMA_PER_KM = 0.2e-7
+DBM_W_KMS = 450.0
+DBM_START_RSUN = 20.0
+
 
 class CoronagraphAnalyzer:
     """Manages solar coronagraph feeds and CME expansion kinematics."""
@@ -72,20 +84,24 @@ class CoronagraphAnalyzer:
     @classmethod
     def gopalswamy_2001_arrival(cls, speed_kms: float, r0_km: float = 0.0) -> Dict[str, Any]:
         """
-        Gopalswamy et al. (2001) empirical CME arrival: a = 2.193 - 0.0054 u m/s^2 until
-        0.76 AU, then constant speed to 1 AU. Returns transit hours from r0 and arrival speed.
+        Gopalswamy et al. (2001) empirical arrival of the ejecta (ICME, not the shock ahead of
+        it): a = 2.193 - 0.0054 u m/s^2 from the Sun until 0.76 AU, then constant speed to
+        1 AU. As in the paper the motion starts at the Sun; the hours returned count from the
+        time the model CME passes r0 (the measured height), so they follow the measurement.
         """
         a = (2.193 - 0.0054 * speed_kms) / 1000.0  # km/s^2
-        d1 = max(0.0, 0.76 * cls.AU_KM - r0_km)
-        if abs(a) < 1e-12:
-            t1 = d1 / speed_kms
-        else:
-            disc = speed_kms ** 2 + 2.0 * a * d1
-            if disc < 0:  # the CME would stop before 0.76 AU: outside the model
-                return {"transit_hours": None, "arrival_speed_kms": None, "acceleration_ms2": round(a * 1000.0, 3)}
-            t1 = (-speed_kms + math.sqrt(disc)) / a
+
+        def time_to(d_km: float) -> Optional[float]:
+            if abs(a) < 1e-12:
+                return d_km / speed_kms
+            disc = speed_kms ** 2 + 2.0 * a * d_km
+            return None if disc < 0 else (-speed_kms + math.sqrt(disc)) / a
+
+        t1 = time_to(0.76 * cls.AU_KM)
+        if t1 is None:  # the CME would stop before 0.76 AU: outside the model
+            return {"transit_hours": None, "arrival_speed_kms": None, "acceleration_ms2": round(a * 1000.0, 3)}
         v1 = speed_kms + a * t1
-        t = t1 + (cls.AU_KM - max(r0_km, 0.76 * cls.AU_KM)) / v1
+        t = t1 + 0.24 * cls.AU_KM / v1 - time_to(min(r0_km, 0.76 * cls.AU_KM))
         return {"transit_hours": round(t / 3600.0, 1), "arrival_speed_kms": round(v1, 1),
                 "acceleration_ms2": round(a * 1000.0, 3)}
 
@@ -96,8 +112,8 @@ class CoronagraphAnalyzer:
         r2_rsun: float,
         dt_minutes: float,
         launch_time_iso: str = None,
-        ambient_wind_kms: float = 420.0,
-        gamma_drag: float = 1.0e-7
+        ambient_wind_kms: float = DBM_W_KMS,
+        gamma_drag: float = DBM_GAMMA_PER_KM
     ) -> Dict[str, Any]:
         """
         Calculate CME plane-of-sky expansion velocity, aerodynamic drag kinematics,
@@ -117,11 +133,17 @@ class CoronagraphAnalyzer:
         dt_seconds = dt_minutes * 60.0
         v_initial_kms = delta_r_km / dt_seconds
 
-        # 2. Vršnak et al. (2013) Drag-Based Model (DBM) Integration
-        # w = ambient solar wind speed, gamma = drag parameter (1/km)
-        w = max(250.0, min(900.0, ambient_wind_kms))
-        gamma = max(0.1e-7, min(3.0e-7, gamma_drag))
-        r0_km = r2_rsun * cls.R_SUN_KM
+        # 2. Vršnak et al. (2013) Drag-Based Model (DBM), w = ambient solar wind speed and
+        # gamma = drag parameter (1/km), as given (they were clamped to 250-900 km/s and
+        # 0.1-3e-7 /km without a word). The model applies beyond ~20 R_sun: below that the
+        # measured speed is carried at constant speed to 20 R_sun, where the model starts.
+        w = float(ambient_wind_kms)
+        gamma = float(gamma_drag)
+        if w <= 0 or gamma <= 0:
+            return {"error": "The ambient wind speed and the drag parameter must be positive."}
+        start_rsun = max(r2_rsun, DBM_START_RSUN)
+        t_coast = (start_rsun - r2_rsun) * cls.R_SUN_KM / v_initial_kms
+        r0_km = start_rsun * cls.R_SUN_KM
         u0 = v_initial_kms - w
 
         def dbm_r(t_sec: float) -> float:
@@ -172,8 +194,8 @@ class CoronagraphAnalyzer:
         t_sec_l1 = solve_dbm_transit_sec(cls.L1_DIST_KM)
         t_sec_earth = solve_dbm_transit_sec(cls.AU_KM)
 
-        transit_l1_hours = t_sec_l1 / 3600.0
-        transit_earth_hours = t_sec_earth / 3600.0
+        transit_l1_hours = (t_coast + t_sec_l1) / 3600.0
+        transit_earth_hours = (t_coast + t_sec_earth) / 3600.0
 
         v_arrival_l1 = dbm_v(t_sec_l1)
         v_arrival_earth = dbm_v(t_sec_earth)
@@ -182,7 +204,7 @@ class CoronagraphAnalyzer:
         # effective acceleration a = 2.193 - 0.0054 u (m/s^2, u in km/s) that ceases at
         # 0.76 AU, constant speed afterwards. (The earlier value here was distance over a
         # mean of (u + 400)/2 km/s with a 10 h floor, labelled as this model.)
-        gopal = cls.gopalswamy_2001_arrival(v_initial_kms, r0_km)
+        gopal = cls.gopalswamy_2001_arrival(v_initial_kms, r2_rsun * cls.R_SUN_KM)
 
         # 4. Timestamps & Lead Time
         now_dt = datetime.now(timezone.utc)
@@ -201,38 +223,10 @@ class CoronagraphAnalyzer:
         arrival_earth = base_dt + timedelta(hours=transit_earth_hours)
         lead_time_min = max(0.0, (transit_earth_hours - transit_l1_hours) * 60.0)
 
-        # 5. Shock Mach number & Compression Ratio
-        v_alfven_assumed = 50.0  # km/s typical interplanetary Alfven speed
-        mach_shock = max(1.0, (v_arrival_earth - w) / v_alfven_assumed)
-        # Rankine-Hugoniot density compression ratio for gamma_mhd = 5/3:
-        # r = 4 M^2 / (M^2 + 3)
-        compression_ratio = round((4.0 * (mach_shock ** 2)) / ((mach_shock ** 2) + 3.0), 2)
-
-        # Threat classification
-        if v_initial_kms >= 1600.0:
-            speed_class = "Extreme Hyperbolic CME Shock"
-            threat_level = "Severe / Extreme (G4 - G5 Potential)"
-            est_kp = 8.5
-        elif v_initial_kms >= 1000.0:
-            speed_class = "Fast Interplanetary CME"
-            threat_level = "Strong Geomagnetic Threat (G3 Potential)"
-            est_kp = 7.0
-        elif v_initial_kms >= 600.0:
-            speed_class = "Moderate CME Wavefront"
-            threat_level = "Moderate Storm Potential (G1 - G2 Potential)"
-            est_kp = 5.5
-        else:
-            speed_class = "Slow CME / Solar Wind Entrained"
-            threat_level = "Quiet / Minor Disturbance (G0 - G1)"
-            est_kp = 3.0
-
         return {
             "initial_speed_kms": round(v_initial_kms, 1),
             "v_arrival_l1_kms": round(v_arrival_l1, 1),
             "v_arrival_earth_kms": round(v_arrival_earth, 1),
-            "speed_classification": speed_class,
-            "threat_level": threat_level,
-            "estimated_kp": est_kp,
             "model": "Vršnak et al. (2013) Drag-Based Model (DBM)",
             "ambient_solar_wind_kms": round(w, 1),
             "ambient_wind_kms": round(w, 1),
@@ -241,8 +235,6 @@ class CoronagraphAnalyzer:
             "transit_to_l1_hours": round(transit_l1_hours, 1),
             "transit_to_earth_hours": round(transit_earth_hours, 1),
             "l1_to_earth_lead_time_minutes": round(lead_time_min, 1),
-            "shock_mach_number": round(mach_shock, 2),
-            "shock_compression_ratio": compression_ratio,
             "gopalswamy_2001_transit_hours": gopal["transit_hours"],
             "gopalswamy_2001_arrival_speed_kms": gopal["arrival_speed_kms"],
             "gopalswamy_2001_acceleration_ms2": gopal["acceleration_ms2"],
@@ -250,12 +242,13 @@ class CoronagraphAnalyzer:
                                              if gopal["transit_hours"] is not None else None,
             "assumptions": [
                 "Plane-of-sky speed from two heights; no correction for projection (halo CMEs are faster along the Sun-Earth line).",
-                "Shock Mach number and compression are rough estimates: (arrival speed - ambient wind) / 50 km/s (assumed Alfven speed) and the gas-dynamic jump 4M^2/(M^2 + 3).",
-                "Estimated Kp and threat level are speed categories (600 / 1000 / 1600 km/s), not a forecast model.",
+                "The drag-based model follows the CME front from 20 R_sun (constant speed before); the shock ahead of it can arrive hours earlier. Typical arrival-time errors of such models are about 10-14 h (Vrsnak et al. 2014; Dumbovic et al. 2021).",
+                "The Gopalswamy et al. (2001) time is the arrival of the ejecta, which follows the shock.",
             ],
             "predicted_l1_arrival": arrival_l1.strftime("%Y-%m-%d %H:%M:%S UTC"),
             "predicted_earth_arrival": arrival_earth.strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "start_height_rsun": r2_rsun,  # the trajectory and its transit times start here
+            "start_height_rsun": r2_rsun,  # transit times count from the time of this height
+            "dbm_start_rsun": start_rsun,
             "measurement_span_solar_radii": round(r2_rsun - r1_rsun, 2),
             "measurement_dt_minutes": dt_minutes
         }

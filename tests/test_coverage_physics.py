@@ -132,7 +132,7 @@ def test_drag_based_model_matches_numerical_integration(v0, w, gamma):
     for fast, very fast and slow (accelerating) CMEs.
     """
     from helios.core.coronagraph import CoronagraphAnalyzer as C
-    r1, r2 = 5.0, 10.0
+    r1, r2 = 15.0, 25.0  # beyond 20 R_sun, where the model starts
     dt_min = (r2 - r1) * C.R_SUN_KM / v0 / 60.0
     out = C.calculate_cme_kinematics(r1, r2, dt_min, ambient_wind_kms=w, gamma_drag=gamma)
     t, v = _rk4_transit(v0, w, gamma, r2 * C.R_SUN_KM, C.AU_KM)
@@ -140,6 +140,18 @@ def test_drag_based_model_matches_numerical_integration(v0, w, gamma):
     assert out["v_arrival_earth_kms"] == pytest.approx(v, abs=1.0)
     t1, v1 = _rk4_transit(v0, w, gamma, r2 * C.R_SUN_KM, C.L1_DIST_KM)
     assert out["transit_to_l1_hours"] == pytest.approx(t1 / 3600.0, abs=0.05)
+
+
+def test_drag_based_model_starts_at_20_rsun():
+    """A CME measured at 6 R_sun keeps its speed to 20 R_sun, where the drag starts (the model
+    applies beyond ~20 R_sun; it was started at 6-11.5 R_sun, about 3-4 h late for fast CMEs)."""
+    from helios.core.coronagraph import CoronagraphAnalyzer as C
+    v0, w, gamma = 1500.0, 450.0, 0.2e-7
+    out = C.calculate_cme_kinematics(2.5, 6.0, 3.5 * C.R_SUN_KM / v0 / 60.0, ambient_wind_kms=w, gamma_drag=gamma)
+    t, _ = _rk4_transit(v0, w, gamma, 20.0 * C.R_SUN_KM, C.AU_KM)
+    coast = 14.0 * C.R_SUN_KM / v0
+    assert out["dbm_start_rsun"] == 20.0
+    assert out["transit_to_earth_hours"] == pytest.approx((coast + t) / 3600.0, abs=0.05)
 
 
 def test_gopalswamy_2001_arrival_matches_stepwise_integration():
@@ -209,3 +221,31 @@ def test_seven_day_view_joins_archive_and_rtsw_without_overlap(monkeypatch):
     assert out["provenance"]["kind"] == "observed"
     assert "CDAWeb DSCOVR test archive." in out["provenance"]["description"]
     assert f"After {last_arch} UTC" in out["provenance"]["description"]
+
+
+def test_drag_parameters_are_used_as_given():
+    """w and gamma were clamped to 250-900 km/s and 0.1-3e-7 /km without a word."""
+    from helios.core.coronagraph import CoronagraphAnalyzer as C
+    out = C.calculate_cme_kinematics(15.0, 25.0, 60.0, ambient_wind_kms=1000.0, gamma_drag=5e-7)
+    assert out["ambient_wind_kms"] == 1000.0 and out["drag_parameter_gamma"] == 5e-7
+
+
+def test_drag_based_model_defaults_on_observed_cme_arrivals():
+    """44 DONKI CMEs of 2023-2025 run from 21.5 R_sun with the published defaults (gamma =
+    0.2e-7 /km, w = 450 km/s): shocks at L1 -6.9 h early on average, mean absolute error
+    14.4 h, as reported for the model (~14 h, Vrsnak et al. 2014). The old default
+    (1e-7 /km, 420 km/s) gave +9.4 h and 15.5 h, late by +14.6 h above 1300 km/s."""
+    import json
+    import statistics
+    from datetime import datetime
+    from pathlib import Path
+    from helios.core.coronagraph import CoronagraphAnalyzer as C
+    events = json.loads((Path(__file__).parent / "data" / "donki_cme_shocks_2023_2025.json").read_text())["events"]
+    err = []
+    for e in events:
+        k = C.calculate_cme_kinematics(21.5 - e["speed_kms"] * 3600.0 / C.R_SUN_KM, 21.5, 60.0, e["time21_5"].rstrip("Z"))
+        pred = datetime.strptime(k["predicted_l1_arrival"], "%Y-%m-%d %H:%M:%S UTC")
+        err.append((pred - datetime.fromisoformat(e["shock"].rstrip("Z"))).total_seconds() / 3600.0)
+    assert len(err) == 44
+    assert statistics.mean(err) == pytest.approx(-6.9, abs=0.1)
+    assert statistics.mean(map(abs, err)) == pytest.approx(14.4, abs=0.1)

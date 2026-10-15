@@ -708,8 +708,24 @@ SCIENTIFIC_REFERENCES = [
         "doi_url": "https://doi.org/10.1007/s11207-012-0035-4",
         "category": "CME Propagation & Kinematics",
         "formula": "dv/dt = -gamma * (v - w) * |v - w|",
-        "parameters": ["gamma (aerodynamic drag parameter ~ 1.8e-7 km^-1)", "w (ambient solar wind speed)", "v (CME shock speed)"],
+        "parameters": ["gamma (drag parameter, 0.2-2e-7 km^-1; 0.2e-7 with w = 450 km/s as the usual forecasting value)", "w (ambient solar wind speed)", "v (speed of the CME front)"],
         "physical_meaning": "Models hydrodynamic and magnetohydrodynamic drag deceleration/acceleration of CMEs traversing from the solar corona to L1 and 1 AU."
+    },
+    {
+        "id": "dumbovic_dbm_tools_2021",
+        "title": "Drag-Based Model (DBM) Tools for Forecast of Coronal Mass Ejection Arrival Time and Speed",
+        "authors": "Dumbović, M., Čalogović, J., Martinić, K., Vršnak, B., Sudar, D., Temmer, M., & Veronig, A.",
+        "journal": "Frontiers in Astronomy and Space Sciences",
+        "year": 2021,
+        "volume": "8",
+        "issue": "",
+        "pages": "639986",
+        "doi": "10.3389/fspas.2021.639986",
+        "doi_url": "https://doi.org/10.3389/fspas.2021.639986",
+        "category": "CME Propagation & Kinematics",
+        "formula": "gamma = 0.2e-7 km^-1, w = 450 km/s, start at R0 >= 20 R_sun",
+        "parameters": ["gamma (drag parameter)", "w (ambient solar wind speed)", "R0 (start distance of the model)"],
+        "physical_meaning": "Source of the drag-based model defaults of the CME solver: the values the DBM tools of Hvar Observatory use, from the statistics of Vrsnak et al. (2013, 2014)."
     },
     {
         "id": "parker_spiral_1958",
