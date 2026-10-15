@@ -435,7 +435,7 @@ class ParkerSpiralRenderer {
           <span class="text-[10px] text-sky-300 font-mono font-bold">1.000 AU</span>
         </div>
         <div class="text-[11px] font-mono space-y-1 text-slate-200">
-          <div>Distance from Sun: <span class="text-slate-100 font-bold">1.00 AU</span> (149.6M km)</div>
+          <div>Distance from Sun: <span class="text-slate-100 font-bold">${(this.earthAu || 1).toFixed(3)} AU</span> (${((this.earthAu || 1) * 149.598).toFixed(1)}M km)</div>
           <div>Orbital Velocity: <span class="text-emerald-400 font-bold">29.78 km/s</span></div>
           <div>Magnetic Connectivity: <span class="text-amber-300 font-bold">Footpoint ${(this.omegaSun * this.auKm / this.speedKms * 180 / Math.PI).toFixed(0)}° W at ${this.speedKms} km/s</span></div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
@@ -825,7 +825,10 @@ class ParkerSpiralRenderer {
     ctx.save();
 
     // 1. Earth at 1 AU (x = cx + scale, y = cy)
-    const earthX = cx + 1.0 * scale;
+    // Earth at its ephemeris distance (0.983-1.017 AU over the year), 1 AU until it is known
+    const rEarth = this.spiceFleetData && this.spiceFleetData.EARTH ? this.spiceFleetData.EARTH.heliocentric.distance_au : 1.0;
+    this.earthAu = rEarth;
+    const earthX = cx + rEarth * scale;
     const earthY = cy;
     this.earthScreenPos = { x: earthX, y: earthY };
 
@@ -854,7 +857,7 @@ class ParkerSpiralRenderer {
     ctx.fillText('Earth', earthX + 12, earthY - 4);
     ctx.fillStyle = '#7fa5cf';
     ctx.font = '9px system-ui, sans-serif';
-    ctx.fillText('1.00 AU', earthX + 12, earthY + 8);
+    ctx.fillText(`${rEarth.toFixed(3)} AU`, earthX + 12, earthY + 8);
 
     // 2. Sun-Earth L1 (0.99 AU)
     const l1X = cx + 0.99 * scale;
