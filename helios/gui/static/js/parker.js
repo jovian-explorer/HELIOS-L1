@@ -1031,7 +1031,7 @@ class ParkerSpiralRenderer {
     const soloY = cy - solo.rAu * scale * Math.sin(solo.theta);
     this.soloScreenPos = { x: soloX, y: soloY, state: solo };
 
-    // Draw SolO Elliptical Orbit Track (subtle cyan dashed line)
+    // Draw SolO Elliptical Orbit Track (dashed line)
     ctx.strokeStyle = 'rgba(102, 144, 191, 0.25)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 4]);
@@ -1287,7 +1287,7 @@ class ParkerSpiralRenderer {
     ctx.fillRect(24, this.height - 30, 14, 3);
     ctx.fillStyle = '#d6d8db';
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText('Cyan Spiral = Magnetic Highway to Earth/L1', 46, this.height - 24);
+    ctx.fillText('Highlighted spiral: field line connected to Earth/L1', 46, this.height - 24);
 
     ctx.restore();
   }
