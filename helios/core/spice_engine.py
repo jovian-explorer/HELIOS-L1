@@ -176,22 +176,26 @@ class SpiceEphemerisEngine:
             return cls._instance
 
     def __init__(self, kernel_dir: Optional[str] = None):
-        if getattr(self, "_initialized", False):
-            return
+        # Under the class lock: __init__ runs after __new__ has let go of it, and two first
+        # requests at once each made their own _kernel_lock and loaded kernels into CSPICE
+        # together, which aborted the whole process (SPICE(BADSUBSCRIPT) in furnsh).
+        with type(self)._lock:
+            if getattr(self, "_initialized", False):
+                return
 
-        self._kernel_dir = self._resolve_kernel_dir(kernel_dir)
-        self._loaded_kernels = []
-        self._kernel_lock = threading.Lock()
-        self._toolkit_version = "CSPICE_UNAVAILABLE"
+            self._kernel_dir = self._resolve_kernel_dir(kernel_dir)
+            self._loaded_kernels = []
+            self._kernel_lock = threading.Lock()
+            self._toolkit_version = "CSPICE_UNAVAILABLE"
 
-        if SPICE_AVAILABLE:
-            try:
-                self._toolkit_version = spice.tkvrsn("TOOLKIT")
-            except SPICE_ERRORS:
-                self._toolkit_version = "CSPICE_N0067"
-            self.load_kernels()
+            if SPICE_AVAILABLE:
+                try:
+                    self._toolkit_version = spice.tkvrsn("TOOLKIT")
+                except SPICE_ERRORS:
+                    self._toolkit_version = "CSPICE_N0067"
+                self.load_kernels()
 
-        self._initialized = True
+            self._initialized = True
 
     def _resolve_kernel_dir(self, custom_dir: Optional[str]) -> Path:
         """Locates the local SPICE kernels repository directory."""

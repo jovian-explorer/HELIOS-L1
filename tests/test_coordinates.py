@@ -194,3 +194,20 @@ def test_kernel_span_is_cut_to_where_horizons_coverage_ends(monkeypatch, tmp_pat
     ephemeris._failed.clear()
     assert ephemeris.spacecraft_kernel("-78", t, str(tmp_path)) == str(tmp_path / "dscovr.bsp")
     assert len(asked) == 1
+
+
+def test_spice_engine_is_set_up_once_when_first_used_from_several_threads(monkeypatch):
+    """Two first requests at once each loaded the kernels under their own lock, calling CSPICE
+    concurrently, which aborted the server (SPICE(BADSUBSCRIPT) in furnsh)."""
+    import threading
+    import time
+    from helios.core import spice_engine as se
+    calls = []
+    monkeypatch.setattr(se.SpiceEphemerisEngine, "_instance", None)
+    monkeypatch.setattr(se.SpiceEphemerisEngine, "load_kernels", lambda self: (calls.append(1), time.sleep(0.2)))
+    threads = [threading.Thread(target=se.SpiceEphemerisEngine) for _ in range(4)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    assert len(calls) == 1
