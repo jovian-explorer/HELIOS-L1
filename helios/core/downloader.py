@@ -44,7 +44,6 @@ SIMULATION_OFFSETS = {
     "ADITYA_L1": {"speed_bias": -1.8, "dens_bias": 0.22, "mag_noise": 0.28, "time_skew_min": 0.8},
     "WIND": {"speed_bias": 1.1, "dens_bias": -0.05, "mag_noise": 0.20, "time_skew_min": 2.4},
     "SOHO": {"speed_bias": 5.0, "dens_bias": 0.50, "mag_noise": 0.40, "time_skew_min": 0.0},
-    "GOES_16": {"speed_bias": 0.0, "dens_bias": 0.0, "mag_noise": 0.50, "time_skew_min": -45.0},
     "STEREO_A": {"speed_bias": -12.0, "dens_bias": 0.80, "mag_noise": 0.60, "time_skew_min": 180.0}
 }
 
@@ -606,6 +605,18 @@ class DataDownloader:
                     records = block_average(records, 5, dist)  # leaves the 5-minute archive bins unchanged
                     if not arch_recs:
                         description += " Averaged to 5-minute bins."
+        elif mission_id == "GOES_16":
+            # The magnetometer of NOAA's primary GOES-East satellite (GOES-19 since April 2025).
+            key = "goes_mag_1day" if span_days <= 1 else "goes_mag_7day"
+            rows = await self.fetch_json(NOAA_SWPC_ENDPOINTS[key], key)
+            records = self.parse_goes_magnetometer(rows if isinstance(rows, list) else None,
+                                                   window_start.strftime("%Y-%m-%d %H:%M:%S"))
+            if records:
+                kind, sources = "observed", sorted({r["mission"] for r in records})
+                description = ("NOAA SWPC GOES primary magnetometer, 1-minute values: Hp (parallel to Earth's "
+                               "spin axis), He, Hn and |B| in nT; arcjet-thruster minutes left out.")
+            else:
+                kind, description = "unavailable", "The NOAA GOES magnetometer product could not be reached."
         elif mission_id == "SOHO":
             text, _ = await cached_text(os.path.join(str(self.cache_dir), "soho_pm.txt"), SOHO_PM_URL,
                                         self.fetch_text, SOHO_PM_TTL_S)
@@ -652,7 +663,7 @@ class DataDownloader:
             else:
                 archive_note = " " + arch["provenance"]["description"]
 
-        if kind != "observed":
+        if kind not in ("observed", "unavailable"):
             if mission_id == "DSCOVR":
                 records = self.generate_synthetic_telemetry(mission=name, hours=span_days * 24, condition="active")
                 description = ("NOAA SWPC archive unreachable and no cached copy: values come from the offline "
@@ -713,19 +724,6 @@ class DataDownloader:
 
         for item in base_l1:
             raw_bz, raw_bt = item.get("bz_gsm"), item.get("bt")
-            if mission_id == "GOES_16":
-                # GOES-16 is in Earth's magnetosphere, so it measures compressed dipole field (Hp ~ 80-120 nT)
-                raw_pdyn = item.get("dynamic_pressure")
-                hp = None
-                if raw_pdyn is not None and raw_bz is not None:
-                    hp = round(100.0 + (raw_pdyn * 4.5) - (abs(raw_bz) * 1.5), 2)
-                calibrated.append({
-                    "time_tag": item["time_tag"],
-                    "mission": "GOES-16",
-                    "hp_mag": hp,
-                    "data_source": "simulated"
-                })
-                continue
             spd = noisy(item.get("speed"), 1.2, offsets["speed_bias"])
             dens = noisy(item.get("density"), 0.2, offsets["dens_bias"])
             dens = max(0.5, dens) if dens is not None else None
@@ -775,6 +773,20 @@ class DataDownloader:
                 if kp is not None and row.get("time_tag"):
                     best = (kp, _iso_space(row["time_tag"]))
         return best
+
+    @staticmethod
+    def parse_goes_magnetometer(rows: Optional[List[Any]], start_tag: str = "") -> List[Dict[str, Any]]:
+        """NOAA GOES magnetometer rows as records from start_tag on; minutes flagged for arcjet firings left out."""
+        out = []
+        for row in rows or []:
+            if not isinstance(row, dict) or row.get("arcjet_flag") or not row.get("time_tag"):
+                continue
+            t = _iso_space(row["time_tag"])
+            if t >= start_tag and _num(row.get("Hp")) is not None:
+                out.append({"time_tag": t, "mission": f"GOES-{row.get('satellite')}", "hp_mag": _num(row.get("Hp")),
+                            "he_mag": _num(row.get("He")), "hn_mag": _num(row.get("Hn")),
+                            "total_mag": _num(row.get("total")), "data_source": "observed"})
+        return out
 
     @staticmethod
     def parse_goes_latest(rows: Optional[List[Any]], energy: str) -> Tuple[Optional[float], Optional[str]]:

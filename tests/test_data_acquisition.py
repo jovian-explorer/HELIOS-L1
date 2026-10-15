@@ -615,3 +615,18 @@ def test_stereo_beacon_cdfs_become_records(tmp_path):
     assert [r.get("bt") for r in recs if "bt" in r] == [5.0, 5.0]                     # the fill vector left out
     assert [(r["speed"], r["density"]) for r in recs if "speed" in r] == [(400.0, 2.5), (410.0, 3.0)]
     assert all(r["bz_gsm"] is None and r["time_tag"].startswith("2026-10-13 12:0") for r in recs)
+
+
+def test_goes_magnetometer_is_noaa_data(monkeypatch):
+    """GOES Hp was invented (100 + 4.5 Pdyn - 1.5 |Bz|: r = 0.33 and RMSE 26 nT against GOES-19);
+    it is NOAA's GOES primary magnetometer now (rows of 14 Oct 2026), and nothing when unreachable."""
+    rows = [{"time_tag": "2026-10-14T11:02:00Z", "satellite": 19, "He": 32.37138748168945, "Hp": 92.65843200683594,
+             "Hn": 2.3364977836608887, "total": 98.17817687988281, "arcjet_flag": False},
+            {"time_tag": "2026-10-14T11:03:00Z", "satellite": 19, "He": 32.33, "Hp": 92.72, "Hn": 2.41,
+             "total": 98.22, "arcjet_flag": True}]
+    recs = DataDownloader.parse_goes_magnetometer(rows)
+    assert recs == [{"time_tag": "2026-10-14 11:02:00", "mission": "GOES-19", "hp_mag": 92.65843200683594,
+                     "he_mag": 32.37138748168945, "hn_mag": 2.3364977836608887, "total_mag": 98.17817687988281,
+                     "data_source": "observed"}]
+    off = asyncio.run(DataDownloader().get_telemetry_bundle("GOES_16"))  # conftest: no network
+    assert off["records"] == [] and off["provenance"]["kind"] == "unavailable"
