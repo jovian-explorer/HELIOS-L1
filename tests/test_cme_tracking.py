@@ -70,6 +70,11 @@ def test_projection_correction():
     assert p["psi_deg"] == pytest.approx(30.0) and p["radial_speed_kms"] == pytest.approx(2000.0, rel=1e-3)
     # The same source seen from 70 deg west of Earth (STEREO-A-like): psi = 40 deg.
     assert ct.projection(1000.0, 30.0, 0.0, 70.0)["psi_deg"] == pytest.approx(40.0)
+    # A 40 deg wide CME: its flank, 70 deg from the line of sight, gives the measured front.
+    wide = ct.projection(1000.0, 30.0, 0.0, half_width_deg=40.0)
+    assert wide["radial_speed_kms"] == pytest.approx(1000.0 / math.sin(math.radians(70.0)), rel=1e-3)
+    assert ct.projection(1000.0, 30.0, 0.0, half_width_deg=60.0)["radial_speed_kms"] == pytest.approx(1000.0)
+    assert "narrow" in p["note"]
     halo = ct.projection(1000.0, 5.0, 5.0)
     assert halo["radial_speed_kms"] is None and "halo" in halo["note"]
 

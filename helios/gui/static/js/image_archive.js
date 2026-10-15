@@ -244,7 +244,7 @@ async function fitTrack() {
     const res = await fetch('/api/coronagraph/fit', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ points: trackPoints, order: parseInt(v('jm-order')), instrument: v('ia-instrument'),
-        source_lon_deg: num('jm-lon'), source_lat_deg: num('jm-lat') })
+        source_lon_deg: num('jm-lon'), source_lat_deg: num('jm-lat'), half_width_deg: num('jm-hw') })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(apiErrorText(data, res));
@@ -255,7 +255,7 @@ async function fitTrack() {
     const p = data.projection;
     const proj = !p ? 'No source position given: plane-of-sky speed only.'
       : (p.radial_speed_kms === null ? p.note
-        : `Radial speed ${p.radial_speed_kms} km/s (ψ = ${p.psi_deg}° from the line of sight of ${data.observer.spacecraft}; ${p.method}).`);
+        : `Radial speed ${p.radial_speed_kms} km/s (ψ = ${p.psi_deg}° from the line of sight of ${data.observer.spacecraft}; ${p.method}).${p.note ? ' ' + p.note : ''}`);
     out.innerText = `Plane-of-sky speed ${f.speed_kms} ± ${f.speed_err_kms} km/s${acc} from ${f.n_points} points; ` +
       `front at ${f.height_end_rsun} R☉ at ${f.time_end} UTC (RMS residual ${f.rms_residual_rsun} R☉). ${proj}`;
   } catch (err) {

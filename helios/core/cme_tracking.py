@@ -35,7 +35,7 @@ import base64
 import io
 import math
 from datetime import datetime
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 from helios.core.constants import R_SUN_KM
@@ -182,17 +182,28 @@ def fit_height_time(points: List[Dict[str, Any]], order: int = 1) -> Dict[str, A
 
 
 def projection(speed_pos_kms: float, source_lon_deg: float, source_lat_deg: float,
-               observer_lon_deg: float = 0.0) -> Dict[str, Any]:
-    """Radial speed from the plane-of-sky speed for motion along the source direction (see module notes)."""
+               observer_lon_deg: float = 0.0, half_width_deg: Optional[float] = None) -> Dict[str, Any]:
+    """
+    Radial speed from the plane-of-sky speed for motion along the source direction (see module
+    notes). With the CME's angular half-width w, the front is a cone whose cap is concentric with
+    the Sun (the "ice-cream cone" of the drag-based model tools): its point nearest the plane of
+    the sky is min(psi + w, 90) deg from the line of sight, and that point gives the measured
+    front, so v = v_pos / sin(min(psi + w, 90)). Without a width the CME is taken as narrow
+    (w = 0), which overestimates the speed of a wide CME (x2.0 against x1.06 at psi = 30 deg
+    for w = 40 deg).
+    """
     cos_psi = math.cos(math.radians(source_lat_deg)) * math.cos(math.radians(source_lon_deg - observer_lon_deg))
     psi = math.degrees(math.acos(max(-1.0, min(1.0, cos_psi))))
-    sin_psi = math.sin(math.radians(psi))
-    ok = psi >= MIN_PSI_DEG and psi <= 180.0 - MIN_PSI_DEG
-    return {"psi_deg": round(psi, 1), "projection_factor": round(sin_psi, 4),
-            "radial_speed_kms": round(speed_pos_kms / sin_psi, 1) if ok else None,
-            "note": None if ok else f"Direction within {MIN_PSI_DEG:g} deg of the line of sight (halo-like): "
-                                    "the plane-of-sky correction is not applied.",
-            "method": "v = v_pos / sin(psi), radial motion along the source direction (Vrsnak et al. 2007)"}
+    eff = min(min(psi, 180.0 - psi) + (half_width_deg or 0.0), 90.0)
+    sin_eff = math.sin(math.radians(eff))
+    ok = eff >= MIN_PSI_DEG
+    note = None if ok else (f"Direction within {MIN_PSI_DEG:g} deg of the line of sight (halo-like): "
+                            "the plane-of-sky correction is not applied.")
+    if ok and half_width_deg is None:
+        note = "No CME width given: treated as narrow, which overestimates the speed of a wide CME."
+    return {"psi_deg": round(psi, 1), "half_width_deg": half_width_deg, "projection_factor": round(sin_eff, 4),
+            "radial_speed_kms": round(speed_pos_kms / sin_eff, 1) if ok else None, "note": note,
+            "method": "v = v_pos / sin(min(psi + half-width, 90 deg)), cone with a Sun-centred front"}
 
 
 def observer_longitude(instrument: str, when: datetime) -> Dict[str, Any]:

@@ -227,6 +227,7 @@ class FrontFitRequest(BaseModel):
     instrument: str = Field("lasco_c3", max_length=32)
     source_lon_deg: Optional[float] = Field(None, ge=-180.0, le=180.0, allow_inf_nan=False)
     source_lat_deg: Optional[float] = Field(None, ge=-90.0, le=90.0, allow_inf_nan=False)
+    half_width_deg: Optional[float] = Field(None, ge=0.0, le=90.0, allow_inf_nan=False)
 
 class FieldPoint(BaseModel):
     r_rsun: float = Field(..., ge=1.0, le=2.5, allow_inf_nan=False)
@@ -2223,7 +2224,7 @@ async def post_front_fit(req: FrontFitRequest):
             obs = await asyncio.to_thread(cme_tracking.observer_longitude, req.instrument, when)
         except LookupError as exc:
             raise HTTPException(status_code=503, detail=str(exc))
-        proj = cme_tracking.projection(speed, req.source_lon_deg, req.source_lat_deg, obs["longitude_deg"])
+        proj = cme_tracking.projection(speed, req.source_lon_deg, req.source_lat_deg, obs["longitude_deg"], req.half_width_deg)
         out.update(observer=obs, projection=proj)
         if proj["radial_speed_kms"] is not None:
             speed = proj["radial_speed_kms"]
