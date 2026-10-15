@@ -58,11 +58,11 @@ class ScientificReportGenerator:
                     <td style="padding: 6px; border: 1px solid #334155; color: #38bdf8;">+{s['delta_speed_kms']} km/s</td>
                     <td style="padding: 6px; border: 1px solid #334155;">{s['density_ratio']}x</td>
                     <td style="padding: 6px; border: 1px solid #334155;">{s['magnetic_ratio']}x</td>
-                    <td style="padding: 6px; border: 1px solid #334155; font-weight: bold;">{s['mach_proxy']}</td>
+                    <td style="padding: 6px; border: 1px solid #334155; font-weight: bold;">{s['upstream_speed']} → {s['downstream_speed']} km/s</td>
                 </tr>
                 """
         else:
-            shocks_html = '<tr><td colspan="6" style="padding: 8px; text-align: center; color: #64748b; font-style: italic;">No CME shocks detected.</td></tr>'
+            shocks_html = '<tr><td colspan="6" style="padding: 8px; text-align: center; color: #64748b; font-style: italic;">No shocks detected.</td></tr>'
 
         regions_html = "".join([f'<li style="color: #cbd5e1; margin-bottom: 2px;">{r}</li>' for r in auroral_data.get("visible_regions", [])]) \
             or '<li style="color: #64748b;">unavailable (no Kp)</li>'
@@ -160,7 +160,7 @@ class ScientificReportGenerator:
         <th>Velocity Jump (ΔV)</th>
         <th>Density Jump (N2/N1)</th>
         <th>Magnetic Jump (B2/B1)</th>
-        <th>ΔV proxy (1 + ΔV/70 km/s, not a Mach number)</th>
+        <th>Speed upstream → downstream</th>
       </tr>
     </thead>
     <tbody>
@@ -226,10 +226,10 @@ class ScientificReportGenerator:
 
         shocks_table = ""
         if shocks:
-            shocks_table = "| Timestamp (UTC) | Shock Type | Velocity Jump (ΔV) | Density Ratio (N₂/N₁) | Field Ratio (B₂/B₁) | ΔV proxy (not M_ms) |\n"
+            shocks_table = "| Timestamp (UTC) | Shock Type | Velocity Jump (ΔV) | Density Ratio (N₂/N₁) | Field Ratio (B₂/B₁) | Speed up → down |\n"
             shocks_table += "|---|---|---|---|---|---|\n"
             for s in shocks:
-                shocks_table += f"| `{s.get('time', '---')}` | **{s.get('classification', 'Shock')}** | +{s.get('delta_speed_kms', 0)} km/s | {s.get('density_ratio', 1.0)}x | {s.get('magnetic_ratio', 1.0)}x | {s.get('mach_proxy', 1.0)} |\n"
+                shocks_table += f"| `{s.get('time', '---')}` | **{s.get('classification', 'Shock')}** | +{s.get('delta_speed_kms', 0)} km/s | {s.get('density_ratio', 1.0)}x | {s.get('magnetic_ratio', 1.0)}x | {s.get('upstream_speed')} → {s.get('downstream_speed')} km/s |\n"
         else:
             shocks_table = "_No shock candidates (speed, density and field jumps together) in the current 24-hour observation window._\n"
 

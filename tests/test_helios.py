@@ -298,9 +298,9 @@ def test_telemetry_importer_direct():
     listed = next(p for p in presets if p["id"] == "may2024_g5")
     assert listed["records_count"] == parsed_preset["total_records"] > 0
     assert parsed_preset["status"] == "success"
-    # OMNI 5-min data: the shock of 10 May 17:05 UT and Bz down to -44.3 nT
+    # OMNI 5-min data: the shock in the 17:00 UT bin of 10 May and Bz down to -44.3 nT
     assert parsed_preset["summary"]["bz_min"] == -44.3
-    assert parsed_preset["detected_shocks"][0]["time"] == "2024-05-10 17:05:00"
+    assert parsed_preset["detected_shocks"][0]["time"] == "2024-05-10 17:00:00"
 
 def test_space_weather_ml_forecaster():
     from helios.core.ml_forecast import SpaceWeatherForecaster

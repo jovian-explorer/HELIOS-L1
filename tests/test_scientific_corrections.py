@@ -758,3 +758,15 @@ def test_kp_trajectory_persists_three_hour_means_march_2015():
         h = 12 + p["horizon_hours"] - 1
         obs = kp[f"2015-03-{17 + h // 24}T{(h % 24) // 3 * 3:02d}:00:00Z"]
         assert abs(p["predicted_kp"] - obs) < 0.9
+
+
+def test_shock_screen_finds_the_march_2015_shock():
+    """The screen (DV >= 45 km/s, N2/N1 >= 1.5, B2/B1 >= 1.35, sample i against i-3) missed the
+    17 March 2015 shock (IPShocks: WIND 04:00 UT, OMNI at the bow shock ~04:45). With the IPShocks
+    jump criteria and windows it is found in the bundled OMNI data; on WIND 1-min data of 2023 it
+    found 22 of the 32 catalogued fast forward shocks (the old screen 2) with 14 other detections."""
+    from helios.core.downloader import omni_snapshot
+    s = omni_snapshot("st_patricks_2015")
+    shocks = SpaceWeatherPhysics.detect_interplanetary_shocks([dict(zip(s["columns"], r)) for r in s["rows"]])
+    assert [x["time"] for x in shocks] == ["2015-03-17 04:45:00"]
+    assert shocks[0]["density_ratio"] >= 1.2 and shocks[0]["magnetic_ratio"] >= 1.2

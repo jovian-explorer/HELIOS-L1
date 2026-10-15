@@ -5,6 +5,7 @@ and Fourier spectral analysis.
 """
 import math
 import numpy as np
+from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 
 # OMNI flow pressure factor, nPa per (cm^-3 (km/s)^2): 1.67e-6 x (1 + 4 x 0.05), see dynamic_pressure.
@@ -564,61 +565,67 @@ class SpaceWeatherPhysics:
     @staticmethod
     def detect_interplanetary_shocks(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Interplanetary Shock Detection using Rankine-Hugoniot jump proxies.
-        A fast forward shock (driven by a CME or CIR) exhibits:
-        - Sudden velocity jump Delta V >= 45 km/s over three samples
-        - Density compression ratio N2 / N1 >= 1.5
-        - Magnetic field magnitude jump B2 / B1 >= 1.35
-        These are screening thresholds of this application, not a published criterion.
-
-        Each record is compared with the one three samples earlier, so a single jump
-        satisfies the criteria at up to three consecutive samples. Those detections are
-        merged into one event (the sample with the largest speed jump), so the number of
-        events is not tripled.
+        Fast forward shocks screened with the jump criteria of the IPShocks database (Kilpua et
+        al. 2015, JGR 120, 4112, doi:10.1002/2015JA021138; method documentation of the database):
+        means over [t - 9, t - 1] min upstream and [t + 2, t + 10] min downstream (stretched to
+        three samples at coarser cadences), B_d/B_u >= 1.2, N_d/N_u >= 1.2, V_d - V_u >= 20 km/s,
+        and T_d/T_u >= 1/1.2 when temperatures exist. Gaps are skipped (a window needs one value
+        of each quantity). Consecutive candidates within 10 min are one shock, at the candidate
+        with the largest speed jump. The database adds a visual check; this is a screen.
         """
-        shocks = []
-        last_index = None
-        if len(records) < 5:
-            return shocks
-
-        for i in range(3, len(records)):
-            curr = records[i]
-            prev = records[i - 3]  # Compare over ~10-15 min window
-
-            v1, v2 = prev.get("speed"), curr.get("speed")
-            b1, b2 = prev.get("bt"), curr.get("bt")
-            n1, n2 = prev.get("density"), curr.get("density")
-
-            if None in (v1, v2, b1, b2, n1, n2):
+        rows = []
+        for r in records:
+            try:
+                t = datetime.fromisoformat(str(r.get("time_tag", "")).replace("Z", "").replace("T", " ")[:19]).timestamp()
+            except ValueError:
                 continue
-            if v1 <= 0 or b1 <= 0 or n1 <= 0:
-                continue
+            rows.append((t, r))
+        if len(rows) < 4:
+            return []
+        rows.sort(key=lambda x: x[0])
+        ts = np.array([x[0] for x in rows])
+        keys = ("speed", "density", "bt", "temperature")
+        vals = {k: np.array([np.nan if x[1].get(k) is None else float(x[1][k]) for x in rows]) for k in keys}
+        cadence = float(np.median(np.diff(ts)))
+        length = max(480.0, 3.0 * cadence)
 
-            delta_v = v2 - v1
-            ratio_b = b2 / b1
-            ratio_n = n2 / n1
+        def window_means(lo, hi):
+            i0, i1 = np.searchsorted(ts, lo, "left"), np.searchsorted(ts, hi, "right")
+            out = {}
+            for k in keys:
+                cum = np.concatenate(([0.0], np.nancumsum(vals[k])))
+                cnt = np.concatenate(([0], np.cumsum(~np.isnan(vals[k]))))
+                n = cnt[i1] - cnt[i0]
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    out[k] = np.where(n > 0, (cum[i1] - cum[i0]) / np.maximum(n, 1), np.nan)
+            return out
 
-            # Shock identification criteria
-            if delta_v >= 45.0 and ratio_b >= 1.35 and ratio_n >= 1.5:
-                # Speed-jump proxy 1 + delta_v / 70 km/s (not a Mach number: that needs the upstream fast-mode speed)
-                mach_proxy = round(1.0 + (delta_v / 70.0), 2)
-                event = {
-                    "time": curr.get("time_tag", ""),
-                    "delta_speed_kms": round(delta_v, 1),
-                    "density_ratio": round(ratio_n, 2),
-                    "magnetic_ratio": round(ratio_b, 2),
-                    "mach_proxy": mach_proxy,
-                    "upstream_speed": round(v1, 1),
-                    "downstream_speed": round(v2, 1),
-                    "classification": "Fast Forward CME Shock" if delta_v > 100 else "Interplanetary Shock / CIR"
-                }
-                if last_index is not None and i - last_index <= 3:
-                    if delta_v > shocks[-1]["delta_speed_kms"]:
-                        shocks[-1] = event
-                else:
-                    shocks.append(event)
-                last_index = i
-
+        up = window_means(ts - 60.0 - length, ts - 60.0)
+        down = window_means(ts + 120.0, ts + 120.0 + length)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            dv = down["speed"] - up["speed"]
+            rn = down["density"] / up["density"]
+            rb = down["bt"] / up["bt"]
+            rt = down["temperature"] / up["temperature"]
+        ok = (dv >= 20.0) & (rn >= 1.2) & (rb >= 1.2) & (np.isnan(rt) | (rt >= 1 / 1.2))
+        shocks, last_t = [], None
+        for i in np.flatnonzero(ok):
+            event = {
+                "time": rows[i][1].get("time_tag", ""),
+                "delta_speed_kms": round(float(dv[i]), 1),
+                "density_ratio": round(float(rn[i]), 2),
+                "magnetic_ratio": round(float(rb[i]), 2),
+                "temperature_ratio": None if np.isnan(rt[i]) else round(float(rt[i]), 2),
+                "upstream_speed": round(float(up["speed"][i]), 1),
+                "downstream_speed": round(float(down["speed"][i]), 1),
+                "classification": "Fast forward shock (IPShocks jump criteria)",
+            }
+            if last_t is not None and ts[i] - last_t <= 600.0:
+                if event["delta_speed_kms"] > shocks[-1]["delta_speed_kms"]:
+                    shocks[-1] = event
+            else:
+                shocks.append(event)
+            last_t = ts[i]
         return shocks
 
     @staticmethod

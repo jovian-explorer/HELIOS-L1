@@ -1538,7 +1538,7 @@ function updateShocksTable(shocks) {
 
   badge.innerText = `${shocks.length} shock${shocks.length === 1 ? '' : 's'} detected`;
   if (shocks.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">No abrupt CME shock discontinuities detected in the current window.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">No shocks detected in this window (IPShocks jump criteria).</td></tr>`;
     return;
   }
 
@@ -1552,7 +1552,7 @@ function updateShocksTable(shocks) {
       <td class="py-2.5 px-3 font-mono text-sky-400 font-bold">+${s.delta_speed_kms} km/s</td>
       <td class="py-2.5 px-3 font-mono text-emerald-400">${s.density_ratio}x</td>
       <td class="py-2.5 px-3 font-mono text-amber-400">${s.magnetic_ratio}x</td>
-      <td class="py-2.5 px-3 font-mono text-purple-400 font-bold">${s.mach_proxy}</td>
+      <td class="py-2.5 px-3 font-mono text-purple-400 font-bold">${s.upstream_speed} → ${s.downstream_speed} km/s</td>
     </tr>
   `).join('');
 }
@@ -2242,7 +2242,7 @@ function renderCustomIngestUI(data) {
   const tbody = document.getElementById('import-shocks-tbody');
   if (tbody) {
     if (shocks.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="py-3 text-center text-slate-500 font-mono">No shock-like jump found (ΔV ≥ 45 km/s with N2/N1 ≥ 1.5 and B2/B1 ≥ 1.35 over three samples).</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="py-3 text-center text-slate-500 font-mono">No shock found with the IPShocks jump criteria (ΔV ≥ 20 km/s, N2/N1 ≥ 1.2, B2/B1 ≥ 1.2).</td></tr>`;
     } else {
       tbody.innerHTML = shocks.map(s => `
         <tr class="hover:bg-slate-800/40 transition">
@@ -2255,7 +2255,7 @@ function renderCustomIngestUI(data) {
           <td class="py-2 px-2 text-slate-300">${s.upstream_speed} → ${s.downstream_speed} km/s</td>
           <td class="py-2 px-2 text-cyan-400 font-bold">+${s.delta_speed_kms} km/s</td>
           <td class="py-2 px-2 text-amber-300">${s.density_ratio}x</td>
-          <td class="py-2 px-2 text-purple-300 font-bold">ΔV proxy ${s.mach_proxy ?? '---'}</td>
+          <td class="py-2 px-2 text-purple-300 font-bold">${s.upstream_speed} → ${s.downstream_speed} km/s</td>
         </tr>
       `).join('');
     }
@@ -3776,7 +3776,7 @@ function renderUserGuideTab(container) {
           <div class="p-3 rounded-lg bg-space-950 border border-slate-800 text-xs space-y-1">
             <span class="font-bold text-sky-300">Shock screening</span>
             <p class="text-slate-300 text-[11px] leading-relaxed">
-              Each sample is compared with the one three samples earlier; a jump with ΔV ≥ 45 km/s, N₂/N₁ ≥ 1.5 and B₂/B₁ ≥ 1.35 is listed with a rough Mach proxy (1 + ΔV / 70 km/s). These are screening thresholds, not a Rankine-Hugoniot solution: shock normals, speeds and Mach numbers with uncertainties are in Data Studio, Event Analysis.
+              Means 1-9 min before and 2-10 min after each sample are compared with the jump criteria of the IPShocks database (Kilpua et al. 2015): ΔV ≥ 20 km/s, N₂/N₁ ≥ 1.2, B₂/B₁ ≥ 1.2 (and T₂/T₁ ≥ 1/1.2 when known). This is a screen without the database's visual check, not a Rankine-Hugoniot solution: shock normals, speeds and Mach numbers with uncertainties are in Data Studio, Event Analysis.
             </p>
           </div>
         </div>

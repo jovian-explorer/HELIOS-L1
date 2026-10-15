@@ -543,9 +543,7 @@ class TestTab12CustomIngestion:
 
     def test_rankine_hugoniot_shock_jump_criteria(self):
         """
-        Rankine-Hugoniot fast forward shock criteria:
-        Delta V >= 45 km/s, N2/N1 >= 1.5, B2/B1 >= 1.35.
-        Requires >= 5 records to span the detection window.
+        IPShocks jump criteria: Delta V >= 20 km/s, N2/N1 >= 1.2, B2/B1 >= 1.2.
         """
         records = [
             {"time_tag": "2026-09-22 10:00:00", "speed": 400.0, "density": 5.0, "bt": 5.0},
@@ -554,7 +552,8 @@ class TestTab12CustomIngestion:
             {"time_tag": "2026-09-22 10:15:00", "speed": 410.0, "density": 5.4, "bt": 5.3},
             # Supersonic shock arrival at 10:20 (compared with 10:05)
             {"time_tag": "2026-09-22 10:20:00", "speed": 650.0, "density": 18.0, "bt": 15.0},
-            {"time_tag": "2026-09-22 10:25:00", "speed": 660.0, "density": 19.0, "bt": 15.5}
+            {"time_tag": "2026-09-22 10:25:00", "speed": 660.0, "density": 19.0, "bt": 15.5},
+            {"time_tag": "2026-09-22 10:30:00", "speed": 655.0, "density": 18.5, "bt": 15.2}
         ]
         shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(records)
         assert len(shocks) >= 1
