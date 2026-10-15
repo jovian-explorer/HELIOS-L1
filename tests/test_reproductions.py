@@ -116,10 +116,9 @@ def test_shue_1998_reproduces_the_paper_limit_and_the_january_1997_crossing():
     magnetosheath at 01:15 UT: at 01 UT (Bz 9.3 nT, D_p 14 nPa) the model magnetopause is
     outside 6.6 R_E, at ~02 UT (Bz ~18 nT, D_p up to 60 nPa) inside it near the subsolar point."""
     import math
-    from scipy.optimize import brentq
     from helios.core.science import SpaceWeatherPhysics as S
-    for bz in (-18.0, -20.0, -30.0):
-        assert 7.0 <= brentq(lambda p: S.shue1998_magnetopause(p, bz)[0] - 6.6, 0.5, 100.0) <= 8.0
+    for bz in (-18.0, -20.0, -30.0):  # r0 = A(Bz) p^(-1/6.6) = 6.6 R_E  ->  p = (A / 6.6)^6.6
+        assert 7.0 <= (S.shue1998_magnetopause(1.0, bz)[0] / 6.6) ** 6.6 <= 8.0
 
     def r(p, bz, theta_deg):
         r0, a = S.shue1998_magnetopause(p, bz)
