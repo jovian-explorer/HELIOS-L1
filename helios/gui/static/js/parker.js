@@ -3,8 +3,6 @@
  * Features:
  * - Real-time Magnetohydrodynamic (MHD) Parker Spiral Field Line Solver
  * - Animated Solar Rotation & Outward Streaming Solar Wind Plasma Packets
- * - Corotating Interaction Region (CIR) Shock Front & Stream Interface Visualization
- * - Magnetic Polarity Sectors (Away/Toward Heliospheric Current Sheet Sectors)
  * - Fleet & Planetary Orbits (Mercury, Venus, Earth/L1, Mars, STEREO-A, Parker Solar Probe)
  * - Interactive Speed Slider & High-Speed Stream Presets
  * - Well-Connected Solar Footpoint Telemetry for Solar Energetic Particle (SEP) Forecasts
@@ -41,8 +39,6 @@ class ParkerSpiralRenderer {
 
     // Display Toggles
     this.showPlasmaFlow = true;
-    this.showCIR = true;
-    this.showSectors = true;
     this.showOrbits = true;
     this.showSpacecraft = true;
 
@@ -143,11 +139,8 @@ class ParkerSpiralRenderer {
     for (let i = 0; i < this.numParticles; i++) {
       this.particles.push({
         r_au: 0.05 + Math.random() * 1.5,
-        phi_0: (Math.random() * Math.PI * 2),
         streamIndex: Math.floor(Math.random() * 8),
-        speedMult: 0.95 + Math.random() * 0.1,
-        size: 1.2 + Math.random() * 1.6,
-        hue: Math.random() > 0.3 ? 190 : 45
+        size: 1.2 + Math.random() * 1.6
       });
     }
   }
@@ -227,7 +220,7 @@ class ParkerSpiralRenderer {
       : 'Intermediate Orbit Leg';
     if (this.manualAnomalyDeg !== null) {
       if (rSun <= 12.0) {
-        phase = 'Perihelion Plunge (9.86 R☉ record, Alfvén Surface crossing)';
+        phase = 'Perihelion pass (closest approach 9.86 R☉)';
       } else if (rAu >= 0.70) {
         phase = 'Aphelion Turnaround (0.730 AU near Venus orbit)';
       } else if (E < Math.PI) {
@@ -581,7 +574,7 @@ class ParkerSpiralRenderer {
           <div>Orbital Speed: <span class="text-sky-300 font-bold">${mc.vKms.toFixed(2)} km/s</span> (${((mc.vKms * 86400) / this.auKm).toFixed(4)} AU/day)</div>
           <div>Orbital Period: <span class="text-slate-300 font-bold">87.97 Days</span> (e = 0.2056, i = 7.00°)</div>
           <div>True Anomaly (ν): <span class="text-slate-300 font-bold">${mc.trueAnomalyDeg.toFixed(1)}°</span></div>
-          <div>Role: <span class="text-amber-300">Innermost Sub-Alfvénic Reconnection Probe</span></div>
+          <div>Role: <span class="text-amber-300">Closest-approach solar wind and field measurements</span></div>
           <div class="text-slate-400 text-[10px] pt-1 border-t border-slate-800">${mc.phase}</div>
           <div class="text-emerald-300 text-[10px] font-mono pt-1 border-t border-slate-800 flex items-center justify-between">
             <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${this.spiceToolkit}</span>
@@ -644,19 +637,9 @@ class ParkerSpiralRenderer {
     // 1. Cosmic Background Starfield
     this.drawBackground();
 
-    // 2. Heliospheric Magnetic Polarity Sectors (Toward / Away)
-    if (this.showSectors) {
-      this.drawPolaritySectors(cx, cy, scale);
-    }
-
     // 3. Planetary Distance Rings (Mercury, Venus, 1 AU Earth, Mars)
     if (this.showOrbits) {
       this.drawPlanetaryOrbits(cx, cy, scale);
-    }
-
-    // 4. Corotating Interaction Region (CIR) Shock Waves
-    if (this.showCIR) {
-      this.drawCIRShocks(cx, cy, scale);
     }
 
     // 5. Magnetic Parker Spiral Streamlines
@@ -721,29 +704,6 @@ class ParkerSpiralRenderer {
     ctx.restore();
   }
 
-  drawPolaritySectors(cx, cy, scale) {
-    const ctx = this.ctx;
-    ctx.save();
-    // 4-sector Parker magnetic field model (Away / Toward Sun)
-    const rot = (this.time * 0.002);
-    const numSectors = 4;
-    const maxR = 1.6 * scale;
-
-    for (let i = 0; i < numSectors; i++) {
-      const aStart = rot + (i * Math.PI * 2) / numSectors;
-      const aEnd = aStart + (Math.PI * 2) / numSectors;
-      const isAway = i % 2 === 0;
-
-      ctx.fillStyle = isAway ? 'rgba(127, 165, 207, 0.03)' : 'rgba(194, 98, 98, 0.03)';
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, maxR, aStart, aEnd);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
   drawPlanetaryOrbits(cx, cy, scale) {
     const ctx = this.ctx;
     ctx.save();
@@ -768,62 +728,6 @@ class ParkerSpiralRenderer {
       ctx.font = '9px system-ui, sans-serif';
       ctx.fillText(orb.name, cx + 8, cy - orb.r * scale - 4);
     });
-
-    ctx.restore();
-  }
-
-  drawCIRShocks(cx, cy, scale) {
-    const ctx = this.ctx;
-    ctx.save();
-    // Corotating Interaction Region: Fast stream (750 km/s) overtaking Slow stream (400 km/s)
-    const rot = (this.time * 0.002);
-    const cirAngle = rot + 1.2;
-
-    ctx.strokeStyle = 'rgba(210, 170, 87, 0.7)';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([6, 3]);
-
-    // Forward Shock
-    ctx.beginPath();
-    for (let r_au = 0.4; r_au <= 1.55; r_au += 0.02) {
-      const deltaTheta = (this.omegaSun * r_au * this.auKm) / (this.speedKms * 0.85);
-      const theta = cirAngle - deltaTheta;
-      const x = cx + r_au * scale * Math.cos(theta);
-      const y = cy - r_au * scale * Math.sin(theta);
-      if (r_au === 0.4) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    // Compression Glow Region between Shocks
-    ctx.fillStyle = 'rgba(210, 170, 87, 0.08)';
-    ctx.beginPath();
-    for (let r_au = 0.4; r_au <= 1.55; r_au += 0.02) {
-      const deltaTheta = (this.omegaSun * r_au * this.auKm) / (this.speedKms * 0.85);
-      const theta = cirAngle - deltaTheta;
-      const x = cx + r_au * scale * Math.cos(theta);
-      const y = cy - r_au * scale * Math.sin(theta);
-      if (r_au === 0.4) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    for (let r_au = 1.55; r_au >= 0.4; r_au -= 0.02) {
-      const deltaTheta = (this.omegaSun * r_au * this.auKm) / (this.speedKms * 1.15);
-      const theta = cirAngle - deltaTheta + 0.15;
-      const x = cx + r_au * scale * Math.cos(theta);
-      const y = cy - r_au * scale * Math.sin(theta);
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fill();
-
-    // CIR Label
-    const midR = 1.15;
-    const midTheta = cirAngle - (this.omegaSun * midR * this.auKm) / (this.speedKms * 0.85);
-    const lx = cx + midR * scale * Math.cos(midTheta);
-    const ly = cy - midR * scale * Math.sin(midTheta);
-    ctx.fillStyle = '#b98f3f';
-    ctx.font = '600 9px system-ui, sans-serif';
-    ctx.fillText('CIR forward shock', lx + 10, ly);
 
     ctx.restore();
   }
@@ -888,28 +792,27 @@ class ParkerSpiralRenderer {
     const ctx = this.ctx;
     ctx.save();
 
-    const sunRot = (this.time * 0.002);
-    const speedRatio = this.speedKms / 450;
+    // Plasma parcels move radially at the longitude of their source when they left it; the
+    // parcels from one source then lie on its (rotating) spiral field line. The field lines
+    // turn 0.002 rad per frame, so a parcel moves 0.002 / k AU per frame, k = Omega AU / V
+    // the spiral's winding in rad per AU. (They used to slide along a fixed spiral, at a
+    // speed that gave a winding 30 % off the drawn lines.)
+    const sunRot = this.time * 0.002;
+    const k = this.omegaSun * this.auKm / this.speedKms;
+    const step = 0.002 / k;
 
     this.particles.forEach(p => {
-      // Advance radially outward
-      p.r_au += 0.003 * speedRatio * p.speedMult;
+      if (p.theta === undefined) p.theta = sunRot + (p.streamIndex * Math.PI * 2) / 8 - k * p.r_au;
+      p.r_au += step;
       if (p.r_au > 1.55) {
         p.r_au = 0.05;
-        p.phi_0 = sunRot + (p.streamIndex * Math.PI * 2) / 8;
+        p.theta = sunRot + (p.streamIndex * Math.PI * 2) / 8 - k * p.r_au;
       }
+      const x = cx + p.r_au * scale * Math.cos(p.theta);
+      const y = cy - p.r_au * scale * Math.sin(p.theta);
 
-      const distKm = p.r_au * this.auKm;
-      const theta = p.phi_0 - (this.omegaSun * distKm) / this.speedKms;
-      const x = cx + p.r_au * scale * Math.cos(theta);
-      const y = cy - p.r_au * scale * Math.sin(theta);
-
-      // Color shifts from solar gold to interplanetary cyan
       const alpha = Math.max(0.15, Math.min(0.9, 1.2 - p.r_au * 0.65));
-      ctx.fillStyle = p.streamIndex === 0 
-        ? `rgba(127, 165, 207, ${alpha})`
-        : `rgba(210, 170, 87, ${alpha * 0.75})`;
-
+      ctx.fillStyle = `rgba(210, 170, 87, ${alpha * 0.75})`;
       ctx.beginPath();
       ctx.arc(x, y, p.size, 0, Math.PI * 2);
       ctx.fill();
@@ -1286,7 +1189,7 @@ class ParkerSpiralRenderer {
     const pitch = Math.atan((this.omegaSun * this.auKm) / this.speedKms) * (180 / Math.PI);
     const fp = (this.omegaSun * this.auKm / this.speedKms) * (180 / Math.PI);
     ctx.fillText(`V_SW: ${this.speedKms} km/s • 1 AU PITCH: ${pitch.toFixed(1)}°`, 24, 48);
-    ctx.fillText(`Connected footpoint: ~${fp.toFixed(1)}° W (Solar Limb)`, 24, 64);
+    ctx.fillText(`Connected footpoint: ~${fp.toFixed(1)}° W of the central meridian`, 24, 64);
 
     // Well-connected highlight legend
     ctx.fillStyle = 'rgba(20, 21, 24, 0.85)';

@@ -584,3 +584,20 @@ def test_aurora_subsolar_point_matches_the_server():
     lat = np.degrees(np.arcsin(ref[:, 2])); lon = np.degrees(np.arctan2(ref[:, 1], ref[:, 0]))
     dlon = (np.array([g["lon"] for g in got]) - lon + 180) % 360 - 180
     assert np.max(np.abs(np.array([g["lat"] for g in got]) - lat)) < 0.05 and np.max(np.abs(dlon)) < 0.05
+
+
+def test_heliosphere_drawing_has_no_invented_structures():
+    """Deleted: a CIR shock from 0.4 AU (CIR shocks form beyond 2-3 AU) and data-free sector
+    wedges; parcels move radially with a step tied to the field lines' rotation (k = Omega AU / V)."""
+    src = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
+    page = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
+    assert "drawCIRShocks" not in src and "drawPolaritySectors" not in src
+    assert "parker-toggle-cir" not in page and "parker-toggle-sectors" not in page
+    assert "const step = 0.002 / k;" in src and "this.time * 0.002" in src
+    assert "Alfvén Surface crossing" not in src and "(Solar Limb)" not in src
+
+
+def test_heliosphere_speed_follows_the_measured_wind_until_set_by_hand():
+    app = APP_JS.read_text(encoding="utf-8")
+    assert "if (!parkerSpeedFromUser && latest.speed != null" in app
+    assert "if (!fromData) parkerSpeedFromUser = true;" in app

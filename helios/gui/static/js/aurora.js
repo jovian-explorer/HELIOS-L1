@@ -399,7 +399,7 @@ class AuroralMapRenderer {
       ctx.lineTo(this.width, y);
       ctx.stroke();
       ctx.fillStyle = 'rgba(109, 180, 135, 0.45)';
-      ctx.fillText(lat > 0 ? 'ARCTIC CIRCLE 66.5°N' : 'ANTARCTIC CIRCLE 66.5°S', 8, y - 3);
+      ctx.fillText(lat > 0 ? 'Arctic Circle 66.5°N' : 'Antarctic Circle 66.5°S', 8, y - 3);
     });
 
     ctx.restore();

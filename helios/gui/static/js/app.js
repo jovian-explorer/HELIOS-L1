@@ -94,7 +94,7 @@ const DOMAINS = {
     name: 'Solar & Heliosphere',
     views: [
       { id: 'coronagraph', label: 'Coronagraph & CME', icon: 'fa-sun', color: 'text-amber-400' },
-      { id: 'parker', label: 'Parker Spiral & CIR', icon: 'fa-wind', color: 'text-cyan-400' },
+      { id: 'parker', label: 'Parker Spiral', icon: 'fa-wind', color: 'text-cyan-400' },
       { id: 'turbulence', label: 'FFT Turbulence & PSD', icon: 'fa-wave-square', color: 'text-purple-400' }
     ]
   },
@@ -1273,6 +1273,7 @@ function updateTelemetryUI(data) {
   const headerTag = String(cls.g_scale || '').startsWith('Archive') ? ' (archive end)'
     : (kindNow === 'simulated' || kindNow === 'synthetic') ? ` (${kindNow})` : '';
   if (parkerRenderer && Number.isFinite(Number(latest.bt)) && latest.bt !== null) parkerRenderer.b1auNt = Number(latest.bt);
+  if (!parkerSpeedFromUser && latest.speed != null && Number.isFinite(Number(latest.speed))) setParkerSpeedPreset(Math.round(Number(latest.speed)), true);
   setPositionEpoch(headerTag === ' (archive end)' && latest.time_tag ? String(latest.time_tag).replace(' ', 'T') : null);
   const bzBadge = document.getElementById('bz-alert-badge');
   const bzText = document.getElementById('bz-alert-text');
@@ -1971,24 +1972,26 @@ async function loadParkerSpiral() {
   }
 }
 
-function onParkerSpeedChange(speed) {
+// The heliosphere view starts from the measured L1 speed and follows it until the speed is
+// set by hand (it stayed at 440 km/s whatever the wind did).
+let parkerSpeedFromUser = false;
+function onParkerSpeedChange(speed, fromData = false) {
+  if (!fromData) parkerSpeedFromUser = true;
   const s = parseFloat(speed);
   const readout = document.getElementById('parker-speed-readout');
   if (readout) readout.innerText = `${s} km/s`;
   if (parkerRenderer) parkerRenderer.setSpeed(s);
 }
 
-function setParkerSpeedPreset(speed) {
+function setParkerSpeedPreset(speed, fromData = false) {
   const slider = document.getElementById('parker-speed-slider');
   if (slider) slider.value = speed;
-  onParkerSpeedChange(speed);
+  onParkerSpeedChange(speed, fromData);
 }
 
 function toggleParkerFeature(feature, state) {
   if (!parkerRenderer) return;
-  if (feature === 'cir') parkerRenderer.showCIR = state;
-  else if (feature === 'flow') parkerRenderer.showPlasmaFlow = state;
-  else if (feature === 'sectors') parkerRenderer.showSectors = state;
+  if (feature === 'flow') parkerRenderer.showPlasmaFlow = state;
 }
 
 function togglePSPAnimation() {

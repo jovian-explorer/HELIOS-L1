@@ -1451,7 +1451,7 @@
               <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
               <h3 data-term="Parker spiral" class="font-tech font-bold text-base text-slate-100">Heliospheric Parker Spiral & Solar Wind Stream Simulator</h3>
             </div>
-            <p class="text-xs text-slate-400 mt-0.5">Archimedean magnetic field lines wound by solar rotation. Corotating Interaction Regions (CIRs) and Solar Energetic Particle (SEP) connectivity.</p>
+            <p class="text-xs text-slate-400 mt-0.5">Archimedean magnetic field lines wound by solar rotation (Parker 1958) for the chosen wind speed, the field line connected to Earth, and planet and spacecraft positions.</p>
             <p class="text-[11px] text-slate-300">In plain words: The Sun's rotation winds its magnetic field into a spiral; this shows the spiral and which part of the Sun is magnetically connected to Earth.</p>
           </div>
           
@@ -1482,16 +1482,8 @@
 
           <div class="flex items-center space-x-3">
             <label class="flex items-center space-x-1.5 cursor-pointer">
-              <input type="checkbox" id="parker-toggle-cir" checked onchange="toggleParkerFeature('cir', this.checked)" class="rounded text-sky-500">
-              <span class="text-slate-300">CIR Shocks</span>
-            </label>
-            <label class="flex items-center space-x-1.5 cursor-pointer">
               <input type="checkbox" id="parker-toggle-flow" checked onchange="toggleParkerFeature('flow', this.checked)" class="rounded text-sky-500">
               <span class="text-slate-300">Plasma Flow</span>
-            </label>
-            <label class="flex items-center space-x-1.5 cursor-pointer">
-              <input type="checkbox" id="parker-toggle-sectors" checked onchange="toggleParkerFeature('sectors', this.checked)" class="rounded text-sky-500">
-              <span class="text-slate-300">Magnetic Sectors</span>
             </label>
         </div>
 
