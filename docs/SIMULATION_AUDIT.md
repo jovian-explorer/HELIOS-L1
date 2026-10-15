@@ -206,7 +206,7 @@ Real-data test: 46 DONKI CMEs (2023 to mid-2025) with one associated interplanet
 | P11 | 61144a3 | Orbital elements only for heliocentric bodies |
 | P12 | 61144a3 | PSP, Solar Orbiter and STEREO-A removed from the L1 view; SWFO-L1 and IMAP added |
 | P14 | f7f23c8, 7f8a9f8 | Positions refreshed every 10 min in both views; with an archive interval loaded both views show the positions at its end (checked in the browser: 10 May 2024 17:59, DSCOVR at the 2024 position) |
-| P15 | PENDING | Earth at its ephemeris distance with that label (was a fixed 1.00 AU); STEREO-A from its ephemeris (0f560a1); the view says positions are projected on the ecliptic
+| P15 | dcffa98 | Earth at its ephemeris distance with that label (was a fixed 1.00 AU); STEREO-A from its ephemeris (0f560a1); the view says positions are projected on the ecliptic
 | P16 | 905306d | L1 1.498, L2 1.508 million km (restricted three-body solution, μ = 3.0404e-6) |
 | P17 | f7f23c8 | Labels list the craft near L1 (SWFO-L1, ACE, IMAP, WIND, SOHO, Aditya-L1, DSCOVR), no "active" claim; DSCOVR's position ends with its Horizons coverage (2 Nov 2026) |
 | — | a2389a9, baeb2ef | Found while checking: a new session repeated 48 refused Horizons requests (orbit view 62 s, now 1.4 s warm); two first requests at once aborted the server inside CSPICE (engine set up under its lock) |
