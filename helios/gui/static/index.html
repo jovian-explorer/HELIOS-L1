@@ -234,9 +234,9 @@
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Active Spacecraft</label>
             <select id="telemetry-satellite-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
-              <option value="DSCOVR">DSCOVR (Sun-Earth L1 Lissajous)</option>
-              <option value="ACE">ACE (Sun-Earth L1 Halo)</option>
-              <option value="ADITYA_L1">Aditya-L1 (ISRO L1 Halo), simulated</option>
+              <option value="DSCOVR">DSCOVR (Sun-Earth L1)</option>
+              <option value="ACE">ACE (Sun-Earth L1)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), simulated</option>
               <option value="WIND">WIND (L1 Baseline)</option>
               <option value="SOHO">SOHO (L1, proton monitor: speed and density)</option>
               <option value="STEREO_A">STEREO-A (beacon, far from Earth: speed, density, |B|)</option>
@@ -611,9 +611,9 @@
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Primary Spacecraft (A)</label>
             <select id="comp-sat-a" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
-              <option value="DSCOVR">DSCOVR (L1 Lissajous)</option>
-              <option value="ACE">ACE (L1 Halo)</option>
-              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo), simulated</option>
+              <option value="DSCOVR">DSCOVR (L1)</option>
+              <option value="ACE">ACE (L1)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), simulated</option>
               <option value="WIND">WIND (L1 Baseline)</option>
               <option value="SOHO">SOHO (L1, speed and density)</option>
             </select>
@@ -622,9 +622,9 @@
           <div>
             <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">Comparative Spacecraft (B)</label>
             <select id="comp-sat-b" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
-              <option value="ADITYA_L1">Aditya-L1 (ISRO Halo), simulated</option>
-              <option value="ACE" selected>ACE (L1 Halo)</option>
-              <option value="DSCOVR">DSCOVR (L1 Lissajous)</option>
+              <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), simulated</option>
+              <option value="ACE" selected>ACE (L1)</option>
+              <option value="DSCOVR">DSCOVR (L1)</option>
               <option value="WIND">WIND (L1 Baseline)</option>
               <option value="SOHO">SOHO (L1, speed and density)</option>
             </select>
@@ -907,22 +907,10 @@
               <div class="flex justify-between"><span>MAGNETOPAUSE:</span> <span id="hud-mp-standoff" class="text-amber-400 font-bold">--- R_E</span></div>
               <div class="flex justify-between"><span>SHEATH (ΔR):</span> <span id="hud-sheath-thick" class="text-cyan-300 font-bold">--- R_E</span></div>
               <div class="flex justify-between"><span>GEO MARGIN:</span> <span id="hud-geo-margin" class="text-emerald-400 font-bold">--- R_E</span></div>
-              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>EPHEMERIS:</span> <span id="hud-spice-status" class="text-emerald-400 font-mono text-[10px] font-bold"><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE N0067</span></div>
+              <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1"><span>EPHEMERIS:</span> <span id="hud-spice-status" class="text-emerald-400 font-mono text-[10px] font-bold"><i class="fa-solid fa-satellite-dish"></i> JPL Horizons (SPICE)</span></div>
             </div>
           </div>
           
-          <!-- Bottom-Left Fleet Legend -->
-          <div class="absolute bottom-4 left-4 bg-space-950/85 backdrop-blur p-3.5 rounded-xl border border-slate-700/70 text-xs space-y-1.5 pointer-events-none shadow-2xl">
-            <div class="font-tech font-bold text-slate-200 text-xs mb-1.5 tracking-wide">ACTIVE MISSION EPHEMERIDES:</div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-sm shadow-sky-400"></span><span class="font-semibold text-slate-300">DSCOVR (Lissajous)</span></div>
-              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span><span class="font-semibold text-slate-300">ACE (Halo)</span></div>
-              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400"></span><span class="font-semibold text-slate-300">Aditya-L1 (ISRO Halo)</span></div>
-              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400"></span><span class="font-semibold text-slate-300">WIND (Baseline)</span></div>
-              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-sm shadow-purple-400"></span><span class="font-semibold text-slate-300">SOHO (Solar Halo)</span></div>
-              <div class="flex items-center space-x-2"><span class="w-2.5 h-2.5 rounded-full bg-pink-400 shadow-sm shadow-pink-400"></span><span class="font-semibold text-slate-300">GOES-16 (GEO Ring)</span></div>
-            </div>
-          </div>
         </div>
 
         <!-- Magnetospheric Physics & Boundary Metrics Strip -->
