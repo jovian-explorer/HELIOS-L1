@@ -9,6 +9,8 @@ from typing import Dict, List, Any, Optional, Tuple
 
 # OMNI flow pressure factor, nPa per (cm^-3 (km/s)^2): 1.67e-6 x (1 + 4 x 0.05), see dynamic_pressure.
 PDYN_NPA_PER_CM3_KMS2 = 2.0e-6
+# Conductance product of the Hill model's typical magnetosphere (Siscoe et al. 2002, Sigma = 6 S).
+HILL_XI_SIGMA = 21.7
 
 
 # Lower end of the spectral fit: the 1/f range of the solar wind at 1 AU reaches up to about
@@ -390,34 +392,25 @@ class SpaceWeatherPhysics:
 
     @staticmethod
     def polar_cap_potential(speed_kms: float, by_gsm_nt: float, bz_gsm_nt: float,
-                            b_total_nt: Optional[float] = None) -> Dict[str, Any]:
+                            density_cm3: float) -> Dict[str, Any]:
         """
-        Empirical Cross Polar Cap Potential drop (Phi_PC in kV) via Boyle et al. (1997):
-        Phi_PC = 10^-4 * v^2 + 11.7 * B * sin^3(theta / 2)  [kV]
-        where B is the IMF magnitude |B| (including Bx). When b_total_nt is not given,
-        |B| is approximated by sqrt(By^2 + Bz^2).
+        Cross polar cap potential (kV) of the Hill model, Siscoe et al. (2002, JGR 107(A6),
+        doi:10.1029/2001JA000109), eq. 13 with the present dipole (D = 1):
+            Phi = 57.6 E p^(1/3) F / (p^(1/2) + 0.0125 xi*Sigma E F)
+        E = V B_perp (mV/m; B_perp = sqrt(By^2 + Bz^2), the field without the component along
+        the flow), p = ram pressure (nPa), F = sin^2(theta/2) (clock angle, Kan & Lee 1979, as in
+        the paper's Fig. 2), xi*Sigma = 21.7 S (the paper's typical magnetosphere, Sigma = 6 S).
+        It saturates at 4610 p^(1/3) / (xi*Sigma) = 212 p^(1/3) kV (eq. 15).
         """
-        v = max(100.0, float(speed_kms if speed_kms is not None else 400.0))
-        by = float(by_gsm_nt if by_gsm_nt is not None else 0.0)
-        bz = float(bz_gsm_nt if bz_gsm_nt is not None else 0.0)
-        b_trans = math.sqrt(by**2 + bz**2)
-        b_mag = float(b_total_nt) if b_total_nt is not None else b_trans
-        theta = math.atan2(abs(by), bz) if b_trans > 0 else 0.0
-
-        phi = (1e-4 * (v ** 2)) + (11.7 * b_mag * (math.sin(theta / 2.0) ** 3))
-        phi = max(15.0, min(280.0, phi))
-
-        if phi >= 140.0:
-            level = "CRITICAL (Severe Cross-Polar Convection)"
-        elif phi >= 90.0:
-            level = "ELEVATED (Moderate Magnetospheric Convection)"
-        else:
-            level = "NOMINAL (Quiet Ionospheric Circulation)"
-
+        b_perp = math.hypot(by_gsm_nt, bz_gsm_nt)
+        e_sw = speed_kms * b_perp * 1e-3
+        f = math.sin(math.atan2(abs(by_gsm_nt), bz_gsm_nt) / 2.0) ** 2 if b_perp > 0 else 0.0
+        p = SpaceWeatherPhysics.dynamic_pressure(density_cm3, speed_kms)
+        phi = 57.6 * e_sw * p ** (1 / 3) * f / (p ** 0.5 + 0.0125 * HILL_XI_SIGMA * e_sw * f)
         return {
-            "polar_cap_potential_kv": round(float(phi), 1),
-            "convection_state": level,
-            "formula": "Boyle et al. (1997) Phi_PC = 10^-4*v^2 + 11.7*|B|*sin^3(theta/2)"
+            "polar_cap_potential_kv": round(phi, 1),
+            "saturation_kv": round(4610.0 * p ** (1 / 3) / HILL_XI_SIGMA, 1),
+            "formula": "Siscoe et al. (2002) Hill model, eq. 13: Phi = 57.6 E p^(1/3) F / (p^(1/2) + 0.0125 xi Sigma E F), xi Sigma = 21.7 S"
         }
 
     @staticmethod

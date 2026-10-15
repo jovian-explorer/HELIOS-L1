@@ -189,7 +189,7 @@ def test_sandbox_calculator_matches_python_physics(p):
         "shue97_r0": (S.shue1997_standoff(pdyn, bz), 1e-9), "fr_bs_r0": (fr["standoff_r0_re"], 0.006),
         "akasofu_gw": (S.akasofu_epsilon(v, b, by, bz), 1e-6),
         "dphi": (S.newell_coupling(v, by, bz), 1e-6),
-        "phi_pc": (S.polar_cap_potential(v, by, bz, b_total_nt=b)["polar_cap_potential_kv"], 0.06),
+        "phi_pc": (S.polar_cap_potential(v, by, bz, n)["polar_cap_potential_kv"], 0.06),
         "ey": (S.convective_electric_field(v, bz), 0.006),
     }
     for key, (want, tol) in expected.items():

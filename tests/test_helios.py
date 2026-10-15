@@ -324,7 +324,7 @@ def test_scientific_references_and_data_provenance():
     assert any("Newell" in r["authors"] for r in refs)
     assert any("Akasofu" in r["authors"] for r in refs)
     assert any("Parker" in r["authors"] for r in refs)
-    assert any("Boyle" in r["authors"] for r in refs)
+    assert any("Siscoe" in r["authors"] for r in refs)
     for r in refs:
         assert "doi" in r
         assert "doi_url" in r
@@ -488,7 +488,7 @@ def test_magnetospheric_boundaries_chao_and_shue():
 def test_geospace_coupling_and_wave_dynamics():
     """
     Test wave speeds (Alfvén, Sound, Fast Magnetosonic), Mach numbers,
-    Boyle et al. (1997) Polar Cap Potential, Newell Universal Coupling / AE proxy,
+    Newell Universal Coupling,
     convective electric field, and REST API GET /api/geospace/coupling.
     """
     # 1. Alfvén Speed: V_A = 21.812 * (B_t / sqrt(n))
@@ -508,15 +508,6 @@ def test_geospace_coupling_and_wave_dynamics():
     mach = SpaceWeatherPhysics.mach_numbers(speed_kms=450.0, b_total_nt=5.0, density_cm3=5.0, temp_k=100000.0)
     assert mach["alfven_mach"] > 1.0
     assert mach["magnetosonic_mach"] > 1.0
-
-    # 5. Boyle et al. (1997) Polar Cap Potential
-    phi_quiet = SpaceWeatherPhysics.polar_cap_potential(speed_kms=350.0, by_gsm_nt=1.0, bz_gsm_nt=5.0)
-    assert phi_quiet["polar_cap_potential_kv"] < 50.0
-    assert "NOMINAL" in phi_quiet["convection_state"]
-
-    phi_storm = SpaceWeatherPhysics.polar_cap_potential(speed_kms=850.0, by_gsm_nt=10.0, bz_gsm_nt=-25.0)
-    assert phi_storm["polar_cap_potential_kv"] >= 140.0
-    assert "CRITICAL" in phi_storm["convection_state"]
 
     # 7. Convective electric field
     ey_north = SpaceWeatherPhysics.convective_electric_field(speed_kms=400.0, bz_gsm_nt=5.0)

@@ -965,20 +965,20 @@ SCIENTIFIC_REFERENCES = [
         "physical_meaning": "Empirical bow shock size and shape from Geotail crossings with Wind upstream data, as a function of dynamic pressure, IMF Bz, plasma beta and magnetosonic Mach number. Coefficients as reproduced in Mo et al. (2025, JGR, doi:10.1029/2025JA033966). HELIOS-L1 uses only the bow shock part of this paper; the magnetopause is Shue et al. (1998)."
     },
     {
-        "id": "boyle_polar_cap_1997",
-        "title": "Empirical polar cap potentials",
-        "authors": "Boyle, C. B., Reiff, P. H., & Hairston, M. R.",
+        "id": "siscoe_hill_2002",
+        "title": "Hill model of transpolar potential saturation: Comparisons with MHD simulations",
+        "authors": "Siscoe, G. L., Erickson, G. M., Sonnerup, B. U. Ö., Maynard, N. C., Schoendorf, J. A., Siebert, K. D., Weimer, D. R., White, W. W., & Wilson, G. R.",
         "journal": "Journal of Geophysical Research: Space Physics",
-        "year": 1997,
-        "volume": "102",
-        "issue": "A1",
-        "pages": "111-125",
-        "doi": "10.1029/96JA01742",
-        "doi_url": "https://doi.org/10.1029/96JA01742",
+        "year": 2002,
+        "volume": "107",
+        "issue": "A6",
+        "pages": "SMP 8-1-SMP 8-8",
+        "doi": "10.1029/2001JA000109",
+        "doi_url": "https://doi.org/10.1029/2001JA000109",
         "category": "Cross Polar Cap Potential & Convection",
-        "formula": "Phi_PC = 1e-4 * v^2 + 11.7 * B * sin^3(theta / 2) [kV]",
-        "parameters": ["v (solar wind bulk speed in km/s)", "B (IMF magnitude |B| in nT)", "theta (IMF clock angle)"],
-        "physical_meaning": "Quantifies the electric potential drop across the northern/southern polar caps driving high-latitude ionospheric plasma convection and Joule heating."
+        "formula": "Phi_PC = 57.6 E p^(1/3) F / (p^(1/2) + 0.0125 xi Sigma E F) [kV], xi Sigma = 21.7 S",
+        "parameters": ["E (solar wind electric field V B_perp in mV/m)", "p (ram pressure in nPa)", "F (clock angle function sin^2(theta/2))", "xi Sigma (ionospheric conductance product)"],
+        "physical_meaning": "Potential across the polar cap that drives high-latitude convection; it saturates near 212 p^(1/3) kV because the region 1 currents weaken the field where reconnection takes place."
     }
 ]
 
@@ -1157,12 +1157,12 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "name": "Cross Polar Cap Potential Drop",
         "symbol": "Phi_PC",
         "unit": "kV",
-        "nominal_range": "25 - 60 kV (Quiet to Unsettled Convection)",
-        "disturbed_range": "> 90 kV (Active Convection), > 140 kV (Severe Geomagnetic Storm)",
-        "formula": "Phi_PC = 1e-4 * v^2 + 11.7 * |B| * sin^3(theta / 2) [kV]",
+        "nominal_range": "No fixed levels; the Hill model saturates near 212 p^(1/3) kV",
+        "disturbed_range": "Saturation typically 200-300 kV (Siscoe et al. 2002)",
+        "formula": "Phi_PC = 57.6 E p^(1/3) F / (p^(1/2) + 0.0125 xi Sigma E F) [kV] (Siscoe et al. 2002, Hill model)",
         "instrument": "SuperDARN HF Radars & DMSP SSIES Ion Drift Meters",
         "description": "Total transpolar electric potential difference established by solar wind-magnetosphere dynamo driving high-latitude F-region ionospheric plasma convection.",
-        "doi": "10.1029/96JA01742"
+        "doi": "10.1029/2001JA000109"
     },
     "ae_index": {
         "name": "Auroral Electrojet Index (AE)",

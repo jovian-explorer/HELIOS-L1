@@ -3993,10 +3993,10 @@ function computeSandboxPhysics(p) {
   // Newell universal coupling (Wb/s)
   const dphi = Math.pow(vsw, 4.0 / 3.0) * Math.pow(Math.max(0.01, bt_trans), 2.0 / 3.0) * Math.pow(Math.sin(theta / 2.0), 8.0 / 3.0);
 
-  // Boyle (1997) Polar Cap Potential Drop (kV)
-  // Boyle et al. (1997) use the IMF magnitude |B|, not the transverse component.
-  let phi_pc = (1e-4 * Math.pow(vsw, 2)) + (11.7 * bt * Math.pow(Math.sin(theta / 2.0), 3));
-  phi_pc = Math.max(15.0, Math.min(280.0, phi_pc));
+  // Cross polar cap potential (kV): Hill model, Siscoe et al. (2002) eq. 13, D = 1, xi*Sigma = 21.7 S
+  const e_sw = vsw * bt_trans * 1e-3;
+  const f_clock = Math.pow(Math.sin(theta / 2.0), 2);
+  const phi_pc = 57.6 * e_sw * Math.cbrt(pdyn) * f_clock / (Math.sqrt(pdyn) + 0.0125 * 21.7 * e_sw * f_clock);
 
   // Convective electric field Ey (mV/m)
   const ey = -vsw * bz * 1e-3;
@@ -4192,9 +4192,9 @@ function renderSandboxTab(container) {
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
               <div class="text-[10px] font-bold text-slate-400 font-mono">Polar Cap Potential (Φ_PC)</div>
               <div class="flex items-baseline space-x-2">
-                <span id="sbx-phi" class="text-lg font-bold font-hud ${res.phi_pc >= 90 ? 'text-rose-400' : 'text-indigo-300'}">${res.phi_pc.toFixed(1)} kV</span>
+                <span id="sbx-phi" class="text-lg font-bold font-hud text-indigo-300">${res.phi_pc.toFixed(1)} kV</span>
               </div>
-              <p class="text-[10px] text-slate-500 font-mono">Boyle et al. (1997) transpolar drop</p>
+              <p class="text-[10px] text-slate-500 font-mono">Hill model (Siscoe et al. 2002); saturates near 212 p^(1/3) kV</p>
             </div>
 
             <!-- Convective Electric Field -->
@@ -4298,7 +4298,6 @@ function onSandboxParamChange(param, val) {
   const elPhi = document.getElementById('sbx-phi');
   if (elPhi) {
     elPhi.innerText = `${res.phi_pc.toFixed(1)} kV`;
-    elPhi.className = `text-lg font-bold font-hud ${res.phi_pc >= 90 ? 'text-rose-400' : 'text-indigo-300'}`;
   }
 
   const elEy = document.getElementById('sbx-ey');

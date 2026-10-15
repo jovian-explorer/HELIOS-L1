@@ -2064,7 +2064,7 @@ async def get_geospace_coupling(
     Computes real-time Geospace coupling parameters including:
     - Solar wind wave speeds (Alfvén, Sound, Fast Magnetosonic)
     - Mach numbers (Alfvénic M_A, Magnetosonic M_ms)
-    - Cross-polar cap potential Phi_PC drop (Boyle et al. 1997)
+    - Cross-polar cap potential Phi_PC (Hill model, Siscoe et al. 2002)
     - Perreault-Akasofu energy coupling rate Epsilon (GW)
     - Newell universal coupling function dPhi/dt (Wb/s)
     - Convective electric field E_y (mV/m)
@@ -2078,7 +2078,7 @@ async def get_geospace_coupling(
     )
     pdyn = SpaceWeatherPhysics.dynamic_pressure(density_cm3=density_cm3, speed_kms=speed_kms)
     phi_pc = SpaceWeatherPhysics.polar_cap_potential(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt,
-                                                     b_total_nt=b_total_nt)
+                                                     density_cm3=density_cm3)
     akasofu = SpaceWeatherPhysics.akasofu_epsilon(speed_kms=speed_kms, b_total_nt=b_total_nt, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
     newell = SpaceWeatherPhysics.newell_coupling(speed_kms=speed_kms, by_gsm_nt=by_gsm_nt, bz_gsm_nt=bz_gsm_nt)
     ey = SpaceWeatherPhysics.convective_electric_field(speed_kms=speed_kms, bz_gsm_nt=bz_gsm_nt)

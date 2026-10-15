@@ -305,15 +305,20 @@ def test_reports_state_real_provenance_and_survive_gaps():
     assert "SYNTHETIC - offline model" in html
 
 
-def test_boyle_polar_cap_potential_uses_imf_magnitude():
-    """Boyle et al. (1997): Phi = 1e-4 v^2 + 11.7 B sin^3(theta/2) with B = |B| (here 10 nT, Bz = -6 nT)."""
-    res = SpaceWeatherPhysics.polar_cap_potential(500.0, 0.0, -6.0, b_total_nt=10.0)
-    assert res["polar_cap_potential_kv"] == pytest.approx(1e-4 * 500.0 ** 2 + 11.7 * 10.0, abs=0.06)
-    from fastapi.testclient import TestClient
-    from helios.api.server import app
-    api = TestClient(app, base_url=LOCAL).get("/api/geospace/coupling?speed_kms=500&b_total_nt=10&by_gsm_nt=0&bz_gsm_nt=-6").json()
-    assert api["polar_cap_potential"]["polar_cap_potential_kv"] == pytest.approx(142.0, abs=0.06)
-
+def test_polar_cap_potential_is_the_hill_model_and_saturates():
+    """Siscoe et al. (2002), baseline of their Fig. 2 (p = 1 nPa, F = 1, xi Sigma = 21.7 S): 198 kV at
+    E = 50 mV/m, saturation 212 kV. Boyle et al. (1997) had no saturation and was clipped at an
+    invented 280 kV (210 min of 16-18 March 2015 at the clip); on those OMNI data it now peaks at 264 kV."""
+    v = 1000.0  # E = 50 mV/m with Bz = -50 nT; n for p = 1 nPa
+    res = SpaceWeatherPhysics.polar_cap_potential(v, 0.0, -50.0, 1.0 / (2.0e-6 * v * v))
+    assert res["polar_cap_potential_kv"] == pytest.approx(197.8, abs=0.1)
+    assert res["saturation_kv"] == pytest.approx(212.4, abs=0.1)
+    from helios.core.downloader import omni_snapshot
+    s = omni_snapshot("st_patricks_2015")
+    ix = {k: s["columns"].index(k) for k in ("speed", "density", "by_gsm", "bz_gsm")}
+    phis = [SpaceWeatherPhysics.polar_cap_potential(r[ix["speed"]], r[ix["by_gsm"]], r[ix["bz_gsm"]], r[ix["density"]])
+            ["polar_cap_potential_kv"] for r in s["rows"] if None not in (r[i] for i in ix.values())]
+    assert round(max(phis)) == 264
 
 def test_chao_2002_bow_shock_reproduces_published_standoff():
     """
@@ -391,7 +396,7 @@ def test_reference_dois_point_to_the_cited_papers():
     from helios.config import SCIENTIFIC_REFERENCES, MISSIONS
     refs = {r["id"]: r for r in SCIENTIFIC_REFERENCES}
     assert refs["burton_dst_1975"]["doi"] == "10.1029/JA080i031p04204"
-    assert refs["boyle_polar_cap_1997"]["doi"] == "10.1029/96JA01742"
+    assert refs["siscoe_hill_2002"]["doi"] == "10.1029/2001JA000109"
     assert refs["sauer_drap_2008"]["doi"] == "10.1029/2008SW000399"
     assert refs["starkov_aurora_1994"]["doi"] is None
     assert MISSIONS["SOHO"]["doi"] == "10.1007/BF00733425"
