@@ -1312,6 +1312,7 @@ function updateTelemetryUI(data) {
   const kindNow = (data.provenance || {}).kind;
   const headerTag = String(cls.g_scale || '').startsWith('Archive') ? ' (archive end)'
     : (kindNow === 'simulated' || kindNow === 'synthetic') ? ` (${kindNow})` : '';
+  setPositionEpoch(headerTag === ' (archive end)' && latest.time_tag ? String(latest.time_tag).replace(' ', 'T') : null);
   const bzBadge = document.getElementById('bz-alert-badge');
   const bzText = document.getElementById('bz-alert-text');
   if (bzBadge && bzText) {
@@ -2895,7 +2896,7 @@ async function loadSpectralAnalysis() {
 
 async function initOrbits() {
   try {
-    const res = await fetch('/api/orbits');
+    const res = await fetch('/api/orbits' + (positionEpoch ? `?epoch=${encodeURIComponent(positionEpoch)}` : ''));
     const data = await res.json();
     orbitViewer = new OrbitRenderer('orbit-canvas', 'orbit-tooltip');
     orbitViewer.setOrbitsData(data);
@@ -2903,16 +2904,26 @@ async function initOrbits() {
     console.error('Error initializing orbits:', err);
   }
 }
-// The spacecraft move ~0.5 km/s about L1: refresh the positions every 10 minutes.
-setInterval(async () => {
+// Positions are those of now, or of the end of a loaded archive interval (they were always now).
+let positionEpoch = null;
+async function refreshOrbits() {
   if (!orbitViewer) return;
+  const current = latestRequest('orbits');
   try {
-    const res = await fetch('/api/orbits');
-    if (res.ok) orbitViewer.setOrbitsData(await res.json());
+    const res = await fetch('/api/orbits' + (positionEpoch ? `?epoch=${encodeURIComponent(positionEpoch)}` : ''));
+    if (res.ok && current()) orbitViewer.setOrbitsData(await res.json());
   } catch (err) {
     console.warn('Orbit refresh failed:', err);
   }
-}, 600000);
+}
+function setPositionEpoch(epoch) {
+  if (epoch === positionEpoch) return;
+  positionEpoch = epoch;
+  refreshOrbits();
+  parkerRenderer?.fetchSpiceEphemeris();
+}
+// The spacecraft move ~0.5 km/s about L1: refresh the positions every 10 minutes.
+setInterval(refreshOrbits, 600000);
 
 function animateOrbits() {
   if (orbitViewer && orbitViewer.canvas && orbitViewer.canvas.offsetParent !== null) {

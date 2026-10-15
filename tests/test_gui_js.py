@@ -531,5 +531,8 @@ def test_positions_are_refreshed_while_the_views_are_open():
     hours or days ago (PSP moves up to ~190 km/s near perihelion)."""
     parker = (APP_JS.parent / "parker.js").read_text(encoding="utf-8")
     assert re.search(r"setInterval\(\(\) => this\.fetchSpiceEphemeris\(\), 600000\)", parker)
-    assert re.search(r"setInterval\(async \(\) => \{\s*if \(!orbitViewer\) return;.*?fetch\('/api/orbits'\).*?\}, 600000\)",
-                     APP_JS.read_text(encoding="utf-8"), re.S)
+    app = APP_JS.read_text(encoding="utf-8")
+    assert "setInterval(refreshOrbits, 600000)" in app
+    # An archive interval shows the positions at its end (P14 of docs/SIMULATION_AUDIT.md).
+    assert re.search(r"setPositionEpoch\(headerTag === ' \(archive end\)'", app)
+    assert "epoch=${encodeURIComponent(positionEpoch)}" in parker

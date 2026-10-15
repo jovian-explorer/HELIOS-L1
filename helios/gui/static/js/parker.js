@@ -66,8 +66,12 @@ class ParkerSpiralRenderer {
 
   async fetchSpiceEphemeris() {
     try {
-      const res = await fetch('/api/ephemeris/spice?satellites=PARKER_SOLAR_PROBE,SOLAR_ORBITER,STEREO_A,EARTH,VENUS,MARS,MERCURY');
-      if (res.ok) {
+      // At the end of a loaded archive interval, else now (positionEpoch, app.js).
+      const epoch = typeof positionEpoch !== 'undefined' && positionEpoch ? `&epoch=${encodeURIComponent(positionEpoch)}` : '';
+      const asked = epoch;
+      const res = await fetch('/api/ephemeris/spice?satellites=PARKER_SOLAR_PROBE,SOLAR_ORBITER,STEREO_A,EARTH,VENUS,MARS,MERCURY' + epoch);
+      const stillWanted = (typeof positionEpoch !== 'undefined' && positionEpoch ? `&epoch=${encodeURIComponent(positionEpoch)}` : '') === asked;
+      if (res.ok && stillWanted) {
         const data = await res.json();
         // Bodies without an ephemeris at this time are left out (their labelled schematic
         // orbit is drawn instead of a position that does not exist).
