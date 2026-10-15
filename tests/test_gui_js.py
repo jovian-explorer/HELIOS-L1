@@ -212,7 +212,9 @@ def test_js_constants_match_python_models():
     l1 = re.search(r"this\.l1Km = ([\d.]+) - ([\d.]+);", cme)
     assert float(l1.group(1)) - float(l1.group(2)) == pytest.approx(CoronagraphAnalyzer.L1_DIST_KM)
     gamma = float(re.search(r"this\.gamma = ([\d.e+-]+);", cme).group(1))
-    assert gamma == 1.0e-7  # calculate_cme_kinematics default
+    from helios.core.coronagraph import DBM_GAMMA_PER_KM, DBM_W_KMS
+    assert gamma == DBM_GAMMA_PER_KM  # calculate_cme_kinematics default
+    assert float(re.search(r"this\.vAmbient = ([\d.]+);", cme).group(1)) == DBM_W_KMS
 
 
 @pytest.mark.skipif(NODE is None, reason="Node.js not installed")

@@ -1,11 +1,7 @@
 /**
- * HELIOS-L1: INTERACTIVE CME SHOCK KINEMATICS & PROPAGATION SIMULATOR
- * Features:
- * - Real-time Aerodynamic Drag Model (Gopalswamy / Vrsnak DBM Formulation)
- * - Animated 2D Solar-Interplanetary Shock Wave Propagation (Sun -> L1 -> Earth)
- * - Magnetic Cloud (Flux Rope) & Turbulent Compression Sheath Visualization
- * - Interactive Scrub Timeline (0h to 72h) with Play / Pause / Step Controls
- * - Live Shock Distance R(t), Velocity V(t), and L1/Earth Impact Alert HUD
+ * HELIOS-L1: CME propagation animation. The CME front of the server's drag-based model
+ * (Vrsnak et al. 2013) from the measured height to L1 and Earth, drawn as a schematic cone,
+ * with a timeline (play / pause / scrub) and the front's distance and speed.
  */
 
 class CMESimulator {
@@ -19,10 +15,12 @@ class CMESimulator {
 
     // Physics & Kinematics State
     this.v0 = 1250; // Initial plane-of-sky velocity [km/s]
-    this.vAmbient = 420; // Ambient solar wind velocity [km/s]
-    this.gamma = 1.0e-7; // DBM drag parameter [km^-1], the server default until a result arrives
+    this.vAmbient = 450; // Ambient solar wind velocity [km/s] (server default, Dumbovic et al. 2021)
+    this.gamma = 0.2e-7; // DBM drag parameter [km^-1], the server default until a result arrives
     this.rSunKm = 695700; // IAU 2015 nominal solar radius (helios/core/constants.py)
-    this.r0Km = this.rSunKm; // start height of the trajectory; the server's r2 once a result arrives
+    // As the server: constant speed from the measured height to 20 R_sun, the drag-based model beyond.
+    this.rMeasKm = this.rSunKm;
+    this.r0Km = 20 * this.rSunKm;
     this.l1Km = 149597870.7 - 1496000.0; // same L1 distance as coronagraph.py
     this.earthKm = 149597870.7;
 
@@ -32,7 +30,7 @@ class CMESimulator {
     this.isPlaying = false;
     this.playbackSpeed = 1.0; // hrs per real second
 
-    // Shock Status
+    // Arrival state of the model CME front
     this.transitL1Hrs = 32.5;
     this.transitEarthHrs = 33.3;
     this.reachedL1 = false;
@@ -77,8 +75,9 @@ class CMESimulator {
     this.leadMinutes = cme.l1_to_earth_lead_time_minutes ?? null;
     if (cme.ambient_wind_kms) this.vAmbient = Number(cme.ambient_wind_kms);
     if (cme.drag_parameter_gamma) this.gamma = Number(cme.drag_parameter_gamma);  // same DBM drag as the server
-    // The server integrates from the second measured height and counts time from it.
-    if (cme.start_height_rsun) this.r0Km = Number(cme.start_height_rsun) * this.rSunKm;
+    // The server counts time from the second measured height.
+    if (cme.start_height_rsun) this.rMeasKm = Number(cme.start_height_rsun) * this.rSunKm;
+    if (cme.dbm_start_rsun) this.r0Km = Number(cme.dbm_start_rsun) * this.rSunKm;
     this.maxHrs = Math.max(48, Math.ceil(this.transitEarthHrs * 1.25));
     this.timeHrs = 0;
     this.isPlaying = true;
@@ -97,7 +96,12 @@ class CMESimulator {
     this.maxHrs = Math.max(48, Math.ceil(this.transitEarthHrs * 1.25));
   }
 
+  coastSec() {
+    return Math.max(0, this.r0Km - this.rMeasKm) / this.v0;
+  }
+
   solveTransitHours(targetDistKm) {
+    if (targetDistKm <= this.r0Km) return Math.max(0, targetDistKm - this.rMeasKm) / this.v0 / 3600;
     const w = this.vAmbient;
     const gamma = this.gamma;
     const u0 = this.v0 - w;
@@ -125,11 +129,17 @@ class CMESimulator {
       if (Math.abs(diff) < 50) break;
       tSec = Math.max(0, tSec - diff / Math.max(100, v));
     }
-    return tSec / 3600;
+    return (this.coastSec() + tSec) / 3600;
   }
 
   getShockAtTime(tHrs) {
-    const tSec = tHrs * 3600;
+    const coast = this.coastSec();
+    if (tHrs * 3600 < coast) {
+      const rKm = this.rMeasKm + this.v0 * tHrs * 3600;
+      return { rKm, rSun: rKm / this.rSunKm, rAu: rKm / this.earthKm, vKms: this.v0, dragAccelMs2: 0,
+               isL1Hit: rKm >= this.l1Km, isEarthHit: rKm >= this.earthKm };
+    }
+    const tSec = tHrs * 3600 - coast;
     const w = this.vAmbient;
     const gamma = this.gamma;
     const u0 = this.v0 - w;
@@ -216,7 +226,7 @@ class CMESimulator {
     // 3. Targets: L1 Point & Earth
     this.drawTargets(ctx, auToX, plotCenterY);
 
-    // 4. Current CME Shock Position & Geometry
+    // 4. Current position of the model CME front
     const shock = this.getShockAtTime(this.timeHrs);
     this.drawCMECloud(ctx, shock, auToX, plotCenterY, marginX);
 
@@ -323,7 +333,7 @@ class CMESimulator {
     ctx.fillStyle = '#ffb703';
     ctx.font = 'bold 9px "JetBrains Mono", monospace';
     ctx.textAlign = 'right';
-    ctx.fillText('L1 (DSCOVR/Aditya)', l1X - 8, plotCenterY - 10);
+    ctx.fillText('L1', l1X - 8, plotCenterY - 10);
 
     ctx.restore();
   }
@@ -333,62 +343,32 @@ class CMESimulator {
 
     ctx.save();
     const shockX = auToX(shock.rAu);
-    const coneAngle = 0.45; // ~50° angular expansion half-width
+    // Schematic width: a 30 deg half-angle cone (DONKI half-angles of Earth-directed CMEs are
+    // mostly 15-50 deg); the arc is the CME front of the drag-based model. The shock and sheath
+    // run ahead of it (hours at 1 AU) and are not modelled, so none is drawn.
+    const coneAngle = 30 * Math.PI / 180;
     const distPx = shockX - sunX;
+    const dy = distPx * Math.sin(coneAngle);
+    const fx = sunX + distPx * Math.cos(coneAngle);
 
-    // Expanding CME Conical Sheath
     ctx.beginPath();
     ctx.moveTo(sunX, plotCenterY);
-    ctx.lineTo(shockX, plotCenterY - distPx * Math.tan(coneAngle));
-    // Curved shock front
+    ctx.lineTo(fx, plotCenterY - dy);
     ctx.arc(sunX, plotCenterY, distPx, -coneAngle, coneAngle);
-    ctx.lineTo(sunX, plotCenterY);
     ctx.closePath();
-
-    // Translucent plasma sheath gradient
-    const sheathGrad = ctx.createRadialGradient(sunX, plotCenterY, distPx * 0.5, sunX, plotCenterY, distPx);
-    sheathGrad.addColorStop(0, 'rgba(244, 63, 94, 0.05)');
-    sheathGrad.addColorStop(0.7, 'rgba(244, 63, 94, 0.2)');
-    sheathGrad.addColorStop(1, 'rgba(255, 183, 3, 0.35)');
-    ctx.fillStyle = sheathGrad;
+    ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
     ctx.fill();
 
-    // Shock Wave Arc (Leading Edge)
     ctx.beginPath();
     ctx.arc(sunX, plotCenterY, distPx, -coneAngle, coneAngle);
     ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Magnetic Flux Rope Core (Toroidal Cloud)
-    const coreX = sunX + distPx * 0.78;
-    const coreRadiusY = distPx * 0.22;
-    const coreRadiusX = distPx * 0.14;
-
-    ctx.beginPath();
-    ctx.ellipse(coreX, plotCenterY, coreRadiusX, coreRadiusY, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
-    ctx.fill();
-    ctx.strokeStyle = '#a855f7';
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-
-    // Helical Magnetic Field Lines in Flux Rope Core
-    ctx.strokeStyle = 'rgba(216, 180, 254, 0.5)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    for (let k = -2; k <= 2; k++) {
-      ctx.beginPath();
-      ctx.ellipse(coreX, plotCenterY + k * (coreRadiusY * 0.35), coreRadiusX * 0.65, coreRadiusY * 0.2, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.setLineDash([]);
-
-    // Shock Label
     ctx.fillStyle = '#f87171';
     ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`CME SHOCK FRONT (V = ${shock.vKms.toFixed(0)} km/s)`, shockX + 8, plotCenterY - distPx * Math.tan(coneAngle) + 12);
+    ctx.fillText(`CME front, drag-based model (${shock.vKms.toFixed(0)} km/s)`, fx + 8, plotCenterY - dy + 12);
 
     ctx.restore();
   }
@@ -418,7 +398,7 @@ class CMESimulator {
     ctx.font = '10px "JetBrains Mono", monospace';
     ctx.fillText(`ELAPSED TIME: ${this.timeHrs.toFixed(1)} hrs / ${this.maxHrs.toFixed(0)} hrs`, hudX + 10, hudY + 34);
     ctx.fillText(`HELIOCENTRIC DIST: ${shock.rAu.toFixed(3)} AU (${shock.rSun.toFixed(1)} R☉)`, hudX + 10, hudY + 50);
-    ctx.fillText(`SHOCK VELOCITY: ${shock.vKms.toFixed(0)} km/s | a = ${shock.dragAccelMs2.toFixed(2)} m/s²`, hudX + 10, hudY + 66);
+    ctx.fillText(`FRONT SPEED: ${shock.vKms.toFixed(0)} km/s | a = ${shock.dragAccelMs2.toFixed(2)} m/s²`, hudX + 10, hudY + 66);
     
     ctx.fillStyle = '#34d399';
     const leadMin = (this.leadMinutes ?? Math.max(0, (this.transitEarthHrs - this.transitL1Hrs) * 60)).toFixed(0);
@@ -429,10 +409,10 @@ class CMESimulator {
 
     // Alerts for L1 & Earth Interception
     if (shock.isEarthHit) {
-      this.drawAlertBanner(ctx, 'GEOMAGNETIC SUDDEN COMMENCEMENT (SC) - EARTH IMPACT!', '#ef4444');
+      this.drawAlertBanner(ctx, 'MODEL CME FRONT REACHES EARTH', '#ef4444');
     } else if (shock.isL1Hit) {
       const remainingMin = Math.max(0, (this.transitEarthHrs - this.timeHrs) * 60).toFixed(0);
-      this.drawAlertBanner(ctx, `L1 INTERCEPTION - EARLY WARNING ACTIVE: +${remainingMin} MIN TO EARTH`, '#f59e0b');
+      this.drawAlertBanner(ctx, `MODEL CME FRONT AT L1: +${remainingMin} MIN TO EARTH`, '#f59e0b');
     }
 
     ctx.restore();
