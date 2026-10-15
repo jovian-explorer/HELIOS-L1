@@ -203,11 +203,14 @@ def observer_longitude(instrument: str, when: datetime) -> Dict[str, Any]:
     from helios.core.spice_engine import get_spice_engine
     eng = get_spice_engine()
     epoch = when.strftime("%Y-%m-%dT%H:%M:%S")
-    lon = (eng.get_spacecraft_state(craft, epoch_utc=epoch)["heliocentric"]["ecliptic_longitude_deg"]
+    st = eng.get_spacecraft_state(craft, epoch_utc=epoch)
+    if not st.get("available"):  # the orbit model used to stand in, 56 deg off for Solar Orbiter in May 2024
+        raise LookupError(f"No ephemeris of {craft} for {epoch} UTC: the projection correction needs its position.")
+    lon = (st["heliocentric"]["ecliptic_longitude_deg"]
            - eng.get_spacecraft_state("EARTH", epoch_utc=epoch)["heliocentric"]["ecliptic_longitude_deg"])
     lon = (lon + 180.0) % 360.0 - 180.0
     return {"spacecraft": craft, "longitude_deg": round(lon, 2),
-            "source": "orbit model, ecliptic longitude from Earth (solar equator tilt ignored)"}
+            "source": f"{st['position_source']}, ecliptic longitude from Earth (solar equator tilt ignored)"}
 
 
 def solver_inputs(fit: Dict[str, Any], speed_kms: float) -> Dict[str, Any]:

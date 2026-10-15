@@ -156,10 +156,11 @@ class TestTab2Comparator:
 
         # Spatial baseline geometry
         base = data["spatial_baseline"]
-        assert "distance_km" in base
-        assert "distance_re" in base
-        assert abs(base["distance_re"] - base["distance_km"] / 6371.0) < 0.1
-        assert "theoretical_delay_min" in base
+        assert "distance_km" in base and "theoretical_delay_min" in base
+        if base["distance_km"] is None:  # no ephemeris at this time: no baseline, and it says so
+            assert base["position_unknown"]
+        else:
+            assert abs(base["distance_re"] - base["distance_km"] / 6371.0) < 0.1
 
     def test_fleet_matrix_symmetry_and_identity(self):
         """Verify 5x5 mutual fleet correlation matrix properties."""
@@ -193,9 +194,10 @@ class TestTab3OrbitsAndSpiceEphemeris:
         """
         targets = [
             "PARKER_SOLAR_PROBE", "SOLAR_ORBITER", "STEREO_A",
-            "ADITYA_L1", "DSCOVR", "ACE", "WIND", "SOHO", "GOES_16", "EARTH", "MOON"
+            "ADITYA_L1", "DSCOVR", "ACE", "WIND", "SOHO", "GOES_19", "EARTH", "MOON"
         ]
-        res = client.get(f"/api/ephemeris/spice?satellites={','.join(targets)}")
+        # 10 Oct 2026, covered by the recorded JPL Horizons vectors (tests/data/ephemeris)
+        res = client.get(f"/api/ephemeris/spice?satellites={','.join(targets)}&epoch=2026-10-10T00:00:00")
         assert res.status_code == 200
         fleet = res.json()["fleet"]
 
@@ -210,8 +212,8 @@ class TestTab3OrbitsAndSpiceEphemeris:
         # 2. GOES-16 Geostationary velocity frame check
         # Geostationary speed v_geo = sqrt(GM_earth / 42164 km) = 3.075 km/s
         # Heliocentric orbital speed around Sun ~ 29.8 km/s
-        goes = fleet["GOES_16"]
-        assert abs(goes["velocity"]["speed_kms"] - 3.075) < 0.15, f"GOES-16 speed should be ~3.075 km/s, got {goes['velocity']['speed_kms']}"
+        goes = fleet["GOES_19"]
+        assert abs(goes["velocity"]["speed_kms"] - 3.075) < 0.15, f"GOES-19 speed should be ~3.075 km/s, got {goes['velocity']['speed_kms']}"
         assert abs(goes["earth_relative"]["distance_km"] - 42164.0) < 1000.0
         assert abs(goes["earth_relative"]["distance_re"] - 6.6) < 0.2
         assert "heliocentric_speed_kms" in goes["velocity"]
@@ -222,6 +224,8 @@ class TestTab3OrbitsAndSpiceEphemeris:
         assert 0.98 <= aditya["heliocentric"]["distance_au"] <= 1.02
         assert 1.3e6 <= aditya["earth_relative"]["distance_km"] <= 1.7e6
         assert abs(aditya["velocity"]["speed_kms"] - 29.8) < 4.0
+        assert all(fleet[k]["is_spice_verified"] and fleet[k]["position_source"].startswith("JPL Horizons")
+                   for k in targets if k != "EARTH")
 
     def test_magnetopause_and_bow_shock_physics(self):
         """

@@ -107,7 +107,7 @@ def test_orbital_mechanics():
     assert "L2" in lagrange
     assert lagrange["L1"]["x_mkm"] == -1.496
 
-    orbits = OrbitalMechanics.get_satellite_orbits()
+    orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc="2026-10-10T00:00:00")
     assert "DSCOVR" in orbits
     assert "ADITYA_L1" in orbits
     assert "ACE" in orbits
@@ -679,7 +679,8 @@ def test_spice_engine_spacecraft_fleet():
     engine = get_spice_engine()
 
     # 1. Parker Solar Probe (PSP)
-    psp = engine.get_spacecraft_state("PARKER_SOLAR_PROBE")
+    epoch = "2026-10-10T00:00:00"  # covered by the recorded Horizons vectors
+    psp = engine.get_spacecraft_state("PARKER_SOLAR_PROBE", epoch_utc=epoch)
     assert psp["name"] == "Parker Solar Probe (PSP)"
     assert 0.04 < psp["heliocentric"]["distance_au"] < 0.75
     assert 10.0 <= psp["velocity"]["speed_kms"] <= 200.0
@@ -687,20 +688,20 @@ def test_spice_engine_spacecraft_fleet():
     assert 0.88 < psp["orbital_elements"]["eccentricity"] < 0.89
 
     # 2. Aditya-L1 (ISRO Sun-Earth L1 Halo)
-    aditya = engine.get_spacecraft_state("ADITYA_L1")
+    aditya = engine.get_spacecraft_state("ADITYA_L1", epoch_utc=epoch)
     assert aditya["name"] == "Aditya-L1"
     assert 1400000.0 < aditya["earth_relative"]["distance_km"] < 1650000.0
     assert 220.0 < aditya["earth_relative"]["distance_re"] < 260.0
     assert 25.0 < aditya["velocity"]["speed_kms"] < 35.0
 
-    # 3. GOES-16 (Geostationary)
-    goes = engine.get_spacecraft_state("GOES_16")
-    assert goes["name"] == "GOES-16"
+    # 3. GOES-19 (GOES-East, geostationary)
+    goes = engine.get_spacecraft_state("GOES_19", epoch_utc=epoch)
+    assert goes["name"] == "GOES-19 (GOES-East)"
     assert 40000.0 < goes["earth_relative"]["distance_km"] < 44000.0
     assert 3.0 < goes["velocity"]["speed_kms"] < 3.15
 
     # 4. Solar Orbiter (SolO)
-    solo = engine.get_spacecraft_state("SOLAR_ORBITER")
+    solo = engine.get_spacecraft_state("SOLAR_ORBITER", epoch_utc=epoch)
     assert solo["name"] == "Solar Orbiter (SolO)"
     assert 0.25 < solo["heliocentric"]["distance_au"] < 0.95
     assert 20.0 < solo["velocity"]["speed_kms"] < 75.0
@@ -717,7 +718,7 @@ def test_spice_rest_api_endpoints():
     assert "naif0012.tls" in st_data["loaded_kernels"]
 
     # 2. SPICE fleet ephemeris endpoint
-    res_eph = client.get("/api/ephemeris/spice?satellites=PARKER_SOLAR_PROBE,ADITYA_L1,SOLAR_ORBITER,DSCOVR")
+    res_eph = client.get("/api/ephemeris/spice?satellites=PARKER_SOLAR_PROBE,ADITYA_L1,SOLAR_ORBITER,DSCOVR&epoch=2026-10-10")
     assert res_eph.status_code == 200
     eph_data = res_eph.json()
     assert eph_data["spacecraft_count"] == 4
@@ -728,7 +729,7 @@ def test_spice_rest_api_endpoints():
     assert fleet["PARKER_SOLAR_PROBE"]["velocity"]["speed_kms"] > 0
 
     # 3. Trajectory endpoint
-    res_traj = client.get("/api/ephemeris/spice/trajectory?satellite=PARKER_SOLAR_PROBE&points=15")
+    res_traj = client.get("/api/ephemeris/spice/trajectory?satellite=PARKER_SOLAR_PROBE&points=15&epoch=2026-06-01")
     assert res_traj.status_code == 200
     traj_data = res_traj.json()
     assert traj_data["points_count"] == 15
@@ -736,13 +737,13 @@ def test_spice_rest_api_endpoints():
     assert "x_au" in traj_data["trajectory"][0]
 
     # 4. Upgraded orbits endpoint with SPICE telemetry
-    res_orbits = client.get("/api/orbits")
+    res_orbits = client.get("/api/orbits?epoch=2026-10-10")
     assert res_orbits.status_code == 200
     orbits_data = res_orbits.json()
     assert "orbits" in orbits_data
     orbits = orbits_data["orbits"]
     assert "ADITYA_L1" in orbits
-    assert "PARKER_SOLAR_PROBE" in orbits
+    assert "PARKER_SOLAR_PROBE" not in orbits  # heliosphere view only (it was an Earth-centred ellipse here)
     assert orbits["ADITYA_L1"].get("spice_telemetry") is not None
 
 

@@ -1860,7 +1860,7 @@ def check_epoch(epoch: Optional[str]) -> None:
 async def get_orbits(epoch: Optional[str] = Query(None, description="UTC ISO epoch for spacecraft position calculations")):
     check_epoch(epoch)
     lagrange = OrbitalMechanics.get_lagrange_points()
-    orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc=epoch)
+    orbits = await asyncio.to_thread(OrbitalMechanics.get_satellite_orbits, epoch_utc=epoch)
     return {
         "lagrange_points": lagrange,
         "orbits": orbits
@@ -1885,7 +1885,10 @@ async def get_spice_ephemeris(
     sc_list = list(dict.fromkeys(s.strip().upper() for s in satellites.split(",") if s.strip())) if satellites else None
     if sc_list and len(sc_list) > MAX_EPHEMERIS_IDS:
         raise HTTPException(status_code=422, detail=f"At most {MAX_EPHEMERIS_IDS} spacecraft per request.")
-    return engine.get_fleet_states(spacecraft_ids=sc_list, epoch_utc=epoch, frame=frame)
+    try:  # a first request for a month downloads kernels: off the event loop
+        return await asyncio.to_thread(engine.get_fleet_states, spacecraft_ids=sc_list, epoch_utc=epoch, frame=frame)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc).strip("'\""))
 
 @app.get("/api/ephemeris/spice/trajectory")
 async def get_spice_trajectory(
@@ -1898,7 +1901,11 @@ async def get_spice_trajectory(
     """
     check_epoch(epoch)
     engine = get_spice_engine()
-    trajectory = engine.get_orbit_trajectory(spacecraft_id=satellite, num_points=points, epoch_utc=epoch)
+    try:
+        trajectory = await asyncio.to_thread(engine.get_orbit_trajectory, spacecraft_id=satellite,
+                                             num_points=points, epoch_utc=epoch)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc).strip("'\""))
     return {
         "satellite": satellite,
         "points_count": len(trajectory),
@@ -2212,7 +2219,10 @@ async def post_front_fit(req: FrontFitRequest):
     out = {"fit": fit, "projection": None, "observer": None}
     speed = fit["speed_kms"]
     if req.source_lon_deg is not None and req.source_lat_deg is not None:
-        obs = cme_tracking.observer_longitude(req.instrument, when)
+        try:  # (may download the spacecraft's kernel from JPL Horizons)
+            obs = await asyncio.to_thread(cme_tracking.observer_longitude, req.instrument, when)
+        except LookupError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
         proj = cme_tracking.projection(speed, req.source_lon_deg, req.source_lat_deg, obs["longitude_deg"])
         out.update(observer=obs, projection=proj)
         if proj["radial_speed_kms"] is not None:

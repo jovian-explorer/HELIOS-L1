@@ -89,7 +89,54 @@ def _offline_downloader(monkeypatch):
     monkeypatch.setattr(icme_catalog, "_fetch_live", lambda cache_dir: None)
     monkeypatch.setattr(DataDownloader, "fetch_text", _no_text)
     monkeypatch.setattr(DataDownloader, "fetch_bytes", _no_text)
+    # SPICE kernels and JPL Horizons (positions, occultation): offline unless network tests run,
+    # and no failure is remembered from one test to the next.
+    if os.environ.get("HELIOS_NETWORK_TESTS") != "1":
+        from helios.core import occultation
+
+        def _no_download(url):
+            raise OSError("network disabled in tests")
+        monkeypatch.setattr(occultation, "_get", _no_download)
+    from helios.core import ephemeris
+    ephemeris._failed.clear()
+    if os.environ.get("HELIOS_NETWORK_TESTS") != "1":
+        monkeypatch.setattr(ephemeris, "state", _recorded_state)
     yield
+
+
+_RECORDED = None
+
+
+def _recorded_state(body, t, cache_dir):
+    """
+    Offline stand-in for helios.core.ephemeris.state: JPL Horizons vectors recorded in
+    tests/data/ephemeris/horizons_2026.json.gz (heliocentric, ecliptic J2000, km and km/s;
+    daily through 2026, every 10 min for GOES-19 on 9-10 Oct 2026; the L1 spacecraft only up to
+    14 Oct 2026, where Horizons' coverage ended), cubic Hermite between samples. None outside
+    them, as the real function answers without a kernel.
+    """
+    global _RECORDED
+    import gzip
+    import json
+    import numpy as np
+    if _RECORDED is None:
+        path = Path(__file__).parent / "data" / "ephemeris" / "horizons_2026.json.gz"
+        _RECORDED = {k: np.array(v) for k, v in json.loads(gzip.decompress(path.read_bytes())).items()}
+    rows = _RECORDED.get(body)
+    if rows is None:
+        return None
+    jd = t.timestamp() / 86400.0 + 2440587.5
+    i = int(np.searchsorted(rows[:, 0], jd))
+    if i == 0 or i >= len(rows):
+        return None
+    (j0, *s0), (j1, *s1) = rows[i - 1], rows[i]
+    h, u = (j1 - j0) * 86400.0, (jd - j0) / (j1 - j0)
+    p0, v0, p1, v1 = np.array(s0[:3]), np.array(s0[3:]), np.array(s1[:3]), np.array(s1[3:])
+    h00, h10, h01, h11 = 2*u**3 - 3*u**2 + 1, u**3 - 2*u**2 + u, -2*u**3 + 3*u**2, u**3 - u**2
+    pos = h00 * p0 + h10 * h * v0 + h01 * p1 + h11 * h * v1
+    d00, d10, d01, d11 = 6*u**2 - 6*u, 3*u**2 - 4*u + 1, -6*u**2 + 6*u, 3*u**2 - 2*u
+    vel = (d00 * p0 + d01 * p1) / h + d10 * v0 + d11 * v1
+    return pos, vel
 
 
 def pytest_sessionfinish(session, exitstatus):

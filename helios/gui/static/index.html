@@ -870,13 +870,17 @@
               <input type="checkbox" id="orbit-chk-SOHO" checked onchange="toggleOrbitSat('SOHO', this.checked)" class="rounded text-purple-400">
               <span class="font-semibold">SOHO</span>
             </label>
-            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-pink-500/40 cursor-pointer text-[11px] text-pink-300">
-              <input type="checkbox" id="orbit-chk-GOES_16" checked onchange="toggleOrbitSat('GOES_16', this.checked)" class="rounded text-pink-400">
-              <span class="font-semibold">GOES-16</span>
-            </label>
             <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-rose-500/40 cursor-pointer text-[11px] text-rose-300">
-              <input type="checkbox" id="orbit-chk-STEREO_A" checked onchange="toggleOrbitSat('STEREO_A', this.checked)" class="rounded text-rose-400">
-              <span class="font-semibold">STEREO-A</span>
+              <input type="checkbox" id="orbit-chk-SWFO_L1" checked onchange="toggleOrbitSat('SWFO_L1', this.checked)" class="rounded text-rose-400">
+              <span class="font-semibold">SWFO-L1</span>
+            </label>
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-lime-500/40 cursor-pointer text-[11px] text-lime-300">
+              <input type="checkbox" id="orbit-chk-IMAP" checked onchange="toggleOrbitSat('IMAP', this.checked)" class="rounded text-lime-400">
+              <span class="font-semibold">IMAP</span>
+            </label>
+            <label class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-space-900/90 border border-pink-500/40 cursor-pointer text-[11px] text-pink-300">
+              <input type="checkbox" id="orbit-chk-GOES_19" checked onchange="toggleOrbitSat('GOES_19', this.checked)" class="rounded text-pink-400">
+              <span class="font-semibold">GOES-19</span>
             </label>
           </div>
           <div class="text-[11px] text-slate-500 font-mono hidden xl:block">
@@ -1493,7 +1497,7 @@
           <div class="flex items-center space-x-4">
             <span class="text-slate-300">Spiral Pitch at 1 AU: <strong id="parker-pitch-val" class="text-cyan-400 font-hud">---°</strong></span>
             <span class="text-slate-300">Earth Connected Footpoint: <strong id="parker-footpoint-val" class="text-amber-400 font-hud">---° W</strong></span>
-            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] font-bold"><i class="fa-solid fa-satellite-dish text-[10px]"></i> NAIF SPICE N0067 Verified</span>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] font-bold"><i class="fa-solid fa-satellite-dish text-[10px]"></i> <span id="parker-ephemeris-badge">Positions: JPL Horizons / NAIF ephemeris where available</span></span>
           </div>
 
           <div class="flex items-center space-x-3">

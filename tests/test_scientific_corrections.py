@@ -242,17 +242,23 @@ def test_one_shock_is_reported_once():
 
 
 @pytest.mark.parametrize("body", ["MARS", "VENUS", "SOLAR_ORBITER"])
-def test_gse_z_points_to_ecliptic_north(body):
-    """GSE Z is ecliptic north, so a body's GSE z equals its ecliptic z offset from Earth (Earth's z ~ 0)."""
+def test_gse_matches_sunpy(body):
+    """GSE (X to the Sun, Z to the ecliptic pole of date) against SunPy's GeocentricSolarEcliptic.
+    The pole of J2000 put Mars 17 000 km off in z in 2026."""
+    pytest.importorskip("sunpy")
+    import astropy.units as u
+    from astropy.coordinates import CartesianRepresentation, HeliocentricMeanEcliptic, SkyCoord
+    from astropy.time import Time
+    from sunpy.coordinates import GeocentricSolarEcliptic
     from helios.core.spice_engine import get_spice_engine
-    eng = get_spice_engine()
-    epoch = "2026-06-01T00:00:00"
-    helio = eng.get_spacecraft_state(body, epoch_utc=epoch)
-    earth = eng.get_spacecraft_state("EARTH", epoch_utc=epoch)
-    gse = eng.get_spacecraft_state(body, epoch_utc=epoch, frame="GSE")
-    dz = helio["position"]["z_km"] - earth["position"]["z_km"]
-    assert abs(dz) > 1e5
-    assert gse["position"]["z_km"] == pytest.approx(dz, rel=1e-3)
+    t = "2026-06-01T00:00:00"
+    st = get_spice_engine().get_spacecraft_state(body, epoch_utc=t)
+    p, g = st["position"], st["gse_coordinates"]
+    sc = SkyCoord(CartesianRepresentation(p["x_km"] * u.km, p["y_km"] * u.km, p["z_km"] * u.km),
+                  frame=HeliocentricMeanEcliptic(obstime=Time(t), equinox=Time("J2000")))
+    ref = sc.transform_to(GeocentricSolarEcliptic(obstime=Time(t))).cartesian.xyz.to(u.km).value
+    mine = np.array([g["x_km"], g["y_km"], g["z_km"]])
+    assert np.degrees(np.arccos(ref @ mine / np.linalg.norm(ref) / np.linalg.norm(mine))) < 0.002
 
 
 def test_l1_halo_gse_z_maps_to_ecliptic_north():

@@ -109,7 +109,7 @@ class OrbitRenderer {
     // GSE Coordinate Grid, Spacecraft Filter Sets, and Dipole Field
     this.showGseGrid = true;
     this.showDipoleField = true;
-    this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16', 'PARKER_SOLAR_PROBE', 'SOLAR_ORBITER']);
+    this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'SWFO_L1', 'IMAP', 'GOES_19']);
 
     this.initStars();
     this.initParticles();
@@ -137,7 +137,7 @@ class OrbitRenderer {
 
   toggleAllSatellites(visible) {
     if (visible) {
-      this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'STEREO_A', 'GOES_16', 'PARKER_SOLAR_PROBE', 'SOLAR_ORBITER']);
+      this.visibleSatellites = new Set(['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'SWFO_L1', 'IMAP', 'GOES_19']);
     } else {
       this.visibleSatellites.clear();
     }
@@ -341,7 +341,7 @@ class OrbitRenderer {
       if (!pos) continue;
 
       let cx, cy;
-      if (key === 'GOES_16') {
+      if (key === 'GOES_19') {
         cx = (pos.x / 42.164) * 25;
         cy = (pos.y / 42.164) * 25;
       } else {
@@ -407,10 +407,9 @@ class OrbitRenderer {
               <div class="flex justify-between"><span class="text-slate-400">Orbital Speed:</span> <span class="font-mono text-emerald-400 font-semibold">${spice.velocity.speed_kms.toFixed(2)} km/s</span></div>
               <div class="flex justify-between"><span class="text-slate-400">Earth Distance:</span> <span class="font-mono text-slate-300">${(spice.earth_relative.distance_km / 1000).toLocaleString(undefined, {maximumFractionDigits: 1})}k km (${spice.earth_relative.distance_re.toFixed(1)} R_E)</span></div>
               <div class="flex justify-between"><span class="text-slate-400">Solar Distance:</span> <span class="font-mono text-amber-300">${spice.heliocentric.distance_au.toFixed(4)} AU</span></div>
-              <div class="flex justify-between"><span class="text-slate-400">True Anomaly (ν):</span> <span class="font-mono text-cyan-300">${spice.orbital_elements.true_anomaly_deg.toFixed(1)}°</span></div>
-              <div class="mt-1 text-[9px] text-emerald-300/90 font-mono flex items-center justify-between border-t border-slate-800/80 pt-1">
-                <span><i class="fa-solid fa-satellite-dish"></i> NAIF SPICE ${spice.spice_toolkit}</span>
-                <span class="text-slate-400">JPL Ephemeris</span>
+              ${spice.orbital_elements ? `<div class="flex justify-between"><span class="text-slate-400">True Anomaly (ν):</span> <span class="font-mono text-cyan-300">${spice.orbital_elements.true_anomaly_deg.toFixed(1)}°</span></div>` : ''}
+              <div class="mt-1 text-[9px] text-emerald-300/90 font-mono border-t border-slate-800/80 pt-1">
+                <i class="fa-solid fa-satellite-dish"></i> ${spice.position_source || 'ephemeris'}
               </div>
             </div>
           `;
@@ -965,7 +964,7 @@ class OrbitRenderer {
         ctx.beginPath();
         sat.path.forEach((pt, i) => {
           let cx, cy;
-          if (key === 'GOES_16') {
+          if (key === 'GOES_19') {
             cx = (pt.x / 42.164) * 25;
             cy = (pt.y / 42.164) * 25;
           } else {
@@ -983,7 +982,7 @@ class OrbitRenderer {
         const cur = sat.display_pos || sat.current_pos;
         if (cur) {
           let px, py;
-          if (key === 'GOES_16') {
+          if (key === 'GOES_19') {
             px = (cur.x / 42.164) * 25;
             py = (cur.y / 42.164) * 25;
           } else {

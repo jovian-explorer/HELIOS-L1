@@ -67,7 +67,9 @@ class ParkerSpiralRenderer {
       const res = await fetch('/api/ephemeris/spice?satellites=PARKER_SOLAR_PROBE,SOLAR_ORBITER,STEREO_A,EARTH,VENUS,MARS,MERCURY');
       if (res.ok) {
         const data = await res.json();
-        this.spiceFleetData = data.fleet;
+        // Bodies without an ephemeris at this time are left out (their labelled schematic
+        // orbit is drawn instead of a position that does not exist).
+        this.spiceFleetData = Object.fromEntries(Object.entries(data.fleet || {}).filter(([, v]) => v && v.available !== false));
         this.spiceAvailable = data.spice_available;
         this.spiceToolkit = data.spice_version;
         console.log('[ParkerSpiral] SPICE ephemeris synchronized with NASA JPL CSPICE pool.');

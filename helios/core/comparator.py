@@ -7,7 +7,6 @@ import math
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Any, Optional
-from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.statistics import correlation, effective_sample_size
 
 class SatelliteComparator:
@@ -224,26 +223,27 @@ class SatelliteComparator:
         orbit of a mission, e.g. with the NOAA ephemeris of the spacecraft that actually
         supplied the data (SOLAR1 for the operational "DSCOVR" stream).
         """
-        orbits = OrbitalMechanics.get_satellite_orbits()
-
-        def find_pos(name: str):
-            clean = name.upper().replace("-", "_").replace(" ", "_")
-            for k, orb in orbits.items():
-                if k in clean or clean in k or orb["name"].upper() in clean:
-                    return orb["current_pos"]
-            return {"x": -1496.0, "y": 0.0, "z": 0.0}
-
         def resolve(name: str, override: Optional[Dict[str, Any]]):
+            # Positions in 1000 km, GSE with the Sun at -X (the convention below): the override
+            # (e.g. the NOAA ephemeris of the spacecraft supplying the operational stream), else
+            # the spacecraft's ephemeris; none for an unknown spacecraft (it used to be put at L1).
             if override and all(override.get(k) is not None for k in ("x_km", "y_km", "z_km")):
-                # True GSE has +X towards the Sun; the model orbits use the visualizer
-                # convention with the Sun at -X, so X changes sign (Y and Z are kept).
-                pos = {"x": -override["x_km"] / 1000.0, "y": override["y_km"] / 1000.0,
-                       "z": override["z_km"] / 1000.0}
-                return pos, override.get("source", "ephemeris")
-            return find_pos(name), "HELIOS model orbit"
+                g, src = override, override.get("source", "ephemeris")
+            else:
+                try:
+                    from helios.core.spice_engine import get_spice_engine
+                    st = get_spice_engine().get_spacecraft_state(name)
+                except KeyError:
+                    return None, None
+                if not st.get("available"):
+                    return None, None
+                g, src = st["gse_coordinates"], st["position_source"]
+            return {"x": -g["x_km"] / 1000.0, "y": g["y_km"] / 1000.0, "z": g["z_km"] / 1000.0}, src
 
         pos_a, src_a = resolve(mission_a_name, position_a)
         pos_b, src_b = resolve(mission_b_name, position_b)
+        if pos_a is None or pos_b is None:
+            return None
 
         # Positions are in 1000s of km relative to Earth
         dx_km = (pos_a["x"] - pos_b["x"]) * 1000.0
@@ -313,14 +313,13 @@ class SatelliteComparator:
         # Estimate average solar wind speed in window for baseline delay
         speeds = [r["speed"] for r in telemetry_a if "speed" in r and isinstance(r["speed"], (int, float))]
         v_mean = float(np.mean(speeds)) if speeds else 450.0
-        if position_unknown:
+        spatial_baseline = None if position_unknown else cls.compute_spatial_baseline(
+            mission_a_name, mission_b_name, v_sw_mean=v_mean, position_a=position_a, position_b=position_b)
+        if spatial_baseline is None:
             spatial_baseline = {k: None for k in ("dx_km", "dy_km", "dz_km", "distance_km", "distance_re",
                                                   "theoretical_delay_min")}
-            spatial_baseline.update(v_sw_assumed_kms=None, position_unknown=position_unknown,
-                                    position_source_a=None, position_source_b=None)
-        else:
-            spatial_baseline = cls.compute_spatial_baseline(mission_a_name, mission_b_name, v_sw_mean=v_mean,
-                                                            position_a=position_a, position_b=position_b)
+            spatial_baseline.update(v_sw_assumed_kms=None, position_source_a=None, position_source_b=None,
+                                    position_unknown=position_unknown or "No ephemeris for one of the spacecraft at this time.")
 
         # Cross-calibration fidelity & coherence index (0 - 100%)
         r = metrics.get("correlation_r") or 0.0

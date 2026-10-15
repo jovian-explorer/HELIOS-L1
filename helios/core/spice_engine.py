@@ -19,6 +19,7 @@ from typing import Dict, List, Any, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from helios.core import ephemeris
 from helios.core.coordinates import geo_to_gse
 from helios.core.constants import AU_KM, R_SUN_KM
 
@@ -40,8 +41,10 @@ _log = logging.getLogger("helios.spice")
 
 def _psp_phase(engine, pos_km) -> str:
     r = np.linalg.norm(pos_km)
-    if r / engine.R_SUN_KM <= 12.0:
-        return f"Perihelion Plunge ({r / engine.R_SUN_KM:.1f} R_sun, Alfvén surface crossing)"
+    if r / engine.R_SUN_KM <= 20.0:
+        # The Alfven surface lies at about 10-20 R_sun and moves with the solar wind; the first
+        # crossing was measured at 18.8 R_sun (Kasper et al. 2021, doi:10.1103/PhysRevLett.127.255101).
+        return f"Perihelion pass ({r / engine.R_SUN_KM:.1f} R_sun, near the typical Alfvén surface height)"
     if r / engine.AU_KM >= 0.70:
         return "Aphelion turnaround (~0.73 AU near Venus orbit)"
     return "Heliocentric orbit leg (WISPR/FIELDS/SWEAP streaming)"
@@ -59,18 +62,20 @@ CONIC_TARGETS = [
         # Venus flyby of November 2024).
         "name": "Parker Solar Probe (PSP)", "orbit_type": "Inner Heliosphere Elliptic Orbit", "primary": "SUN",
         "a_au": 0.38850, "e": 0.88193, "inc": 3.391, "raan": 76.485, "argp": 68.624, "m0": 76.138,
-        "epoch": "2026-01-01T00:00:00", "phase": _psp_phase}),
+        "epoch": "2026-01-01T00:00:00", "phase": _psp_phase, "valid": ("2024-11-06", "2027-06-30")}),
     (("SOLAR_ORBITER", "SOLO"), {
         # Perihelion 0.29 AU, aphelion 0.90 AU, 12.6 deg to the ecliptic (17 deg to the solar
         # equator); valid until the Venus flyby of 24 December 2026 tilts the orbit further.
         "name": "Solar Orbiter (SolO)", "orbit_type": "Heliocentric Polar-Inclined Orbit", "primary": "SUN",
         "a_au": 0.59708, "e": 0.50732, "inc": 12.617, "raan": 322.350, "argp": 306.385, "m0": 228.292,
-        "epoch": "2026-01-01T00:00:00", "phase": "High-latitude heliospheric science orbit"}),
+        "epoch": "2026-01-01T00:00:00", "phase": "High-latitude heliospheric science orbit",
+        "valid": ("2025-02-18", "2026-12-24")}),
     (("STEREO_A", "STEREOA", "STEREO"), {
         # Period 344 d: gains about 22 deg a year on Earth (lapped it in August 2023).
         "name": "STEREO-A", "orbit_type": "Heliocentric Orbit (gaining ~22° a year on Earth)", "primary": "SUN",
         "a_au": 0.96075, "e": 0.006757, "inc": 0.128, "raan": 212.327, "argp": 77.877, "m0": 221.368,
-        "epoch": "2026-01-01T00:00:00", "phase": "Heliospheric monitor off the Sun-Earth line"}),
+        "epoch": "2026-01-01T00:00:00", "phase": "Heliospheric monitor off the Sun-Earth line",
+        "valid": ("2024-01-01", "2027-12-31")}),
     (("VENUS", "299"), {
         "name": "Venus", "orbit_type": "Planetary Orbit", "primary": "SUN",
         "a_au": 0.723332, "e": 0.00677, "inc": 3.394, "raan": 76.68, "argp": 54.88, "m0": 50.11,
@@ -89,12 +94,17 @@ CONIC_TARGETS = [
         # node and perigee precession (it was 100 deg off by 2026).
         "a_km": 384400.0, "e": 0.0549, "inc": 5.145, "raan": 125.08, "argp": 318.15, "m0": 135.0,
         "epoch": None, "phase": "Natural satellite of Earth", "lunar": True}),
-    (("GOES_16", "GOES16", "GOES"), {
-        "name": "GOES-16", "orbit_type": "Geostationary Orbit (GEO ~35,786 km alt)", "primary": "EARTH",
-        # Placed by its geographic longitude (geo_lon): a conic cannot keep it over one meridian.
-        "a_km": 42164.14, "rp_km": 42164.14, "e": 0.0001, "inc": 0.05, "raan": 0.0, "argp": 0.0, "m0": 0.0,
-        "geo_lon": -75.2,
-        "epoch": None, "phase": "Geostationary East (75.2° W) Space Weather Monitor"}),
+    # Geostationary: placed at the nominal longitude of the operational slot (a conic cannot keep
+    # a satellite over one meridian). GOES-19 is GOES-East since April 2025, GOES-18 GOES-West.
+    # GOES-16 left 75.2 W in 2025 and has no fallback.
+    (("GOES_19", "GOES19", "GOES_EAST"), {
+        "name": "GOES-19 (GOES-East)", "orbit_type": "Geostationary Orbit (GEO ~35,786 km alt)", "primary": "EARTH",
+        "a_km": 42164.14, "rp_km": 42164.14, "e": 0.0, "inc": 0.0, "raan": 0.0, "argp": 0.0, "m0": 0.0,
+        "geo_lon": -75.2, "epoch": None, "phase": "GOES-East slot, 75.2° W", "valid": ("2025-04-07", "2035-12-31")}),
+    (("GOES_18", "GOES18", "GOES_WEST"), {
+        "name": "GOES-18 (GOES-West)", "orbit_type": "Geostationary Orbit (GEO ~35,786 km alt)", "primary": "EARTH",
+        "a_km": 42164.14, "rp_km": 42164.14, "e": 0.0, "inc": 0.0, "raan": 0.0, "argp": 0.0, "m0": 0.0,
+        "geo_lon": -137.0, "epoch": None, "phase": "GOES-West slot, 137.0° W", "valid": ("2023-01-04", "2035-12-31")}),
 ]
 
 def moon_geocentric_ecliptic(t: pd.Timestamp) -> np.ndarray:
@@ -117,15 +127,31 @@ def moon_geocentric_ecliptic(t: pd.Timestamp) -> np.ndarray:
     return r * np.array([math.cos(beta) * math.cos(lam), math.cos(beta) * math.sin(lam), math.sin(beta)])
 
 
-# Schematic L1 halo orbits (amplitudes in km, period ~178 days).
-L1_HALO_IDS = ("ADITYA_L1", "ADITYAL1", "ADITYA", "DSCOVR", "ACE", "WIND", "SOHO")
-L1_HALO_SPECS = {
-    "ADITYA_L1": {"name": "Aditya-L1", "ax": 45000.0, "ay": 240000.0, "az": 150000.0, "tau_days": 177.8, "phi_y": 2.4, "phi_z": 2.4, "x_offset": -1510000.0},
-    "DSCOVR":    {"name": "DSCOVR",    "ax": 45000.0, "ay": 280000.0, "az": 160000.0, "tau_days": 180.0, "phi_y": 0.0, "phi_z": 0.5, "x_offset": -1496000.0},
-    "ACE":       {"name": "ACE",       "ax": 60000.0, "ay": 210000.0, "az": 140000.0, "tau_days": 180.0, "phi_y": 1.2, "phi_z": 1.2, "x_offset": -1480000.0},
-    "WIND":      {"name": "WIND",      "ax": 70000.0, "ay": 190000.0, "az": 120000.0, "tau_days": 182.0, "phi_y": 3.14, "phi_z": 3.14, "x_offset": -1520000.0},
-    "SOHO":      {"name": "SOHO",      "ax": 40000.0, "ay": 650000.0, "az": 200000.0, "tau_days": 178.0, "phi_y": 0.5, "phi_z": 0.5, "x_offset": -1500000.0},
+# Spacecraft whose positions come only from their ephemeris (no orbit model can stand in for
+# a halo or Lissajous orbit; the invented one was 235 000-875 000 km off).
+EPHEMERIS_ONLY = {
+    "DSCOVR": ("DSCOVR", "Sun-Earth L1 Lissajous orbit"), "ACE": ("ACE", "Sun-Earth L1 Lissajous orbit"),
+    "WIND": ("WIND", "Sun-Earth L1 Lissajous orbit"), "SOHO": ("SOHO", "Sun-Earth L1 halo orbit"),
+    "ADITYA_L1": ("Aditya-L1", "Sun-Earth L1 halo orbit"), "SWFO_L1": ("SWFO-L1 (SOLAR-1)", "Sun-Earth L1 orbit"),
+    "IMAP": ("IMAP", "Sun-Earth L1 orbit"), "GOES_16": ("GOES-16", "Geostationary Orbit"),
 }
+ALIASES = {"PSP": "PARKER_SOLAR_PROBE", "PARKER": "PARKER_SOLAR_PROBE", "SOLO": "SOLAR_ORBITER",
+           "STEREOA": "STEREO_A", "STEREO": "STEREO_A", "ADITYAL1": "ADITYA_L1", "ADITYA": "ADITYA_L1",
+           "GOES16": "GOES_16", "GOES": "GOES_19", "GOES19": "GOES_19", "GOES_EAST": "GOES_19",
+           "GOES18": "GOES_18", "GOES_WEST": "GOES_18", "SOLAR1": "SWFO_L1", "SOLAR_1": "SWFO_L1",
+           "SWFOL1": "SWFO_L1", "399": "EARTH", "301": "MOON", "299": "VENUS", "199": "MERCURY", "499": "MARS"}
+SOURCE_SPICE = "JPL Horizons / NAIF DE440s ephemeris (SPICE)"
+
+
+def canonical_id(spacecraft_id: str) -> str:
+    """Accepted name of a body; KeyError for an unknown one (it used to get a made-up position)."""
+    key = spacecraft_id.strip().upper().replace("-", "_")
+    key = ALIASES.get(key, key)
+    known = {"EARTH"} | set(EPHEMERIS_ONLY) | {ids[0] for ids, _ in CONIC_TARGETS}
+    if key not in known:
+        raise KeyError(f"Unknown body {spacecraft_id!r}; known: {', '.join(sorted(known))}")
+    return key
+
 
 class SpiceEphemerisEngine:
     """
@@ -386,31 +412,55 @@ class SpiceEphemerisEngine:
         vel = v_orb[0] * P + v_orb[1] * Q
         return pos, vel
 
+    def _ecliptic_pole_of_date(self, et: float) -> np.ndarray:
+        """North pole of the mean ecliptic of date in ECLIPJ2000 (SPICE frame ECLIPDATE)."""
+        if SPICE_AVAILABLE:
+            try:
+                with self._kernel_lock:
+                    return np.asarray(spice.pxform("ECLIPDATE", "ECLIPJ2000", et), dtype=float) @ np.array([0.0, 0.0, 1.0])
+            except SPICE_ERRORS:
+                pass
+        return np.array([0.0, 0.0, 1.0])
+
     @staticmethod
-    def _l1_halo_state(spec: Dict[str, Any], target_et: float, pos_earth: np.ndarray,
-                       vel_earth: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Schematic L1 halo orbit (amplitudes and ~180-day period from `spec`): GSE position and
-        velocity (+X toward the Sun), and the heliocentric ECLIPJ2000 state built from Earth's.
-        """
-        omega_h = 2.0 * math.pi / (spec["tau_days"] * 86400.0)
-        phase = (omega_h * target_et) % (2.0 * math.pi)
-        gse_pos = np.array([abs(spec["x_offset"]) + spec["ax"] * math.cos(2.0 * phase),
-                            spec["ay"] * math.sin(phase + spec["phi_y"]),
-                            spec["az"] * math.cos(phase + spec["phi_z"])])
-        gse_vel = np.array([-2.0 * omega_h * spec["ax"] * math.sin(2.0 * phase),
-                            omega_h * spec["ay"] * math.cos(phase + spec["phi_y"]),
-                            -omega_h * spec["az"] * math.sin(phase + spec["phi_z"])])
-        # GSE: X to the Sun, Y = -(Earth's orbital direction) (towards dusk), Z = X x Y
-        # = ecliptic north. Note u_sun x u_orbit would point to ecliptic SOUTH.
-        r_earth_mag = np.linalg.norm(pos_earth)
-        u_sun = -pos_earth / r_earth_mag
-        u_orbit = vel_earth / np.linalg.norm(vel_earth)
-        u_norm = np.cross(u_orbit, u_sun)
-        pos = pos_earth + gse_pos[0] * u_sun - gse_pos[1] * u_orbit + gse_pos[2] * u_norm
-        vel = (vel_earth * (np.linalg.norm(pos) / r_earth_mag)
-               + gse_vel[0] * u_sun - gse_vel[1] * u_orbit + gse_vel[2] * u_norm)
-        return pos, vel, gse_pos, gse_vel
+    def _cache_dir() -> Optional[str]:
+        try:
+            from helios import config
+            return str(config.CACHE_DIR)
+        except (ImportError, AttributeError):
+            return None
+
+    def _model_state(self, conic, target_et, target_iso, gse_axes, pos_earth, vel_earth, mu_sun, mu_earth):
+        """Labelled fallback: Kepler orbit, lunar series or geostationary slot -> (pos, vel, gse_pos, gse_vel)."""
+        a_km = conic["a_au"] * self.AU_KM if "a_au" in conic else conic["a_km"]
+        et_ref = self.epoch_to_et(conic["epoch"]) if conic["epoch"] else 0.0
+        if conic.get("lunar"):
+            t_utc = pd.Timestamp(target_iso)
+            pos_km = moon_geocentric_ecliptic(t_utc)
+            vel_kms = (moon_geocentric_ecliptic(t_utc + pd.Timedelta(seconds=60)) - pos_km) / 60.0
+        elif "geo_lon" in conic:
+            lon = math.radians(conic["geo_lon"])
+            t_utc = pd.Timestamp(target_iso)
+            g0, g1 = (np.array(geo_to_gse([t], a_km * math.cos(lon), a_km * math.sin(lon), 0.0)).ravel()
+                      for t in (t_utc, t_utc + pd.Timedelta(seconds=1)))
+            pos_km, vel_kms = gse_axes.T @ g0, gse_axes.T @ (g1 - g0)
+        else:
+            pos_km, vel_kms = self.compute_conics(
+                rp_km=conic.get("rp_km", a_km * (1.0 - conic["e"])), ecc=conic["e"], inc_deg=conic["inc"],
+                raan_deg=conic["raan"], argp_deg=conic["argp"], m0_deg=conic["m0"],
+                t0_et=et_ref, target_et=target_et, primary_gm=mu_earth if conic["primary"] == "EARTH" else mu_sun)
+        if conic["primary"] == "EARTH":  # geocentric: GSE by rotation, heliocentric via Earth
+            return pos_earth + pos_km, vel_earth + vel_kms, gse_axes @ pos_km, gse_axes @ vel_kms
+        return pos_km, vel_kms, np.zeros(3), np.zeros(3)
+
+    def _unavailable(self, target_id, name, orbit_type, target_iso, target_et, frame) -> Dict[str, Any]:
+        return {"spacecraft_id": target_id, "name": name, "orbit_type": orbit_type, "epoch_utc": target_iso,
+                "epoch_et": round(target_et, 3), "frame": frame.upper(), "available": False,
+                "position": None, "velocity": None, "gse_coordinates": None, "heliocentric": None,
+                "earth_relative": None, "orbital_elements": None, "position_source": None,
+                "reason": "No ephemeris for this time (offline and not cached, before launch, or not covered by "
+                          "JPL Horizons); no position is invented.",
+                "is_spice_verified": False}
 
     def get_spacecraft_state(
         self,
@@ -436,85 +486,67 @@ class SpiceEphemerisEngine:
             'MARS'
             'MERCURY'
         """
-        target_id = spacecraft_id.strip().upper().replace("-", "_")
+        target_id = canonical_id(spacecraft_id)
         target_et = self.epoch_to_et(epoch_utc)
         target_iso = self.et_to_utc(target_et)
+        when = datetime.fromisoformat(target_iso.replace("Z", "")).replace(tzinfo=timezone.utc)
         mu_sun = self.get_body_gm("10")
         mu_earth = self.get_body_gm("399")
+        cache_dir = self._cache_dir()
 
-        # Compute Earth heliocentric state (ECLIPJ2000) first for GSE referencing
+        # Earth heliocentric state (ECLIPJ2000) for the GSE axes: DE440s, else the orbit model
         t0_j2000 = 0.0  # ET 0.0 is 2000-01-01 12:00:00 TDB
         a_earth = 1.00000011 * self.AU_KM
         e_earth = 0.01671022
-        rp_earth = a_earth * (1.0 - e_earth)
-        pos_earth, vel_earth = self.compute_conics(
-            rp_km=rp_earth, ecc=e_earth, inc_deg=0.00005,
-            raan_deg=174.9, argp_deg=288.1, m0_deg=357.5,
-            t0_et=t0_j2000, target_et=target_et, primary_gm=mu_sun
-        )
+        true_earth = ephemeris.state("EARTH", when, cache_dir) if cache_dir else None
+        if true_earth is not None:
+            pos_earth, vel_earth = true_earth
+        else:
+            pos_earth, vel_earth = self.compute_conics(
+                rp_km=a_earth * (1.0 - e_earth), ecc=e_earth, inc_deg=0.00005,
+                raan_deg=174.9, argp_deg=288.1, m0_deg=357.5,
+                t0_et=t0_j2000, target_et=target_et, primary_gm=mu_sun
+            )
 
-        # GSE axes in ECLIPJ2000 (rows): X to the Sun, Z to the ecliptic north pole, Y = Z x X.
+        # GSE axes in ECLIPJ2000 (rows): X to the Sun, Z to the ecliptic north pole OF DATE
+        # (Hapgood 1992), Y = Z x X. The J2000 pole is tilted about 0.006 deg from it by 2026,
+        # 17 000 km at the distance of Mars.
         x_ax = -pos_earth / np.linalg.norm(pos_earth)
-        z_ax = np.array([0.0, 0.0, 1.0]) - x_ax[2] * x_ax
+        z_ax = self._ecliptic_pole_of_date(target_et)
+        z_ax = z_ax - (z_ax @ x_ax) * x_ax
         z_ax /= np.linalg.norm(z_ax)
         gse_axes = np.vstack([x_ax, np.cross(z_ax, x_ax), z_ax])
 
-        conic = next((c for ids, c in CONIC_TARGETS if target_id in ids), None)
+        conic = next((c for ids, c in CONIC_TARGETS if ids[0] == target_id), None)
         gse_pos_km = np.zeros(3)
         gse_vel_kms = np.zeros(3)
-        if conic is not None:
-            display_name, orbit_type, primary_body = conic["name"], conic["orbit_type"], conic["primary"]
-            semi_major_axis_km = conic["a_au"] * self.AU_KM if "a_au" in conic else conic["a_km"]
-            eccentricity, inclination_deg = conic["e"], conic["inc"]
-            et_ref = self.epoch_to_et(conic["epoch"]) if conic["epoch"] else t0_j2000
-            if conic.get("lunar"):
-                t_utc = pd.Timestamp(target_iso)
-                pos_km = moon_geocentric_ecliptic(t_utc)
-                vel_kms = (moon_geocentric_ecliptic(t_utc + pd.Timedelta(seconds=60)) - pos_km) / 60.0
-            elif "geo_lon" in conic:  # geostationary: GEO position over its longitude, rotated to GSE
-                lon = math.radians(conic["geo_lon"])
-                t_utc = pd.Timestamp(target_iso)
-                g0, g1 = (np.array(geo_to_gse([t], semi_major_axis_km * math.cos(lon),
-                                              semi_major_axis_km * math.sin(lon), 0.0)).ravel()
-                          for t in (t_utc, t_utc + pd.Timedelta(seconds=1)))
-                pos_km, vel_kms = gse_axes.T @ g0, gse_axes.T @ (g1 - g0)
-            else:
-                pos_km, vel_kms = self.compute_conics(
-                    rp_km=conic.get("rp_km", semi_major_axis_km * (1.0 - eccentricity)), ecc=eccentricity, inc_deg=inclination_deg,
-                    raan_deg=conic["raan"], argp_deg=conic["argp"], m0_deg=conic["m0"],
-                    t0_et=et_ref, target_et=target_et, primary_gm=mu_earth if primary_body == "EARTH" else mu_sun
-                )
-            if primary_body == "EARTH":  # geocentric (ecliptic) state: GSE by rotation, heliocentric via Earth
-                gse_pos_km, gse_vel_kms = gse_axes @ pos_km, gse_axes @ vel_kms
-                pos_km, vel_kms = pos_earth + pos_km, vel_earth + vel_kms
-            phase_desc = conic["phase"](self, pos_km) if callable(conic["phase"]) else conic["phase"]
-
-        elif target_id in ("EARTH", "399"):
+        geocentric = target_id in ("MOON", "GOES_16", "GOES_18", "GOES_19")
+        l1_craft = target_id in EPHEMERIS_ONLY and not geocentric
+        if target_id == "EARTH":
             display_name, orbit_type, primary_body = "Earth", "Planetary Orbit", "SUN"
             pos_km, vel_kms = pos_earth, vel_earth
-            semi_major_axis_km, eccentricity, inclination_deg = a_earth, e_earth, 0.00005
+            source = SOURCE_SPICE if true_earth is not None else "orbit model (Earth, about 50 000 km)"
             phase_desc = "Geocenter reference frame origin"
-
-        elif target_id in L1_HALO_IDS:
-            primary_body = "SUN-EARTH L1"
-            orbit_type = "Sun-Earth L1 Halo/Lissajous Orbit"
-            semi_major_axis_km = a_earth - self.L1_NOMINAL_KM
-            eccentricity = e_earth
-            inclination_deg = 0.0
-            spec = L1_HALO_SPECS["ADITYA_L1" if "ADITYA" in target_id else target_id]
-            display_name = spec["name"]
-            pos_km, vel_kms, gse_pos_km, gse_vel_kms = self._l1_halo_state(spec, target_et, pos_earth, vel_earth)
-            phase_desc = f"Active Sun-Earth L1 Halo Orbit (~{spec['tau_days']}d period)"
-
         else:
-            # Generic probe fallback: follow Earth L1 nominal
-            display_name, orbit_type, primary_body = spacecraft_id, "Heliocentric", "SUN"
-            semi_major_axis_km, eccentricity, inclination_deg = a_earth, 0.0, 0.0
-            phase_desc = "Nominal Operations"
-            pos_km = pos_earth * 0.99
-            vel_kms = vel_earth * 0.99
-            gse_pos_km = np.array([1496000.0, 0.0, 0.0])
-            gse_vel_kms = np.array([0.0, 0.0, 0.0])
+            display_name, orbit_type = (conic["name"], conic["orbit_type"]) if conic else EPHEMERIS_ONLY[target_id]
+            primary_body = "EARTH" if geocentric else ("SUN-EARTH L1" if l1_craft else "SUN")
+            true_state = ephemeris.state(target_id, when, cache_dir) if cache_dir else None
+            if true_state is not None:
+                pos_km, vel_kms = true_state
+                source = SOURCE_SPICE
+                if geocentric:
+                    gse_pos_km, gse_vel_kms = gse_axes @ (pos_km - pos_earth), gse_axes @ (vel_kms - vel_earth)
+            elif conic is not None and (not conic.get("valid")
+                                        or conic["valid"][0] <= target_iso[:10] <= conic["valid"][1]):
+                pos_km, vel_kms, gse_pos_km, gse_vel_kms = self._model_state(conic, target_et, target_iso,
+                                                                            gse_axes, pos_earth, vel_earth,
+                                                                            mu_sun, mu_earth)
+                source = ("nominal geostationary slot (no ephemeris at hand)" if "geo_lon" in conic else
+                          "orbit model (no ephemeris at hand; approximate)")
+            else:
+                return self._unavailable(target_id, display_name, orbit_type, target_iso, target_et, frame)
+            phase_desc = (conic["phase"](self, pos_km) if conic and callable(conic["phase"])
+                          else (conic["phase"] if conic else orbit_type))
 
         # GSE position and velocity relative to Earth for heliocentric bodies (computed for
         # every frame: the GSE coordinates used to be zero unless frame="GSE" was asked for).
@@ -560,9 +592,16 @@ class SpiceEphemerisEngine:
         except (ValueError, ZeroDivisionError, FloatingPointError):
             true_anomaly_deg = 0.0
 
-        # Orbital period calculation (Kepler's third law)
-        mu_for_period = mu_sun if primary_body in ("SUN", "SUN-EARTH L1") else mu_earth
-        period_days = float((2.0 * math.pi * math.sqrt((semi_major_axis_km ** 3) / mu_for_period)) / 86400.0)
+        # Osculating heliocentric elements from the state (only meaningful for bodies orbiting the
+        # Sun; L1 and Earth-orbiting craft get none: heliocentric elements were shown for them)
+        heliocentric_orbit = primary_body == "SUN"
+        if heliocentric_orbit:
+            energy = 0.5 * float(np.dot(vel_kms, vel_kms)) - mu_sun / r_sun_km
+            semi_major_axis_km = -mu_sun / (2.0 * energy) if energy < 0 else float("nan")
+            h_vec = np.cross(pos_km, vel_kms)
+            eccentricity = float(np.linalg.norm(np.cross(vel_kms, h_vec) / mu_sun - pos_km / r_sun_km))
+            inclination_deg = float(math.degrees(math.acos(max(-1.0, min(1.0, h_vec[2] / np.linalg.norm(h_vec))))))
+            period_days = float(2.0 * math.pi * math.sqrt(semi_major_axis_km ** 3 / mu_sun) / 86400.0)
 
         # Output payload
         selected_pos = gse_pos_km if frame.upper() == "GSE" else pos_km
@@ -621,9 +660,11 @@ class SpiceEphemerisEngine:
                 "perihelion_distance_km": round(semi_major_axis_km * (1.0 - eccentricity), 1),
                 "aphelion_distance_km": round(semi_major_axis_km * (1.0 + eccentricity), 1),
                 "true_anomaly_deg": round(true_anomaly_deg, 2),
-            },
+            } if heliocentric_orbit else None,
             "phase": phase_desc,
-            "is_spice_verified": self.is_spice_available,
+            "available": True,
+            "position_source": source,
+            "is_spice_verified": source == SOURCE_SPICE,
             "spice_toolkit": self.toolkit_version,
             "kernel_count": len(self._loaded_kernels),
         }
@@ -645,7 +686,9 @@ class SpiceEphemerisEngine:
                 "WIND",
                 "SOHO",
                 "STEREO_A",
-                "GOES_16",
+                "GOES_19",
+                "SWFO_L1",
+                "IMAP",
                 "EARTH",
                 "VENUS",
                 "MARS",
@@ -653,9 +696,14 @@ class SpiceEphemerisEngine:
                 "MOON",
             ]
 
-        states = {}
         for sc_id in spacecraft_ids:
-            states[sc_id] = self.get_spacecraft_state(sc_id, epoch_utc=epoch_utc, frame=frame)
+            canonical_id(sc_id)  # KeyError for an unknown name before anything is downloaded
+        # In parallel: the first request for a month downloads each spacecraft's kernel from
+        # JPL Horizons (seconds each); the SPICE calls themselves are serialised by a lock.
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = pool.map(lambda i: self.get_spacecraft_state(i, epoch_utc=epoch_utc, frame=frame), spacecraft_ids)
+        states = dict(zip(spacecraft_ids, results))
 
         return {
             "epoch_utc": self.et_to_utc(self.epoch_to_et(epoch_utc)),
@@ -674,18 +722,26 @@ class SpiceEphemerisEngine:
         epoch_utc: Optional[str] = None
     ) -> List[Dict[str, float]]:
         """
-        Generates 3D trajectory track points over one full orbital period.
-        Useful for rendering orbit trails in 2D/3D visualizers.
+        Track points of a body from its ephemeris: one orbital period from the epoch for bodies
+        orbiting the Sun, 180 days centred on it for L1 spacecraft, one day for Earth orbiters.
+        Times without a position are left out.
         """
         base_state = self.get_spacecraft_state(spacecraft_id, epoch_utc=epoch_utc)
-        period_days = base_state["orbital_elements"]["orbital_period_days"]
-        t_start = base_state["epoch_et"]
-        t_span = period_days * 86400.0
+        t_start = self.epoch_to_et(epoch_utc)
+        elements = base_state.get("orbital_elements")
+        if elements and math.isfinite(elements["orbital_period_days"]):
+            t_from, t_span = t_start, elements["orbital_period_days"] * 86400.0
+        elif base_state.get("primary_body") == "EARTH":
+            t_from, t_span = t_start, 86400.0
+        else:
+            t_from, t_span = t_start - 90 * 86400.0, 180 * 86400.0
 
         points = []
         for i in range(num_points):
-            t_curr = t_start + (i / max(1, num_points - 1)) * t_span
+            t_curr = t_from + (i / max(1, num_points - 1)) * t_span
             st = self.get_spacecraft_state(spacecraft_id, epoch_utc=t_curr, frame="ECLIPJ2000")
+            if not st.get("available"):
+                continue
             points.append({
                 "x_km": st["position"]["x_km"],
                 "y_km": st["position"]["y_km"],

@@ -2936,7 +2936,7 @@ function toggleOrbitSat(key, visible) {
 
 function toggleAllOrbitSatellites(visible) {
   if (orbitViewer) orbitViewer.toggleAllSatellites(visible);
-  ['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'GOES_16', 'STEREO_A'].forEach(k => {
+  ['DSCOVR', 'ACE', 'ADITYA_L1', 'WIND', 'SOHO', 'SWFO_L1', 'IMAP', 'GOES_19'].forEach(k => {
     const chk = document.getElementById(`orbit-chk-${k}`);
     if (chk) chk.checked = visible;
   });

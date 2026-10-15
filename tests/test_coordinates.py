@@ -4,6 +4,8 @@ GSM components published by NASA in the OMNI 1-minute data set (OMNI_HRO_1MIN, v
 retrieved from CDAWeb). OMNI derives its GSM By/Bz from the GSE components, rounded to
 0.01 nT, so the transform must reproduce them to that rounding.
 """
+import os
+
 import numpy as np
 import pytest
 
@@ -91,7 +93,8 @@ def test_leading_l4_and_stereo_a_are_on_the_minus_y_side_of_gse():
     from helios.core.orbital_mechanics import OrbitalMechanics
     lp = OrbitalMechanics.get_lagrange_points()
     assert lp["L4"]["y_mkm"] < 0 < lp["L5"]["y_mkm"]
-    assert all(p["y"] < 0 for p in OrbitalMechanics.get_satellite_orbits()["STEREO_A"]["path"])
+    from helios.core.spice_engine import get_spice_engine
+    assert get_spice_engine().get_spacecraft_state("STEREO_A", epoch_utc="2026-10-10")["gse_coordinates"]["y_km"] < -1e8
 
 
 @pytest.mark.parametrize("craft, horizons_km", [
@@ -111,15 +114,15 @@ def test_goes_and_heliocentric_spacecraft_have_real_gse_positions():
     from helios.core.orbital_mechanics import OrbitalMechanics
     from helios.core.spice_engine import get_spice_engine
     eng = get_spice_engine()
-    # 17:00 UT is about local noon at 75.2 W: GOES is on the dayside, +X in GSE.
-    goes = eng.get_spacecraft_state("GOES_16", epoch_utc="2026-10-10T17:00:00")["gse_coordinates"]
+    # 17:00 UT is about local noon at 75.2 W: GOES-19 (GOES-East) is on the dayside, +X in GSE.
+    goes = eng.get_spacecraft_state("GOES_19", epoch_utc="2026-10-10T17:00:00")["gse_coordinates"]
     assert goes["x_km"] > 41000 and np.hypot(goes["y_km"], goes["z_km"]) < 6000
     # Heliocentric craft: GSE no longer zero in the default frame.
     sta = eng.get_spacecraft_state("STEREO_A", epoch_utc="2026-10-10T00:00:00")["gse_coordinates"]
     assert sta["y_km"] < -1e8
     orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc="2026-10-10T17:00:00")
-    assert orbits["GOES_16"]["current_pos"]["x"] < -41  # visualizer convention: Sun at -X
-    assert orbits["STEREO_A"]["current_pos"]["y"] < -1e5 and orbits["STEREO_A"]["display_pos"]["y"] < 0
+    assert orbits["GOES_19"]["current_pos"]["x"] < -41  # visualizer convention: Sun at -X
+    assert "STEREO_A" not in orbits  # an AU away: shown in the heliosphere view, not around L1
 
 
 def test_moon_matches_horizons():
@@ -135,5 +138,34 @@ def test_moon_matches_horizons():
 def test_orbit_positions_say_where_they_come_from():
     from helios.core.orbital_mechanics import OrbitalMechanics
     orbits = OrbitalMechanics.get_satellite_orbits(epoch_utc="2026-10-10T00:00:00")
-    assert "Schematic L1 halo" in orbits["DSCOVR"]["position_note"]
-    assert "Horizons" in orbits["STEREO_A"]["position_note"] and "75.2" in orbits["GOES_16"]["position_note"]
+    assert all("Horizons" in orbits[k]["position_note"] for k in ("DSCOVR", "SOHO", "ADITYA_L1", "GOES_19"))
+    # A time without an ephemeris gives no position (it used to be an invented halo orbit).
+    late = OrbitalMechanics.get_satellite_orbits(epoch_utc="2026-12-20T00:00:00")
+    assert late["DSCOVR"]["current_pos"] is None and "no position is invented" in late["DSCOVR"]["position_note"]
+
+
+@pytest.mark.skipif(os.environ.get("HELIOS_NETWORK_TESTS") != "1", reason="network test (HELIOS_NETWORK_TESTS=1)")
+@pytest.mark.parametrize("epoch", ["2024-05-10T12:31:00", "2024-11-06T03:17:00", "2026-10-10T06:41:00"])
+def test_positions_match_horizons(epoch, tmp_path):
+    """Every body against independent JPL Horizons vectors (heliocentric, ecliptic J2000): < 1 km.
+    The orbit models were 4-110 deg (PSP), 56 deg (Solar Orbiter) and 235 000-875 000 km (L1) off."""
+    import json
+    import re
+    import urllib.parse
+    import urllib.request
+    from datetime import datetime, timezone
+    from helios.core import ephemeris
+    t = datetime.fromisoformat(epoch).replace(tzinfo=timezone.utc)
+    checked = 0
+    for body, naif in ephemeris.NAIF_IDS.items():
+        mine = ephemeris.state(body, t, str(tmp_path))
+        if mine is None:
+            continue  # e.g. before launch: no position, which is the point
+        q = urllib.parse.urlencode({"format": "json", "COMMAND": f"'{naif if body != 'MARS' else '4'}'", "EPHEM_TYPE": "VECTORS",
+                                    "CENTER": "'500@10'", "REF_PLANE": "ECLIPTIC", "REF_SYSTEM": "J2000", "VEC_TABLE": "1",
+                                    "OUT_UNITS": "KM-S", "TLIST": f"'{t:%Y-%m-%d %H:%M:%S}'", "TIME_TYPE": "UT", "VEC_CORR": "NONE"})
+        r = json.load(urllib.request.urlopen("https://ssd.jpl.nasa.gov/api/horizons.api?" + q, timeout=120))["result"]
+        ref = np.array([float(v) for v in re.findall(r"[XYZ] =\s*([-+0-9.E]+)", re.search(r"\$\$SOE(.*?)\$\$EOE", r, re.S).group(1))[:3]])
+        assert np.linalg.norm(mine[0] - ref) < 1.0, body
+        checked += 1
+    assert checked >= 10
