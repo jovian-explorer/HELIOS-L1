@@ -2459,16 +2459,13 @@ async def export_custom_telemetry(export_format: str):
 
 @app.get("/api/solar_cycle")
 async def get_solar_cycle(year: Optional[float] = Query(None, ge=2019.9, le=2031.0)):
-    """Observed cycle 25 indices and NOAA's predicted cycle; the analytic model only when NOAA is unreachable."""
+    """Observed cycle 25 indices and NOAA's predicted cycle (a bundled copy when NOAA is unreachable)."""
     observed, predicted = await asyncio.gather(
         downloader.fetch_json(NOAA_SWPC_ENDPOINTS["solar_cycle_observed"], "solar_cycle_observed"),
         downloader.fetch_json(NOAA_SWPC_ENDPOINTS["solar_cycle_predicted"], "solar_cycle_predicted"))
     res = SolarCycleEngine.from_noaa(observed if isinstance(observed, list) else None,
                                      predicted if isinstance(predicted, list) else None, current_year_float=year)
-    if res is not None:
-        return res
-    cur_year = year if year is not None else (datetime.now(timezone.utc).year + datetime.now(timezone.utc).timetuple().tm_yday / 365.25)
-    return SolarCycleEngine.calculate_cycle_25_progression(current_year_float=cur_year)
+    return res if res is not None else SolarCycleEngine.bundled(year)
 
 @app.get("/api/ionosphere/absorption")
 async def get_ionospheric_absorption(

@@ -32,6 +32,7 @@ a = Analysis(
         (str(PKG / "data" / "icme_richardson_cane.json"), "helios/data"),
         (str(PKG / "data" / "ipshocks_l1.json"), "helios/data"),
         (str(PKG / "data" / "omni_events.json.gz"), "helios/data"),
+        (str(PKG / "data" / "solar_cycle.json.gz"), "helios/data"),
         *_solar_metadata,
         # cdflib reads its leap-second table (CDFLeapSeconds.txt) at run time (STEREO-A beacon)
         *collect_data_files("cdflib"),

@@ -380,7 +380,7 @@ def test_scientific_references_and_data_provenance():
 
 def test_solar_cycle_progression():
     from helios.core.solar_cycle import SolarCycleEngine
-    prog = SolarCycleEngine.calculate_cycle_25_progression(2024.75)
+    prog = SolarCycleEngine.bundled(2024.75)
     assert prog["solar_cycle"] == 25
     assert prog["smoothed_sunspot_number"] > 140.0
     assert prog["f107_radio_flux_sfu"] > 150.0

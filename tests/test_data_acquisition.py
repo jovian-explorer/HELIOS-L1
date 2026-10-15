@@ -418,7 +418,7 @@ def test_unexpected_errors_answer_json(monkeypatch):
 
     def boom(*a, **k):
         raise RuntimeError("solver diverged")
-    monkeypatch.setattr(server.SolarCycleEngine, "calculate_cycle_25_progression", boom)
+    monkeypatch.setattr(server.SolarCycleEngine, "bundled", boom)
     r = TestClient(server.app, base_url=LOCAL, raise_server_exceptions=False).get("/api/solar_cycle")
     assert r.status_code == 500
     assert r.json()["detail"] == "Internal error in /api/solar_cycle: RuntimeError: solver diverged"
@@ -452,12 +452,15 @@ def test_solar_cycle_uses_noaa_observed_indices(monkeypatch):
     assert early["peak_month"] == "2021-12" and early["current_phase"] == "Ascending phase"  # not the 2024 peak
 
 
-def test_solar_cycle_offline_is_labelled_model():
+def test_solar_cycle_offline_is_the_bundled_noaa_copy():
+    """Offline it was a sin^2/exp curve peaking at 172 in 2024.75; it is NOAA's data bundled with
+    the app now: smoothed peak 160.9 in October 2024 (SILSO), cycle 24 comparison included."""
     from fastapi.testclient import TestClient
     from helios.api import server
-    sc = TestClient(server.app, base_url=LOCAL).get("/api/solar_cycle").json()
-    assert sc["data_kind"] == "model" and "approximation" in sc["source"]
-    assert all(t["cycle_24_comparison_ssn"] is None for t in sc["timeline"])
+    sc = TestClient(server.app, base_url=LOCAL).get("/api/solar_cycle?year=2026.5").json()
+    assert sc["data_kind"] == "observed" and "bundled" in sc["source"]
+    assert sc["peak_sunspot_number"] == 160.9 and sc["peak_month"] == "2024-10"
+    assert any(t["cycle_24_comparison_ssn"] for t in sc["timeline"])
 
 
 def test_compare_imported_file_uses_archive_for_its_interval(monkeypatch):
