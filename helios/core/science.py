@@ -421,36 +421,6 @@ class SpaceWeatherPhysics:
         }
 
     @staticmethod
-    def auroral_electrojet_ae(speed_kms: float, by_gsm_nt: float, bz_gsm_nt: float) -> Dict[str, Any]:
-        """
-        Rough auroral electrojet (AE in nT) proxy from the Newell universal coupling:
-        AE ≈ 0.048 * (dPhi/dt)^0.85 + 25  [nT]
-        This scaling is HELIOS-L1's own, not a published fit (no source was found for it);
-        observed AE comes from OMNI (archive and storm indices).
-        """
-        dphi = SpaceWeatherPhysics.newell_coupling(speed_kms, by_gsm_nt, bz_gsm_nt)
-        if dphi > 0:
-            ae = 0.048 * (dphi ** 0.85) + 25.0
-        else:
-            ae = 25.0
-        ae = max(20.0, min(2500.0, ae))
-
-        if ae >= 1000.0:
-            status = "EXTREME (Major Magnetospheric Substorm Activity)"
-        elif ae >= 500.0:
-            status = "SUBSTORM (Active Auroral Electrojet Currents)"
-        elif ae >= 250.0:
-            status = "UNSETTLED (Minor Electrojet Enhancements)"
-        else:
-            status = "QUIET (Nominal High-Latitude Currents)"
-
-        return {
-            "ae_index_nt": round(float(ae), 1),
-            "newell_coupling_dphi": round(float(dphi), 1),
-            "substorm_status": status
-        }
-
-    @staticmethod
     def convective_electric_field(speed_kms: float, bz_gsm_nt: float) -> float:
         """
         Calculate solar wind dawn-to-dusk convective electric field E_y (mV/m):

@@ -1170,7 +1170,7 @@ PARAMETER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "unit": "nT",
         "nominal_range": "< 150 nT (Quiet Auroral Oval)",
         "disturbed_range": "> 500 nT (Substorm Injection), > 1000 nT (Major Magnetospheric Substorm)",
-        "formula": "Observed: OMNI 1-min AE (WDC Kyoto). Sandbox proxy: AE ~ 0.048 * (dPhi/dt)^0.85 + 25 nT (rough HELIOS-L1 scaling, not a published fit)",
+        "formula": "Observed: OMNI 1-min AE (WDC Kyoto); HELIOS-L1 does not estimate AE",
         "instrument": "Kyoto WDC Auroral Magnetometer Chain (12 High-Latitude Stations)",
         "description": "Global quantitative measure of auroral zone magnetic activity produced by enhanced eastward and westward ionospheric electrojet currents flowing at ~100 km altitude.",
         "doi": "10.1029/2006JA012015"

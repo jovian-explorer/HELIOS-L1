@@ -3998,9 +3998,6 @@ function computeSandboxPhysics(p) {
   let phi_pc = (1e-4 * Math.pow(vsw, 2)) + (11.7 * bt * Math.pow(Math.sin(theta / 2.0), 3));
   phi_pc = Math.max(15.0, Math.min(280.0, phi_pc));
 
-  // AE proxy (nT): rough HELIOS-L1 scaling of the Newell coupling, not a published fit
-  const ae = Math.max(20.0, Math.min(2500.0, 0.048 * Math.pow(dphi, 0.85) + 25.0));
-
   // Convective electric field Ey (mV/m)
   const ey = -vsw * bz * 1e-3;
 
@@ -4018,7 +4015,6 @@ function computeSandboxPhysics(p) {
     akasofu_gw,
     dphi,
     phi_pc,
-    ae,
     ey,
     inside_geo: mp_r0 < 6.6,
     inside_geo_shue97: shue97_r0 < 6.6
@@ -4201,11 +4197,10 @@ function renderSandboxTab(container) {
               <p class="text-[10px] text-slate-500 font-mono">Boyle et al. (1997) transpolar drop</p>
             </div>
 
-            <!-- AE & Convective Electric Field -->
+            <!-- Convective Electric Field -->
             <div class="bg-space-950/80 p-3 rounded-lg border border-slate-800 space-y-1">
-              <div class="text-[10px] font-bold text-slate-400 font-mono">Auroral Electrojet &amp; E_y Field</div>
+              <div class="text-[10px] font-bold text-slate-400 font-mono">Convective Electric Field E_y</div>
               <div class="space-y-0.5 text-[11px] font-mono text-slate-300">
-                <div title="Rough HELIOS-L1 scaling of the Newell coupling, not a published fit; observed AE is in the OMNI archive data">AE Proxy (rough): <strong id="sbx-ae" class="${res.ae >= 500 ? 'text-amber-400 font-bold' : 'text-slate-200'}">${res.ae.toFixed(0)} nT</strong></div>
                 <div>E_y Convective: <strong id="sbx-ey" class="${res.ey > 0 ? 'text-rose-400' : 'text-emerald-400'}">${res.ey > 0 ? '+' : ''}${res.ey.toFixed(2)} mV/m</strong></div>
               </div>
             </div>
@@ -4304,12 +4299,6 @@ function onSandboxParamChange(param, val) {
   if (elPhi) {
     elPhi.innerText = `${res.phi_pc.toFixed(1)} kV`;
     elPhi.className = `text-lg font-bold font-hud ${res.phi_pc >= 90 ? 'text-rose-400' : 'text-indigo-300'}`;
-  }
-
-  const elAe = document.getElementById('sbx-ae');
-  if (elAe) {
-    elAe.innerText = `${res.ae.toFixed(0)} nT`;
-    elAe.className = res.ae >= 500 ? 'text-amber-400 font-bold' : 'text-slate-200';
   }
 
   const elEy = document.getElementById('sbx-ey');

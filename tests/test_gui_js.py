@@ -190,7 +190,6 @@ def test_sandbox_calculator_matches_python_physics(p):
         "akasofu_gw": (S.akasofu_epsilon(v, b, by, bz), 1e-6),
         "dphi": (S.newell_coupling(v, by, bz), 1e-6),
         "phi_pc": (S.polar_cap_potential(v, by, bz, b_total_nt=b)["polar_cap_potential_kv"], 0.06),
-        "ae": (S.auroral_electrojet_ae(v, by, bz)["ae_index_nt"], 0.06),
         "ey": (S.convective_electric_field(v, bz), 0.006),
     }
     for key, (want, tol) in expected.items():

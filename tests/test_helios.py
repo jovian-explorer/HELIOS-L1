@@ -518,15 +518,6 @@ def test_geospace_coupling_and_wave_dynamics():
     assert phi_storm["polar_cap_potential_kv"] >= 140.0
     assert "CRITICAL" in phi_storm["convection_state"]
 
-    # 6. Auroral Electrojet proxy via Newell
-    ae_quiet = SpaceWeatherPhysics.auroral_electrojet_ae(speed_kms=350.0, by_gsm_nt=1.0, bz_gsm_nt=5.0)
-    assert ae_quiet["ae_index_nt"] < 150.0
-    assert "QUIET" in ae_quiet["substorm_status"]
-
-    ae_storm = SpaceWeatherPhysics.auroral_electrojet_ae(speed_kms=900.0, by_gsm_nt=15.0, bz_gsm_nt=-25.0)
-    assert ae_storm["ae_index_nt"] >= 500.0
-    assert "SUBSTORM" in ae_storm["substorm_status"] or "EXTREME" in ae_storm["substorm_status"]
-
     # 7. Convective electric field
     ey_north = SpaceWeatherPhysics.convective_electric_field(speed_kms=400.0, bz_gsm_nt=5.0)
     assert ey_north < 0  # Northward Bz suppresses convection
@@ -542,7 +533,7 @@ def test_geospace_coupling_and_wave_dynamics():
     assert "wave_speeds" in data
     assert "mach_numbers" in data
     assert "polar_cap_potential" in data
-    assert "auroral_electrojet" in data
+    assert "auroral_electrojet" not in data  # the AE proxy (half the observed AE in March 2015) was removed
     assert "akasofu_epsilon_gw" in data
     assert "convective_efield_mvm" in data
     assert data["convective_efield_mvm"] > 0
