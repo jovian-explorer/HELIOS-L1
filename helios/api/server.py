@@ -1837,7 +1837,7 @@ async def get_events():
         {"id": "quebec_1989", "title": "Hydro-Québec Blackout (March 1989)", "severity": "Extreme G5 (Dst -589)", "icon": "fa-plug-circle-xmark", "badge_color": "#a44e4e"},
         {"id": "carrington_1859", "title": "Carrington Event (September 1859)", "severity": "Superstorm (Dst <-850)", "icon": "fa-meteor", "badge_color": "#4f77a3"},
         {"id": "st_patricks_2015", "title": "St. Patrick's Day Storm (March 2015)", "severity": "Severe G4 (Kp=8-)", "icon": "fa-cloud-bolt", "badge_color": "#b98f3f"},
-        {"id": "quiet_baseline", "title": "Quiet Sun Solar Wind Baseline", "severity": "Quiet G0 (Kp=1)", "icon": "fa-sun", "badge_color": "#529b6e"}
+        {"id": "quiet_baseline", "title": "Quiet Sun Solar Wind Baseline", "severity": "Quiet G0 (Kp 1-)", "icon": "fa-sun", "badge_color": "#529b6e"}
     ]
 
 @app.get("/api/event/{event_id}")

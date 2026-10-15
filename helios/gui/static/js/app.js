@@ -2563,11 +2563,10 @@ async function selectEvent(eventId) {
     const evProv = ev.provenance || {};
     const obs = meta.observed_5min;
     document.getElementById('event-desc').innerText = meta.summary +
-      `\n\nData: ${evProv.kind === 'observed' ? 'OBSERVED' : 'SYNTHETIC'}. ${evProv.description || ''}` +
-      (obs ? ` The cards show the OMNI 5-min extremes of these 48 h${obs.min_sym_h !== null && obs.min_sym_h !== undefined ? ` (minimum SYM-H ${obs.min_sym_h} nT)` : ''} and the published peak Kp.`
-           : ' The cards show the values the illustrative profile was built from and the published peak Kp.');
-    // Observed OMNI extremes when the event is covered, otherwise the profile's input values
-    const ext = obs || meta;
+      `\n\nData: ${evProv.kind === 'observed' ? 'OBSERVED' : 'NONE'}. ${evProv.description || ''}` +
+      (obs ? ` The cards show the OMNI 5-min extremes of this interval${obs.min_sym_h !== null && obs.min_sym_h !== undefined ? ` (minimum SYM-H ${obs.min_sym_h} nT)` : ''} and the published peak Kp.`
+           : ' The cards show the published peak Kp.');
+    const ext = obs || {};
     const fmt = (v, unit) => (v === null || v === undefined ? `--- ${unit}` : `${v} ${unit}`);
     document.getElementById('event-peak-kp').innerText = meta.peak_kp;
     document.getElementById('event-min-bz').innerText = fmt(ext.min_bz, 'nT');

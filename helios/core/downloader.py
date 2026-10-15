@@ -17,7 +17,9 @@ import re
 import math
 import random
 import asyncio
+import gzip
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 import httpx
 
@@ -25,7 +27,7 @@ from helios.config import CACHE_DIR, NOAA_SWPC_ENDPOINTS, MISSIONS
 from helios.core.cache import cached_text
 from helios.core.science import SpaceWeatherPhysics
 from helios.core.aurora_model import AuroralModel
-from helios.core.coverage import records_coverage
+from helios.core.coverage import describe as describe_coverage, records_coverage
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER, INDEX_COLUMNS, ArchiveClient, frame_to_records
 from helios.core.omni_statistics import OmniHourlyClient
 from helios.core.event_analysis import EventDataClient
@@ -118,14 +120,22 @@ class UnknownEventError(LookupError):
     """No historical event with that id."""
 
 
-# UTC windows (48 h around the shock arrival) for historical events covered by OMNI.
+# UTC windows for the historical events covered by OMNI: 48 h around the shock arrival;
+# Halloween 2003 runs to 31 Oct 06 UT to include the second CME and the Dst minimum
+# (-383 nT at 22 UT on 30 Oct); the quiet baseline is 6-8 Dec 2019 (GFZ Kp <= 1- throughout).
 EVENT_WINDOWS = {
     "may_2024_g5": ("2024-05-10 06:00", "2024-05-12 06:00"),
     "st_patricks_2015": ("2015-03-16 12:00", "2015-03-18 12:00"),
-    "halloween_2003": ("2003-10-28 12:00", "2003-10-30 12:00"),
+    "halloween_2003": ("2003-10-28 12:00", "2003-10-31 06:00"),
     "bastille_2000": ("2000-07-14 12:00", "2000-07-16 12:00"),
     "quebec_1989": ("1989-03-12 12:00", "1989-03-14 12:00"),
+    "quiet_baseline": ("2019-12-06 12:00", "2019-12-08 12:00"),
 }
+
+# The same OMNI intervals as fetched from CDAWeb (scripts/update_omni_events.py), used offline.
+OMNI_SNAPSHOT = Path(__file__).resolve().parent.parent / "data" / "omni_events.json.gz"
+SNAPSHOT_COLUMNS = ["time_tag", "density", "speed", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt",
+                    "bx_gse", "by_gse", "bz_gse", "sym_h", "asy_h", "ae", "al", "au"]
 
 
 def _num(value) -> Optional[float]:
@@ -1000,136 +1010,82 @@ class DataDownloader:
 
     async def get_historical_event(self, event_id: str) -> Dict[str, Any]:
         """
-        Load famous historical space weather events:
-        - 'may_2024_g5': The historic May 10-12, 2024 Extreme G5 Solar Superstorm
-        - 'st_patricks_2015': March 17, 2015 G4 Severe Geomagnetic Storm
-        - 'halloween_2003': October 2003 Solar Storms (X17+ flare and CME)
-        - 'quiet_baseline': Low solar activity calibration baseline
-
-        Events covered by OMNI (EVENT_WINDOWS) return 48 h of real OMNI data as 5-minute
-        means, with the observed extremes in metadata["observed_5min"]. Otherwise (no
-        OMNI data, archive unreachable, Carrington 1859, quiet baseline) an illustrative
-        synthetic profile is returned, labelled so. For OMNI events the profile peaks below
-        are the OMNI 5-minute extremes (checked 2026-10-04); for March 1989, 1859 and the
-        quiet baseline they are illustrative inputs. peak_kp is the published maximum Kp.
+        A historical space weather event: OMNI 5-minute means of its interval (EVENT_WINDOWS)
+        from NASA CDAWeb, or the same data bundled with HELIOS-L1 when CDAWeb cannot be
+        reached; the extremes in metadata["observed_5min"] come from those data. Carrington
+        1859 has no measurements, so it has no time series. peak_kp is the published maximum.
         """
         descriptions = {
             "may_2024_g5": {
                 "title": "May 10-12, 2024 Extreme G5 Solar Superstorm",
-                "summary": "Strongest geomagnetic storm in over 20 years. Driven by multiple coronal mass ejections (CMEs) from Active Region 3664. In OMNI (5-min) Bz reached -44 nT and the speed about 1020 km/s; planetary Kp reached 9. Aurora visible at low latitudes.",
+                "summary": "Strongest geomagnetic storm in over 20 years. Driven by multiple coronal mass ejections (CMEs) from Active Region 3664. Planetary Kp reached 9. Aurora visible at low latitudes.",
                 "peak_kp": 9.0,
-                "min_bz": -44.3,
-                "peak_speed": 1023.0,
-                "peak_dyn_pressure": 48.3
             },
             "st_patricks_2015": {
                 "title": "St. Patrick's Day Storm (March 17, 2015)",
-                "summary": "Classic two-step severe G4 geomagnetic storm. Sudden impulse occurred when interplanetary shock reached L1, followed by sustained southward Bz (OMNI 5-min minimum -25 nT, speed up to about 630 km/s). Kp reached 8-.",
+                "summary": "Classic two-step severe G4 geomagnetic storm. Sudden impulse when the interplanetary shock reached Earth, followed by sustained southward Bz. Kp reached 8-.",
                 "peak_kp": 7.67,
-                "min_bz": -24.7,
-                "peak_speed": 631.0,
-                "peak_dyn_pressure": 24.3
             },
             "halloween_2003": {
                 "title": "Halloween Solar Storms (October 2003)",
-                "summary": "Extreme series of solar flares including an X17+ eruption from NOAA Region 486. Extreme radiation storm and multiple CMEs severely impacting satellites and power grids.",
+                "summary": "Extreme series of solar flares including an X17+ eruption from NOAA Region 486, and two fast CMEs (shocks on 29 and 30 October). The OMNI plasma record has a long gap while the solar wind instruments were saturated, so the peak speeds (about 1900-2000 km/s, Skoug et al. 2004) are missing from these data.",
                 "peak_kp": 9.0,
-                "min_bz": -28.5,
-                "peak_speed": 1114.0,
-                "peak_dyn_pressure": 12.5
             },
             "bastille_2000": {
                 "title": "Bastille Day Superstorm (July 14, 2000)",
-                "summary": "Major solar eruptive event during Solar Cycle 23 maximum. An X5.7 flare accompanied a full-halo CME (1674 km/s in the SOHO/LASCO CDAW catalogue; about 1140 km/s at L1 in OMNI). Triggered an S4 severe solar radiation storm (>=10 MeV protons peaking at 24,000 pfu on 15 July, NOAA SWPC event list) which blinded SOHO star trackers and degraded geostationary solar panels. Dst plunged to -301 nT.",
+                "summary": "Major solar eruptive event during Solar Cycle 23 maximum. An X5.7 flare accompanied a full-halo CME (1674 km/s in the SOHO/LASCO CDAW catalogue). Triggered an S4 severe solar radiation storm (>=10 MeV protons peaking at 24,000 pfu on 15 July, NOAA SWPC event list) which blinded SOHO star trackers and degraded geostationary solar panels. Dst plunged to -301 nT.",
                 "peak_kp": 9.0,
-                "min_bz": -58.8,
-                "peak_speed": 1136.0,
-                "peak_dyn_pressure": 41.8
             },
             "quebec_1989": {
                 "title": "Hydro-Québec Blackout Superstorm (March 13, 1989)",
-                "summary": "Archetypal power grid collapse event. A powerful CME triggered geomagnetically induced currents (GIC) that saturated substation transformers, tripping protective relays within 92 seconds and leaving 6 million people without electricity for 9 hours.",
+                "summary": "Archetypal power grid collapse event. A powerful CME triggered geomagnetically induced currents (GIC) that saturated substation transformers, tripping protective relays within 92 seconds and leaving 6 million people without electricity for 9 hours. No spacecraft measured the solar wind during the storm: OMNI has only the ring current index (SYM-H).",
                 "peak_kp": 9.0,
-                "min_bz": -50.0,
-                "peak_speed": 950.0,
-                "peak_dyn_pressure": 42.0
             },
             "carrington_1859": {
                 "title": "Carrington Superstorm Event (September 1859)",
-                "summary": "The archetypal space weather superstorm. White-light solar flare witnessed on Sep 1; ultra-fast CME traversed 1 AU in just 17.6 hours with initial speed exceeding ~2,300 km/s. Induced geoelectric currents sparked telegraph lines across Europe and North America; auroras observed in Hawaii, Cuba, and Colombia.",
+                "summary": "The archetypal space weather superstorm. White-light solar flare witnessed on 1 September; the storm began about 17.6 hours later, a mean Sun-Earth speed near 2360 km/s. Telegraph lines failed across Europe and North America; auroras were seen in Hawaii, Cuba and Colombia. No solar wind measurements exist, so there is no time series; Kp did not exist (the storm is placed beyond Kp 9).",
                 "peak_kp": 9.0,
-                "min_bz": -90.0,
-                "peak_speed": 2300.0,
-                "peak_dyn_pressure": 96.0
             },
             "quiet_baseline": {
                 "title": "Quiet Sun Solar Wind Baseline",
-                "summary": "Nominal slow solar wind stream. Constant speed around 340 km/s, density ~4 cm^-3, IMF Bz fluctuating near 0 nT. Magnetopause stable at 10.5 Earth radii.",
-                "peak_kp": 1.0,
-                "min_bz": -0.8,
-                "peak_speed": 340.0,
-                "peak_dyn_pressure": 1.6
-            }
+                "summary": "Two quiet days at solar minimum, 6-8 December 2019: slow solar wind, weak field, GFZ Kp 1- or lower throughout.",
+                "peak_kp": 0.67,
+            },
         }
 
         if event_id not in descriptions:  # used to answer with the May 2024 storm
             raise UnknownEventError(event_id)
-        event_meta = descriptions[event_id]
+        event_meta = dict(descriptions[event_id])
+        if event_id not in EVENT_WINDOWS:
+            return {"metadata": event_meta, "telemetry": [], "records": [], "satellite": None, "shocks": [],
+                    "dst_comparison": None,
+                    "provenance": {"kind": "none", "time_standard": "UTC",
+                                   "description": "No spacecraft data exist for this event."}}
 
-        # Real data first: OMNI 1-minute data (5-minute means) for events since 1981 that it covers.
-        if event_id in EVENT_WINDOWS:
-            start, end = (datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in EVENT_WINDOWS[event_id])
-            arch = await self.get_archive_bundle("OMNI", start, end, cadence_minutes=5)
-            telemetry = arch["records"]
-            if telemetry:
-                observed = {}
-                for key, fn in (("min_bz", min), ("peak_speed", max), ("peak_dyn_pressure", max)):
-                    field = {"min_bz": "bz_gsm", "peak_speed": "speed", "peak_dyn_pressure": "dynamic_pressure"}[key]
-                    vals = [r[field] for r in telemetry if r.get(field) is not None]
-                    observed[key] = round(fn(vals), 2) if vals else None
-                sym = [r["sym_h"] for r in telemetry if r.get("sym_h") is not None]
-                observed["min_sym_h"] = round(min(sym), 1) if sym else None
-                return {
-                    "metadata": dict(event_meta, observed_5min=observed),
-                    "provenance": arch["provenance"],
-                    "dst_comparison": AuroralModel.compare_dst_models(telemetry) if sym else None,
-                    "telemetry": telemetry,
-                    "records": telemetry,
-                    "satellite": "OMNI",
-                    "shocks": SpaceWeatherPhysics.detect_interplanetary_shocks(telemetry)
-                }
-            omni_note = " " + arch["provenance"]["description"]
-        else:
-            omni_note = " No spacecraft data exist for this event in OMNI." if event_id == "carrington_1859" else ""
-
-        # Generate event time-series profile
-        hours = 48
-        condition = "cme_shock" if any(yr in event_id for yr in ["2024", "2003", "2000", "1859", "1989"]) else ("storm" if "2015" in event_id else "quiet")
-        telemetry = self.generate_synthetic_telemetry("DSCOVR", hours=hours, condition=condition)
-
-        # Inject storm profile signature
-        if condition in ("cme_shock", "storm"):
-            shock_idx = len(telemetry) // 3
-            for i in range(shock_idx, len(telemetry)):
-                factor = math.exp(-(i - shock_idx) / 80.0)
-                telemetry[i]["speed"] = round(telemetry[i]["speed"] + (event_meta["peak_speed"] - 400.0) * factor, 1)
-                telemetry[i]["bz_gsm"] = round(event_meta["min_bz"] * factor + (1 - factor) * telemetry[i]["bz_gsm"], 2)
-                telemetry[i]["bt"] = round(max(abs(telemetry[i]["bz_gsm"]) * 1.15, telemetry[i]["bt"]), 2)
-                p_dyn = SpaceWeatherPhysics.dynamic_pressure(telemetry[i]["density"], telemetry[i]["speed"])
-                telemetry[i]["dynamic_pressure"] = round(p_dyn, 2)
-                telemetry[i]["magnetopause_re"] = SpaceWeatherPhysics.magnetopause_standoff(p_dyn, telemetry[i]["bz_gsm"])
-
+        start, end = (datetime.fromisoformat(t).replace(tzinfo=timezone.utc) for t in EVENT_WINDOWS[event_id])
+        arch = await self.get_archive_bundle("OMNI", start, end, cadence_minutes=5)
+        telemetry, prov = arch["records"], arch["provenance"]
+        if not telemetry:
+            snap = json.loads(gzip.decompress(OMNI_SNAPSHOT.read_bytes()))[event_id]
+            telemetry = [add_derived_fields({"mission": "OMNI", "data_source": "observed", **dict(zip(snap["columns"], row))},
+                                            None) for row in snap["rows"]]
+            prov = dict(snap["provenance"], description=snap["provenance"]["description"]
+                        + f" CDAWeb could not be reached: copy bundled with HELIOS-L1 (retrieved "
+                        f"{snap['provenance']['retrieved_utc']} UTC).")
+        plasma = (prov.get("coverage") or {}).get("groups", {}).get("plasma")
+        if plasma and plasma.get("gaps"):
+            prov["description"] += f" Solar wind plasma: {describe_coverage(plasma)}."
+        observed = {}
+        for key, field, fn in (("min_bz", "bz_gsm", min), ("peak_speed", "speed", max),
+                               ("peak_dyn_pressure", "dynamic_pressure", max), ("min_sym_h", "sym_h", min)):
+            vals = [r[field] for r in telemetry if r.get(field) is not None]
+            observed[key] = round(fn(vals), 2) if vals else None
         return {
-            "metadata": event_meta,
-            "provenance": {
-                "kind": "synthetic",
-                "description": ("Illustrative profile built from the event's published peak values "
-                                "(speed, Bz) on top of the offline solar wind model. Not archival measurements."
-                                + omni_note),
-                "time_standard": "UTC"
-            },
+            "metadata": dict(event_meta, observed_5min=observed),
+            "provenance": prov,
+            "dst_comparison": AuroralModel.compare_dst_models(telemetry) if observed["min_sym_h"] is not None else None,
             "telemetry": telemetry,
             "records": telemetry,
-            "satellite": "DSCOVR",
+            "satellite": "OMNI",
             "shocks": SpaceWeatherPhysics.detect_interplanetary_shocks(telemetry)
         }

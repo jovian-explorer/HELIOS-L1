@@ -167,7 +167,26 @@ def test_historical_event_uses_real_omni_data(tmp_path):
     offline = DataDownloader()
     offline.archive = ArchiveClient(lambda url: offline.fetch_text(url), tmp_path / "off")
     ev2 = asyncio.run(offline.get_historical_event("may_2024_g5"))
-    assert ev2["provenance"]["kind"] == "synthetic" and ev2["telemetry"]
+    assert ev2["provenance"]["kind"] == "observed" and "bundled" in ev2["provenance"]["description"]
+
+
+def test_offline_events_are_the_bundled_omni_data(tmp_path):
+    """Offline, the events are the OMNI 5-min data bundled with the app (they were hand-made
+    profiles that overshot their own peaks, 1469 km/s and 153 nPa for May 2024, with no shock):
+    May 2024 OMNI extremes -44.3 nT / 1023 km/s and the 10 May 17:05 UT shock; the Halloween
+    window reaches the Dst minimum of 30 Oct (SYM-H below -383 nT) and states its plasma gap;
+    Carrington has no time series."""
+    dl = DataDownloader()  # conftest: no network
+    dl.archive = ArchiveClient(lambda url: dl.fetch_text(url), tmp_path)
+    may = asyncio.run(dl.get_historical_event("may_2024_g5"))
+    obs = may["metadata"]["observed_5min"]
+    assert obs["min_bz"] == -44.3 and round(obs["peak_speed"]) == 1023
+    assert may["shocks"][0]["time"] == "2024-05-10 17:05:00"
+    hal = asyncio.run(dl.get_historical_event("halloween_2003"))
+    assert hal["metadata"]["observed_5min"]["min_sym_h"] < -383
+    assert "Solar wind plasma: 35.0 % covered" in hal["provenance"]["description"]
+    car = asyncio.run(dl.get_historical_event("carrington_1859"))
+    assert car["telemetry"] == [] and car["provenance"]["kind"] == "none"
 
 
 def test_archive_api_endpoint(monkeypatch, tmp_path):
