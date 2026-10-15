@@ -2095,7 +2095,7 @@ async function loadCustomPreset(presetId) {
     if (!res.ok) throw new Error(apiErrorText(data, res));
     const preset = data.preset;
     if (preset) {
-      document.getElementById('import-mission-name').value = `${preset.name} (illustrative profile)`;
+      document.getElementById('import-mission-name').value = `${preset.name} (OMNI)`;
       document.getElementById('import-content').value = preset.csv_content;
       await submitCustomImport();
     }

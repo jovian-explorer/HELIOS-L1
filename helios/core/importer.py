@@ -33,142 +33,48 @@ class TelemetryImporter:
         "time_tag": ["time_tag", "time", "timestamp", "datetime", "date_time", "epoch", "utc"]
     }
 
+    # Examples for trying the import pipeline: OMNI 5-minute data (NASA CDAWeb) of famous
+    # intervals, cut from the copy bundled for the historical events (helios/data/omni_events.json.gz).
     PRESETS: Dict[str, Dict[str, Any]] = {
-        "may2024_g5": {
-            "id": "may2024_g5",
-            "name": "May 10-11, 2024 G5 Superstorm",
-            "tag": "G5 EXTREME",
-            "badge_color": "rose",
-            "satellite": "Illustrative profile (hourly values written for this preset, not DSCOVR or OMNI measurements)",
-            "description": "Historic G5 extreme storm. Fast interplanetary shock arrival jumping bulk velocity from 420 to 860 km/s, prolonged southward Bz reaching -48 nT, dynamic pressure spike above 45 nPa.",
-            "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
-2024-05-10 12:00:00,412.3,4.8,2.1,3.4,-1.2,4.4
-2024-05-10 13:00:00,418.5,5.2,1.8,4.1,2.3,5.0
-2024-05-10 14:00:00,425.0,5.8,2.4,3.9,-0.8,4.6
-2024-05-10 15:00:00,430.1,6.5,3.1,4.5,-2.1,5.8
-2024-05-10 16:00:00,438.4,7.1,3.8,5.2,-3.5,6.9
-2024-05-10 16:45:00,445.0,8.2,4.2,6.0,-4.1,7.8
-2024-05-10 17:00:00,740.5,28.4,-12.4,18.5,-32.8,39.6
-2024-05-10 17:30:00,815.2,36.2,-15.8,22.1,-46.5,53.8
-2024-05-10 18:00:00,858.0,42.5,-18.2,25.4,-48.2,57.1
-2024-05-10 19:00:00,832.1,38.1,-16.5,23.0,-42.1,49.8
-2024-05-10 20:00:00,795.4,31.0,-14.1,19.8,-35.6,41.9
-2024-05-10 21:00:00,760.8,24.5,-11.8,16.2,-28.4,33.5
-2024-05-10 22:00:00,725.3,19.2,-9.5,13.4,-21.0,25.7
-2024-05-10 23:00:00,695.0,15.8,-7.2,11.0,-16.5,20.4
-2024-05-11 00:00:00,670.2,13.1,-5.4,9.2,-12.8,16.1
-2024-05-11 01:00:00,648.5,11.4,-4.1,8.0,-9.5,12.8"""
-        },
-        "bastille_2000": {
-            "id": "bastille_2000",
-            "name": "July 14-15, 2000 Bastille Day CME",
-            "tag": "G5 SUPERSTORM",
-            "badge_color": "amber",
-            "satellite": "Illustrative profile (not ACE SWEPAM / MAG measurements)",
-            "description": "Halo CME driven by X5.7 flare. Interplanetary shock front exceeding 1050 km/s with density peak over 50 cm^-3 and sustained southward Bz driving Dst to -301 nT.",
-            "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
-2000-07-15 12:00:00,480.0,6.5,2.0,3.0,-2.0,4.2
-2000-07-15 13:00:00,495.0,7.1,2.5,3.2,-1.5,4.3
-2000-07-15 14:00:00,510.0,8.0,3.1,4.0,-3.2,5.5
-2000-07-15 14:35:00,920.0,34.0,-14.0,18.0,-38.0,43.2
-2000-07-15 15:00:00,1050.0,48.5,-18.5,24.0,-52.0,60.2
-2000-07-15 16:00:00,1085.0,52.0,-21.0,26.5,-55.4,64.9
-2000-07-15 17:00:00,1020.0,41.2,-17.0,22.0,-45.0,52.4
-2000-07-15 18:00:00,960.0,33.5,-13.5,18.5,-36.0,42.4
-2000-07-15 19:00:00,910.0,27.0,-10.2,15.0,-28.0,32.7
-2000-07-15 20:00:00,875.0,22.4,-8.0,12.5,-21.5,25.4
-2000-07-15 21:00:00,840.0,18.2,-6.5,10.2,-16.0,19.3
-2000-07-15 22:00:00,810.0,15.0,-5.0,8.5,-12.0,14.8"""
-        },
-        "carrington_1859": {
-            "id": "carrington_1859",
-            "name": "September 1859 Carrington Event",
-            "tag": "EXTREME BENCHMARK",
-            "badge_color": "purple",
-            "satellite": "Illustrative profile (no in-situ data exist for 1859)",
-            "description": "The archetypal benchmark space weather catastrophe. Extreme velocity ~2300 km/s, transiting Sun to Earth in 17.6 hours, Bz ~ -65 nT, compressing the dayside magnetopause inside 4.5 Earth radii.",
-            "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
-1859-09-02 00:00:00,430.0,5.0,2.0,3.0,1.0,3.7
-1859-09-02 02:00:00,445.0,5.5,2.2,3.2,0.5,3.9
-1859-09-02 04:00:00,460.0,6.0,2.5,3.5,-1.2,4.3
-1859-09-02 04:45:00,1850.0,58.0,-24.0,35.0,-48.0,63.4
-1859-09-02 05:00:00,2280.0,82.0,-32.0,48.0,-64.5,85.6
-1859-09-02 06:00:00,2150.0,74.0,-28.0,42.0,-58.0,75.8
-1859-09-02 07:00:00,1980.0,62.0,-24.0,36.0,-49.0,64.2
-1859-09-02 08:00:00,1800.0,50.0,-20.0,30.0,-40.0,52.9
-1859-09-02 10:00:00,1520.0,36.0,-15.0,22.0,-30.0,39.6
-1859-09-02 12:00:00,1300.0,25.0,-11.0,16.0,-21.0,27.9
-1859-09-02 14:00:00,1120.0,18.0,-8.0,12.0,-15.0,19.9"""
-        },
-        "halloween_2003": {
-            "id": "halloween_2003",
-            "name": "October 2003 Halloween Storm",
-            "tag": "G5 FAST CME",
-            "badge_color": "sky",
-            "satellite": "Illustrative profile (not ACE SWEPAM or SOHO CELIAS measurements)",
-            "description": "Fast CME originating from Active Region 10486. Interplanetary shock speed exceeded 1700 km/s, driving intense auroras visible in Florida and Australia, causing polar airline reroutes.",
-            "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
-2003-10-29 02:00:00,520.0,8.2,3.1,4.5,-2.0,5.7
-2003-10-29 04:00:00,550.0,9.0,3.5,5.0,-3.2,6.7
-2003-10-29 06:00:00,580.0,10.2,4.0,5.8,-4.1,7.8
-2003-10-29 06:12:00,1450.0,45.0,-18.0,26.0,-38.0,48.8
-2003-10-29 07:00:00,1720.0,65.0,-24.0,34.0,-52.0,65.5
-2003-10-29 08:00:00,1680.0,58.0,-22.0,31.0,-46.0,58.8
-2003-10-29 09:00:00,1540.0,46.0,-18.0,26.0,-36.0,47.1
-2003-10-29 10:00:00,1410.0,37.0,-15.0,21.0,-28.0,37.3
-2003-10-29 12:00:00,1220.0,26.0,-11.0,16.0,-20.0,26.7
-2003-10-29 14:00:00,1080.0,19.0,-8.0,12.0,-14.0,19.2"""
-        },
-        "quiet_wind": {
-            "id": "quiet_wind",
-            "name": "Quiet Solar Wind Baseline",
-            "tag": "G0 NOMINAL",
-            "badge_color": "emerald",
-            "satellite": "Illustrative profile (not DSCOVR measurements)",
-            "description": "Nominal quiet heliospheric conditions. Bulk solar wind speed ~350-365 km/s, positive (northward) Bz, dynamic pressure ~1.2 nPa, magnetopause extended beyond 11 Earth radii.",
-            "csv_content": """time,speed,density,bx_gsm,by_gsm,bz_gsm,bt
-2026-09-21 00:00:00,352.1,4.2,2.5,1.8,2.1,3.7
-2026-09-21 01:00:00,356.4,4.0,2.4,2.0,2.4,3.9
-2026-09-21 02:00:00,360.8,4.3,2.2,2.2,2.8,4.1
-2026-09-21 03:00:00,358.5,4.1,2.0,2.1,3.0,4.1
-2026-09-21 04:00:00,362.0,3.9,2.1,1.9,2.6,3.8
-2026-09-21 05:00:00,365.2,4.2,2.3,1.7,2.2,3.6
-2026-09-21 06:00:00,363.8,4.4,2.4,2.0,1.9,3.6
-2026-09-21 07:00:00,359.0,4.1,2.2,2.3,2.5,3.9
-2026-09-21 08:00:00,361.5,4.0,2.1,2.2,2.7,4.0"""
-        }
+        "may2024_g5": {"name": "May 10-11, 2024 G5 Superstorm", "tag": "G5 EXTREME", "badge_color": "rose",
+                       "event": "may_2024_g5", "window": ("2024-05-10 12:00", "2024-05-11 06:00"),
+                       "description": "Shock at 17:05 UT on 10 May, then Bz down to -44 nT and over 50 nPa."},
+        "bastille_2000": {"name": "July 15, 2000 Bastille Day CME", "tag": "G5 SUPERSTORM", "badge_color": "amber",
+                          "event": "bastille_2000", "window": ("2000-07-15 12:00", "2000-07-16 00:00"),
+                          "description": "Shock at 14:40 UT, speed above 1000 km/s, Bz down to -59 nT (Dst -301 nT)."},
+        "st_patricks_2015": {"name": "March 17, 2015 St. Patrick's Day Storm", "tag": "G4 SEVERE", "badge_color": "amber",
+                             "event": "st_patricks_2015", "window": ("2015-03-17 00:00", "2015-03-17 18:00"),
+                             "description": "Shock near 04:45 UT, then hours of southward Bz down to -25 nT."},
+        "quiet_wind": {"name": "Quiet Solar Wind, 7 December 2019", "tag": "G0 NOMINAL", "badge_color": "emerald",
+                       "event": "quiet_baseline", "window": ("2019-12-07 00:00", "2019-12-07 12:00"),
+                       "description": "Slow wind near 360 km/s and a weak field at solar minimum (Kp 1- or lower)."},
     }
-
-    # The preset tables are hand-written illustrative profiles of famous storms (shapes and
-    # peak values in the published range), not measured data. Measured OMNI data for the
-    # 2000, 2003 and 2024 events are available from the Archive Interval loader and the
-    # historical event viewer.
-    PRESET_NOTE = ("Illustrative profile for testing the import pipeline, not measured data. "
-                   "Measured OMNI data for this interval can be loaded with the dashboard's Archive Interval (NASA CDAWeb) option.")
+    PRESET_NOTE = "OMNI 5-minute means (NASA CDAWeb), time-shifted to the bow shock nose."
 
     @classmethod
     def get_presets_list(cls) -> List[Dict[str, Any]]:
-        """Returns metadata list of all available telemetry presets."""
-        presets = []
-        for p in cls.PRESETS.values():
-            presets.append({
-                "id": p["id"],
-                "name": p["name"],
-                "tag": p["tag"],
-                "badge_color": p["badge_color"],
-                "satellite": p["satellite"],
-                "description": p["description"],
-                # data rows of the profile (the cards showed an empty "pts" without it)
-                "records_count": sum(1 for ln in p["csv_content"].strip().splitlines()[1:] if ln.strip()),
-                "data_kind": "synthetic",
-                "note": cls.PRESET_NOTE if p["id"] != "carrington_1859" else "Illustrative profile; no in-situ data exist for 1859."
-            })
-        return presets
+        """Metadata of the example datasets."""
+        out = []
+        for pid in cls.PRESETS:
+            p = cls.get_preset(pid)
+            out.append({k: p[k] for k in ("id", "name", "tag", "badge_color", "satellite", "description")}
+                       | {"records_count": p["csv_content"].count("\n"), "data_kind": "observed", "note": cls.PRESET_NOTE})
+        return out
 
     @classmethod
     def get_preset(cls, preset_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch preset by ID including raw CSV text."""
-        return cls.PRESETS.get(preset_id)
+        """One example dataset with its CSV text (time, speed, density, field components)."""
+        spec = cls.PRESETS.get(preset_id)
+        if spec is None:
+            return None
+        from helios.core.downloader import omni_snapshot
+        snap = omni_snapshot(spec["event"])
+        cols = ["time_tag", "speed", "density", "bx_gsm", "by_gsm", "bz_gsm", "bt"]
+        idx = [snap["columns"].index(c) for c in cols]
+        a, b = spec["window"]
+        rows = [",".join("" if r[i] is None else str(r[i]) for i in idx) for r in snap["rows"] if a <= r[0][:16] < b]
+        return dict(spec, id=preset_id, satellite="OMNI (NASA CDAWeb)",
+                    csv_content="time,speed,density,bx_gsm,by_gsm,bz_gsm,bt\n" + "\n".join(rows))
 
     @staticmethod
     def _normalise_header(name: Any) -> str:

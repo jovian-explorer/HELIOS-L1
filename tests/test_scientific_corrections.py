@@ -530,13 +530,13 @@ def test_importer_reads_its_own_exports_json_and_headers_with_units():
     import json
     from helios.core.importer import TelemetryImporter as T
     from helios.core.exporter import DataExporter as E
-    first = T.parse_csv_or_text(T.PRESETS["quiet_wind"]["csv_content"], "x")
+    first = T.parse_csv_or_text(T.get_preset("quiet_wind")["csv_content"], "x")
     csv_text = E.to_csv(first["records"], metadata={"title": "t", "data_kind": "imported"})
     again = T.parse_csv_or_text(csv_text, "x")
-    assert again["total_records"] == 9 and again["summary"]["speed_mean"] == first["summary"]["speed_mean"]
+    assert again["total_records"] == 144 and again["summary"]["speed_mean"] == first["summary"]["speed_mean"]
     assert again["warnings"] == []
-    assert T.parse_csv_or_text(json.dumps(first), "x")["total_records"] == 9
-    assert T.parse_csv_or_text(json.dumps(first["records"]), "x")["total_records"] == 9
+    assert T.parse_csv_or_text(json.dumps(first), "x")["total_records"] == 144
+    assert T.parse_csv_or_text(json.dumps(first["records"]), "x")["total_records"] == 144
     swpc = [["time_tag", "bz_gsm", "speed"], ["2024-01-01 00:00:00", "-3", "400"]]
     assert T.parse_csv_or_text(json.dumps(swpc), "x")["records"][0]["bz_gsm"] == -3.0
     units = T.parse_csv_or_text("Time (UTC),Bz GSM (nT),Speed [km/s],Foo\n2024-05-10T00:00:00Z,-3,400,1\n", "x")

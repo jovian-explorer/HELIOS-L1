@@ -383,12 +383,14 @@ def test_solar_regions_offline_is_unavailable():
     assert body["kind"] == "unavailable" and body["regions"] == []
 
 
-def test_import_presets_are_labelled_illustrative():
-    """The preset tables are hand-written, but were labelled 'DSCOVR / NASA OMNI-HRO', 'ACE SWEPAM / MAG'..."""
+def test_import_presets_are_omni_data():
+    """The presets were hand-written profiles that contradicted the app's own peaks (May 2024
+    Bz -48 against -44.3 nT in OMNI) and a quiet day dated 2026-09-21; they are OMNI data now."""
     from helios.core.importer import TelemetryImporter
     for p in TelemetryImporter.get_presets_list():
-        assert p["data_kind"] == "synthetic" and p["satellite"].startswith("Illustrative profile")
-        assert "not measured" in p["note"] or "no in-situ" in p["note"]
+        assert p["data_kind"] == "observed" and p["satellite"].startswith("OMNI")
+    rows = TelemetryImporter.get_preset("quiet_wind")["csv_content"].splitlines()
+    assert rows[1].startswith("2019-12-07 00:00:00")
 
 
 def test_custom_csv_export_has_metadata_and_plot_states_provenance(monkeypatch):

@@ -17,6 +17,7 @@ import re
 import math
 import random
 import asyncio
+import functools
 import gzip
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -136,6 +137,16 @@ EVENT_WINDOWS = {
 OMNI_SNAPSHOT = Path(__file__).resolve().parent.parent / "data" / "omni_events.json.gz"
 SNAPSHOT_COLUMNS = ["time_tag", "density", "speed", "temperature", "bx_gsm", "by_gsm", "bz_gsm", "bt",
                     "bx_gse", "by_gse", "bz_gse", "sym_h", "asy_h", "ae", "al", "au"]
+
+@functools.lru_cache(maxsize=None)
+def _omni_snapshot_all() -> Dict[str, Any]:
+    return json.loads(gzip.decompress(OMNI_SNAPSHOT.read_bytes()))
+
+
+def omni_snapshot(event_id: str) -> Dict[str, Any]:
+    """Bundled OMNI data of one event: {"provenance", "columns", "rows"}."""
+    return _omni_snapshot_all()[event_id]
+
 
 
 def _num(value) -> Optional[float]:
@@ -1066,7 +1077,7 @@ class DataDownloader:
         arch = await self.get_archive_bundle("OMNI", start, end, cadence_minutes=5)
         telemetry, prov = arch["records"], arch["provenance"]
         if not telemetry:
-            snap = json.loads(gzip.decompress(OMNI_SNAPSHOT.read_bytes()))[event_id]
+            snap = omni_snapshot(event_id)
             telemetry = [add_derived_fields({"mission": "OMNI", "data_source": "observed", **dict(zip(snap["columns"], row))},
                                             None) for row in snap["rows"]]
             prov = dict(snap["provenance"], description=snap["provenance"]["description"]

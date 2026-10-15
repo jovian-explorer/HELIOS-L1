@@ -288,7 +288,7 @@ def test_telemetry_importer_direct():
     preset_ids = [p["id"] for p in presets]
     assert "may2024_g5" in preset_ids
     assert "bastille_2000" in preset_ids
-    assert "carrington_1859" in preset_ids
+    assert "st_patricks_2015" in preset_ids
 
     detail = TelemetryImporter.get_preset("may2024_g5")
     assert detail is not None
@@ -298,9 +298,9 @@ def test_telemetry_importer_direct():
     listed = next(p for p in presets if p["id"] == "may2024_g5")
     assert listed["records_count"] == parsed_preset["total_records"] > 0
     assert parsed_preset["status"] == "success"
-    assert parsed_preset["summary"]["speed_max"] >= 800.0
-    assert parsed_preset["summary"]["bz_min"] <= -40.0
-    assert len(parsed_preset["detected_shocks"]) >= 1
+    # OMNI 5-min data: the shock of 10 May 17:05 UT and Bz down to -44.3 nT
+    assert parsed_preset["summary"]["bz_min"] == -44.3
+    assert parsed_preset["detected_shocks"][0]["time"] == "2024-05-10 17:05:00"
 
 def test_space_weather_ml_forecaster():
     from helios.core.ml_forecast import SpaceWeatherForecaster
