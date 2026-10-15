@@ -244,6 +244,7 @@ class CoronagraphAnalyzer:
                 "Plane-of-sky speed from two heights; no correction for projection (halo CMEs are faster along the Sun-Earth line).",
                 "The drag-based model follows the CME front from 20 R_sun (constant speed before); the shock ahead of it can arrive hours earlier. Typical arrival-time errors of such models are about 10-14 h (Vrsnak et al. 2014; Dumbovic et al. 2021).",
                 "The Gopalswamy et al. (2001) time is the arrival of the ejecta, which follows the shock.",
+                "One drag parameter for every CME: very fast or massive CMEs tend to arrive earlier than predicted (on 44 DONKI CMEs above 1300 km/s: 14 h early on average; Halloween 2003 preset 32 h against ~18.5 h observed). Dumbovic et al. (2021) suggest a lower gamma (e.g. 0.1e-7 /km) for fast, massive or bright CMEs, without a speed threshold: set it in the form if that applies.",
             ],
             "predicted_l1_arrival": arrival_l1.strftime("%Y-%m-%d %H:%M:%S UTC"),
             "predicted_earth_arrival": arrival_earth.strftime("%Y-%m-%d %H:%M:%S UTC"),
