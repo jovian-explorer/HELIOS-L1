@@ -117,7 +117,7 @@ class AuroralMapRenderer {
     });
   }
 
-  setConditions(kp, bz, power, eqMidnightLat, ovalBoundaries, alUsed, mapTimeUtc) {
+  setConditions(kp, bz, power, eqMidnightLat, ovalBoundaries, alUsed, mapTimeUtc, stormEdgeLat = null) {
     // kp / power are null when the oval comes from OMNI AL for a past time (no Kp used)
     this.kpIndex = (kp === null || kp === undefined) ? null : Math.max(0, Math.min(9, kp));
     this.imfBz = bz ?? null;
@@ -128,6 +128,11 @@ class AuroralMapRenderer {
     // Equatorward midnight boundary from the server model, so the map label matches the card
     this.eqMidnightLat = (eqMidnightLat !== undefined && eqMidnightLat !== null) ? Number(eqMidnightLat) : null;
     this.ovalBoundaries = (ovalBoundaries && ovalBoundaries.north) ? ovalBoundaries : null;
+    // From Kp 5 the server names Starkov's diffuse boundary as the edge of the precipitation
+    // (DMSP: within 0.6 deg at Kp 7-9, the oval boundary 9 deg poleward): it is then the edge
+    // drawn first and the one "your place" is measured from.
+    this.stormEdgeLat = (stormEdgeLat === null || stormEdgeLat === undefined) ? null : Number(stormEdgeLat);
+    this.stormEdge = this.stormEdgeLat !== null && !!this.ovalBoundaries;
     this.showHomeOutlook();
   }
 
@@ -157,9 +162,12 @@ class AuroralMapRenderer {
     const sky = this.skyText(this.getSolarZenith(h.lon, h.lat, this.getSubsolarPoint()));
     const hemi = this.ovalBoundaries && this.ovalBoundaries[h.lat >= 0 ? 'north' : 'south'];
     if (!hemi || !hemi.equatorward || !hemi.equatorward.length) return { sky, oval: 'the oval is not loaded yet' };
+    const storm = this.stormEdge && hemi.diffuse && hemi.diffuse.length;
+    const edgePts = storm ? hemi.diffuse : hemi.equatorward;
+    const what = storm ? 'the storm-time edge' : 'the oval';
     const mlt = this.getMLT(h.lon, h.lat);
     let best = null, bestDt = 99;
-    for (const pt of hemi.equatorward) {
+    for (const pt of edgePts) {
       let dt = Math.abs(this.getMLT(pt.lon, pt.lat) - mlt);
       dt = Math.min(dt, 24 - dt);
       if (dt < bestDt) { bestDt = dt; best = pt; }
@@ -167,9 +175,9 @@ class AuroralMapRenderer {
     const gap = Math.abs(this.getDipoleLatitude(best.lon, best.lat)) - Math.abs(this.getDipoleLatitude(h.lon, h.lat));
     const side = h.lat >= 0 ? 'northern' : 'southern';
     let oval;
-    if (gap <= 0) oval = 'inside or poleward of the oval\'s outer edge: aurora overhead when the sky is dark';
-    else if (gap <= 7) oval = `${gap.toFixed(0)}° of latitude from the oval: aurora possible low on the ${side} horizon`;
-    else oval = `${gap.toFixed(0)}° of latitude from the oval: aurora unlikely`;
+    if (gap <= 0) oval = `inside or poleward of ${what}: aurora overhead when the sky is dark`;
+    else if (gap <= 7) oval = `${gap.toFixed(0)}° of latitude from ${what}: aurora possible low on the ${side} horizon`;
+    else oval = `${gap.toFixed(0)}° of latitude from ${what}: aurora unlikely`;
     return { sky, oval };
   }
 
@@ -518,9 +526,15 @@ class AuroralMapRenderer {
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
-      ctx.setLineDash([4, 4]);
-      ctx.strokeStyle = 'rgba(210, 170, 87, 0.6)';
-      ctx.lineWidth = 1.2;
+      // Storm-time edge (Kp 5 and above): solid and bold; otherwise a thin dashed line
+      if (this.stormEdge) {
+        ctx.strokeStyle = 'rgba(223, 192, 120, 0.95)';
+        ctx.lineWidth = 2.6;
+      } else {
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(210, 170, 87, 0.6)';
+        ctx.lineWidth = 1.2;
+      }
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -603,22 +617,31 @@ class AuroralMapRenderer {
     ctx.strokeStyle = 'rgba(127, 165, 207, 0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(10, 10, 260, 56, 8);
+    ctx.roundRect(10, 10, 300, this.stormEdge ? 70 : 56, 8);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#7fa5cf';
     ctx.font = '600 10px system-ui, sans-serif';
-    ctx.fillText(this.ovalBoundaries ? 'AURORAL OVAL (STARKOV 1994)' : 'AURORAL OVAL (SCHEMATIC, LOADING)', 18, 26);
+    ctx.fillText(this.ovalBoundaries ? 'Auroral oval (Starkov 1994)' : 'Auroral oval: loading', 18, 26);
 
     ctx.fillStyle = '#9a9ea5';
     ctx.font = '9px system-ui, sans-serif';
     const eqMid = this.eqMidnightLat !== null && this.eqMidnightLat !== undefined ? this.eqMidnightLat : null;
-    ctx.fillText(`Equatorward midnight: ${eqMid === null ? 'n/a' : eqMid.toFixed(1) + '° CGM LAT'}`, 18, 40);
+    ctx.fillText(this.stormEdge
+      ? `Storm-time edge (diffuse boundary) at midnight: ${this.stormEdgeLat.toFixed(1)}° CGM; oval ${eqMid === null ? 'n/a' : eqMid.toFixed(1) + '°'}`
+      : `Equatorward midnight: ${eqMid === null ? 'n/a' : eqMid.toFixed(1) + '° CGM'}`, 18, 40);
     const kpText = this.kpIndex === null ? 'n/a' : this.kpIndex.toFixed(1);
     const alText = this.alUsed === null || this.alUsed === undefined ? '' : `|AL| ${this.alUsed.toFixed(0)} nT • `;
-    ctx.fillText(`${alText}KP: ${kpText} • HPI: ${this.hemisphericPower === null ? 'n/a' : this.hemisphericPower + ' GW'}` +
-      (this.mapTime ? ` • ${this.mapTime.toISOString().slice(0, 16).replace('T', ' ')} UTC` : ` • IMF BZ: ${this.imfBz === null ? 'n/a' : this.imfBz.toFixed(1) + ' nT'}`), 18, 54);
+    ctx.fillText(`${alText}Kp ${kpText} • HPI ${this.hemisphericPower === null ? 'n/a' : this.hemisphericPower + ' GW'}` +
+      (this.mapTime ? ` • ${this.mapTime.toISOString().slice(0, 16).replace('T', ' ')} UTC` : ` • IMF Bz ${this.imfBz === null ? 'n/a' : this.imfBz.toFixed(1) + ' nT'}`), 18, 54);
+    if (this.stormEdge) {  // legend of the storm-time edge
+      ctx.strokeStyle = 'rgba(223, 192, 120, 0.95)';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.moveTo(18, 64); ctx.lineTo(40, 64); ctx.stroke();
+      ctx.fillStyle = '#dfc078';
+      ctx.fillText('storm-time edge of the aurora (green band: oval)', 46, 67);
+    }
 
     // Bottom-Right Mouse Geo Readout
     if (this.mouseGeo) {

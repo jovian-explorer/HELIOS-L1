@@ -1757,7 +1757,13 @@ async function loadAuroralForecast() {
     const flankDetail = document.getElementById('aurora-flank-detail');
     if (flankDetail && b.equatorward_dawn_lat !== undefined) flankDetail.innerText = `Equatorward boundary, dawn (06 MLT) ${b.equatorward_dawn_lat}°, dusk (18 MLT) ${b.equatorward_dusk_lat}°`;
 
-    document.getElementById('aurora-midnight-lat').innerText = `${b.equatorward_midnight_lat}° N/S`;  // CGM latitude
+    // In storms (Kp 5+, the server's model_limit) the card shows the storm-time edge
+    const storm = !!b.model_limit && b.diffuse_equatorward_midnight_lat !== undefined;
+    document.getElementById('aurora-midnight-lat').innerText = `${storm ? b.diffuse_equatorward_midnight_lat : b.equatorward_midnight_lat}° N/S`;  // CGM latitude
+    const cap = document.getElementById('aurora-midnight-caption');
+    if (cap) cap.innerText = storm
+      ? `Storm-time edge: Starkov (1994) diffuse-aurora boundary, corrected geomagnetic latitude at magnetic midnight (oval boundary ${b.equatorward_midnight_lat}°)`
+      : 'Starkov (1994), corrected geomagnetic latitude at magnetic midnight';
     document.getElementById('aurora-power-gw').innerText = b.hemispheric_power_gw !== null && b.hemispheric_power_gw !== undefined ? `${b.hemispheric_power_gw} GW` : '--- GW';
     document.getElementById('aurora-flank-lat').innerText = `${b.equatorward_flanks_lat}°`;
 
@@ -1804,7 +1810,7 @@ async function loadAuroralForecast() {
       // MLT use that time too (with "now" they turned away from the oval as the minutes passed).
       const pastTime = data.oval_time_utc;
       auroralRenderer.setConditions(kpVal, bzVal, b.hemispheric_power_gw, b.equatorward_midnight_lat, data.oval_polygon,
-                                    b.al_used_nt, pastTime);
+                                    b.al_used_nt, pastTime, b.model_limit ? b.diffuse_equatorward_midnight_lat : null);
     }
   } catch (err) {
     if (!current()) return;

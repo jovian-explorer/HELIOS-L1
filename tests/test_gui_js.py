@@ -582,3 +582,13 @@ def test_heliosphere_speed_follows_the_measured_wind_until_set_by_hand():
     app = APP_JS.read_text(encoding="utf-8")
     assert "if (!parkerSpeedFromUser && latest.speed != null" in app
     assert "if (!fromData) parkerSpeedFromUser = true;" in app
+
+
+def test_aurora_map_uses_the_storm_time_edge_from_kp_5():
+    """D4: from Kp 5 (the server's model_limit) the diffuse boundary is the storm-time edge
+    (DMSP: within 0.6 deg at Kp 7-9): drawn first, shown on the card and used for "your place"."""
+    aurora = (APP_JS.parent / "aurora.js").read_text(encoding="utf-8")
+    app = APP_JS.read_text(encoding="utf-8")
+    assert "b.model_limit ? b.diffuse_equatorward_midnight_lat : null" in app
+    assert "const edgePts = storm ? hemi.diffuse : hemi.equatorward;" in aurora
+    assert "storm-time edge of the aurora" in aurora and "if (this.stormEdge) {" in aurora
