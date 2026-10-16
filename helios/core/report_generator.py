@@ -64,8 +64,8 @@ class ScientificReportGenerator:
         else:
             shocks_html = '<tr><td colspan="6" style="padding: 8px; text-align: center; color: #64748b; font-style: italic;">No shocks detected.</td></tr>'
 
-        regions_html = "".join([f'<li style="color: #cbd5e1; margin-bottom: 2px;">{r}</li>' for r in auroral_data.get("visible_regions", [])]) \
-            or '<li style="color: #64748b;">unavailable (no Kp)</li>'
+        limit_html = (f'<div style="margin-top: 8px; color: #fbbf24;">{html_lib.escape(auroral_data["model_limit"])}</div>'
+                      if auroral_data.get("model_limit") else "")
 
         s_color = classification.get('s_color', '#10b981')
         s_scale = classification.get('s_scale', 'S0 (Nominal)')
@@ -145,10 +145,7 @@ class ScientificReportGenerator:
   <div style="background: #111e3e; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; font-size: 12px;">
     <div>Equatorward boundary at magnetic midnight (Starkov 1994, corrected geomagnetic latitude): <strong>{_v(auroral_data.get('equatorward_midnight_lat'))}°</strong> <span style="color: #94a3b8;">from {html_lib.escape(str(_v(auroral_data.get('al_source'))))}</span></div>
     <div style="margin-top: 4px;">Estimated Hemispheric Power Index: <strong>{_v(auroral_data.get('hemispheric_power_gw'))} GW</strong></div>
-    <div style="margin-top: 8px; font-weight: bold; color: #94a3b8;">Regions near the oval (a rough guide: aurora needs a dark, clear sky):</div>
-    <ul style="margin: 4px 0 0 16px; padding: 0;">
-      {regions_html}
-    </ul>
+    {limit_html}
   </div>
 
   <h3 style="color: #38bdf8; font-size: 14px; margin-top: 20px;">Interplanetary Shock Candidates (jump screening)</h3>
@@ -233,8 +230,7 @@ class ScientificReportGenerator:
         else:
             shocks_table = "_No shock candidates (speed, density and field jumps together) in the current 24-hour observation window._\n"
 
-        regions = auroral_data.get("visible_regions", [])
-        regions_str = ", ".join(regions) if regions else "unavailable (no Kp)"
+        limit_md = f"\n- **Model limit:** {auroral_data['model_limit']}" if auroral_data.get("model_limit") else ""
 
         md = f"""# HELIOS-L1 SPACE WEATHER EXECUTIVE SUMMARY
 **Mission Platform:** {mission_name}  
@@ -274,7 +270,7 @@ class ScientificReportGenerator:
 ## 4. GEOSPACE HAZARD & AURORAL REACH ASSESSMENT
 - **Equatorward Boundary at Magnetic Midnight (Starkov 1994, CGM latitude):** **{_v(auroral_data.get('equatorward_midnight_lat'))}°** (from {_v(auroral_data.get('al_source'))})
 - **Estimated Hemispheric Power Index (HPI):** **{_v(auroral_data.get('hemispheric_power_gw'))} GW**
-- **Regions Near the Oval (rough guide; aurora needs a dark, clear sky):** {regions_str}
+{limit_md}
 
 ---
 

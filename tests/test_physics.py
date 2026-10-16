@@ -8,7 +8,7 @@ def test_bulletins_give_the_reading_time_and_the_oval_driver():
     for text in (R.generate_html_bulletin("DSCOVR", rows, {}, [], aur), R.generate_markdown_executive_summary("DSCOVR", rows, {}, [], aur)):
         assert "2026-10-12 08:15:00 UTC" in text and aur["al_source"] in text
         assert "Sighting" not in text and "License" not in text
-    assert "unavailable (no Kp)" in R.generate_html_bulletin("DSCOVR", rows, {}, [], {})
+    assert "Equatorward boundary at magnetic midnight (Starkov 1994, corrected geomagnetic latitude): <strong>---°" in R.generate_html_bulletin("DSCOVR", rows, {}, [], {})
 
 
 def test_hazards_follow_the_noaa_g_scale():

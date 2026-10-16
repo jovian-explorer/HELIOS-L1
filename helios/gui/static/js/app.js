@@ -1785,18 +1785,9 @@ async function loadAuroralForecast() {
     document.getElementById('aurora-power-gw').innerText = b.hemispheric_power_gw !== null && b.hemispheric_power_gw !== undefined ? `${b.hemispheric_power_gw} GW` : '--- GW';
     document.getElementById('aurora-flank-lat').innerText = `${b.equatorward_flanks_lat}°`;
 
-    const regList = document.getElementById('aurora-regions-list');
     const regNote = document.getElementById('aurora-regions-note');
     if (regNote && b.equatorward_midnight_lat !== undefined) {
-      regNote.innerText = `Regions near the oval, chosen from its equatorward boundary at magnetic midnight, now ${b.equatorward_midnight_lat}° corrected geomagnetic latitude (bands at 42°, 50° and 58°). A rough guide, not a probability of seeing the aurora.`;
-    }
-    if (regList && b.visible_regions) {
-      regList.innerHTML = b.visible_regions.map(r => `
-        <li class="p-2.5 rounded-lg bg-space-900/80 border border-slate-700/60 flex items-center space-x-2">
-          <i class="fa-solid fa-location-dot text-emerald-400"></i>
-          <span>${r}</span>
-        </li>
-      `).join('');
+      regNote.innerText = `Equatorward boundary of the oval at magnetic midnight: ${b.equatorward_midnight_lat}° corrected geomagnetic latitude (Starkov 1994).` + (b.model_limit ? ` ${b.model_limit}` : '');
     }
 
     if (chartDst && data.dst_evolution) {

@@ -42,6 +42,8 @@ STARKOV_KP_TO_AL = (18.0, -12.3, 27.2, -2.0)
 # (and the midnight equatorward boundary stops moving at ~60 deg), so the fits are not
 # used beyond 750 nT: larger observed values are capped and the response says so.
 STARKOV_AL_RANGE = (18.0, 750.0)
+# |AL| of Kp 7 in the conversion above (578.7 nT): from here the midnight boundary barely moves.
+STARKOV_SATURATION_AL = 578.0
 
 # Hemispheric power from Kp: Zhang & Paxton (2008, JASTP 70, 1231, doi:10.1016/j.jastp.2008.03.008)
 # up to Kp 7, then the TIE-GCM/WACCM linear ramp to 300 GW at Kp 9.
@@ -117,16 +119,11 @@ class AuroralModel:
         for name in STARKOV_COEFFS:
             profile[f"{name}_lat"] = np.round(cls.starkov_latitude(al_used, mlt_grid, name), 2).tolist()
 
-        # Visible Geographic Regions
-        visible_regions = []
-        if eq_midnight <= 42.0:
-            visible_regions.extend(["Extreme Low Latitudes", "Northern India (Hanle/Ladakh)", "Southern US (Florida, Texas)", "Mediterranean", "Southern Australia", "South Africa"])
-        elif eq_midnight <= 50.0:
-            visible_regions.extend(["Mid Latitudes", "Central Europe (France, Germany, Poland)", "Northern US (New York, Midwest, Washington)", "Southern New Zealand"])
-        elif eq_midnight <= 58.0:
-            visible_regions.extend(["Sub-Auroral Zone", "United Kingdom", "Southern Scandinavia", "Southern Canada", "Tasmania"])
-        else:
-            visible_regions.extend(["Traditional Auroral Oval", "Alaska", "Northern Canada", "Norway, Sweden, Finland (Tromsø)", "Iceland", "Antarctica"])
+        # The fitted midnight boundary stops moving near 60 deg CGM from Kp 7 (|AL| ~580 nT) on:
+        # 59.9 at Kp 7, 59.7 at Kp 9. In stronger storms the oval reaches lower latitudes than drawn.
+        model_limit = (f"Beyond the Starkov (1994) fit: its midnight boundary stays near 60 deg CGM from Kp 7 "
+                       f"(|AL| about {STARKOV_SATURATION_AL:.0f} nT) on, so in this storm the oval may reach lower "
+                       "latitudes than shown.") if al_used >= STARKOV_SATURATION_AL else None
 
         power_gw = round(cls.hemispheric_power_from_kp(kp_eff), 1)
 
@@ -148,7 +145,7 @@ class AuroralModel:
             "mlt_profile": profile,
             "hemispheric_power_gw": power_gw,
             "hemispheric_power_source": HEMISPHERIC_POWER_SOURCE,
-            "visible_regions": visible_regions
+            "model_limit": model_limit
         }
 
     @staticmethod

@@ -107,7 +107,11 @@ def test_auroral_model(omni_l1):
     # Starkov (1994): Kp 7 -> |AL| = 578.7 nT, equatorward midnight boundary 59.9 deg CGM
     assert res["equatorward_midnight_lat"] == pytest.approx(59.9, abs=0.1)
     assert res["hemispheric_power_gw"] > 50.0
-    assert len(res["visible_regions"]) > 0
+    # From Kp 7 the fit stops moving (59.7 deg at Kp 9): the answer says so (the region lists for
+    # boundaries at or below 50 deg could never be reached)
+    assert "Beyond the Starkov (1994) fit" in res["model_limit"]
+    assert AuroralModel.calculate_auroral_boundaries(kp=9.0)["equatorward_midnight_lat"] == pytest.approx(59.7, abs=0.05)
+    assert AuroralModel.calculate_auroral_boundaries(kp=5.0)["model_limit"] is None
 
     sample = omni_l1[120:168]
     dst_sim = AuroralModel.simulate_dst_evolution(sample)
@@ -760,7 +764,7 @@ def test_bulletins_show_missing_values_as_dashes_not_none():
     html = R.generate_html_bulletin("DSCOVR", [latest], cls, [], {})
     for text in (md, html):
         assert "None" not in text.replace("R0 (None)", "")
-    assert "unavailable (no Kp)" in md and "Mach Number" not in md
+    assert "Mach Number" not in md
 
 
 def test_parker_and_gic_inputs_are_validated():

@@ -298,10 +298,10 @@ def test_reports_state_real_provenance_and_survive_gaps():
             {"time_tag": "b", "speed": None, "bz_gsm": None, "bt": None, "density": None}]
     cls = SpaceWeatherPhysics.classify_noaa_scales(3.0, -3.0, 1e-6)
     prov = {"kind": "synthetic", "description": "offline model"}
-    md = R.generate_markdown_executive_summary("DSCOVR", recs, cls, [], {"visible_regions": []}, provenance=prov)
+    md = R.generate_markdown_executive_summary("DSCOVR", recs, cls, [], {}, provenance=prov)
     assert "SYNTHETIC - offline model" in md and "ISRO Aditya-L1 / ESA SOHO" not in md
     assert "SOUTHWARD IMF (Bz < 0): dayside reconnection" in md
-    html = R.generate_html_bulletin("DSCOVR", recs, cls, [], {"visible_regions": []}, provenance=prov)
+    html = R.generate_html_bulletin("DSCOVR", recs, cls, [], {}, provenance=prov)
     assert "SYNTHETIC - offline model" in html
 
 
