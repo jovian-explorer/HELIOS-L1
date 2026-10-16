@@ -12,7 +12,7 @@ Contents
 6. [Data Studio & Science](#6-data-studio--science)
 7. [Event analysis methods and how they were checked](#7-event-analysis-methods-and-how-they-were-checked)
 8. [Uncertainties and their limits](#8-uncertainties-and-their-limits)
-9. [Measured, simulated and synthetic values](#9-measured-simulated-and-synthetic-values)
+9. [Measured values and gaps](#9-measured-values-and-gaps)
 10. [Data sources, terms of use and citation](#10-data-sources-terms-of-use-and-citation)
 11. [Exports and the API](#11-exports-and-the-api)
 12. [Troubleshooting](#12-troubleshooting)
@@ -104,7 +104,7 @@ Compares one quantity (Bz, |B|, speed, density, dynamic pressure) between two sp
 
 The series are compared on a 5-minute grid, so the lag comes in 5-minute steps. A live check on 13 October 2026: the operational stream (SOLAR1) against ACE, 164 000 km apart along the Sun-Earth line (RTSW ephemeris), solar wind 489 km/s, expected delay 5.6 min; measured 5 min for Bz, |B| and By (r = 0.85, 0.97, 0.92). Sub-step refinement of the peak (a parabola through the three highest points) was tried and gave 3.6 min, further from the expected delay, because the correlation peak of real data is broad and lopsided, so it is not used.
 
-The **fleet matrix** at the top shows r for every pair. Missions without data in the window show n/a on their whole row; when the offline model stands in for the operational stream (SYNTHETIC) its cells are faded, since r then says nothing about instruments. A warning appears in the same way when one side of a pairwise comparison is not measured.
+The **fleet matrix** at the top shows r for every pair. Missions without data in the window show n/a on their whole row. A warning appears in the same way when one side of a pairwise comparison is not measured.
 
 An imported file can be compared with the fleet (*Compare with L1 Fleet* in the import tab). If the file ends before the live window, WIND, ACE, DSCOVR and OMNI are taken from the archive for the file's interval. The file carries no spacecraft position, so no baseline is computed for it.
 
@@ -169,7 +169,7 @@ A 12-hour Kp trajectory from the Newell et al. (2008) coupling fit and an O'Brie
 
 ### Storms Archive
 
-Historical storms. Events since 1995 load measured OMNI data (5-minute means) and compare SYM-H with both ring current models; March 1989, Carrington 1859 and the quiet baseline are synthetic profiles and labelled so.
+Historical storms. OMNI data (5-minute means) from NASA CDAWeb, or the same data bundled with HELIOS-L1 offline, with SYM-H compared with both ring current models; every event states its solar wind gaps. March 1989 has only SYM-H (no spacecraft measured the solar wind) and Carrington 1859 no time series (no measurements exist).
 
 ---
 
@@ -262,7 +262,7 @@ Published numbers recomputed with HELIOS-L1's own functions on the same input da
 
 ---
 
-## 9. Measured, simulated and synthetic values
+## 9. Measured values and gaps
 
 Every record has a `data_source` and every API answer a `provenance` block:
 
@@ -270,7 +270,6 @@ Every record has a `data_source` and every API answer a `provenance` block:
 |---|---|
 | `observed` | Measured: NOAA RTSW or the NASA CDAWeb archive. |
 | `unavailable` | No data for this mission and window (Aditya-L1 always: its Level-2 data are on ISRO's PRADAN portal for registered users only; SOHO and STEREO-A when their feeds cannot be reached; WIND before the archive reaches the window). No values are shown; nothing is simulated in their place. |
-| `synthetic` | Nothing could be reached and nothing was cached: values from the offline solar wind model. |
 | `imported` | Rows from your file. |
 
 Missing values stay empty. Rows with a non-zero RTSW quality flag are dropped. When Kp cannot be fetched, a Bz-based estimate is used and labelled (`kp_source`).
@@ -314,7 +313,7 @@ The mission cards in the Fleet Catalog repeat the data policies as the agencies 
 |---|---|
 | The window does not open, the dashboard opens in the browser | No window backend: install WebView2 (Windows), or GTK/Qt bindings on Linux (section 1). The browser works the same. |
 | "could not listen on 127.0.0.1:<port>" | Another program holds the port. Start with `--port 8790` (any free port). |
-| No values, or values say SYNTHETIC | The source has no data for that window or could not be reached (section 9). Check the network; cached data are used when available. |
+| No values | The source has no data for that window or could not be reached (section 9). Check the network; cached data are used when available. |
 | An archive interval is empty | The archive has not reached that date yet (key parameters lag days, Level 2 and OMNI months), or the instrument has no data then (DSCOVR plasma only 2016-2019). Try OMNI or another spacecraft. |
 | "The CDAWeb HAPI server could not be reached" (analyses answer 503) | NASA's SPDF, which hosts CDAWeb and OMNI, is down or unreachable (it was for more than a day on 13-14 October 2026). Intervals already loaded stay in the cache and keep working; the live NOAA views, SOHO and STEREO-A beacon data, solar images, DONKI and the bundled ICME and shock lists do not depend on it (the CDAW CME catalogue, also at Goddard, was down at the same time). Try again later. |
 | The comparator finds no overlap | The two series cover different times; the message gives each side's coverage. For a file, the archive is used for its interval (section 3). |

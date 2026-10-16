@@ -2,10 +2,10 @@
 Data acquisition and caching engine for Sun-Earth L1 and heliospheric missions.
 Supports NOAA SWPC Real-Time Solar Wind (RTSW) telemetry, NASA CDAWeb archive data
 through HAPI (WIND, ACE, DSCOVR, OMNI; see core.archive), GOES X-ray / proton and
-planetary Kp indices, simulated feeds for missions without public data, and
+planetary Kp indices, and
 historical space weather events (real OMNI data where it exists).
 
-Every record carries a "data_source" label ("observed", "simulated" or "synthetic")
+Every record carries a "data_source" label ("observed"; imported files "imported")
 and every bundle a provenance description, so measured and modelled values can
 never be confused downstream (plots, exports, reports).
 """
@@ -15,7 +15,6 @@ import logging
 import time
 import re
 import math
-import random
 import asyncio
 import functools
 import gzip
@@ -523,8 +522,6 @@ class DataDownloader:
                         NASA CDAWeb archive (WIND always; DSCOVR and ACE for spans > 1 day,
                         with RTSW filling the hours the archive does not reach yet)
           "unavailable" - no data for this mission and window (no records)
-          "synthetic" - nothing could be reached (and nothing was cached); values come
-                        from the offline solar wind model and are not measurements
         """
         mission_id = mission_id.upper()
         meta = MISSIONS.get(mission_id, {})
@@ -535,7 +532,7 @@ class DataDownloader:
 
         records: List[Dict[str, Any]] = []
         sources: List[str] = []
-        kind = "synthetic"
+        kind = "unavailable"
         description = ""
         extra: Dict[str, Any] = {}
         archive_note = ""
@@ -653,18 +650,14 @@ class DataDownloader:
             else:
                 archive_note = " " + arch["provenance"]["description"]
 
-        if kind not in ("observed", "unavailable"):
-            if mission_id == "DSCOVR":
-                records = self.generate_synthetic_telemetry(mission=name, hours=span_days * 24, condition="active")
-                description = ("NOAA SWPC archive unreachable and no cached copy: values come from the offline "
-                               "solar wind model and are NOT measurements.")
-            else:
-                # No data: nothing is shown (it used to be the operational stream with invented offsets and noise).
-                kind = "unavailable"
-                description = f"No data for {name} in this window could be reached here." + archive_note
-                access = MISSIONS.get(mission_id, {}).get("data_access")
-                if access:
-                    description += f" Data access: {access}."
+        if kind != "observed" and not description:
+            # No data: nothing is shown (it used to be a generated solar wind, or the operational
+            # stream with invented instrument offsets and noise, labelled synthetic or simulated).
+            records = []
+            description = f"No data for {name} in this window could be reached here." + archive_note
+            access = MISSIONS.get(mission_id, {}).get("data_access")
+            if access:
+                description += f" Data access: {access}."
 
         return {"records": records, "provenance": self._provenance(kind, description, sources, records, **extra)}
 
@@ -905,77 +898,6 @@ class DataDownloader:
         out = dict(parsed or {})
         out["kp_forecast"] = self.parse_kp_forecast(kp_rows if isinstance(kp_rows, list) else None)
         return out
-
-    def generate_synthetic_telemetry(self, mission: str = "DSCOVR", hours: int = 24, condition: str = "active") -> List[Dict[str, Any]]:
-        """
-        High-fidelity physical model for generating solar wind telemetry.
-        Useful when operating fully offline or for benchmark testing.
-        Conditions: 'quiet', 'active', 'storm', 'cme_shock'
-        Every record is labelled data_source = "synthetic".
-        """
-        records = []
-        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
-        start_time = now - timedelta(hours=hours)
-
-        # Baseline parameters by condition
-        if condition == "quiet":
-            base_v, base_n, base_bz = 330.0, 3.5, 1.5
-        elif condition == "storm":
-            base_v, base_n, base_bz = 680.0, 18.0, -14.0
-        elif condition == "cme_shock":
-            base_v, base_n, base_bz = 850.0, 35.0, -22.0
-        else: # active
-            base_v, base_n, base_bz = 440.0, 6.5, -4.0
-
-        # Private generator: never reseed the interpreter-wide `random` module.
-        rng = random.Random(int(start_time.timestamp()) % 10000)
-        dt = 5  # 5 minute intervals
-        total_steps = (hours * 60) // dt
-
-        curr_v = base_v
-        curr_n = base_n
-        curr_bz = base_bz
-
-        for step in range(total_steps):
-            t = start_time + timedelta(minutes=step * dt)
-            time_str = t.strftime("%Y-%m-%d %H:%M:%S")
-
-            # Plasma random walk + physical solar cycle oscillation
-            wave = math.sin(step * 0.05) * 15.0
-            curr_v = max(280.0, curr_v + rng.gauss(0, 1.5) + (base_v - curr_v) * 0.02)
-            curr_n = max(0.5, curr_n + rng.gauss(0, 0.2) + (base_n - curr_n) * 0.03)
-
-            # IMF oscillations & Alfvénic fluctuations
-            curr_bz = curr_bz + rng.gauss(0, 0.4) + (base_bz - curr_bz) * 0.03
-            by = 4.0 * math.cos(step * 0.08) + rng.gauss(0, 0.5)
-            bx = -3.0 * math.sin(step * 0.04) + rng.gauss(0, 0.5)
-            bt = math.sqrt(bx**2 + by**2 + curr_bz**2)
-
-            speed = round(curr_v + wave, 1)
-            density = round(curr_n, 2)
-            p_dyn = SpaceWeatherPhysics.dynamic_pressure(density, speed)
-            standoff = SpaceWeatherPhysics.magnetopause_standoff(p_dyn, curr_bz)
-            eps = SpaceWeatherPhysics.akasofu_epsilon(speed, bt, by, curr_bz)
-            delay = SpaceWeatherPhysics.propagation_delay_minutes(1500000.0, speed)
-
-            records.append({
-                "time_tag": time_str,
-                "mission": mission,
-                "density": density,
-                "speed": speed,
-                "temperature": int(75000 + (speed - 300) * 450),
-                "bx_gsm": round(bx, 2),
-                "by_gsm": round(by, 2),
-                "bz_gsm": round(curr_bz, 2),
-                "bt": round(bt, 2),
-                "dynamic_pressure": round(p_dyn, 2),
-                "magnetopause_re": standoff,
-                "akasofu_gw": round(eps, 1),
-                "l1_travel_time_min": delay,
-                "data_source": "synthetic"
-            })
-
-        return records
 
     async def get_historical_event(self, event_id: str) -> Dict[str, Any]:
         """

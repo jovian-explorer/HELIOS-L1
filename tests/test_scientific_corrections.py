@@ -104,8 +104,8 @@ def test_psd_gaps_are_interpolated_not_spliced():
     assert res["gap_fraction"] == pytest.approx(80 / 512, abs=1e-3)
 
 
-def test_spectrum_api_uses_record_cadence():
-    """The offline model is 5-minute data; the API used to assume 60 s, putting every frequency 5x too high."""
+def test_spectrum_api_uses_record_cadence(omni_l1):
+    """5-minute data (OMNI test data); the API used to assume 60 s, putting every frequency 5x too high."""
     from fastapi.testclient import TestClient
     from helios.api.server import app
     res = TestClient(app, base_url=LOCAL).get("/api/spectrum?mission_id=DSCOVR&parameter=bz_gsm").json()

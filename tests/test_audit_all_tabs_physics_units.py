@@ -105,6 +105,7 @@ class TestTab1DashboardL1Telemetry:
         assert c5["s_level"] == 5 and "S5" in c5["s_scale"]
         assert "CRITICAL" in c5["bz_alert"]
 
+    @pytest.mark.usefixtures("omni_l1")
     def test_telemetry_api_and_filters(self):
         """Test telemetry endpoint for all fleet spacecraft across 1 and 7 day spans."""
         for sat in ["DSCOVR", "ACE", "ADITYA_L1", "WIND", "SOHO"]:
@@ -135,6 +136,7 @@ class TestTab1DashboardL1Telemetry:
 class TestTab2Comparator:
     """Rigorous audit of Tab 2: Mutual fleet statistics, lag optimization, and GSE geometry."""
 
+    @pytest.mark.usefixtures("omni_l1")
     def test_comparator_math_metrics(self):
         """Verify Pearson r, R^2, RMSE, and regression slope between DSCOVR and ACE."""
         res = client.get("/api/compare?mission_a=DSCOVR&mission_b=DSCOVR&parameter=bz_gsm&span_days=1")
@@ -389,6 +391,7 @@ class TestTab7TurbulencePSD:
 class TestTab8AuroraAndDst:
     """Rigorous audit of Tab 8: Auroral oval geometry, equatorward limits, and ring current Dst."""
 
+    @pytest.mark.usefixtures("omni_l1")
     def test_starkov_auroral_boundaries_and_power(self):
         """
         Starkov (1994) oval driven by Kp converted to AL (|AL| = 18 - 12.3 Kp + 27.2 Kp^2 - 2 Kp^3);
@@ -442,6 +445,7 @@ class TestTab9MLForecast:
         coupling = SpaceWeatherForecaster.calculate_newell_coupling(400.0, 10.0, -10.0, 0.0)
         assert 12000.0 < coupling < 15000.0, f"Expected ~13650, got {coupling}"
 
+    @pytest.mark.usefixtures("omni_l1")
     def test_ml_forecast_timeline_api(self):
         """Verify 12-hour predictive timeline, Kp band, and hazard cards."""
         res = client.get("/api/forecast/ml?mission_id=DSCOVR")

@@ -77,23 +77,11 @@ def test_power_spectral_density():
     assert psd["taylor_scale_km_1mhz"] == 450000.0
     assert len(psd["kolmogorov_psd"]) == len(psd["frequencies_hz"])
 
-def test_synthetic_telemetry_generation():
-    dl = DataDownloader()
-    telemetry = dl.generate_synthetic_telemetry("DSCOVR", hours=6, condition="active")
-    assert len(telemetry) == (6 * 60) // 5
-    first = telemetry[0]
-    assert "speed" in first
-    assert "bz_gsm" in first
-    assert "dynamic_pressure" in first
-    assert "l1_travel_time_min" in first
-
-def test_satellite_comparator():
-    dl = DataDownloader()
-    data_a = dl.generate_synthetic_telemetry("DSCOVR", hours=12, condition="active")
-    data_b = dl.generate_synthetic_telemetry("ADITYA_L1", hours=12, condition="active")
+def test_satellite_comparator(omni_l1):
+    data_a, data_b = omni_l1[:144], omni_l1[:144]
 
     comp = SatelliteComparator.compare_satellites(
-        data_a, data_b, "DSCOVR", "Aditya-L1", parameter="bz_gsm"
+        data_a, data_b, "OMNI", "OMNI copy", parameter="bz_gsm"
     )
     assert comp["status"] == "success"
     assert "correlation_r" in comp["metrics"]
@@ -114,15 +102,14 @@ def test_orbital_mechanics():
     assert "ACE" in orbits
     assert len(orbits["DSCOVR"]["path"]) > 0
 
-def test_auroral_model():
+def test_auroral_model(omni_l1):
     res = AuroralModel.calculate_auroral_boundaries(kp=7.0, bz_gsm=-12.0)
     # Starkov (1994): Kp 7 -> |AL| = 578.7 nT, equatorward midnight boundary 59.9 deg CGM
     assert res["equatorward_midnight_lat"] == pytest.approx(59.9, abs=0.1)
     assert res["hemispheric_power_gw"] > 50.0
     assert len(res["visible_regions"]) > 0
 
-    dl = DataDownloader()
-    sample = dl.generate_synthetic_telemetry("DSCOVR", hours=4, condition="storm")
+    sample = omni_l1[120:168]
     dst_sim = AuroralModel.simulate_dst_evolution(sample)
     assert len(dst_sim) == len(sample)
     assert "dst_predicted_nt" in dst_sim[-1]
@@ -149,9 +136,8 @@ def test_parker_spiral():
     assert len(streamlines) == 6
     assert len(streamlines[0]["points"]) > 10
 
-def test_report_generator():
-    dl = DataDownloader()
-    data = dl.generate_synthetic_telemetry("DSCOVR", hours=2)
+def test_report_generator(omni_l1):
+    data = omni_l1[130:154]
     cls = SpaceWeatherPhysics.classify_noaa_scales(3.0, -2.0, 1e-6, proton_flux=15.0)
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks(data)
     auroral = AuroralModel.calculate_auroral_boundaries(3.0, -2.0)
@@ -167,7 +153,7 @@ def test_report_generator():
     assert "24-HOUR SYNOPTIC TELEMETRY EXTREMA" in md
     assert "SHOCK CANDIDATES" in md
 
-def test_api_endpoints():
+def test_api_endpoints(omni_l1):
     # 1. Status
     res = client.get("/api/status")
     assert res.status_code == 200
@@ -302,10 +288,9 @@ def test_telemetry_importer_direct():
     assert parsed_preset["summary"]["bz_min"] == -44.3
     assert parsed_preset["detected_shocks"][0]["time"] == "2024-05-10 17:00:00"
 
-def test_space_weather_ml_forecaster():
+def test_space_weather_ml_forecaster(omni_l1):
     from helios.core.ml_forecast import SpaceWeatherForecaster
-    dl = DataDownloader()
-    data = dl.generate_synthetic_telemetry("DSCOVR", hours=6)
+    data = omni_l1[:72]
     forecast = SpaceWeatherForecaster.forecast_geomagnetic_storm(data)
 
     assert "model_version" in forecast

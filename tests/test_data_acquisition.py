@@ -85,11 +85,12 @@ def test_bundle_reports_provenance(monkeypatch):
     assert wind["provenance"]["kind"] == "unavailable" and wind["records"] == []
 
 
-def test_offline_bundle_is_labelled_synthetic():
-    # conftest blocks the network, so this exercises the offline path.
-    bundle = asyncio.run(DataDownloader().get_telemetry_bundle("DSCOVR"))
-    assert bundle["provenance"]["kind"] == "synthetic"
-    assert bundle["records"] and all(r["data_source"] == "synthetic" for r in bundle["records"])
+def test_offline_bundle_is_empty_not_invented():
+    """Offline with nothing cached the dashboard showed a generated "synthetic" solar wind (92 000 K
+    at 338 km/s, Bz near -4 nT for a whole day); now it shows nothing and says why."""
+    bundle = asyncio.run(DataDownloader().get_telemetry_bundle("DSCOVR"))  # conftest blocks the network
+    assert bundle["provenance"]["kind"] == "unavailable" and bundle["records"] == []
+    assert "could be reached" in bundle["provenance"]["description"]
     aditya = asyncio.run(DataDownloader().get_telemetry_bundle("ADITYA_L1"))
     assert aditya["provenance"]["kind"] == "unavailable" and aditya["records"] == []
     assert "pradan" in aditya["provenance"]["description"].lower()
@@ -256,7 +257,7 @@ def test_importer_reads_year_month_day_columns():
     assert [r["time_tag"] for r in res["records"]] == ["2024-05-10 17:05:00", "2024-05-10 17:10:00"]
 
 
-def test_csv_export_handles_mixed_keys_and_carries_metadata():
+def test_csv_export_handles_mixed_keys_and_carries_metadata(omni_l1):
     import io
     import pandas as pd
     from fastapi.testclient import TestClient
@@ -269,7 +270,7 @@ def test_csv_export_handles_mixed_keys_and_carries_metadata():
 
     text = TestClient(app, base_url=LOCAL).get("/api/export/csv?mission_id=DSCOVR").text
     assert text.startswith("# title:")
-    assert "# data_kind: synthetic" in text  # offline test run
+    assert "# data_kind: observed" in text  # OMNI test data (omni_l1)
     assert "speed=km/s" in text
     df = pd.read_csv(io.StringIO(text), comment="#")
     assert "data_source" in df.columns and len(df) > 0
@@ -393,7 +394,7 @@ def test_import_presets_are_omni_data():
     assert rows[1].startswith("2019-12-07 00:00:00")
 
 
-def test_custom_csv_export_has_metadata_and_plot_states_provenance(monkeypatch):
+def test_custom_csv_export_has_metadata_and_plot_states_provenance(monkeypatch, omni_l1):
     from fastapi.testclient import TestClient
     from helios.api import server
     from helios.core.exporter import DataExporter
@@ -409,7 +410,7 @@ def test_custom_csv_export_has_metadata_and_plot_states_provenance(monkeypatch):
         return b"png"
     monkeypatch.setattr(DataExporter, "generate_overview_chart", staticmethod(chart))
     assert client.get("/api/export/plot?mission_id=DSCOVR").status_code == 200
-    assert seen["provenance"]["kind"] == "synthetic"
+    assert seen["provenance"]["kind"] == "observed"
 
 
 def test_unexpected_errors_answer_json(monkeypatch):

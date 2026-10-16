@@ -144,3 +144,33 @@ def pytest_sessionfinish(session, exitstatus):
         return
     keep = session.config.option.basetemp and exitstatus != 0
     shutil.rmtree(_RUN_DIR / "home" if keep else _RUN_DIR, ignore_errors=True)
+
+
+@pytest.fixture
+def omni_l1(monkeypatch):
+    """The DSCOVR view served from real data, OMNI 5-min means of 10-12 May 2024 (bundled), for tests
+    that need L1 records offline (the offline model that used to supply them was removed)."""
+    from helios.core.downloader import DataDownloader, add_derived_fields, omni_snapshot
+    snap = omni_snapshot("may_2024_g5")
+    recs = [add_derived_fields({**dict(zip(snap["columns"], r)), "mission": "DSCOVR", "data_source": "observed"})
+            for r in snap["rows"]]
+    original = DataDownloader.get_telemetry_bundle
+
+    async def bundle(self, mission_id, span_days=1):
+        if mission_id.upper() != "DSCOVR":
+            return await original(self, mission_id, span_days)
+        rows = [dict(r) for r in recs[-min(len(recs), int(span_days) * 288):]]
+        return {"records": rows, "provenance": {"kind": "observed", "source_spacecraft": ["OMNI"], "n_records": len(rows),
+                                                "description": "OMNI 5-min means, 10-12 May 2024 (test data)"}}
+    monkeypatch.setattr(DataDownloader, "get_telemetry_bundle", bundle)
+    original_archive = DataDownloader.get_archive_bundle
+
+    async def archive(self, mission_id, start, end, cadence_minutes=1):
+        if mission_id.upper() != "DSCOVR":
+            return await original_archive(self, mission_id, start, end, cadence_minutes)
+        a, b = (t.strftime("%Y-%m-%d %H:%M:%S") for t in (start, end))
+        rows = [dict(r) for r in recs if a <= r["time_tag"] < b]
+        return {"records": rows, "provenance": {"kind": "observed" if rows else "unavailable", "source_spacecraft": ["OMNI"],
+                                                "description": "OMNI 5-min means, 10-12 May 2024 (test data)"}}
+    monkeypatch.setattr(DataDownloader, "get_archive_bundle", archive)
+    return recs
