@@ -32,15 +32,15 @@ New to the subject? Press `U` for the user guide, `P` for the formulas and the p
 * **DSCOVR / NOAA operational stream** (*NOAA*): live 1-minute solar wind and field from NOAA's Real-Time Solar Wind feed; the spacecraft actually supplying it (e.g. SOLAR1) is named. Archive: DSCOVR magnetometer and Faraday cup data from NASA CDAWeb (plasma 2016-2019 only).
 * **ACE** (*NASA*): live RTSW rows tagged ACE; archive MAG and SWEPAM (Level 2 and key parameters) from CDAWeb.
 * **WIND** (*NASA*): archive MFI and SWE from CDAWeb, at the instruments' own cadence for the event analyses.
-* **SOHO** (*ESA/NASA*): live solar wind speed and density from the CELIAS/MTOF Proton Monitor (University of Maryland, the last two days; SOHO has no magnetometer), and LASCO C2/C3 coronagraph images (NOAA, Helioviewer).
+* **SOHO** (*ESA/NASA*): live solar wind speed and density from the CELIAS/MTOF Proton Monitor (University of Maryland, the last two days; SOHO has no magnetometer), the archive from CDAWeb (`SOHO_CELIAS-PM_5MIN`), and LASCO C2/C3 coronagraph images (NOAA, Helioviewer).
 * **Aditya-L1** (*ISRO*): no public real-time in-situ data, so its live view is **simulated** (the operational stream with fixed offsets) and labelled so.
 * **OMNI** (*NASA*): solar wind time-shifted to Earth's bow shock and geomagnetic indices, 1963 to the present, for history, statistics and model checks.
 
 ### Elsewhere
-* **STEREO-A** (*NASA*): live solar wind speed, density and field magnitude from its space weather beacon (STEREO Science Center), about 70° ahead of Earth on its orbit, so no GSM components or travel time to Earth.
+* **STEREO-A** (*NASA*): live solar wind speed, density and field magnitude from its space weather beacon (STEREO Science Center), and the archive from CDAWeb (`STA_L2_MAGPLASMA_1M`); about 70° ahead of Earth on its orbit, so no GSM components or travel time to Earth.
 * **GOES** (*NOAA*): X-ray flux (flare class, R scale, D-RAP) and ≥10 MeV protons (S scale), live from NOAA. GOES measures no solar wind, so it has no solar wind view.
 * **SDO, SOHO, STEREO-A, Solar Orbiter** (*NASA/ESA*): solar and coronagraph images for any date (Helioviewer Project) and their science FITS files (SunPy). STEREO-A's position is used to correct CME speeds seen from off the Sun-Earth line.
-* **Parker Solar Probe, Solar Orbiter, STEREO-A** and the planets: positions from orbit models (checked against JPL Horizons) in the orbit view; any spacecraft with a SPICE kernel for the radio occultation tool.
+* **Positions:** every spacecraft (the L1 fleet, GOES-19, Parker Solar Probe, Solar Orbiter, STEREO-A) and the planets from JPL Horizons ephemerides read with SPICE (within 1 km of Horizons), for now or for the end of a loaded archive interval; a spacecraft without an ephemeris for the time is shown without a position. Any spacecraft with a SPICE kernel for the radio occultation tool.
 
 ---
 
@@ -72,7 +72,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 5. **Coronagraph Imagery & CME Kinematic Solver:**
    * Direct integration with real-time feeds from **SOHO LASCO C2**, **LASCO C3**, and **GOES SUVI 195/304 Å**. If an image cannot be loaded, the panel shows a placeholder drawing and says so.
    * Active region map: the numbered regions of the latest NOAA SWPC solar region summary (location, Mount Wilson and McIntosh class, area, flares of the day, SWPC 24 h C/M/X flare probabilities; `GET /api/solar/regions`), drawn on a schematic solar disk. The disk is a drawing in EUV or white-light colours, not an image.
-   * Plane-of-sky expansion velocity calculator ($V_{cme} = \Delta r / \Delta t$) and the **Vršnak et al. (2013)** drag-based model (ambient wind and drag parameter adjustable) for arrival times and speeds at L1 and Earth, compared with the **Gopalswamy et al. (2001)** empirical arrival model ($a = 2.193 - 0.0054u$ m/s² until 0.76 AU, then constant speed). The response lists its assumptions (no projection correction; rough shock Mach number; Kp category from speed only).
+   * Plane-of-sky expansion velocity calculator ($V_{cme} = \Delta r / \Delta t$) and the **Vršnak et al. (2013)** drag-based model (ambient wind and drag parameter adjustable) for arrival times and speeds at L1 and Earth, with the published defaults $\Gamma = 0.2	imes10^{-7}$ km⁻¹ and $w = 450$ km/s (Dumbović et al. 2021) and the model started at 20 R☉; checked on 44 DONKI CMEs of 2023-2025 (mean absolute error 14.4 h, as published for the model). Compared with the **Gopalswamy et al. (2001)** empirical arrival of the ejecta ($a = 2.193 - 0.0054u$ m/s² from the Sun until 0.76 AU, then constant speed). The response lists its assumptions (no projection correction unless the source and width are given; one drag parameter for all CMEs).
 
 6. **Heliospheric Parker Spiral Field Modeling:**
    * Evaluates Archimedean magnetic spiral geometry ($r - r_0 = -\frac{V_{sw}}{\Omega_\odot} (\phi - \phi_0)$) and pitch angles ($\psi$).
@@ -80,8 +80,8 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 
 7. **NASA OMNI Ingestion Studio & Rankine-Hugoniot Shock Solver:**
    * Ingests custom CSV and NASA OMNI high-resolution telemetry.
-   * Features 5 one-click historical benchmarks: May 2024 G5 Superstorm, Bastille Day 2000, Carrington Event 1859, Halloween 2003, and Quiet Interplanetary Background.
-   * Scans for Rankine-Hugoniot MHD jump conditions: compression ratio $r_c = N_2/N_1$, shock velocity $V_{sh}$, and fast magnetosonic Mach number $M_{ms}$.
+   * Four example intervals of OMNI 5-minute data, bundled for offline use: 10-11 May 2024, 15 July 2000, 17 March 2015 and the quiet day of 7 December 2019.
+   * Screens the series for shock-like jumps with the criteria of the IPShocks database (Kilpua et al. 2015); shock normals, speeds and Mach numbers with uncertainties are in the event analysis (item 10).
 
 8. **Geomagnetically Induced Currents (GIC) & D-RAP Ionospheric Absorption:**
    * **Plane-wave induction (Boteler & Pirjola 2017):** the geoelectric field of a uniform ground for one period (180 s), $E = \sqrt{\rho/(\mu_0\omega)}\,|dB/dt|$, and the quasi-DC current it drives through a line and a transformer neutral: a first estimate (no layered or coastal ground).
@@ -91,7 +91,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    * Cross-correlation time lag ($\tau \sim 30\text{--}60$ min early warning between L1 and Earth).
      A positive lag means spacecraft B observes the same structure later than spacecraft A.
      The lag comes with a 95 % interval (moving-block bootstrap) and r with a 95 % interval that allows for the autocorrelation of the series.
-     For observed RTSW data the baseline uses the NOAA ephemeris of the spacecraft that supplied the data (e.g. SOLAR1); other missions use model orbits.
+     For observed RTSW data the baseline uses the NOAA ephemeris of the spacecraft that supplied the data (e.g. SOLAR1); other missions use their JPL Horizons ephemerides. The fleet matrix gives each pair's correlation at its best lag within ±60 min.
    * Pearson correlation ($r$, with its 95 % interval), $R^2$, RMSE, MAE, and linear calibration between any two spacecraft.
    * Fast Fourier Transform (FFT) analysis of IMF magnetic fluctuations to identify Alfvénic turbulence and Kolmogorov $f^{-5/3}$ inertial subrange slopes.
 
@@ -117,6 +117,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 11. **Operator User Guide & Scientific Literature Handbook (Hotkeys 'U' & 'P'):**
     * Full 6-chapter interactive operator manual embedded with real-time keyword search.
     * Complete directory of peer-reviewed formulas with direct DOI cross-references, data provider provenance (NOAA, NASA, ISRO, ESA, GFZ, WDC), and open science licenses.
+    * Published results reproduced with HELIOS-L1's own tools on the same data (user guide, section 7, "Reproductions of published results"; `tests/test_reproductions.py`): the DBM tools paper's CME of 3 April 2010, the WIND magnetic cloud table's flux-rope fits, the Richardson & Cane ICME means and Dst minima, and the limits of Shue et al. (1998).
 
 ---
 
@@ -128,10 +129,10 @@ Every telemetry record carries a `data_source` field and every API response a `p
 |---|---|
 | `observed` | Measured values: the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`) or the NASA CDAWeb archive (HAPI). |
 | `simulated` | No data for the mission and window (Aditya-L1; SOHO and STEREO-A when their feeds cannot be reached; WIND when the archive has not reached the window yet); values are the operational L1 stream with fixed calibration offsets and noise. Not a measurement. Aditya-L1 ASPEX/SWIS and MAG Level-2 data are on ISSDC PRADAN (https://pradan.issdc.gov.in/al1/) for registered users only; there is no public API, so they cannot be fetched without the user's own login. |
-| `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. Historical storm profiles are also synthetic (built from published peak values). |
+| `synthetic` | The archive could not be reached and nothing was cached; values come from the offline solar wind model. |
 | `imported` | Rows from a user file in the Custom Ingestion tab. |
 
-* **Solar cycle:** the hazards tab shows the observed monthly and 13-month smoothed international sunspot number (SILSO) and F10.7 with NOAA SWPC's predicted cycle and range (`json/solar-cycle/observed-solar-cycle-indices.json`, `predicted-solar-cycle.json`), the observed cycle 25 maximum, and cycle 24 aligned on its minimum. Without network access an analytic approximation is shown and labelled MODEL.
+* **Solar cycle:** the hazards tab shows the observed monthly and 13-month smoothed international sunspot number (SILSO) and F10.7 with NOAA SWPC's predicted cycle and range (`json/solar-cycle/observed-solar-cycle-indices.json`, `predicted-solar-cycle.json`), the observed cycle 25 maximum, and cycle 24 aligned on its minimum. Without network access the NOAA SWPC solar-cycle products bundled with HELIOS-L1 are shown (monthly since December 2008 and the predicted cycle).
 
 * **DSCOVR view:** the RTSW operational stream (rows flagged active). The spacecraft actually supplying it (e.g. SOLAR1) is stored per record in `source_spacecraft`.
 * **ACE view:** the RTSW rows tagged `source = ACE` (real ACE data), so ACE vs. operational-monitor comparisons are genuine inter-spacecraft comparisons.
@@ -146,10 +147,10 @@ Every telemetry record carries a `data_source` field and every API response a `p
   | OMNI | `OMNI_HRO_1MIN` (time-shifted to the bow shock nose) | same |
 
   Preliminary key-parameter datasets only extend the definitive ones past their last sample, and the provenance lists every dataset used with its level and coverage. Any interval of up to 31 days, from the dashboard (Observation Horizon, Archive Interval) or `GET /api/archive/WIND?start=2024-05-10T00:00&end=2024-05-12T00:00` (add `&format=csv` for a file, `&cadence_minutes=5` for block averages). Data are cached per day as 1-minute means; a DSCOVR magnetometer day is about 7 MB to download the first time.
-* **Historical events:** events since 1995 load real OMNI data; March 1989 (no OMNI 1-min coverage), Carrington 1859 and the quiet baseline are synthetic profiles and labelled so.
+* **Historical events:** events since 1995 and the quiet baseline (7 December 2019) load real OMNI data, bundled for offline use; March 1989 (no OMNI 1-min coverage) and Carrington 1859 are described without invented solar wind data.
 * **Gaps:** missing or fill values stay empty (null); derived quantities are empty when an input is missing. Rows with a non-zero RTSW quality flag are discarded.
-* **Indices:** NOAA G/R/S scales use the latest observed planetary Kp, GOES 0.1–0.8 nm X-ray flux and ≥10 MeV proton flux. When Kp cannot be fetched, a Bz-based estimate is used and labelled as such (`kp_source`).
-* **Storm forecast tab:** a 12-hour Kp trajectory from the Newell et al. (2008) fit and a Dst trajectory from O'Brien & McPherron (2000), both from the latest L1 solar wind held and relaxed towards quiet values (an assumption, shown under the chart); storm probabilities and the NOAA Kp line in the chart (the product's "estimated" values for the current UTC day and "predicted" values after it) are NOAA SWPC's own 3-day forecast (`text/3-day-geomag-forecast.txt`, `products/noaa-planetary-k-index-forecast.json`).
+* **Indices:** NOAA G/R/S scales use the latest observed planetary Kp, GOES 0.1–0.8 nm X-ray flux and ≥10 MeV proton flux. When Kp cannot be fetched, the Newell et al. (2008) estimate from the solar wind is used and labelled as such (`kp_source`).
+* **Storm forecast tab:** a 12-hour Kp trajectory from the Newell et al. (2008) fit and a Dst trajectory from O'Brien & McPherron (2000), both from the last 3 hours of L1 solar wind held constant (persistence: an assumption, shown under the chart); storm probabilities and the NOAA Kp line in the chart (the product's "estimated" values for the current UTC day and "predicted" values after it) are NOAA SWPC's own 3-day forecast (`text/3-day-geomag-forecast.txt`, `products/noaa-planetary-k-index-forecast.json`).
 * **Time:** all time stamps are UTC, `YYYY-MM-DD HH:MM:SS`.
 * **CSV export** (`/api/export/csv`) starts with `# key: value` lines (data kind, provenance, coverage, cadence, units). Read it with `pandas.read_csv(path, comment="#")`, or pass `metadata=false` for a bare table.
 * **Importing files:** CSV, tab- or space-delimited text, JSON (record lists, NOAA SWPC header-row products, NOAA real-time solar wind files `rtsw_*_1m.json`, of which only the active spacecraft's unflagged rows are used), HAPI CSV with its header (e.g. from CDAWeb, fill values become gaps) and HELIOS-L1's own CSV/JSON exports are read; header names are matched without regard to case, spaces or units in brackets (`Bz GSM (nT)`), unused columns and other warnings are listed in the import tab. The storm presets in the import tab are illustrative profiles for trying the pipeline, not measured data (measured OMNI data come from the Archive Interval loader). OMNI/CDF fill values (99999.9 km/s, 999.99 cm⁻³, 9999.99 nT, 9999999 K, ±1e31) are treated as missing, time stamps with offsets are converted to UTC, and OMNI `YEAR DOY HR MN` columns are recognised. Field components named `bx/by/bz` are taken as GSM. Files with only GSE components (`BX_GSE` ...) are rotated to GSM for each row's time (Hapgood 1992 with the IGRF-14 dipole axis, `helios/core/coordinates.py`); the result matches the GSM values published in OMNI to 0.01 nT.
