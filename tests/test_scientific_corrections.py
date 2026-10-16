@@ -770,3 +770,13 @@ def test_shock_screen_finds_the_march_2015_shock():
     shocks = SpaceWeatherPhysics.detect_interplanetary_shocks([dict(zip(s["columns"], r)) for r in s["rows"]])
     assert [x["time"] for x in shocks] == ["2015-03-17 04:45:00"]
     assert shocks[0]["density_ratio"] >= 1.2 and shocks[0]["magnetic_ratio"] >= 1.2
+
+
+def test_drap_has_no_invented_usability_levels():
+    """'Complete Blackout' above 10 dB and 'Severely Degraded' above 3 dB were thresholds of this app;
+    'polar_aviation_impact' described the sunlit side. An X1 flare overhead: HAF 25 MHz (D-RAP)."""
+    from helios.core.ionosphere import IonosphericModel
+    res = IonosphericModel.calculate_drap_absorption(1e-4, zenith_angle_deg=0.0)
+    assert res["highest_affected_frequency_mhz"] == pytest.approx(25.0)
+    assert all("usability" not in row for row in res["absorption_spectrum"])
+    assert "polar_aviation_impact" not in res and res["sunlit_hf_impact"].startswith("HF below 25 MHz")

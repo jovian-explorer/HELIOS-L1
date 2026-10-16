@@ -4430,7 +4430,7 @@ function updateDrapReadouts(drap) {
   if (lossEl) lossEl.innerText = `${(100 * (1 - Math.pow(10, -drap.attenuation_at_10mhz_db / 10))).toFixed(1)}% signal power lost`;
 
   const atcEl = document.getElementById('drap-atc-impact');
-  if (atcEl) atcEl.innerText = drap.polar_aviation_impact;
+  if (atcEl) atcEl.innerText = drap.sunlit_hf_impact;
 }
 
 function updateGicReadouts(gic) {

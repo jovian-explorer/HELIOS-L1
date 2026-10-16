@@ -52,7 +52,6 @@ class IonosphericModel:
                 "frequency_mhz": freq,
                 "attenuation_db": round(att_db, 2),
                 "signal_degradation_pct": round(min(100.0, (1.0 - 10.0 ** (-att_db / 10.0)) * 100.0), 1),
-                "usability": "Complete Blackout" if att_db > 10.0 else ("Severely Degraded" if att_db > 3.0 else "Operational")
             })
 
         # NOAA R-scale Radio Blackout classification
@@ -76,7 +75,7 @@ class IonosphericModel:
             "subsolar_peak_absorption_db": round(a_subsolar_10mhz, 2),
             # Flare absorption acts on the sunlit side; polar routes are hit by solar proton
             # (polar cap) absorption, which this model does not include.
-            "polar_aviation_impact": (f"HF below about {haf_mhz:.0f} MHz lost on the sunlit side (aviation HF voice links)" if haf_mhz > 15.0
-                                      else ("Lower HF bands degraded on the sunlit side" if haf_mhz > 5.0 else "No significant flare absorption")),
+            "sunlit_hf_impact": (f"HF below {haf_mhz:.0f} MHz absorbed by more than 1 dB here (sunlit side)" if haf_mhz > 0
+                                 else "No flare absorption"),
             "absorption_spectrum": absorption_spectrum
         }
