@@ -1160,13 +1160,9 @@ function updateFeedStatus(data, latency = 0) {
     // Earth, so no GSM): say why the field cards are empty, in a neutral colour.
     const recs = data.records || [];
     const noBz = simKind === 'observed' && recs.some(r => typeof r.speed === 'number') && !recs.some(r => typeof r.bz_gsm === 'number');
-    simBanner.classList.toggle('hidden', simKind !== 'simulated' && simKind !== 'synthetic' && !noBz);
-    simBanner.className = `${simBanner.classList.contains('hidden') ? 'hidden ' : ''}px-4 py-2 rounded-lg text-xs border ${noBz ? 'bg-sky-500/10 border-sky-500/40 text-sky-200' : 'bg-amber-500/10 border-amber-500/40 text-amber-200'}`;
-    simBanner.innerText = noBz
-      ? 'Measured, without field components: this spacecraft measures no magnetic field in the frame of Earth (SOHO has no magnetometer; STEREO-A is far from Earth), so Bz, the coupling and the magnetopause cards are empty. ' + ((data.provenance || {}).description || '')
-      : simKind === 'simulated'
-        ? 'SIMULATED: this spacecraft has no public real-time data. The values below are the NOAA operational L1 stream with fixed offsets, not its measurements.'
-        : 'SYNTHETIC: no data service could be reached and nothing was cached. The values below come from a model, not from any spacecraft.';
+    simBanner.classList.toggle('hidden', !noBz);
+    simBanner.className = `${noBz ? '' : 'hidden '}px-4 py-2 rounded-lg text-xs border bg-sky-500/10 border-sky-500/40 text-sky-200`;
+    simBanner.innerText = 'Measured, without field components: this spacecraft measures no magnetic field in the frame of Earth (SOHO has no magnetometer; STEREO-A is far from Earth), so Bz, the coupling and the magnetopause cards are empty. ' + ((data.provenance || {}).description || '');
   }
 
   if (data.error) {
@@ -1180,7 +1176,7 @@ function updateFeedStatus(data, latency = 0) {
 
   const recCount = (data.records || []).length;
   const prov = data.provenance || {};
-  const kind = prov.kind || 'synthetic';
+  const kind = prov.kind || 'unavailable';
   const badge = document.getElementById('feed-status-badge');
   if (badge) badge.title = prov.description || 'Telemetry Feed Diagnostic & Latency';
 
@@ -1194,18 +1190,14 @@ function updateFeedStatus(data, latency = 0) {
     badgeText.innerText = `Observed: ${origin}${src ? ' ' + src : ''} (${recCount} pts • ${latency}ms)`;
     badgeText.className = 'text-emerald-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-emerald-400 pulse-beacon';
-  } else if (kind === 'unavailable') {
+  } else if (kind === 'imported') {
+    badgeText.innerText = `Imported file (${recCount} pts)`;
+    badgeText.className = 'text-sky-300 font-mono text-[11px]';
+    badgeDot.className = 'w-2 h-2 rounded-full bg-sky-400';
+  } else {
     badgeText.innerText = 'No data for this spacecraft and interval';
     badgeText.className = 'text-amber-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-amber-400';
-  } else if (kind === 'simulated') {
-    badgeText.innerText = `SIMULATED from L1 stream (${recCount} pts • ${latency}ms)`;
-    badgeText.className = 'text-amber-300 font-mono text-[11px]';
-    badgeDot.className = 'w-2 h-2 rounded-full bg-amber-400';
-  } else {
-    badgeText.innerText = `SYNTHETIC model, archive offline (${recCount} pts • ${latency}ms)`;
-    badgeText.className = 'text-rose-300 font-mono text-[11px]';
-    badgeDot.className = 'w-2 h-2 rounded-full bg-rose-400';
   }
 }
 
@@ -1265,11 +1257,8 @@ function updateTelemetryUI(data) {
     gBadge.style.backgroundColor = (cls.g_color || '#529b6e') + '1a';
   }
 
-  // The header reads as current conditions: values from an archive interval or a simulated
-  // view say so (they used to look like the live state)
-  const kindNow = (data.provenance || {}).kind;
-  const headerTag = String(cls.g_scale || '').startsWith('Archive') ? ' (archive end)'
-    : (kindNow === 'simulated' || kindNow === 'synthetic') ? ` (${kindNow})` : '';
+  // The header reads as current conditions: values from an archive interval say so
+  const headerTag = String(cls.g_scale || '').startsWith('Archive') ? ' (archive end)' : '';
   if (parkerRenderer && Number.isFinite(Number(latest.bt)) && latest.bt !== null) parkerRenderer.b1auNt = Number(latest.bt);
   if (!parkerSpeedFromUser && latest.speed != null && Number.isFinite(Number(latest.speed))) setParkerSpeedPreset(Math.round(Number(latest.speed)), true);
   setPositionEpoch(headerTag === ' (archive end)' && latest.time_tag ? String(latest.time_tag).replace(' ', 'T') : null);
@@ -1426,8 +1415,7 @@ function updateTelemetryUI(data) {
   }
 
   // Evaluate operational alerts and threshold excursions: live measurements only (an archive
-  // interval such as May 2024 used to log "critical" incidents stamped with today's time, and
-  // simulated or synthetic values logged incidents that described no real conditions)
+  // interval such as May 2024 used to log "critical" incidents stamped with today's time)
   const liveMeasured = (data.provenance || {}).kind === 'observed'
     && !String((data.classification || {}).g_scale || '').startsWith('Archive');
   if (missionIncidentLogger && latest && liveMeasured) {
@@ -1555,28 +1543,6 @@ function updateShocksTable(shocks) {
   `).join('');
 }
 
-// Statistics between a measurement and a simulated / synthetic series describe the model,
-// not two instruments: say so above the numbers.
-function comparisonProvenanceWarning(comp, satA, satB) {
-  const sides = [['A', satA, comp.provenance_a], ['B', satB, comp.provenance_b]];
-  const notes = sides
-    .filter(([, , prov]) => prov && prov.kind && !['observed', 'imported'].includes(prov.kind))
-    .map(([side, sat, prov]) => `Spacecraft ${side} (${sat}) is ${prov.kind.toUpperCase()}${prov.kind === 'simulated'
-      ? ': derived from the operational L1 stream with fixed offsets and noise'
-      : ': offline model output'}.`);
-  if (!notes.length) return '';
-  return notes.join(' ') + ' The correlation, RMSE, bias and lag below describe that model, not a comparison of two instruments.';
-}
-
-function showComparisonProvenanceWarning(comp, satA, satB) {
-  const box = document.getElementById('comp-provenance-warning');
-  const textEl = document.getElementById('comp-provenance-warning-text');
-  if (!box || !textEl) return;
-  const msg = comparisonProvenanceWarning(comp, satA, satB);
-  textEl.innerText = msg;
-  box.classList.toggle('hidden', !msg);
-}
-
 async function runComparison() {
   const current = latestRequest('runComparison');
   const satA = document.getElementById('comp-sat-a').value;
@@ -1594,7 +1560,6 @@ async function runComparison() {
     const comp = await res.json();
     if (!current()) return;
 
-    showComparisonProvenanceWarning(comp, satA, satB);
     if (comp.status !== 'success') {
       alert(`Insufficient overlapping telemetry data between the selected spacecraft. ${comp.message || ''}`);
       return;
@@ -3630,7 +3595,7 @@ function renderUserGuideTab(container) {
                 <span>Tier 1: Scientific Mission Domains</span>
               </div>
               <ul class="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
-                <li><strong class="text-slate-200">1: L1 Fleet &amp; Telemetry</strong> (NOAA real-time solar wind and CDAWeb archive intervals, spacecraft comparator, orbits, fleet catalogue; Aditya-L1 and SOHO are simulated)</li>
+                <li><strong class="text-slate-200">1: L1 Fleet &amp; Telemetry</strong> (NOAA real-time solar wind and CDAWeb archive intervals, spacecraft comparator, orbits, fleet catalogue; Aditya-L1 has no public data, so it shows none)</li>
                 <li><strong class="text-slate-200">2: Solar &amp; Heliosphere</strong> (SOHO LASCO and GOES SUVI images, NOAA active regions, CME arrival models, Parker spiral, turbulence spectra)</li>
                 <li><strong class="text-slate-200">3: Geospace &amp; Hazards</strong> (Starkov auroral oval and Dst models, storm forecast, D-RAP and GIC, solar cycle, storms archive)</li>
                 <li><strong class="text-slate-200">4: Data Studio &amp; Science</strong> (file import, event analysis on archive data, OMNI statistics, references)</li>
@@ -3734,7 +3699,7 @@ function renderUserGuideTab(container) {
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
               <span class="font-bold text-purple-300">Real-Time Acoustic Sonification</span>
               <p class="text-slate-400 text-[11px]">
-                The <em>Sonify Plasma</em> button plays the latest solar wind as sound (sound on or off with key 'A'): the pitch follows the speed (300-1000 km/s to 180-540 Hz), the second tone is a fifth above for northward and a tritone for southward Bz, and the tremolo rate follows the density (2-25 cm⁻³ to 3-12 Hz).
+                The <em>Sonify Plasma</em> button plays the latest solar wind as sound (sound on or off with key 'A'): the pitch follows the speed (300-1000 km/s to 180-540 Hz), the second tone is a fifth above for northward and a tritone for southward Bz, and the tremolo rate follows the density (2-25 cm⁻³ to 3-12 Hz). The mapping is chosen to be easy to hear, not a physical scale.
               </p>
             </div>
           </div>

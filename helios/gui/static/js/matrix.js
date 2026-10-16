@@ -28,12 +28,10 @@ async function loadFleetMatrix() {
     const missions = data.missions;
     const matrix = data.matrix_r;
     const lagMin = data.matrix_lag_min || [];
-    // Missions without measured data in the window are the operational stream with offsets and
-    // noise; their high r with DSCOVR says nothing about the instruments, so mark them.
+    // Missions without data in the window have no row values (n/a); the label says why.
     const prov = data.provenance || {};
-    const notMeasured = m => prov[m] && prov[m] !== 'observed';
-    const kindTag = m => notMeasured(m)
-      ? `<span class="ml-1 text-[9px] px-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30" title="${escapeHtml(prov[m])}: not a measurement">${escapeHtml(String(prov[m]).toUpperCase())}</span>`
+    const kindTag = m => prov[m] && prov[m] !== 'observed'
+      ? '<span class="ml-1 text-[9px] text-slate-400">no data</span>'
       : '';
 
     let html = `
@@ -62,7 +60,6 @@ async function loadFleetMatrix() {
       missions.forEach((mCol, j) => {
         const r = matrix[i][j];
         const isDiag = i === j;
-        const sim = !isDiag && (notMeasured(mRow) || notMeasured(mCol));
 
         let bgStyle = '';
         let textColor = '';
@@ -89,8 +86,8 @@ async function loadFleetMatrix() {
             <div 
               onclick="selectMatrixPair('${mRow}', '${mCol}')" 
               style="${bgStyle}" 
-              class="rounded-lg py-1.5 px-2.5 cursor-pointer hover:scale-105 transition ${textColor} ${sim ? 'opacity-50 italic' : ''}"
-              title="${isDiag ? 'Self-correlation' : `${sim ? 'One side is not measured (simulated or synthetic), so r says nothing about the instruments. ' : ''}Click to cross-correlate ${mRow} vs ${mCol}`}"
+              class="rounded-lg py-1.5 px-2.5 cursor-pointer hover:scale-105 transition ${textColor}"
+              title="${isDiag ? 'Self-correlation' : `Click to cross-correlate ${mRow} vs ${mCol}`}"
             >
               ${r === null || r === undefined ? 'n/a' : r.toFixed(3)}${!isDiag && lagMin[i] && lagMin[i][j] ? `<div class="text-[9px] text-slate-400 font-normal">${lagMin[i][j] > 0 ? '+' : ''}${lagMin[i][j]} min</div>` : ''}
             </div>
@@ -106,10 +103,6 @@ async function loadFleetMatrix() {
         </table>
       </div>
     `;
-    const simulated = missions.filter(notMeasured);
-    if (simulated.length) {
-      html += `<p class="text-[11px] text-amber-300/90 mt-2 px-2">${simulated.map(escapeHtml).join(', ')}: no measured data in this window. Their values are the operational L1 stream with fixed offsets and noise (or the offline model), so their correlations (faded) are not instrument comparisons.</p>`;
-    }
 
     container.innerHTML = html;
 

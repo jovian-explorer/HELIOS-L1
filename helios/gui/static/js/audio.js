@@ -87,8 +87,10 @@ class SoundEngine {
     } catch (e) {}
   }
 
-  sonifySolarWind(speed = 450, bz = -2.5, density = 6.0, duration = 2.4) {
-    if (!this.enabled) return;
+  // A mapping chosen for listening (pitch, interval, tremolo), not a physical scale; it plays
+  // only measured values (no defaults stand in for a missing one).
+  sonifySolarWind(speed, bz, density, duration = 2.4) {
+    if (!this.enabled || ![speed, bz, density].every(Number.isFinite)) return;
     this.init();
     if (!this.ctx) return;
 
