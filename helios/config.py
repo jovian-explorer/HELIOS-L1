@@ -788,7 +788,7 @@ SCIENTIFIC_REFERENCES = [
         "doi": "10.1016/j.jastp.2008.03.008",
         "doi_url": "https://doi.org/10.1016/j.jastp.2008.03.008",
         "category": "Auroral Oval & Ionosphere",
-        "formula": "HP = 16.82 exp(0.32 Kp) - 4.86 [GW] for Kp <= 7; above Kp 7, linear from 153.13 GW to 300 GW at Kp 9 (TIE-GCM/WACCM extension; relation as quoted by Smith-Johnsen et al. 2018, JGR, doi:10.1029/2018JA025418, eq. 1-2)",
+        "formula": "HP = 16.82 exp(0.32 Kp) - 4.86 [GW] for Kp <= 7; above Kp 7, linear from 153.13 GW to 300 GW at Kp 9: the TIE-GCM/WACCM relation (TIE-GCM util.F hp_from_kp: 'formula given by Zhang Yongliang based on TIMED/GUVI', 2007; cited to Zhang & Paxton 2008 by the TIE-GCM documentation and Smith-Johnsen et al. 2018, doi:10.1029/2018JA025418, eq. 1). Sigernes et al. (2011) quote a different Kp relation from Zhang & Paxton (2008) (38.66 exp(0.1967 Kp) for Kp <= 5), so the relation used here could not be checked against the paper itself (not openly available)",
         "parameters": ["HP (hemispheric power of auroral electron precipitation, GW)", "Kp (planetary geomagnetic index)"],
         "physical_meaning": "Kp dependence of the hemispheric auroral electron energy flux derived from TIMED/GUVI far-ultraviolet images; used here as the hemispheric power estimate when only Kp is known."
     },

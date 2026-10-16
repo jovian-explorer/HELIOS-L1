@@ -51,10 +51,14 @@ STARKOV_AL_RANGE = (18.0, 750.0)
 # threshold: -3.0 / -9.4 deg (RMS 5.9 / 12.5), so it is not used.
 STORM_AL = 386.0
 
-# Hemispheric power from Kp: Zhang & Paxton (2008, JASTP 70, 1231, doi:10.1016/j.jastp.2008.03.008)
-# up to Kp 7, then the TIE-GCM/WACCM linear ramp to 300 GW at Kp 9.
-HEMISPHERIC_POWER_SOURCE = ("Kp estimate: Zhang & Paxton (2008) HP = 16.82 exp(0.32 Kp) - 4.86 GW (Kp <= 7), "
-                            "linear to 300 GW at Kp 9 above (TIE-GCM)")
+# Hemispheric power from Kp: HP = 16.82 exp(0.32 Kp) - 4.86 GW up to Kp 7, then linear to 300 GW at Kp
+# 9: the TIE-GCM/WACCM relation (TIE-GCM util.F hp_from_kp: "formula given by Zhang Yongliang based on
+# TIMED/GUVI", 2007; cited to Zhang & Paxton 2008 by the TIE-GCM documentation and Smith-Johnsen et
+# al. 2018, doi:10.1029/2018JA025418, eq. 1). Sigernes et al. (2011) quote a different Kp relation
+# from Zhang & Paxton (2008) (38.66 exp(0.1967 Kp) for Kp <= 5), so the relation used here could not
+# be checked against the paper itself (not openly available).
+HEMISPHERIC_POWER_SOURCE = ("Kp estimate: HP = 16.82 exp(0.32 Kp) - 4.86 GW (Kp <= 7), linear to 300 GW at Kp 9 above; "
+                            "the TIE-GCM/WACCM relation, attributed to Zhang & Paxton (2008) (TIMED/GUVI)")
 
 
 class AuroralModel:
@@ -87,9 +91,8 @@ class AuroralModel:
     @staticmethod
     def hemispheric_power_from_kp(kp: float) -> float:
         """
-        Hemispheric power (GW) from Kp: Zhang & Paxton (2008) TIMED/GUVI relation
-        HP = 16.82 exp(0.32 Kp) - 4.86 for Kp <= 7 (as quoted by Smith-Johnsen et al. 2018,
-        eq. 1, and in TIE-GCM util.F hp_from_kp); above Kp 7 the TIE-GCM/WACCM linear
+        Hemispheric power (GW) from Kp with the TIE-GCM/WACCM relation (see
+        HEMISPHERIC_POWER_SOURCE for its source): HP = 16.82 exp(0.32 Kp) - 4.86 for Kp <= 7; above Kp 7 the TIE-GCM/WACCM linear
         ramp from 153.13 GW to 300 GW at Kp 9 (NOAA POES value) is used.
         """
         kp = max(0.0, min(9.0, float(kp)))
