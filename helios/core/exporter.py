@@ -124,7 +124,7 @@ class DataExporter:
     @staticmethod
     def _overview_figure(df: pd.DataFrame, mission_name: str, provenance: Dict[str, Any] = None) -> bytes:
         fig, axes = plt.subplots(4, 1, figsize=(12, 10), sharex=True)
-        fig.suptitle(f"HELIOS-L1 Scientific Telemetry: {mission_name}", fontsize=14, color="#38bdf8", weight="bold")
+        fig.suptitle(f"HELIOS-L1 Scientific Telemetry: {mission_name}", fontsize=14, color="#7fa5cf", weight="bold")
         if provenance:
             kind = str(provenance.get("kind") or "unknown").upper()
             desc = str(provenance.get("description") or "")
@@ -132,16 +132,16 @@ class DataExporter:
             if len(line) > 150:
                 line = line[:147] + "..."
             fig.text(0.5, 0.955, line, ha="center", fontsize=8,
-                     color="#fbbf24" if kind != "OBSERVED" else "#94a3b8")
+                     color="#d2aa57" if kind != "OBSERVED" else "#9a9ea5")
 
         # Panel 1: IMF Bz and Total B
         ax1 = axes[0]
         if "bz_gsm" in df.columns:
-            ax1.plot(df["dt"], df["bz_gsm"], label="IMF Bz (GSM)", color="#f43f5e", lw=1.2)
+            ax1.plot(df["dt"], df["bz_gsm"], label="IMF Bz (GSM)", color="#c26262", lw=1.2)
         if "bt" in df.columns:
-            ax1.plot(df["dt"], df["bt"], label="Total |B|", color="#e2e8f0", lw=1.0, alpha=0.8)
-        ax1.axhline(0, color="#64748b", ls="--", lw=0.8)
-        ax1.axhline(-10, color="#f59e0b", ls=":", lw=1.0, label="Bz Storm Threshold (-10 nT)")
+            ax1.plot(df["dt"], df["bt"], label="Total |B|", color="#d6d8db", lw=1.0, alpha=0.8)
+        ax1.axhline(0, color="#888c94", ls="--", lw=0.8)
+        ax1.axhline(-10, color="#b98f3f", ls=":", lw=1.0, label="Bz Storm Threshold (-10 nT)")
         ax1.set_ylabel("B Field [nT]", fontsize=10)
         ax1.legend(loc="upper right", framealpha=0.3, fontsize=8)
         ax1.grid(True, alpha=0.2)
@@ -149,8 +149,8 @@ class DataExporter:
         # Panel 2: Solar Wind Speed
         ax2 = axes[1]
         if "speed" in df.columns:
-            ax2.plot(df["dt"], df["speed"], label="Solar Wind Speed (Vsw)", color="#38bdf8", lw=1.2)
-            ax2.axhline(500, color="#eab308", ls=":", lw=0.9, label="Fast wind (500 km/s)")
+            ax2.plot(df["dt"], df["speed"], label="Solar Wind Speed (Vsw)", color="#7fa5cf", lw=1.2)
+            ax2.axhline(500, color="#b98f3f", ls=":", lw=0.9, label="Fast wind (500 km/s)")
         ax2.set_ylabel("Speed [km/s]", fontsize=10)
         ax2.legend(loc="upper right", framealpha=0.3, fontsize=8)
         ax2.grid(True, alpha=0.2)
@@ -158,7 +158,7 @@ class DataExporter:
         # Panel 3: Proton Density
         ax3 = axes[2]
         if "density" in df.columns:
-            ax3.plot(df["dt"], df["density"], label="Proton Density (Np)", color="#34d399", lw=1.2)
+            ax3.plot(df["dt"], df["density"], label="Proton Density (Np)", color="#6db487", lw=1.2)
         ax3.set_ylabel("Density [cm⁻³]", fontsize=10)
         ax3.legend(loc="upper right", framealpha=0.3, fontsize=8)
         ax3.grid(True, alpha=0.2)
@@ -166,7 +166,7 @@ class DataExporter:
         # Panel 4: Dynamic Pressure
         ax4 = axes[3]
         if "dynamic_pressure" in df.columns:
-            ax4.plot(df["dt"], df["dynamic_pressure"], label="Dynamic Pressure Pdyn", color="#a855f7", lw=1.2)
+            ax4.plot(df["dt"], df["dynamic_pressure"], label="Dynamic Pressure Pdyn", color="#6690bf", lw=1.2)
         ax4.set_ylabel("Pressure [nPa]", fontsize=10)
         ax4.set_xlabel("Time (UTC)", fontsize=10)
         ax4.legend(loc="upper right", framealpha=0.3, fontsize=8)
@@ -178,6 +178,6 @@ class DataExporter:
         plt.tight_layout(rect=(0, 0, 1, 0.95))
 
         buf = io.BytesIO()
-        plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#0f172a")
+        plt.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="#1e2024")
         plt.close(fig)
         return buf.getvalue()

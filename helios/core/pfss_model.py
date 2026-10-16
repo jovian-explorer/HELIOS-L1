@@ -215,30 +215,41 @@ def plot(out, hcs: List[np.ndarray], traced: List[Dict[str, Any]], earth: Option
     lon = coords.lon.to_value("deg")[0] % 360.0
     lat = coords.lat.to_value("deg")[:, 0]
     order = np.argsort(lon)
-    fig = Figure(figsize=(9, 4.6), dpi=110)
+    # Dark figure in the interface's colours (it was a white plot inside the dark panel).
+    bg, fg, grid = "#1f2125", "#b9bcc1", "#43464c"
+    fig = Figure(figsize=(9, 4.6), dpi=110, facecolor=bg)
     ax = fig.subplots()
+    ax.set_facecolor(bg)
+    ax.tick_params(colors=fg)
+    for spine in ax.spines.values():
+        spine.set_color(grid)
     lim = max(10.0, float(np.nanpercentile(np.abs(m.data), 98)))
     pc = ax.pcolormesh(lon[order], lat, np.asarray(m.data)[:, order], cmap="gray", vmin=-lim, vmax=lim, shading="auto")
-    fig.colorbar(pc, ax=ax, label="B_r at the photosphere (G)", fraction=0.03)
+    cb = fig.colorbar(pc, ax=ax, fraction=0.03)
+    cb.set_label("B_r at the photosphere (G)", color=fg)
+    cb.ax.tick_params(colors=fg)
+    cb.outline.set_edgecolor(grid)
     for i, ln in enumerate(hcs):
-        ax.plot(ln[:, 0], ln[:, 1], color="#ef4444", lw=1.4, label="current sheet (B_r = 0 at r_ss)" if i == 0 else None)
+        ax.plot(ln[:, 0], ln[:, 1], color="#d2aa57", lw=1.4, label="current sheet (B_r = 0 at r_ss)" if i == 0 else None)
     for t in traced:
         if not t.get("traced"):
             continue
-        col = ("#22d3ee" if t["polarity"] > 0 else "#f472b6") if t["open"] else "#facc15"
+        col = ("#7fa5cf" if t["polarity"] > 0 else "#d77e7e") if t["open"] else "#b0d9bf"
         line = np.array(t["line"])
         ax.plot(line[:, 0] % 360.0, line[:, 1], ".", ms=1.5, color=col)
         ax.plot(t["footpoint_lon"], t["footpoint_lat"], "o", color=col, mec="k", ms=6)
     if earth:
-        ax.plot(earth["lon"], earth["lat"], "*", color="#38bdf8", mec="k", ms=12, label="Earth-connected point at r_ss")
+        ax.plot(earth["lon"], earth["lat"], "*", color="#f6f7f8", mec="k", ms=12, label="Earth-connected point at r_ss")
     ax.set_xlim(0, 360)
     ax.set_ylim(-90, 90)
-    ax.set_xlabel("Carrington longitude (deg)")
-    ax.set_ylabel("latitude (deg)")
-    ax.legend(loc="lower left", fontsize=7)
+    ax.set_xlabel("Carrington longitude (deg)", color=fg)
+    ax.set_ylabel("latitude (deg)", color=fg)
+    leg = ax.legend(loc="lower left", fontsize=7, facecolor=bg, edgecolor=grid)
+    for txt in leg.get_texts():
+        txt.set_color(fg)
     fig.tight_layout()
     buf = io.BytesIO()
-    fig.savefig(buf, format="png")
+    fig.savefig(buf, format="png", facecolor=bg)
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 

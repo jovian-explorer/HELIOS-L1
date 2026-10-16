@@ -50,8 +50,8 @@ async function runPfss() {
       `${e.longitude_shift_deg}° further west (${e.speed_kms} km/s), at ${e.lon}°, ${e.lat}°: ${e.hcs_distance_deg}° from the current sheet.</div>` +
       `<div class="text-sky-300">Solar source: ${describeFieldLine(data.earth_source)}</div>` +
       data.traced.map(t => `<div>From (${t.seed.r_rsun} R☉, ${t.seed.lon}°, ${t.seed.lat}°): ${describeFieldLine(t)}</div>`).join('') +
-      `<div class="text-slate-500">${escapeHtml(data.method)}; ${escapeHtml(data.classes)}. Red: B_r = 0 on the source surface; ` +
-      `cyan/pink: open field out/in; yellow: closed.</div>`;
+      `<div class="text-slate-500">${escapeHtml(data.method)}; ${escapeHtml(data.classes)}. Amber: B_r = 0 on the source surface; ` +
+      `blue/red: open field out/in; green: closed; white star: the Earth-connected point.</div>`;
   } catch (err) {
     if (!current()) return;
     out.innerText = `PFSS unavailable: ${err.message}`;

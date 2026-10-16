@@ -53,25 +53,25 @@ class ScientificReportGenerator:
             for s in shocks:
                 shocks_html += f"""
                 <tr>
-                    <td style="padding: 6px; border: 1px solid #334155; font-family: monospace;">{s['time']}</td>
-                    <td style="padding: 6px; border: 1px solid #334155; color: #f43f5e; font-weight: bold;">{s['classification']}</td>
-                    <td style="padding: 6px; border: 1px solid #334155; color: #38bdf8;">+{s['delta_speed_kms']} km/s</td>
-                    <td style="padding: 6px; border: 1px solid #334155;">{s['density_ratio']}x</td>
-                    <td style="padding: 6px; border: 1px solid #334155;">{s['magnetic_ratio']}x</td>
-                    <td style="padding: 6px; border: 1px solid #334155; font-weight: bold;">{s['upstream_speed']} → {s['downstream_speed']} km/s</td>
+                    <td style="padding: 6px; border: 1px solid #43464c; font-family: monospace;">{s['time']}</td>
+                    <td style="padding: 6px; border: 1px solid #43464c; color: #c26262; font-weight: bold;">{s['classification']}</td>
+                    <td style="padding: 6px; border: 1px solid #43464c; color: #7fa5cf;">+{s['delta_speed_kms']} km/s</td>
+                    <td style="padding: 6px; border: 1px solid #43464c;">{s['density_ratio']}x</td>
+                    <td style="padding: 6px; border: 1px solid #43464c;">{s['magnetic_ratio']}x</td>
+                    <td style="padding: 6px; border: 1px solid #43464c; font-weight: bold;">{s['upstream_speed']} → {s['downstream_speed']} km/s</td>
                 </tr>
                 """
         else:
-            shocks_html = '<tr><td colspan="6" style="padding: 8px; text-align: center; color: #64748b; font-style: italic;">No shocks detected.</td></tr>'
+            shocks_html = '<tr><td colspan="6" style="padding: 8px; text-align: center; color: #888c94; font-style: italic;">No shocks detected.</td></tr>'
 
-        limit_html = (f'<div style="margin-top: 8px; color: #fbbf24;">{html_lib.escape(auroral_data["model_limit"])}</div>'
+        limit_html = (f'<div style="margin-top: 8px; color: #d2aa57;">{html_lib.escape(auroral_data["model_limit"])}</div>'
                       if auroral_data.get("model_limit") else "")
 
-        s_color = classification.get('s_color', '#10b981')
+        s_color = classification.get('s_color', '#529b6e')
         s_scale = classification.get('s_scale', 'S0 (Nominal)')
         r_scale = classification.get('r_scale', 'R0 (None)')
         r_level = classification.get('r_level', 0)
-        r_color = '#f59e0b' if r_level > 0 else '#10b981'
+        r_color = '#b98f3f' if r_level > 0 else '#529b6e'
 
         html = f"""<!DOCTYPE html>
 <html>
@@ -79,17 +79,17 @@ class ScientificReportGenerator:
 <meta charset="utf-8">
 <title>HELIOS-L1 Scientific Space Weather Bulletin</title>
 <style>
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #060a12; color: #e2e8f0; margin: 0; padding: 24px; }}
-  .container {{ max-width: 900px; margin: 0 auto; background: #0b1329; border: 1px solid #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
-  h1 {{ color: #38bdf8; font-size: 22px; margin-top: 0; border-bottom: 1px solid #1e293b; padding-bottom: 12px; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #1f2125; color: #d6d8db; margin: 0; padding: 24px; }}
+  .container {{ max-width: 900px; margin: 0 auto; background: #24272b; border: 1px solid #24272b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
+  h1 {{ color: #7fa5cf; font-size: 22px; margin-top: 0; border-bottom: 1px solid #24272b; padding-bottom: 12px; }}
   .badge {{ display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 11px; font-family: monospace; }}
   .grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }}
-  .card {{ background: #111e3e; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; }}
-  .card-label {{ color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; }}
-  .card-value {{ font-size: 20px; font-weight: bold; margin-top: 4px; color: #f8fafc; }}
+  .card {{ background: #24272b; border: 1px solid #24272b; border-radius: 8px; padding: 12px; }}
+  .card-label {{ color: #9a9ea5; font-size: 11px; text-transform: uppercase; font-weight: bold; }}
+  .card-value {{ font-size: 20px; font-weight: bold; margin-top: 4px; color: #f6f7f8; }}
   table {{ width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }}
-  th {{ background: #172554; color: #94a3b8; text-align: left; padding: 8px; border: 1px solid #334155; }}
-  .footer {{ margin-top: 24px; border-top: 1px solid #1e293b; padding-top: 12px; font-size: 11px; color: #64748b; }}
+  th {{ background: #24272b; color: #9a9ea5; text-align: left; padding: 8px; border: 1px solid #43464c; }}
+  .footer {{ margin-top: 24px; border-top: 1px solid #24272b; padding-top: 12px; font-size: 11px; color: #888c94; }}
 </style>
 </head>
 <body>
@@ -97,14 +97,14 @@ class ScientificReportGenerator:
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
     <div>
       <h1>HELIOS-L1 Space Weather Scientific Bulletin</h1>
-      <div style="color: #94a3b8; font-size: 12px;">Spacecraft: <strong>{mission_name}</strong> • Latest reading: {_v(latest.get('time_tag'))} UTC • Generated: {now_str}</div>
-      <div style="color: #94a3b8; font-size: 12px;">Data provenance: {html_lib.escape(provenance_text)}</div>
+      <div style="color: #9a9ea5; font-size: 12px;">Spacecraft: <strong>{mission_name}</strong> • Latest reading: {_v(latest.get('time_tag'))} UTC • Generated: {now_str}</div>
+      <div style="color: #9a9ea5; font-size: 12px;">Data provenance: {html_lib.escape(provenance_text)}</div>
     </div>
     <div style="display: flex; gap: 8px; align-items: center;">
-      <span class="badge" style="background: {classification.get('g_color', '#10b981')}22; color: {classification.get('g_color', '#10b981')}; border: 1px solid {classification.get('g_color', '#10b981')}66;">
+      <span class="badge" style="background: {classification.get('g_color', '#529b6e')}22; color: {classification.get('g_color', '#529b6e')}; border: 1px solid {classification.get('g_color', '#529b6e')}66;">
         {classification.get('g_scale', 'G0 Quiet')}
       </span>
-      <span style="font-size: 11px; color: #94a3b8;">Kp {_v(classification.get('kp'))}: {html_lib.escape(str(classification.get('kp_source', '---')))}</span>
+      <span style="font-size: 11px; color: #9a9ea5;">Kp {_v(classification.get('kp'))}: {html_lib.escape(str(classification.get('kp_source', '---')))}</span>
       <span class="badge" style="background: {s_color}22; color: {s_color}; border: 1px solid {s_color}66;">
         {s_scale}
       </span>
@@ -117,38 +117,38 @@ class ScientificReportGenerator:
   <div class="grid">
     <div class="card">
       <div class="card-label">Solar Wind Velocity</div>
-      <div class="card-value">{_v(latest.get('speed'))} <span style="font-size: 12px; color: #94a3b8;">km/s</span></div>
+      <div class="card-value">{_v(latest.get('speed'))} <span style="font-size: 12px; color: #9a9ea5;">km/s</span></div>
     </div>
     <div class="card">
       <div class="card-label">IMF Bz (GSM)</div>
-      <div class="card-value" style="color: {classification.get('bz_color', '#10b981')}">{_v(latest.get('bz_gsm'))} <span style="font-size: 12px; color: #94a3b8;">nT</span></div>
+      <div class="card-value" style="color: {classification.get('bz_color', '#529b6e')}">{_v(latest.get('bz_gsm'))} <span style="font-size: 12px; color: #9a9ea5;">nT</span></div>
     </div>
     <div class="card">
       <div class="card-label">Dynamic Pressure</div>
-      <div class="card-value">{_v(latest.get('dynamic_pressure'))} <span style="font-size: 12px; color: #94a3b8;">nPa</span></div>
+      <div class="card-value">{_v(latest.get('dynamic_pressure'))} <span style="font-size: 12px; color: #9a9ea5;">nPa</span></div>
     </div>
     <div class="card">
       <div class="card-label">Magnetopause Standoff (R_mp)</div>
-      <div class="card-value" style="color: #f59e0b;">{_v(latest.get('magnetopause_re'))} <span style="font-size: 12px; color: #94a3b8;">R_E</span></div>
+      <div class="card-value" style="color: #b98f3f;">{_v(latest.get('magnetopause_re'))} <span style="font-size: 12px; color: #9a9ea5;">R_E</span></div>
     </div>
     <div class="card">
       <div class="card-label">Akasofu Energy Coupling (ε)</div>
-      <div class="card-value" style="color: #a855f7;">{_v(latest.get('akasofu_gw'))} <span style="font-size: 12px; color: #94a3b8;">GW</span></div>
+      <div class="card-value" style="color: #6690bf;">{_v(latest.get('akasofu_gw'))} <span style="font-size: 12px; color: #9a9ea5;">GW</span></div>
     </div>
     <div class="card">
       <div class="card-label">L1-to-Earth Propagation Delay</div>
-      <div class="card-value" style="color: #06b6d4;">{_v(latest.get('l1_travel_time_min'))} <span style="font-size: 12px; color: #94a3b8;">min</span></div>
+      <div class="card-value" style="color: #6690bf;">{_v(latest.get('l1_travel_time_min'))} <span style="font-size: 12px; color: #9a9ea5;">min</span></div>
     </div>
   </div>
 
-  <h3 style="color: #38bdf8; font-size: 14px; margin-top: 20px;">Auroral Oval Equatorward Reach & Potential Visibility</h3>
-  <div style="background: #111e3e; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; font-size: 12px;">
-    <div>Equatorward boundary at magnetic midnight (Starkov 1994, corrected geomagnetic latitude): <strong>{_v(auroral_data.get('equatorward_midnight_lat'))}°</strong> <span style="color: #94a3b8;">from {html_lib.escape(str(_v(auroral_data.get('al_source'))))}</span></div>
+  <h3 style="color: #7fa5cf; font-size: 14px; margin-top: 20px;">Auroral Oval Equatorward Reach & Potential Visibility</h3>
+  <div style="background: #24272b; border: 1px solid #24272b; border-radius: 8px; padding: 12px; font-size: 12px;">
+    <div>Equatorward boundary at magnetic midnight (Starkov 1994, corrected geomagnetic latitude): <strong>{_v(auroral_data.get('equatorward_midnight_lat'))}°</strong> <span style="color: #9a9ea5;">from {html_lib.escape(str(_v(auroral_data.get('al_source'))))}</span></div>
     <div style="margin-top: 4px;">Estimated Hemispheric Power Index: <strong>{_v(auroral_data.get('hemispheric_power_gw'))} GW</strong></div>
     {limit_html}
   </div>
 
-  <h3 style="color: #38bdf8; font-size: 14px; margin-top: 20px;">Interplanetary Shock Candidates (jump screening)</h3>
+  <h3 style="color: #7fa5cf; font-size: 14px; margin-top: 20px;">Interplanetary Shock Candidates (jump screening)</h3>
   <table>
     <thead>
       <tr>
