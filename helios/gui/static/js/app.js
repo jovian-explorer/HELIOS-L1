@@ -1615,6 +1615,17 @@ async function runComparison() {
   }
 }
 
+// Axis titles with units: the quantity as named in the comparator's menu (e.g. "IMF Bz (GSM) [nT]").
+function compQuantityLabel() {
+  const sel = document.getElementById('comp-param');
+  return sel && sel.selectedOptions[0] ? sel.selectedOptions[0].text : '';
+}
+function withAxisTitles(xTitle, yTitle) {
+  return { ...darkChartOptions, scales: {
+    x: { ...darkChartOptions.scales.x, title: { display: !!xTitle, text: xTitle, color: '#9a9ea5' } },
+    y: { ...darkChartOptions.scales.y, title: { display: !!yTitle, text: yTitle, color: '#9a9ea5' } } } };
+}
+
 function renderCompOverlayChart(comp) {
   const ctx = document.getElementById('chart-comp-overlay')?.getContext('2d');
   if (!ctx) return;
@@ -1633,7 +1644,7 @@ function renderCompOverlayChart(comp) {
         { label: `${comp.mission_b} (${comp.parameter})`, data: dataB, borderColor: '#b98f3f', borderWidth: 1.5, pointRadius: 0, borderDash: [3, 2], tension: 0.1 }
       ]
     },
-    options: darkChartOptions
+    options: withAxisTitles(`Time (${selectedTimezone})`, compQuantityLabel())
   });
 }
 
@@ -1696,8 +1707,8 @@ function renderCompScatterChart(comp) {
       scales: {
         // The fit and identity lines are 'line' datasets, which would make x a category axis
         // and stack every point at the left edge: force a numeric axis.
-        x: { ...darkChartOptions.scales.x, type: 'linear', position: 'bottom', title: { display: true, text: `${comp.mission_b} [${comp.parameter}]`, color: '#83878f' } },
-        y: { ...darkChartOptions.scales.y, type: 'linear', title: { display: true, text: `${comp.mission_a} [${comp.parameter}]`, color: '#83878f' } }
+        x: { ...darkChartOptions.scales.x, type: 'linear', position: 'bottom', title: { display: true, text: `${comp.mission_b}: ${compQuantityLabel()}`, color: '#83878f' } },
+        y: { ...darkChartOptions.scales.y, type: 'linear', title: { display: true, text: `${comp.mission_a}: ${compQuantityLabel()}`, color: '#83878f' } }
       }
     }
   });
@@ -1714,10 +1725,10 @@ function renderCompResidualChart(comp) {
     data: {
       labels: labels,
       datasets: [
-        { label: 'Sensor Residual (A - B)', data: comp.residuals, backgroundColor: comp.residuals.map(r => r >= 0 ? '#38bdf8cc' : '#f43f5ecc') }
+        { label: 'Sensor Residual (A - B)', data: comp.residuals, backgroundColor: comp.residuals.map(r => r >= 0 ? 'rgba(127, 165, 207, 0.8)' : 'rgba(215, 126, 126, 0.8)') }
       ]
     },
-    options: darkChartOptions
+    options: withAxisTitles(`Time (${selectedTimezone})`, `A - B: ${compQuantityLabel()}`)
   });
 }
 
@@ -2671,14 +2682,14 @@ function renderEventDst(ev) {
   chartEventDst = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: cmp.time_tags.map(t => String(t).slice(5, 16)),
+      labels: cmp.time_tags.map(t => formatTimestampToTimezone(t)),
       datasets: [
         { label: 'SYM-H observed [nT]', data: cmp.observed, borderColor: '#7fa5cf', borderWidth: 1.5, pointRadius: 0 },
         { label: cmp.models.obrien.name, data: cmp.models.obrien.series, borderColor: '#c26262', borderWidth: 1.2, pointRadius: 0 },
         { label: cmp.models.burton.name, data: cmp.models.burton.series, borderColor: '#b98f3f', borderWidth: 1.2, pointRadius: 0, borderDash: [4, 3] }
       ]
     },
-    options: darkChartOptions
+    options: withAxisTitles(`Time (${selectedTimezone})`, 'SYM-H / Dst [nT]')
   });
   const sk = document.getElementById('event-dst-skill');
   if (sk) sk.innerText = `${cmp.models.obrien.name}: ${describeDstSkill(cmp.models.obrien.skill, 'SYM-H')}  ${cmp.models.burton.name}: ${describeDstSkill(cmp.models.burton.skill, 'SYM-H')}`;
