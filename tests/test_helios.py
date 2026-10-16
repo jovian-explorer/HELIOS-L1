@@ -107,11 +107,9 @@ def test_auroral_model(omni_l1):
     # Starkov (1994): Kp 7 -> |AL| = 578.7 nT, equatorward midnight boundary 59.9 deg CGM
     assert res["equatorward_midnight_lat"] == pytest.approx(59.9, abs=0.1)
     assert res["hemispheric_power_gw"] > 50.0
-    # From Kp 7 the fit stops moving (59.7 deg at Kp 9): the answer says so (the region lists for
-    # boundaries at or below 50 deg could never be reached)
-    assert "Beyond the Starkov (1994) fit" in res["model_limit"]
-    assert AuroralModel.calculate_auroral_boundaries(kp=9.0)["equatorward_midnight_lat"] == pytest.approx(59.7, abs=0.05)
-    assert AuroralModel.calculate_auroral_boundaries(kp=5.0)["model_limit"] is None
+    # In storms the answer points to the diffuse boundary as the precipitation edge (DMSP-checked)
+    assert "diffuse-aurora boundary, 54.1 deg" in res["model_limit"]
+    assert AuroralModel.calculate_auroral_boundaries(kp=4.0)["model_limit"] is None
 
     sample = omni_l1[120:168]
     dst_sim = AuroralModel.simulate_dst_evolution(sample)
@@ -214,7 +212,7 @@ def test_api_endpoints(omni_l1):
     csv_sample = "\n".join(csv_rows)
 
     import_res = client.post("/api/custom/import", json={"content": csv_sample, "mission_name": "TestSat"})
-    assert import_res.status_code == 200
+    assert import_res.status_code == 200, import_res.text
     assert import_res.json()["status"] == "success"
     assert import_res.json()["total_records"] == 10
     assert "summary" in import_res.json()

@@ -379,8 +379,8 @@ def test_aurora_endpoint_shows_observed_dst_next_to_model(monkeypatch):
         return {"records": [{"time_tag": f"2026-10-02 0{h}:00:00", "dst": -10.0 * h} for h in range(5)],
                 "source": "test"}
 
-    monkeypatch.setattr(server.downloader, "get_telemetry_bundle", bundle)
-    monkeypatch.setattr(server.downloader, "get_kyoto_dst", kyoto)
+    monkeypatch.setitem(vars(server.downloader), "get_telemetry_bundle", bundle)  # setitem: no restored method left on the instance
+    monkeypatch.setitem(vars(server.downloader), "get_kyoto_dst", kyoto)  # setitem: no restored method left on the instance
     body = TestClient(server.app, base_url=LOCAL).get("/api/aurora?kp=3&dst_model=burton").json()
     assert body["dst_model"] == "Burton et al. (1975)"
     # Shifted by 60 min the drivers start at 01:00, where Kyoto Dst is -10 nT
@@ -502,7 +502,7 @@ def test_aurora_endpoint_uses_al_and_draws_starkov_oval(monkeypatch):
     async def omni(mission, start, end, cadence_minutes=1):
         assert mission == "OMNI"
         return {"records": [{"time_tag": "x", "al": -400.0 - i} for i in range(60)], "provenance": {"kind": "observed"}}
-    monkeypatch.setattr(server.downloader, "get_archive_bundle", omni)
+    monkeypatch.setitem(vars(server.downloader), "get_archive_bundle", omni)  # setitem: no restored method left on the instance
     b = client.get("/api/aurora?time=2024-05-10T22:00").json()["boundaries"]
     assert b["al_used_nt"] == pytest.approx(429.5) and b["al_source"].startswith("OMNI 1-min AL")
     assert b["hemispheric_power_gw"] is None
@@ -780,3 +780,22 @@ def test_drap_has_no_invented_usability_levels():
     assert res["highest_affected_frequency_mhz"] == pytest.approx(25.0)
     assert all("usability" not in row for row in res["absorption_spectrum"])
     assert "polar_aviation_impact" not in res and res["sunlit_hf_impact"].startswith("HF below 25 MHz")
+
+
+def test_storm_precipitation_edge_is_the_starkov_diffuse_boundary():
+    """835 equatorward edges of electron precipitation (>= 0.25 erg cm-2 s-1) from DMSP SSJ passes in
+    four storms (Oct 2003, Nov 2004, Sep-Oct 2012, Mar 2013). At Kp >= 7 the Starkov oval boundary is
+    9 deg too far poleward (it stays near 60 deg); the diffuse boundary the panel names in storms is
+    within 1 deg on average (RMS < 4 deg)."""
+    import json
+    from pathlib import Path
+    from helios.core.aurora_model import AuroralModel as A
+    d = json.loads((Path(__file__).parent / "data" / "dmsp_ssj_edges_storms.json").read_text())
+    rows = [r for r in d["rows"] if r[2] >= 7.0]
+    assert len(rows) == 133
+
+    def err(boundary):
+        e = np.array([float(A.starkov_latitude(A.kp_to_al(k), m, boundary)) - lat for _, _, k, m, lat in rows])
+        return e.mean(), float(np.sqrt((e * e).mean()))
+    oval, diffuse = err("equatorward"), err("diffuse")
+    assert oval[0] > 8.5 and abs(diffuse[0]) < 1.0 and diffuse[1] < 4.0

@@ -42,8 +42,14 @@ STARKOV_KP_TO_AL = (18.0, -12.3, 27.2, -2.0)
 # (and the midnight equatorward boundary stops moving at ~60 deg), so the fits are not
 # used beyond 750 nT: larger observed values are capped and the response says so.
 STARKOV_AL_RANGE = (18.0, 750.0)
-# |AL| of Kp 7 in the conversion above (578.7 nT): from here the midnight boundary barely moves.
-STARKOV_SATURATION_AL = 578.0
+# From Kp 5 (|AL| 386 nT in the conversion above) the measured equatorward edge of electron
+# precipitation follows Starkov's diffuse-aurora boundary, not the oval's equatorward boundary.
+# DMSP F13-F18 SSJ passes in four storms (Oct 2003, Nov 2004, Sep-Oct 2012, Mar 2013; 835 edges,
+# edge = lowest |AACGM lat| with a 15-s median electron energy flux >= 0.25 erg cm-2 s-1),
+# model - observed, Kp 5-7 / Kp >= 7: oval boundary +5.9 / +9.1 deg (RMS 6.8 / 9.6),
+# diffuse boundary -0.7 / +0.6 deg (RMS 3.1 / 3.7). Zhang & Paxton (2008) at the same
+# threshold: -3.0 / -9.4 deg (RMS 5.9 / 12.5), so it is not used.
+STORM_AL = 386.0
 
 # Hemispheric power from Kp: Zhang & Paxton (2008, JASTP 70, 1231, doi:10.1016/j.jastp.2008.03.008)
 # up to Kp 7, then the TIE-GCM/WACCM linear ramp to 300 GW at Kp 9.
@@ -119,11 +125,11 @@ class AuroralModel:
         for name in STARKOV_COEFFS:
             profile[f"{name}_lat"] = np.round(cls.starkov_latitude(al_used, mlt_grid, name), 2).tolist()
 
-        # The fitted midnight boundary stops moving near 60 deg CGM from Kp 7 (|AL| ~580 nT) on:
-        # 59.9 at Kp 7, 59.7 at Kp 9. In stronger storms the oval reaches lower latitudes than drawn.
-        model_limit = (f"Beyond the Starkov (1994) fit: its midnight boundary stays near 60 deg CGM from Kp 7 "
-                       f"(|AL| about {STARKOV_SATURATION_AL:.0f} nT) on, so in this storm the oval may reach lower "
-                       "latitudes than shown.") if al_used >= STARKOV_SATURATION_AL else None
+        diffuse_midnight = lat("diffuse", 0.0)
+        model_limit = (f"In storms (Kp 5 and above) the equatorward edge of electron precipitation follows the "
+                       f"diffuse-aurora boundary, {diffuse_midnight:.1f} deg at magnetic midnight, not the oval "
+                       "boundary (checked against DMSP passes in four storms: within 0.6 deg on average, scatter 3.7 deg, "
+                       "at Kp 7 and above, where the oval boundary is 9 deg too far poleward).") if al_used >= STORM_AL else None
 
         power_gw = round(cls.hemispheric_power_from_kp(kp_eff), 1)
 
@@ -140,7 +146,7 @@ class AuroralModel:
             "equatorward_dusk_lat": round(eq_dusk, 1),
             "equatorward_noon_lat": round(lat("equatorward", 12.0), 1),
             "poleward_midnight_lat": round(lat("poleward", 0.0), 1),
-            "diffuse_equatorward_midnight_lat": round(lat("diffuse", 0.0), 1),
+            "diffuse_equatorward_midnight_lat": round(diffuse_midnight, 1),
             "latitude_system": "corrected geomagnetic latitude",
             "mlt_profile": profile,
             "hemispheric_power_gw": power_gw,
