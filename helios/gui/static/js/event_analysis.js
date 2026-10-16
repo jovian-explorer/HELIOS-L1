@@ -630,6 +630,7 @@
       const seaBody = await getJSON(url);
       if (!current()) return;
       seaResult = seaBody.result;
+      el('ea-sea-show-row').classList.remove('hidden');  // the quantity menu once there is a result
       const sel = el('ea-sea-show');
       sel.innerHTML = seaResult.parameters.map(p => `<option value="${p}">${p}</option>`).join('');
       setStatus('ea-sea-status', `${seaResult.n_events} events, ${seaResult.cadence_minutes}-min bins.`);

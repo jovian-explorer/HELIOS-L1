@@ -640,6 +640,7 @@
           <span>Execute Cross-Calibration</span>
         </button>
       </div>
+      <p id="comp-hint" class="text-[11px] text-slate-400 -mt-3 px-1">Choose two spacecraft and a quantity, then run the cross-calibration: the statistics and the four charts below fill in for the last day of data.</p>
 
       <!-- Shown when either side of the comparison is not a measurement (simulated / synthetic) -->
       <div id="comp-provenance-warning" class="hidden p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-200 text-xs flex items-start space-x-2">
@@ -2110,8 +2111,8 @@
         <div id="ea-storm-table" class="overflow-x-auto text-xs max-h-48 overflow-y-auto"></div>
         <div id="ea-skill-status" class="text-xs text-slate-400"></div>
         <div id="ea-skill-table" class="overflow-x-auto text-xs"></div>
-        <div class="flex items-center gap-2 text-xs"><label class="ea-label mb-0">Show</label>
-          <select id="ea-sea-show" class="ea-input" onchange="eaDrawSea()"></select>
+        <div class="flex items-center gap-2 text-xs"><span id="ea-sea-show-row" class="hidden flex items-center gap-2"><label class="ea-label mb-0">Show</label>
+          <select id="ea-sea-show" class="ea-input" onchange="eaDrawSea()"></select></span>
           <span id="ea-sea-status" class="text-slate-400"></span></div>
         <div class="h-72 hidden"><canvas id="ea-sea-chart"></canvas></div>
         <div id="ea-sea-table" class="overflow-x-auto text-xs"></div>
@@ -3095,14 +3096,13 @@
           </div>
           <div class="space-y-2 flex-1">
             <div class="flex items-center space-x-2">
-              <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30 text-[10px] font-mono font-bold">Sovereign scientific suite</span>
               <h4 class="font-bold text-slate-100 text-sm">HELIOS-L1 Mission Architecture</h4>
             </div>
             <p class="text-[11px] text-slate-300 leading-relaxed">
               <strong>HELIOS-L1</strong> (<em>Heliophysical Exploration, Lagrange-1 Interplanetary Observation &amp; Space-weather Suite</em>)
-              is an autonomous, air-gapped, sovereign scientific mission operations and space weather analysis console.
-              Engineered to operate with complete local independence, HELIOS-L1 couples an embedded Python 3.13 FastAPI computational engine
-              with high-cadence HTML5 Canvas 2D and WebGL scientific renderers.
+              is a desktop application for solar wind and space weather analysis: live data from NOAA, archives from NASA CDAWeb
+              and other public sources, and published models, computed locally by a Python (FastAPI) engine and drawn with
+              HTML5 Canvas. Data are downloaded when online and cached, so loaded intervals keep working offline.
             </p>
             <p class="text-[11px] text-slate-400 leading-relaxed">
               During extreme solar storm events (such as severe G5 coronal mass ejection impacts causing terrestrial power grid tripping,
@@ -3270,7 +3270,7 @@
               His scientific investigations incorporate deep space observations from prominent planetary missions including
               India's <strong>Mars Orbiter Mission (MOM)</strong>, <strong>Chandrayaan-2</strong>, and <strong>Chandrayaan-3</strong>,
               as well as JAXA's <strong>Akatsuki</strong> mission. Dr. Aggarwal designed and developed <strong>HELIOS-L1</strong>
-              as a sovereign, precision computational platform to bridge operational multi-mission telemetry (including ISRO's Aditya-L1)
+              to bring together multi-mission solar wind data (including ISRO's Aditya-L1)
               with peer-reviewed heliospheric and magnetospheric modeling.
             </p>
           </div>
@@ -3289,7 +3289,7 @@
           <div>
             <span>Version: <strong class="text-slate-200">HELIOS-L1 v0.1.0 SciSuite</strong></span>
             <span class="mx-2">&bull;</span>
-            <span>Platform: <strong class="text-slate-200">Sovereign Offline Architecture</strong></span>
+            <span>Runs locally; data cached for offline use</span>
             <span class="mx-2">&bull;</span>
             <span>Cite: <a href="https://doi.org/10.5281/zenodo.23322367" target="_blank" rel="noopener" class="text-sky-400 hover:text-sky-300 underline">doi:10.5281/zenodo.23322367</a></span>
           </div>

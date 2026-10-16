@@ -495,8 +495,6 @@ function updateClock() {
   if (preview) preview.innerText = timeStr;
   if (previewBadge) previewBadge.innerText = badgeStr;
   if (settingsTzPreview) settingsTzPreview.innerText = timeStr;
-  const dockBadge = document.getElementById('dock-tz-badge');
-  if (dockBadge) dockBadge.innerText = badgeStr;
 }
 
 // Modal open/close methods for Settings, About, and Timezones
@@ -3681,7 +3679,7 @@ function renderUserGuideTab(container) {
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
-            The Orbital Geometry Simulator projects the Sun-Earth L1 and L2 Lagrangian saddle points in both 2D Ecliptic GSE (Geocentric Solar Ecliptic) and 3D oblique axonometric projections. Active spacecraft ephemerides (DSCOVR Lissajous, ACE Halo, ISRO Aditya-L1 Halo, WIND, SOHO, and GOES-16 GEO ring) are rendered with continuous physics-based streamflow particles.
+            The L1 view shows the Sun-Earth line in GSE, in 2D or in 3D from 35° above the ecliptic: L1 and L2, the spacecraft near L1 (DSCOVR, ACE, Aditya-L1, WIND, SOHO, SWFO-L1, IMAP) and GOES-19 at their JPL Horizons positions with ±90-day tracks, and Earth's magnetopause and bow shock for the chosen solar wind. The spacecraft share one scale; the magnetosphere is enlarged at its own stated scale.
           </p>
 
           <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-2">
@@ -3757,20 +3755,19 @@ function renderUserGuideTab(container) {
       title: '4. File Import & Shock Screening',
       icon: 'fa-file-import',
       color: 'text-purple-400',
-      summary: 'Your own CSV, text or JSON files, illustrative storm profiles, a simple screening for shock-like jumps, and comparison with the fleet.',
+      summary: 'Your own CSV, text or JSON files, example intervals of OMNI data, a simple screening for shock-like jumps, and comparison with the fleet.',
       content: `
         <div class="space-y-3">
           <p class="text-xs text-slate-300 leading-relaxed">
             The Custom Ingestion tab reads your own CSV, tab- or space-delimited text and JSON files (OMNI listings, CDAWeb text output, HELIOS exports) and computes the derived quantities. Measured OMNI data for any interval come from the dashboard's Archive Interval loader instead.
           </p>
           <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-2">
-            <div class="text-[11px] font-bold text-purple-300">Illustrative profiles (hand-written, not measured data):</div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-[11px]">
-              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-rose-400">May 2024 G5 Superstorm:</strong> Strongest geomagnetic storm in about 20 years.</div>
-              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-amber-400">Bastille Day 2000:</strong> X5.7 solar flare with extreme CME shock wave, V &gt; 1,000 km/s.</div>
-              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-red-400">Carrington 1859 Event:</strong> The historic benchmark superstorm (no in-situ data exist).</div>
-              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-orange-400">Halloween 2003 Storms:</strong> Series of intense X-class flares and satellite failures.</div>
-              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-emerald-400">Quiet Interplanetary Wind:</strong> Baseline quiet heliosphere background conditions.</div>
+            <div class="text-[11px] font-bold text-purple-300">Example intervals (OMNI 5-minute means, NASA CDAWeb, bundled for offline use):</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-rose-400">10-11 May 2024:</strong> the G5 storm.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-amber-400">15 July 2000:</strong> the Bastille Day CME.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-orange-400">17 March 2015:</strong> the St Patrick's Day storm.</div>
+              <div class="p-2 rounded bg-space-900 border border-slate-800"><strong class="text-emerald-400">7 December 2019:</strong> quiet solar wind.</div>
             </div>
           </div>
           <div class="p-3 rounded-lg bg-space-950 border border-slate-800 text-xs space-y-1">
@@ -4677,8 +4674,6 @@ function closeAllModals() {
   closeSettingsModal();
   closeAboutModal();
   closeTimezoneModal();
-  const paramModal = document.getElementById('modal-parameter');
-  if (paramModal) paramModal.classList.add('hidden');
 }
 
 /* ========================================================================= */
@@ -4810,7 +4805,7 @@ class MissionIncidentLogger {
         'WARNING',
         'HIGH_SPEED_STREAM',
         'High-Speed Solar Wind Stream (HSS / CME Front)',
-        `Solar wind bulk speed reached ${vsw.toFixed(0)} km/s. Enhanced relativistic electron precipitation in outer Van Allen radiation belt.`,
+        `Solar wind bulk speed reached ${vsw.toFixed(0)} km/s.`,
         'V_sw',
         `${vsw.toFixed(0)} km/s`,
         '>= 650 km/s'
