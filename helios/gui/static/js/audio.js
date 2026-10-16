@@ -102,7 +102,7 @@ class SoundEngine {
       const isReconnecting = bz < 0;
       const fHarmonic = isReconnecting ? fBase * 1.414 : fBase * 1.5; // Tritone vs Perfect Fifth
 
-      // 3. Tremolo modulation frequency mapped to proton plasma density (2 - 25 cm^-3 -> 3 - 12 Hz)
+      // 3. Tremolo modulation frequency mapped to proton plasma density (2 - 25 cm⁻³ -> 3 - 12 Hz)
       const normDensity = Math.max(0, Math.min(1, (density - 2) / 23));
       const lfoFreq = 3 + normDensity * 9;
 

@@ -46,7 +46,7 @@
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
         <span class="text-slate-500">Standoff</span>
-        <span id="ticker-rmp" class="font-bold text-sky-400 font-hud">--- RE</span>
+        <span id="ticker-rmp" class="font-bold text-sky-400 font-hud">--- R_E</span>
       </div>
       <div class="text-slate-700">|</div>
       <div class="flex items-center space-x-1.5">
@@ -221,7 +221,7 @@
         <div class="flex items-center space-x-4">
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Active Spacecraft</label>
-            <select id="telemetry-satellite-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
+            <select id="telemetry-satellite-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold">
               <option value="DSCOVR">DSCOVR (Sun-Earth L1)</option>
               <option value="ACE">ACE (Sun-Earth L1)</option>
               <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
@@ -232,7 +232,7 @@
           </div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Observation Horizon</label>
-            <select id="telemetry-span-select" onchange="onTelemetrySpanChange()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
+            <select id="telemetry-span-select" onchange="onTelemetrySpanChange()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold">
               <option value="1">Last 24 Hours (High Res)</option>
               <option value="7">Last 7 Days (Synoptic)</option>
               <option value="archive">Archive Interval (NASA CDAWeb)</option>
@@ -282,7 +282,7 @@
         <div class="flex flex-wrap items-end gap-4">
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Archive Source</label>
-            <select id="archive-mission-select" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
+            <select id="archive-mission-select" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold">
               <option value="OMNI">OMNI 1-min (bow shock nose)</option>
               <option value="WIND">WIND (MFI + SWE)</option>
               <option value="ACE">ACE (MAG + SWEPAM)</option>
@@ -301,7 +301,7 @@
           </div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Cadence</label>
-            <select id="archive-cadence-select" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold focus:outline-none">
+            <select id="archive-cadence-select" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold">
               <option value="1">1-minute means</option>
               <option value="5">5-minute means</option>
               <option value="60">1-hour means</option>
@@ -600,7 +600,7 @@
         <div class="flex flex-wrap items-center gap-4">
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Primary Spacecraft (A)</label>
-            <select id="comp-sat-a" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
+            <select id="comp-sat-a" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400">
               <option value="DSCOVR">DSCOVR (L1)</option>
               <option value="ACE">ACE (L1)</option>
               <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
@@ -611,7 +611,7 @@
           <div class="text-slate-500 font-bold self-end pb-2">VS</div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Comparative Spacecraft (B)</label>
-            <select id="comp-sat-b" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
+            <select id="comp-sat-b" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400">
               <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
               <option value="ACE" selected>ACE (L1)</option>
               <option value="DSCOVR">DSCOVR (L1)</option>
@@ -621,7 +621,7 @@
           </div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Telemetry Parameter</label>
-            <select id="comp-param" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400 focus:outline-none">
+            <select id="comp-param" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400">
               <option value="bz_gsm">IMF Bz (GSM) [nT]</option>
               <option value="bt">Total IMF |B| [nT]</option>
               <option value="speed">Solar Wind Speed [km/s]</option>
@@ -785,7 +785,7 @@
             <!-- Boundary Physics Model Switcher -->
             <div class="flex items-center space-x-1.5 bg-space-950/80 px-2.5 py-1 rounded-xl border border-sky-500/30">
               <span class="text-[10px] font-bold text-slate-400 font-mono"><i class="fa-solid fa-shield-halved text-sky-400 mr-1"></i>Model:</span>
-              <select id="orbit-model-select" onchange="setOrbitBoundaryModel(this.value)" class="bg-space-900 text-sky-300 font-tech font-bold text-xs border border-sky-500/30 rounded-lg px-2 py-0.5 focus:outline-none focus:border-sky-400 cursor-pointer">
+              <select id="orbit-model-select" onchange="setOrbitBoundaryModel(this.value)" class="bg-space-900 text-sky-300 font-tech font-bold text-xs border border-sky-500/30 rounded-lg px-2 py-0.5 focus:border-sky-400 cursor-pointer">
                 <option value="chao" selected>Bow shock: Chao et al. (2002)</option>
                 <option value="shue">Bow shock: Farris &amp; Russell (1994)</option>
               </select>
@@ -905,7 +905,7 @@
               <i class="fa-solid fa-shield-halved text-sky-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
-              <span id="card-bow-standoff" class="text-2xl font-hud font-bold text-sky-300">--- RE</span>
+              <span id="card-bow-standoff" class="text-2xl font-hud font-bold text-sky-300">--- R_E</span>
               <span id="card-bow-km" class="text-[11px] font-mono text-slate-400">--- km</span>
             </div>
             <div class="text-[10px] text-slate-400 mt-1">Chao et al. (2002) or Farris &amp; Russell (1994): depends on P_dyn, Bz, magnetosonic Mach number and β</div>
@@ -917,7 +917,7 @@
               <i class="fa-solid fa-magnet text-amber-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
-              <span id="card-mp-standoff" class="text-2xl font-hud font-bold text-amber-300">--- RE</span>
+              <span id="card-mp-standoff" class="text-2xl font-hud font-bold text-amber-300">--- R_E</span>
               <span id="card-mp-km" class="text-[11px] font-mono text-slate-400">--- km</span>
             </div>
             <div id="card-mp-geo-status" class="text-[10px] text-emerald-400 mt-1">---</div>
@@ -929,7 +929,7 @@
               <i class="fa-solid fa-arrows-left-right-to-line text-purple-400"></i>
             </div>
             <div class="flex items-baseline space-x-2 mt-1">
-              <span id="card-sheath-thick" class="text-2xl font-hud font-bold text-purple-300">--- RE</span>
+              <span id="card-sheath-thick" class="text-2xl font-hud font-bold text-purple-300">--- R_E</span>
               <span id="card-sheath-km" class="text-[11px] font-mono text-slate-400">--- km</span>
             </div>
             <div class="text-[10px] text-slate-400 mt-1">Turbulent plasma sheath barrier separating bow shock from magnetopause</div>
@@ -1345,27 +1345,27 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Height 1 (r1 in R☉)</label>
-            <input type="number" id="cme-r1" value="2.5" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            <input type="number" id="cme-r1" value="2.5" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
           </div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Height 2 (r2 in R☉)</label>
-            <input type="number" id="cme-r2" value="6.0" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            <input type="number" id="cme-r2" value="6.0" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
           </div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Time Elapsed (Δt in minutes)</label>
-            <input type="number" id="cme-dt" value="35" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            <input type="number" id="cme-dt" value="35" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
           </div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Time of the second height (UTC, empty: now)</label>
-            <input type="datetime-local" id="cme-t2" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            <input type="datetime-local" id="cme-t2" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
           </div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Ambient wind w (km/s, DBM)</label>
-            <input type="number" id="cme-w" value="450" min="100" max="1500" step="10" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            <input type="number" id="cme-w" value="450" min="100" max="1500" step="10" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
           </div>
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Drag Γ (10⁻⁷ km⁻¹, DBM)</label>
-            <input type="number" id="cme-gamma" value="0.2" min="0.01" max="100" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none">
+            <input type="number" id="cme-gamma" value="0.2" min="0.01" max="100" step="0.1" class="w-full bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
           </div>
           <div class="flex items-end">
             <button onclick="calculateCMEKinematics()" class="w-full py-2 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold transition flex items-center justify-center space-x-2">
@@ -1383,12 +1383,12 @@
             </div>
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
               <div class="text-[11px] text-slate-400 font-semibold">Transit to L1 Point</div>
-              <div id="cme-transit-l1" class="text-xl font-semibold text-emerald-400 mt-1">--- hrs</div>
+              <div id="cme-transit-l1" class="text-xl font-semibold text-emerald-400 mt-1">--- h</div>
               <div id="cme-arrival-l1" class="text-[10px] text-slate-400 mt-0.5">Arrival date</div>
             </div>
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
               <div class="text-[11px] text-slate-400 font-semibold">Transit to Earth (1 AU)</div>
-              <div id="cme-transit-earth" class="text-xl font-semibold text-rose-400 mt-1">--- hrs</div>
+              <div id="cme-transit-earth" class="text-xl font-semibold text-rose-400 mt-1">--- h</div>
               <div id="cme-arrival-earth" class="text-[10px] text-slate-400 mt-0.5">Impact date</div>
             </div>
             <div class="bg-space-900/60 p-3 rounded-lg border border-slate-800">
@@ -1587,7 +1587,7 @@
           <div class="flex flex-wrap items-center gap-3">
             <div class="flex-1 min-w-[240px]">
               <label class="text-[11px] text-slate-400 font-bold block mb-1">Spacecraft / Dataset Identifier</label>
-              <input type="text" id="import-mission-name" value="May 10-11, 2024 G5 Superstorm" class="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-sky-400">
+              <input type="text" id="import-mission-name" value="May 10-11, 2024 G5 Superstorm" class="w-full bg-slate-900 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:border-sky-400">
             </div>
             <div class="w-full sm:w-auto self-end flex items-center space-x-2">
               <button id="btn-submit-import" onclick="submitCustomImport()" class="px-5 py-2 rounded-lg bg-sky-700 hover:bg-sky-600 text-white text-xs font-bold transition flex items-center space-x-2">
@@ -1602,7 +1602,7 @@
               <label class="text-[11px] text-slate-400 font-bold font-mono">Telemetry Data Buffer (CSV, TSV, or Delimited Text)</label>
               <span class="text-[10px] text-slate-500 font-mono">Supported columns: time, speed, density, bx_gsm, by_gsm, bz_gsm, bt</span>
             </div>
-            <textarea id="import-content" rows="7" placeholder="time,speed,density,bx_gsm,by_gsm,bz_gsm,bt&#10;2024-05-10 12:00:00,412.3,4.8,2.1,3.4,-1.2,4.4&#10;2024-05-10 17:00:00,740.5,28.4,-12.4,18.5,-32.8,39.6" class="w-full bg-slate-950 font-mono text-xs text-slate-200 border border-slate-700/80 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-sky-400"></textarea>
+            <textarea id="import-content" rows="7" placeholder="time,speed,density,bx_gsm,by_gsm,bz_gsm,bt&#10;2024-05-10 12:00:00,412.3,4.8,2.1,3.4,-1.2,4.4&#10;2024-05-10 17:00:00,740.5,28.4,-12.4,18.5,-32.8,39.6" class="w-full bg-slate-950 font-mono text-xs text-slate-200 border border-slate-700/80 rounded-lg p-3 focus:ring-1 focus:ring-sky-400"></textarea>
           </div>
         </div>
 
@@ -1798,7 +1798,7 @@
         <div class="flex flex-wrap items-center gap-3 text-xs">
           <div>
             <label class="text-[10px] font-mono font-bold text-slate-400 block mb-0.5">Spacecraft</label>
-            <select id="turbulence-sat-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none bg-space-950 border border-slate-700 text-slate-200">
+            <select id="turbulence-sat-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-space-950 border border-slate-700 text-slate-200">
               <option value="DSCOVR">DSCOVR (L1)</option>
               <option value="ACE">ACE (L1)</option>
               <option value="WIND">WIND (Baseline)</option>
@@ -1806,7 +1806,7 @@
           </div>
           <div>
             <label class="text-[10px] font-mono font-bold text-slate-400 block mb-0.5">Observable</label>
-            <select id="turbulence-param-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none bg-space-950 border border-slate-700 text-slate-200">
+            <select id="turbulence-param-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-space-950 border border-slate-700 text-slate-200">
               <option value="bz_gsm">Bz (GSM Reconnection)</option>
               <option value="by_gsm">By (GSM Transverse)</option>
               <option value="bx_gsm">Bx (GSM Sunward)</option>
@@ -1817,7 +1817,7 @@
           </div>
           <div>
             <label class="text-[10px] font-mono font-bold text-slate-400 block mb-0.5">Time Window</label>
-            <select id="turbulence-span-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none bg-space-950 border border-slate-700 text-slate-200">
+            <select id="turbulence-span-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-space-950 border border-slate-700 text-slate-200">
               <option value="1">24 Hours (Synoptic)</option>
               <option value="3">3 Days (Multi-Regime)</option>
               <option value="7">7 Days (Deep Cascade)</option>
@@ -2223,7 +2223,7 @@
         <div class="flex items-center space-x-3 text-xs">
           <div>
             <label class="text-[10px] text-slate-400 font-bold block mb-1">Observation Telemetry Source</label>
-            <select id="forecast-satellite-select" onchange="loadMLForecast()" class="rounded-lg px-3 py-1.5 text-xs font-semibold focus:outline-none">
+            <select id="forecast-satellite-select" onchange="loadMLForecast()" class="rounded-lg px-3 py-1.5 text-xs font-semibold">
               <option value="DSCOVR">DSCOVR (L1 Primary)</option>
               <option value="ACE">ACE (L1 Secondary)</option>
               <option value="WIND">WIND (Baseline)</option>
@@ -2537,7 +2537,7 @@
             </div>
 
             <div>
-              <select id="gic-geology-select" onchange="onGicGeologyChange(this.value)" class="bg-space-950 text-slate-200 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none">
+              <select id="gic-geology-select" onchange="onGicGeologyChange(this.value)" class="bg-space-950 text-slate-200 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold">
                 <option value="precambrian_shield">Precambrian Shield (Granitic / High Resistivity ρ=5000 Ω·m)</option>
                 <option value="coastal_margin">Intermediate Crust (ρ=500 Ω·m; coast effect not modelled)</option>
                 <option value="sedimentary_basin">Sedimentary Basin (Conductive Silt ρ=50 Ω·m)</option>
@@ -2707,7 +2707,7 @@
 
         <div class="relative">
           <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-500 text-[10px]"></i>
-          <input type="text" id="ref-search-input" oninput="onRefSearchInput(this.value)" placeholder="Search formulas, authors, DOIs, parameters..." class="bg-space-900/90 text-xs pl-7 pr-3 py-1.5 rounded-lg border border-slate-700/80 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-400 w-64 font-sans">
+          <input type="text" id="ref-search-input" oninput="onRefSearchInput(this.value)" placeholder="Search formulas, authors, DOIs, parameters..." class="bg-space-900/90 text-xs pl-7 pr-3 py-1.5 rounded-lg border border-slate-700/80 text-slate-200 placeholder-slate-500 focus:border-sky-400 w-64 font-sans">
         </div>
       </div>
 

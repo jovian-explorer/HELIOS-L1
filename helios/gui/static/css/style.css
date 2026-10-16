@@ -164,6 +164,12 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus {
   z-index: 100;
 }
 
+/* Keyboard focus is always visible (the mouse does not trigger it) */
+:focus-visible {
+  outline: 2px solid var(--accent-sky) !important;
+  outline-offset: 2px;
+}
+
 /* No motion for those who ask for less (system setting) */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

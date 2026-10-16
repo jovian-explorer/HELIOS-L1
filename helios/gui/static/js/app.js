@@ -1210,7 +1210,7 @@ function updateFeedStatus(data, latency = 0) {
 }
 
 function sonifyCurrentTelemetry() {
-  // Only measured values: the sound used to stand in 450 km/s, Bz -2.5 nT and 6 cm^-3 for missing ones.
+  // Only measured values: the sound used to stand in 450 km/s, Bz -2.5 nT and 6 cm⁻³ for missing ones.
   const latest = (currentTelemetryData && currentTelemetryData.latest) || {};
   const missing = ['speed', 'bz_gsm', 'density'].filter(k => typeof latest[k] !== 'number');
   if (missing.length) {
@@ -1231,7 +1231,7 @@ function updateTelemetryUI(data) {
   const allRecords = data.records || [];
 
   // Filter records if a physical regime filter is active
-  // Thresholds match the button labels (they were 480 km/s and 8 cm^-3). With a filter
+  // Thresholds match the button labels (they were 480 km/s and 8 cm⁻³). With a filter
   // the MIN/AVG/MAX rows describe the matching samples only, while the large numbers stay
   // the latest measurement; the note under the buttons says which.
   let records = allRecords;
@@ -1299,7 +1299,7 @@ function updateTelemetryUI(data) {
     tickR.style.color = cls.r_level > 0 ? '#b98f3f' : '#529b6e';
   }
   const tickRmp = document.getElementById('ticker-rmp');
-  if (tickRmp) tickRmp.innerText = latest.magnetopause_re != null ? `${latest.magnetopause_re} RE${headerTag}` : '---';
+  if (tickRmp) tickRmp.innerText = latest.magnetopause_re != null ? `${latest.magnetopause_re} R_E${headerTag}` : '---';
   const tickEps = document.getElementById('ticker-epsilon');
   if (tickEps) tickEps.innerText = latest.akasofu_gw != null ? `${latest.akasofu_gw} GW${headerTag}` : '---';
 
@@ -1869,9 +1869,9 @@ async function calculateCMEKinematics() {
     const panel = document.getElementById('cme-results-panel');
     panel.classList.remove('hidden');
     document.getElementById('cme-v-init').innerText = `${cme.initial_speed_kms} km/s`;
-    document.getElementById('cme-transit-l1').innerText = `${cme.transit_to_l1_hours} hrs`;
+    document.getElementById('cme-transit-l1').innerText = `${cme.transit_to_l1_hours} h`;
     document.getElementById('cme-arrival-l1').innerText = cme.predicted_l1_arrival;
-    document.getElementById('cme-transit-earth').innerText = `${cme.transit_to_earth_hours} hrs`;
+    document.getElementById('cme-transit-earth').innerText = `${cme.transit_to_earth_hours} h`;
     document.getElementById('cme-arrival-earth').innerText = cme.predicted_earth_arrival;
     document.getElementById('cme-lead-time').innerText = `+${cme.l1_to_earth_lead_time_minutes} min`;
     // Only for a measured CME (a time of the second height given): the start-up preset is not a prediction.
@@ -2961,30 +2961,30 @@ function updateBoundaryCards(b) {
   if (!b) return;
   const cardBow = document.getElementById('card-bow-standoff');
   const cardBowKm = document.getElementById('card-bow-km');
-  if (cardBow) cardBow.innerText = `${b.r0_bs.toFixed(1)} RE`;
+  if (cardBow) cardBow.innerText = `${b.r0_bs.toFixed(1)} R_E`;
   if (cardBowKm) cardBowKm.innerText = `~${Math.round(b.r0_bs * 6371).toLocaleString()} km`;
 
   const cardMp = document.getElementById('card-mp-standoff');
   const cardMpKm = document.getElementById('card-mp-km');
   const cardMpStatus = document.getElementById('card-mp-geo-status');
   if (cardMp) {
-    cardMp.innerText = `${b.r0_mp.toFixed(1)} RE`;
+    cardMp.innerText = `${b.r0_mp.toFixed(1)} R_E`;
     cardMp.className = b.insideGeo ? 'text-2xl font-hud font-bold text-rose-400 ' : 'text-2xl font-hud font-bold text-amber-300';
   }
   if (cardMpKm) cardMpKm.innerText = `~${Math.round(b.r0_mp * 6371).toLocaleString()} km`;
   if (cardMpStatus) {
     const margin = b.r0_mp - 6.6;
     if (b.insideGeo) {
-      cardMpStatus.innerHTML = `<span class="text-rose-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>SUB-GEO COMPRESSION (${margin.toFixed(1)} RE inside GEO)</span>`;
+      cardMpStatus.innerHTML = `<span class="text-rose-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>SUB-GEO COMPRESSION (${margin.toFixed(1)} R_E inside GEO)</span>`;
     } else {
-      cardMpStatus.innerHTML = `<span class="text-emerald-400 font-medium">GEO Standoff Clear (+${margin.toFixed(1)} RE outside geostationary orbit)</span>`;
+      cardMpStatus.innerHTML = `<span class="text-emerald-400 font-medium">GEO Standoff Clear (+${margin.toFixed(1)} R_E outside geostationary orbit)</span>`;
     }
     cardMpStatus.innerHTML += `<div class="text-[10px] text-slate-500 mt-0.5">${GEO_ALERT_CAVEAT}</div>`;
   }
 
   const cardSheath = document.getElementById('card-sheath-thick');
   const cardSheathKm = document.getElementById('card-sheath-km');
-  if (cardSheath) cardSheath.innerText = `${b.sheathRe.toFixed(1)} RE`;
+  if (cardSheath) cardSheath.innerText = `${b.sheathRe.toFixed(1)} R_E`;
   if (cardSheathKm) cardSheathKm.innerText = `~${Math.round(b.sheathRe * 6371).toLocaleString()} km`;
 
   const cardAlpha = document.getElementById('card-flaring-alpha');

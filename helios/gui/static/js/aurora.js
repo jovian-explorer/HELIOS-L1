@@ -669,7 +669,7 @@ class AuroralMapRenderer {
         <div class="text-[11px] font-mono space-y-0.5 text-slate-200">
           <div>Geographic: <span class="text-amber-300">${st.lat.toFixed(2)}°, ${st.lon.toFixed(2)}°</span></div>
           <div>Dipole latitude: <span class="text-emerald-300">${this.getDipoleLatitude(st.lon, st.lat).toFixed(1)}°</span> <span class="text-slate-500">(CGM within ~5°)</span></div>
-          <div>Magnetic Local Time: <span class="text-cyan-300">${mlt.toFixed(1)} hrs MLT</span></div>
+          <div>Magnetic Local Time: <span class="text-cyan-300">${mlt.toFixed(1)} h MLT</span></div>
           <div>Payload: <span class="text-slate-300">${st.type}</span></div>
           <div class="pt-1 mt-1 border-t border-slate-800 ${statusColor}">• ${skyStatus}</div>
         </div>

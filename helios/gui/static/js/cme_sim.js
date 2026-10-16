@@ -396,7 +396,7 @@ class CMESimulator {
 
     ctx.fillStyle = '#f6f7f8';
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText(`Elapsed time: ${this.timeHrs.toFixed(1)} hrs / ${this.maxHrs.toFixed(0)} hrs`, hudX + 10, hudY + 34);
+    ctx.fillText(`Elapsed time: ${this.timeHrs.toFixed(1)} h / ${this.maxHrs.toFixed(0)} h`, hudX + 10, hudY + 34);
     ctx.fillText(`Heliocentric dist: ${shock.rAu.toFixed(3)} AU (${shock.rSun.toFixed(1)} R☉)`, hudX + 10, hudY + 50);
     ctx.fillText(`Front speed: ${shock.vKms.toFixed(0)} km/s | a = ${shock.dragAccelMs2.toFixed(2)} m/s²`, hudX + 10, hudY + 66);
     

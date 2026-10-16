@@ -812,11 +812,11 @@ class OrbitRenderer {
     ctx.font = '600 8.5px system-ui, sans-serif';
     ctx.fillStyle = '#7fa5cf';
     ctx.textAlign = 'right';
-    ctx.fillText(`BS: ${boundaries.r0_bs.toFixed(1)} RE`, bsSubsolarProj.x - 4, bsSubsolarProj.y - 6);
+    ctx.fillText(`BS: ${boundaries.r0_bs.toFixed(1)} R_E`, bsSubsolarProj.x - 4, bsSubsolarProj.y - 6);
 
     ctx.fillStyle = boundaries.insideGeo ? '#d77e7e' : '#d2aa57';
     ctx.textAlign = 'left';
-    ctx.fillText(`MP: ${boundaries.r0_mp.toFixed(1)} RE`, mpSubsolarProj.x + 4, mpSubsolarProj.y - 6);
+    ctx.fillText(`MP: ${boundaries.r0_mp.toFixed(1)} R_E`, mpSubsolarProj.x + 4, mpSubsolarProj.y - 6);
 
     // Reconnection marker at the subsolar magnetopause when Bz < 0. (Dipole loops, tail lobes,
     // a current sheet and belts were drawn here in the ecliptic plane, where they do not lie.)
