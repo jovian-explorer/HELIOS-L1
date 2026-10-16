@@ -49,7 +49,6 @@ class ParkerSpiralRenderer {
 
     // NAIF SPICE Ephemeris State
     this.spiceFleetData = null;
-    this.spiceAvailable = false;
     this.spiceToolkit = 'CSPICE_N0067';
     this.fetchSpiceEphemeris();
     // Positions move (PSP up to ~190 km/s near perihelion): ask again every 10 minutes.
@@ -73,7 +72,6 @@ class ParkerSpiralRenderer {
         // Bodies without an ephemeris at this time are left out (their labelled schematic
         // orbit is drawn instead of a position that does not exist).
         this.spiceFleetData = Object.fromEntries(Object.entries(data.fleet || {}).filter(([, v]) => v && v.available !== false));
-        this.spiceAvailable = data.spice_available;
         this.spiceToolkit = data.spice_version;
         console.log('[ParkerSpiral] SPICE ephemeris synchronized with NASA JPL CSPICE pool.');
       }

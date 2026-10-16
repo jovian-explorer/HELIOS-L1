@@ -26,9 +26,12 @@ class AuroralMapRenderer {
     this.imfBz = 0;
     this.hemisphericPower = null; // GW
     this.showNightShadow = true;
+    // NOAA OVATION Prime nowcast (live probability layer); the Starkov oval for past times and offline
+    this.ovation = null;
+    this.showOvation = true;
+    this.mapIsNow = true;
     this.showSouthernOval = true;
     this.showStations = true;
-    this.showTerminator = true;
     this.showGrid = true;
     this.hoveredStation = null;
     this.mouseGeo = null;
@@ -160,6 +163,12 @@ class AuroralMapRenderer {
     const h = this.home;
     if (!h) return null;
     const sky = this.skyText(this.getSolarZenith(h.lon, h.lat, this.getSubsolarPoint()));
+    if (this.ovationLive()) {
+      const p = this.ovationAt(h.lat, h.lon);
+      const t = String(this.ovation.forecastTime || '').replace('T', ' ').slice(0, 16);
+      return { sky, oval: `NOAA OVATION nowcast for ${t} UTC: ${p} % probability of aurora at your place` +
+        (p >= 10 ? '' : ' (aurora further poleward may still be seen low on the horizon)') };
+    }
     const hemi = this.ovalBoundaries && this.ovalBoundaries[h.lat >= 0 ? 'north' : 'south'];
     if (!hemi || !hemi.equatorward || !hemi.equatorward.length) return { sky, oval: 'the oval is not loaded yet' };
     const storm = this.stormEdge && hemi.diffuse && hemi.diffuse.length;
@@ -192,6 +201,41 @@ class AuroralMapRenderer {
   }
 
   // Converts geographic (lon, lat) to canvas (x, y)
+  // NOAA OVATION Prime nowcast from /api/aurora/ovation: cells [lon 0-359 E, lat, %]
+  setOvation(data) {
+    if (!data || !Array.isArray(data.cells)) { this.ovation = null; return; }
+    const lookup = new Map(data.cells.map(([lo, la, p]) => [`${lo},${la}`, p]));
+    this.ovation = { cells: data.cells, lookup, forecastTime: data.forecast_time, observationTime: data.observation_time };
+    this.showHomeOutlook();
+  }
+
+  // Live: a nowcast for within 3 h, shown while the map is at the present (not a past oval time)
+  ovationLive() {
+    if (!this.ovation || !this.showOvation || !this.mapIsNow) return false;
+    const t = Date.parse(this.ovation.forecastTime);
+    return Number.isFinite(t) && Math.abs(Date.now() - t) < 3 * 3600 * 1000;
+  }
+
+  ovationAt(lat, lon) {
+    if (!this.ovation) return null;
+    const key = `${((Math.round(lon) % 360) + 360) % 360},${Math.max(-90, Math.min(90, Math.round(lat)))}`;
+    return this.ovation.lookup.get(key) || 0;
+  }
+
+  drawOvation() {
+    const ctx = this.ctx;
+    const w = this.width / 360, h = this.height / 180;
+    ctx.save();
+    for (const [lo, la, p] of this.ovation.cells) {
+      if (p < 3) continue;  // NOAA's map starts its colour scale near here
+      const { x, y } = this.geoToXY(lo > 180 ? lo - 360 : lo, la);
+      ctx.fillStyle = p >= 50 ? `rgba(215, 126, 126, ${0.35 + 0.5 * p / 100})`
+        : `rgba(109, 180, 135, ${0.2 + 0.6 * p / 50})`;
+      ctx.fillRect(x - w / 2, y - h / 2, w + 0.5, h + 0.5);
+    }
+    ctx.restore();
+  }
+
   geoToXY(lon, lat) {
     const x = ((lon + 180) / 360) * this.width;
     const y = ((90 - lat) / 180) * this.height;
@@ -297,14 +341,16 @@ class AuroralMapRenderer {
 
     // 4. Solar Day / Night Terminator & Night Shadow Mask
     const sun = this.getSubsolarPoint();
-    if (this.showTerminator) {
+    if (this.showNightShadow) {  // the Night Shadow checkbox (it set a flag nothing read)
       this.drawSolarTerminator(sun);
     }
 
     // 5. Dual Auroral Ovals with Shimmering Plasma Luminescence
-    this.drawAuroralOvalLayer(true); // Northern Aurora (Aurora Borealis)
-    if (this.showSouthernOval) {
-      this.drawAuroralOvalLayer(false); // Southern Aurora (Aurora Australis)
+    if (this.ovationLive()) {
+      this.drawOvation();  // NOAA's live probability in place of the Starkov band
+    } else {
+      this.drawAuroralOvalLayer(true); // Northern Aurora (Aurora Borealis)
+      if (this.showSouthernOval) this.drawAuroralOvalLayer(false); // Southern Aurora (Aurora Australis)
     }
 
     // 6. Geomagnetic Poles
@@ -617,25 +663,28 @@ class AuroralMapRenderer {
     ctx.strokeStyle = 'rgba(127, 165, 207, 0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(10, 10, 300, this.stormEdge ? 70 : 56, 8);
+    ctx.roundRect(10, 10, 320, this.stormEdge && !this.ovationLive() ? 70 : 56, 8);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#7fa5cf';
     ctx.font = '600 10px system-ui, sans-serif';
-    ctx.fillText(this.ovalBoundaries ? 'Auroral oval (Starkov 1994)' : 'Auroral oval: loading', 18, 26);
+    const live = this.ovationLive();
+    ctx.fillText(live ? `NOAA OVATION Prime nowcast for ${String(this.ovation.forecastTime).replace('T', ' ').slice(0, 16)} UTC`
+      : (this.ovalBoundaries ? 'Auroral oval (Starkov 1994)' : 'Auroral oval: loading'), 18, 26);
 
     ctx.fillStyle = '#9a9ea5';
     ctx.font = '9px system-ui, sans-serif';
     const eqMid = this.eqMidnightLat !== null && this.eqMidnightLat !== undefined ? this.eqMidnightLat : null;
-    ctx.fillText(this.stormEdge
+    if (live) ctx.fillText('Probability of visible aurora: green 3-50 %, red above 50 %', 18, 40);
+    else ctx.fillText(this.stormEdge
       ? `Storm-time edge (diffuse boundary) at midnight: ${this.stormEdgeLat.toFixed(1)}° CGM; oval ${eqMid === null ? 'n/a' : eqMid.toFixed(1) + '°'}`
       : `Equatorward midnight: ${eqMid === null ? 'n/a' : eqMid.toFixed(1) + '° CGM'}`, 18, 40);
     const kpText = this.kpIndex === null ? 'n/a' : this.kpIndex.toFixed(1);
     const alText = this.alUsed === null || this.alUsed === undefined ? '' : `|AL| ${this.alUsed.toFixed(0)} nT • `;
     ctx.fillText(`${alText}Kp ${kpText} • HPI ${this.hemisphericPower === null ? 'n/a' : this.hemisphericPower + ' GW'}` +
       (this.mapTime ? ` • ${this.mapTime.toISOString().slice(0, 16).replace('T', ' ')} UTC` : ` • IMF Bz ${this.imfBz === null ? 'n/a' : this.imfBz.toFixed(1) + ' nT'}`), 18, 54);
-    if (this.stormEdge) {  // legend of the storm-time edge
+    if (this.stormEdge && !live) {  // legend of the storm-time edge
       ctx.strokeStyle = 'rgba(223, 192, 120, 0.95)';
       ctx.lineWidth = 2.6;
       ctx.beginPath(); ctx.moveTo(18, 64); ctx.lineTo(40, 64); ctx.stroke();

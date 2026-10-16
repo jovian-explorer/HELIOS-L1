@@ -1,6 +1,6 @@
 """
 Scientific data export and report generation engine for HELIOS-L1.
-Supports CSV, JSON, NetCDF-compatible schemas, and Matplotlib chart exports.
+Supports CSV, JSON and Matplotlib chart exports.
 """
 import io
 import csv
@@ -69,33 +69,6 @@ class DataExporter:
         for r in records:
             writer.writerow(r)
         return output.getvalue()
-
-    @staticmethod
-    def to_netcdf_schema(records: List[Dict[str, Any]], mission_name: str) -> Dict[str, Any]:
-        """Format data into a NetCDF-4 / CF-1.8 compliant metadata dictionary."""
-        if not records:
-            return {}
-
-        variables = {}
-        for col in DataExporter._fieldnames(records):
-            if col != "time_tag":
-                # Units from the field table; the old substring guess labelled e.g.
-                # temperature, standoff and epsilon as nPa.
-                variables[col] = {
-                    "data": [r.get(col) for r in records],
-                    "units": FIELD_UNITS.get(col, "1")
-                }
-
-        return {
-            "title": f"HELIOS-L1 Calibrated Space Weather Telemetry: {mission_name}",
-            "conventions": "CF-1.8",
-            "source": "HELIOS-L1 Science Data Pipeline",
-            "institution": "Space Weather International Collaboration",
-            "time_coverage_start": records[0].get("time_tag", ""),
-            "time_coverage_end": records[-1].get("time_tag", ""),
-            "dimensions": {"time": len(records)},
-            "variables": variables
-        }
 
     @staticmethod
     def generate_overview_chart(records: List[Dict[str, Any]], mission_name: str,

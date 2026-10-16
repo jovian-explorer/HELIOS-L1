@@ -85,7 +85,6 @@ class OrbitRenderer {
 
     // View mode: '2d' (ecliptic GSE) or '3d' (isometric halo view)
     this.viewMode = '2d';
-    this.viewAngleZ = 0.55; // Tilt angle for 3D projection
 
     // Stars background
     this.stars = [];
@@ -106,8 +105,6 @@ class OrbitRenderer {
 
     this.timeStep = 0;
     this.orbitsData = null;
-    this.lagrangeData = null;
-    this.hoveredItem = null;
 
     // GSE Coordinate Grid and Spacecraft Filter Sets
     this.showGseGrid = true;
@@ -387,8 +384,6 @@ class OrbitRenderer {
       }
     }
 
-    this.hoveredItem = found;
-
     if (found && this.tooltip) {
       this.tooltip.classList.remove('hidden');
       this.tooltip.style.left = `${mouseX + 16}px`;
@@ -496,7 +491,6 @@ class OrbitRenderer {
 
   setOrbitsData(data) {
     this.orbitsData = data.orbits;
-    this.lagrangeData = data.lagrange_points;
   }
 
   draw() {

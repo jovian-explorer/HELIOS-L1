@@ -33,8 +33,6 @@ class CMESimulator {
     // Arrival state of the model CME front
     this.transitL1Hrs = 32.5;
     this.transitEarthHrs = 33.3;
-    this.reachedL1 = false;
-    this.reachedEarth = false;
 
     this.recomputeTrajectory();
     this.resize();

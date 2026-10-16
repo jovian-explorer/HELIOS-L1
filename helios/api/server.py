@@ -44,6 +44,7 @@ from helios.core import timeshift
 from helios.core import sudden_commencement as sc
 from helios.core import gfz_indices
 from helios.core import omni_statistics
+from helios.core import ovation
 from helios.core.orbital_mechanics import OrbitalMechanics
 from helios.core.science import SpaceWeatherPhysics
 from helios.core.exporter import DataExporter
@@ -1941,6 +1942,22 @@ async def observed_al(when: datetime) -> Tuple[Optional[float], Optional[str]]:
     if len(values) < 30:
         return None, None
     return float(np.mean(values)), f"OMNI 1-min AL (WDC Kyoto), mean of {len(values)} min before {when:%Y-%m-%d %H:%M} UTC"
+
+@app.get("/api/aurora/ovation")
+async def get_ovation(lat: Optional[float] = Query(None, ge=-90.0, le=90.0),
+                      lon: Optional[float] = Query(None, ge=-180.0, le=360.0)):
+    """NOAA's live OVATION Prime aurora nowcast: cells with a probability of 1 % or more, and the
+    probability at (lat, lon) when given. 503 when NOAA cannot be reached and nothing is cached."""
+    product = await downloader.fetch_json(NOAA_SWPC_ENDPOINTS["ovation_aurora"], "ovation_aurora")
+    parsed = ovation.parse(product) if isinstance(product, dict) else None
+    if parsed is None:
+        raise HTTPException(status_code=503, detail="NOAA's OVATION aurora nowcast could not be loaded.")
+    grid = parsed["grid"]
+    return {"observation_time": parsed["observation_time"], "forecast_time": parsed["forecast_time"],
+            "cells": ovation.cells(grid), "probability_at": None if lat is None or lon is None
+            else ovation.probability_at(grid, lat, lon), "source": ovation.SOURCE,
+            "units": "% probability of visible aurora; cells [lon 0-359 E, lat, %]"}
+
 
 @app.get("/api/aurora")
 async def get_aurora(kp: Optional[float] = Query(None, ge=0.0, le=9.0),

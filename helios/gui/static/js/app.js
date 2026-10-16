@@ -1811,6 +1811,15 @@ async function loadAuroralForecast() {
       const pastTime = data.oval_time_utc;
       auroralRenderer.setConditions(kpVal, bzVal, b.hemispheric_power_gw, b.equatorward_midnight_lat, data.oval_polygon,
                                     b.al_used_nt, pastTime, b.model_limit ? b.diffuse_equatorward_midnight_lat : null);
+      // The live map (no time chosen) shows NOAA's OVATION nowcast; Starkov stays for past
+      // times and offline (the server returns an oval time in both cases).
+      const timeChosen = document.getElementById('aurora-time')?.value;
+      auroralRenderer.mapIsNow = !timeChosen;
+      if (!timeChosen) {
+        fetch('/api/aurora/ovation').then(r => (r.ok ? r.json() : null)).then(o => {
+          if (current()) auroralRenderer.setOvation(o);
+        }).catch(() => auroralRenderer.setOvation(null));
+      }
     }
   } catch (err) {
     if (!current()) return;
@@ -1823,6 +1832,7 @@ function toggleAuroraLayer(layer, state) {
   if (layer === 'shadow') auroralRenderer.showNightShadow = state;
   else if (layer === 'south') auroralRenderer.showSouthernOval = state;
   else if (layer === 'stations') auroralRenderer.showStations = state;
+  else if (layer === 'ovation') { auroralRenderer.showOvation = state; auroralRenderer.showHomeOutlook(); }
 }
 
 // CME KINEMATICS SOLVER & INTERPLANETARY SHOCK SIMULATOR

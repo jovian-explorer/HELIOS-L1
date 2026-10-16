@@ -592,3 +592,10 @@ def test_aurora_map_uses_the_storm_time_edge_from_kp_5():
     assert "b.model_limit ? b.diffuse_equatorward_midnight_lat : null" in app
     assert "const edgePts = storm ? hemi.diffuse : hemi.equatorward;" in aurora
     assert "storm-time edge of the aurora" in aurora and "if (this.stormEdge) {" in aurora
+
+
+def test_no_handler_is_called_with_an_empty_argument():
+    """The restyle's class clean-up removed the word "shadow" from toggleAuroraLayer('shadow', ...),
+    so the Night Shadow checkbox did nothing."""
+    page = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
+    assert not re.findall(r'on(?:click|change|input)="[^"]*\(\'\'\s*,', page)

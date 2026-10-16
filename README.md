@@ -64,6 +64,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    Measures power transfer into the magnetosphere driving substorms and auroral displays.
 
 4. **Auroral Oval Boundaries & Dst Ring Current (Burton / O'Brien-McPherron):**
+   * **Live aurora: NOAA's OVATION Prime nowcast** (`GET /api/aurora/ovation`): the probability of visible aurora on a 1° grid, drawn on the map for the present; "your place" gives NOAA's probability there.
    * **Starkov (1994) auroral oval:** poleward and equatorward boundaries of the oval and the equatorward edge of the diffuse aurora in corrected geomagnetic colatitude, $\theta = A_0 + A_1\cos[15(t + \alpha_1)] + A_2\cos[15(2t + \alpha_2)] + A_3\cos[15(3t + \alpha_3)]$, with every $A_i$, $\alpha_i$ cubic in $\log_{10}|AL|$ (coefficients from Sigernes et al. 2011, Table 2). The driver is OMNI 1-min AL averaged over the hour before the oval time when OMNI covers it, otherwise Kp converted with Starkov's $|AL| = 18 - 12.3Kp + 27.2Kp^2 - 2Kp^3$ nT, or an AL you enter; $|AL|$ is limited to 18-750 nT (Kp 0 to a little above Kp 9; above about 780 nT the fitted equatorward boundary crosses the poleward one, so stronger activity is drawn at the 750 nT oval and the response says the value was capped). The map draws the boundaries for any UTC time, placed with the IGRF centred dipole and the magnetic local time of the subsolar point. `GET /api/aurora?time=&al=&kp=`.
    * **Hemispheric power** (when Kp is known): the TIE-GCM/WACCM relation attributed to Zhang & Paxton (2008), $HP = 16.82\,e^{0.32Kp} - 4.86$ GW for $Kp \le 7$, then linear to 300 GW at Kp 9 (the TIE-GCM extension). It is an estimate from Kp, not a measurement.
    * **Ring current Dst:** $dDst^*/dt = Q(VB_s) - Dst^*/\tau$, $Dst = Dst^* + b\sqrt{P_{dyn}} - c$, with either O'Brien & McPherron (2000) ($Q = -4.4(VB_s - 0.49)$ nT/h, $\tau = 2.4\,e^{9.74/(4.69 + VB_s)}$ h, $b = 7.26$, $c = 11$ nT) or Burton et al. (1975) ($Q = -5.4(VB_s - 0.5)$ nT/h, $\tau = 7.7$ h, $b = 15.8$, $c = 20$ nT).
@@ -117,7 +118,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 11. **Operator User Guide & Scientific Literature Handbook (Hotkeys 'U' & 'P'):**
     * Full 6-chapter interactive operator manual embedded with real-time keyword search.
     * Complete directory of peer-reviewed formulas with direct DOI cross-references, data provider provenance (NOAA, NASA, ISRO, ESA, GFZ, WDC), and open science licenses.
-    * Published results reproduced with HELIOS-L1's own tools on the same data (user guide, section 7, "Reproductions of published results"; `tests/test_reproductions.py`): the DBM tools paper's CME of 3 April 2010, the WIND magnetic cloud table's flux-rope fits, the Richardson & Cane ICME means and Dst minima, and the limits of Shue et al. (1998).
+    * Published results reproduced with HELIOS-L1's own tools on the same data (user guide, section 7, "Reproductions of published results"; `tests/test_reproductions.py`): the DBM tools paper's CME of 3 April 2010, the WIND magnetic cloud table's flux-rope fits, the Richardson & Cane ICME means and Dst minima, the limits of Shue et al. (1998), the drag-based model evaluation of Čalogović et al. (2021) and the ICME averages of Kilpua et al. (2017).
 
 ---
 

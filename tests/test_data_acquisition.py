@@ -278,14 +278,6 @@ def test_csv_export_handles_mixed_keys_and_carries_metadata(omni_l1):
     assert plain.startswith("time_tag,")
 
 
-def test_netcdf_schema_units():
-    from helios.core.exporter import DataExporter
-    schema = DataExporter.to_netcdf_schema(
-        [{"time_tag": "a", "temperature": 1e5, "magnetopause_re": 10.0, "akasofu_gw": 50.0, "bz_gsm": -2.0}], "X")
-    units = {k: v["units"] for k, v in schema["variables"].items()}
-    assert units == {"temperature": "K", "magnetopause_re": "R_E", "akasofu_gw": "GW", "bz_gsm": "nT"}
-
-
 def test_compare_and_matrix_expose_provenance(monkeypatch):
     from fastapi.testclient import TestClient
     from helios.api.server import app

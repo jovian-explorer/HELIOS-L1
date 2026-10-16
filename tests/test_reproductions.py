@@ -126,3 +126,50 @@ def test_shue_1998_reproduces_the_paper_limit_and_the_january_1997_crossing():
 
     assert all(r(14.0, 9.3, th) > 6.6 for th in (0, 20, 30))
     assert all(r(60.0, 18.0, th) < 6.6 for th in (0, 20, 30))
+
+
+@pytest.mark.parametrize("rule, w, me, mae", [("variable", 450.0, -8.5, 16.0), ("fixed", 425.0, -1.5, 13.5)])
+def test_drag_based_model_on_the_calogovic_2021_sample(rule, w, me, mae):
+    """Calogovic et al. (2021, Sol. Phys. 296, 114; inputs on figshare, CC BY 4.0): DBEMv3 on 146
+    CME-ICME pairs, arrival = ICME start of the Richardson & Cane list. With gamma by speed
+    (0.5/0.2/0.1e-7 /km below 600 / 600-1000 / above 1000 km/s, w 450) the paper gets ME -11.3 h,
+    MAE 17.3 h; with a fixed 0.3e-7 /km (w 425) -3.9 h, 14.5 h. HELIOS's 1D model on the 84 events
+    whose CME the bundled list names: -8.5 / 16.0 h and -1.5 / 13.5 h, the same ranking (the
+    fixed gamma does better), 1-3 h apart (84 of 146 events, 1D against their 2D cone ensemble)."""
+    import json
+    import statistics
+    events = json.loads((DATA / "calogovic2021_dbem_rc.json").read_text())["events"]
+    err = []
+    for _, t20, v0, gamma_var, arrival in events:
+        gamma = gamma_var if rule == "variable" else 0.3
+        k = C.calculate_cme_kinematics(20.0 - v0 * 600.0 / C.R_SUN_KM, 20.0, 10.0, t20, w, gamma * 1e-7)
+        got = datetime.strptime(k["predicted_earth_arrival"], "%Y-%m-%d %H:%M:%S UTC")
+        err.append((got - datetime.fromisoformat(arrival)).total_seconds() / 3600.0)
+    assert len(err) == 84
+    assert statistics.mean(err) == pytest.approx(me, abs=0.1)
+    assert statistics.mean(map(abs, err)) == pytest.approx(mae, abs=0.1)
+
+
+def test_icme_averages_reproduce_kilpua_2017_table_1():
+    """Kilpua, Koskinen & Pulkkinen (2017, Living Rev. Sol. Phys. 14, 5), Table 1, Richardson &
+    Cane rows for 1996-2016: non-MC ICMEs N 147, <B> 7.5 +- 3.1 nT, <V> 475 +- 109 km/s,
+    dT 28.0 +- 16.4 h; MCs N 170, <B> 12.9 +- 4.1 nT, <V> 452 +- 102 km/s, dT 20.8 +- 11.2 h (the
+    cloud's own boundaries). From the bundled list (revised since): non-MC 149, 7.9, 472, 27.9 h;
+    MC 178, 12.5, 450, and 20.6 +- 10.1 h from the cloud boundaries."""
+    import json
+    import numpy as np
+    import helios
+    events = json.loads((Path(helios.__file__).parent / "data" / "icme_richardson_cane.json")
+                        .read_text(encoding="utf-8"))["events"]
+    ev = [e for e in events if "1996-01-01" <= e["icme_start"] < "2017-01-01"]
+    hours = lambda e: (datetime.fromisoformat(e["icme_end"]) - datetime.fromisoformat(e["icme_start"])).total_seconds() / 3600
+    non = [e for e in ev if e["magnetic_cloud"] == 0]
+    mc = [e for e in ev if e["magnetic_cloud"] == 2]
+    assert abs(len(non) - 147) <= 5 and abs(len(mc) - 170) <= 10
+    assert np.mean([e["b_mean_nt"] for e in non]) == pytest.approx(7.5, abs=0.5)
+    assert np.mean([e["v_icme_kms"] for e in non if e["v_icme_kms"]]) == pytest.approx(475, abs=5)
+    assert np.mean([hours(e) for e in non]) == pytest.approx(28.0, abs=0.5)
+    assert np.mean([e["b_mean_nt"] for e in mc if e["b_mean_nt"]]) == pytest.approx(12.9, abs=0.5)
+    assert np.mean([e["v_icme_kms"] for e in mc if e["v_icme_kms"]]) == pytest.approx(452, abs=5)
+    off = [e for e in mc if all(isinstance(x, (int, float)) for x in (e["magnetic_cloud_offsets_h"] or [None]))]
+    assert np.mean([hours(e) - e["magnetic_cloud_offsets_h"][0] + e["magnetic_cloud_offsets_h"][1] for e in off]) == pytest.approx(20.8, abs=0.5)

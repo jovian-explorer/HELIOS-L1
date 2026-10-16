@@ -984,12 +984,12 @@
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
               <h3 data-term="auroral oval" class="font-tech font-bold text-base text-slate-100">Global Geographic Auroral Oval Visibility Map</h3>
             </div>
-            <p class="text-xs text-slate-400">Starkov (1994) auroral oval (green band) and equatorward edge of the diffuse aurora (dashed), mapped with the IGRF dipole for the oval time, with the day/night terminator and ground observatories.</p>
+            <p class="text-xs text-slate-400">Now: NOAA SWPC's OVATION Prime nowcast of the probability of visible aurora. For a past time, offline, or with NOAA OVATION unticked: the Starkov (1994) oval (green band) and the equatorward edge of the diffuse aurora (dashed; the storm-time edge from Kp 5, bold), mapped with the IGRF dipole for the oval time. With the day/night terminator and ground observatories.</p>
             <p class="text-[11px] text-slate-300">In plain words: Where the aurora is now (the green ring), where night falls, and, if you click the map, what to expect at your place.</p>
           </div>
           <div class="flex flex-wrap items-center gap-3 text-xs">
             <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
-              <input type="checkbox" id="aurora-toggle-shadow" checked onchange="toggleAuroraLayer('', this.checked)" class="rounded text-sky-500">
+              <input type="checkbox" id="aurora-toggle-shadow" checked onchange="toggleAuroraLayer('shadow', this.checked)" class="rounded text-sky-500">
               <span class="text-slate-300">Night Shadow</span>
             </label>
             <label class="flex items-center space-x-1.5 cursor-pointer bg-space-950/80 px-2.5 py-1 rounded-lg border border-slate-700/60">
@@ -1000,10 +1000,10 @@
               <input type="checkbox" id="aurora-toggle-stations" checked onchange="toggleAuroraLayer('stations', this.checked)" class="rounded text-sky-500">
               <span class="text-slate-300">Ground Stations</span>
             </label>
-            <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold flex items-center space-x-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-beacon"></span>
-              <span>Starkov (1994) Oval</span>
-            </span>
+            <label class="flex items-center space-x-1.5 cursor-pointer" title="NOAA SWPC's OVATION Prime nowcast of the aurora probability; off, or for a past time, the Starkov (1994) oval is shown">
+              <input type="checkbox" id="aurora-toggle-ovation" checked onchange="toggleAuroraLayer('ovation', this.checked)" class="rounded text-sky-500">
+              <span class="text-slate-300">NOAA OVATION (live)</span>
+            </label>
           </div>
         </div>
         <div class="flex flex-wrap items-end gap-3 text-xs">
