@@ -76,6 +76,25 @@ def test_shock_20150317_matches_cfa_database():
     assert all("fit_flag 1" in w for w in res["warnings"])
 
 
+def test_shock_20170906_matches_cfa_database():
+    """
+    The shock of 6 Sep 2017 at WIND (CfA event 00735, https://www.cfa.harvard.edu/shocks/wi_data/00735/wi_00735.html;
+    not in the IPShocks database at WIND): MX3 theta_Bn 45.5 +- 20.5 deg, V_sh 621.1 +- 5.6 km/s, compression
+    5.20 +- 1.50, fast Mach 3.98 +- 0.51, arrival 82966.5 +- 30 s of day. With the default windows: 50.5 deg,
+    619 km/s, 4.75; the normal 14 deg from theirs (their MX3 normal is uncertain by +-12 deg in latitude). The fast
+    Mach number is 3.2: the sound speed here is OMNI's (0.12 sqrt(T + 1.28e5 K) = 48 km/s against their 29 km/s).
+    """
+    field, plasma = _wind("20170906")
+    res = analyze_shock(field, plasma, "2017-09-06 23:02:46")
+    t = pd.Timestamp(res["shock_time"], tz="UTC")
+    assert abs((t - (pd.Timestamp("2017-09-06", tz="UTC") + pd.Timedelta(seconds=82966.5))).total_seconds()) <= 30
+    mx3 = res["methods"]["MX3"]
+    assert res["shock_type"] == "FF" and _angle(mx3["normal_gse"], [-1.000, 0.009, -0.025]) < 15.0
+    assert abs(mx3["theta_bn_deg"] - 45.5) < 20.5 and abs(mx3["shock_speed_kms"] - 621.1) < 5.6
+    assert abs(res["density_ratio"] - 5.20) < 1.50
+    assert 3.0 < mx3["fast_mach"] < 3.98 - 0.51
+
+
 def test_shock_20150622_matches_cfa_database():
     field, plasma = _wind("20150622")
     # Two minutes are left out on each side: the overshoot behind this strong (M_A ~ 7) shock
