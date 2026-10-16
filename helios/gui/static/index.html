@@ -66,7 +66,7 @@
   </div>
 
   <!-- TOP APP BAR -->
-  <header class="border-b border-slate-800/80 bg-slate-900/95 sticky top-0 z-40 px-6 py-2 flex items-center justify-between">
+  <header class="border-b border-slate-800/80 bg-slate-900/95 sticky top-0 z-40 px-6 py-2 flex flex-wrap items-center justify-between gap-2">
     <div class="flex items-center space-x-3.5">
       <div class="relative group cursor-pointer" onclick="openAboutModal()" title="HELIOS-L1 Mission Observatory Emblem (Click for Details & Creator Profile)">
         <img src="/static/img/helios_logo.png" alt="HELIOS-L1 Mission Emblem" class="w-10 h-10 rounded-full border border-amber-500/40 group-hover:border-sky-400 group-hover:scale-105 transition duration-200 object-cover bg-space-950">
@@ -74,7 +74,7 @@
       </div>
       <div>
         <div class="flex items-center space-x-2.5">
-          <h1 class="text-xl font-bold tracking-tight text-white flex items-center space-x-2">
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center space-x-2 whitespace-nowrap">
             <span>HELIOS-L1</span>
           </h1>
           <span class="text-[10px] font-hud font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
@@ -87,7 +87,7 @@
       </div>
     </div>
 
-    <div class="flex items-center space-x-2.5">
+    <div class="flex flex-wrap items-center justify-end gap-2">
       <div id="feed-status-badge" class="flex items-center space-x-2 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700 text-xs font-medium" title="Telemetry Feed Diagnostic &amp; Latency">
         <span id="feed-status-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
         <span id="feed-status-text" class="text-slate-300 font-mono text-[11px]">Connecting...</span>
@@ -168,10 +168,6 @@
         <button id="btn-audio-toggle" onclick="toggleAudio()" class="px-2.5 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 text-xs border border-slate-700 transition flex items-center space-x-1.5" title="Toggle Sonification Audio (A)">
           <i id="icon-audio" class="fa-solid fa-volume-high text-cyan-400"></i>
           <span id="text-audio">Audio: ON</span>
-        </button>
-        <button onclick="openBulletinModal()" class="px-2.5 py-1 rounded bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 text-xs border border-indigo-500/40 transition flex items-center space-x-1.5" title="Open Space Weather Bulletin & Executive Summary (B)">
-          <i class="fa-solid fa-file-shield text-indigo-400"></i>
-          <span>Bulletin</span>
         </button>
         <button onclick="downloadExecutiveSummaryMD()" class="px-2 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center space-x-1" title="Instant Export Executive Summary (Markdown)">
           <i class="fa-solid fa-file-lines text-sky-400"></i>
