@@ -80,7 +80,7 @@ def parse_table(page: str) -> List[Dict[str, Any]]:
     events = []
     for row in re.findall(r"<tr[^>]*>(.*?)</tr>", page, flags=re.S | re.I):
         cells = [html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", c))).strip()
-                 for c in re.findall(r"<td[^>]*>(.*?)</td>", row, flags=re.S | re.I)]
+                 for c in re.split(r"<td[^>]*>", row, flags=re.I)[1:]]  # some last cells lack </td>
         if len(cells) < 17 or cells[0].startswith("Disturbance"):
             continue
         dist, start, end = _time(cells[0]), _time(cells[1]), _time(cells[2])

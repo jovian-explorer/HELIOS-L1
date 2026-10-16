@@ -619,12 +619,11 @@ def theta_bn(n, b1) -> float:
     return math.degrees(math.acos(min(1.0, c)))
 
 
-def _upstream_waves(n_cm3: float, t_k: Optional[float], b_nt: np.ndarray, tbn_deg: float) -> Dict[str, Optional[float]]:
+def _upstream_waves(n_cm3: float, t_k: Optional[float], bmag: float, tbn_deg: float) -> Dict[str, Optional[float]]:
     """
     Alfven speed (protons), sound speed with the OMNI definition C_s = 0.12 sqrt(T + 1.28e5 K)
     km/s (electron temperature not measured), and the fast magnetosonic speed along n.
     """
-    bmag = float(np.linalg.norm(b_nt))
     va = 21.8 * bmag / math.sqrt(n_cm3)
     if t_k is None or not np.isfinite(t_k):
         return {"alfven_kms": va, "sound_kms": None, "fast_kms": None}
@@ -672,14 +671,19 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
         raise ValueError("Not enough field or plasma samples in the upstream/downstream windows "
                          f"(field {kbb}/{kba}, plasma {kpb}/{kpa}).")
 
-    shock_type = classify_shock(pb[3], pa[3], float(np.linalg.norm(bb)), float(np.linalg.norm(ba)))
+    # |B| of each side is the mean of the sample magnitudes, as in the IPShocks database: the
+    # magnitude of the mean vector drops where the field turns within a window (ACE, 5 Aug
+    # 2000: 2.1 against 9.7 nT downstream), which made fast shocks read as slow ones.
+    mb, ma_ = (float(np.nanmean(np.linalg.norm(_window(field, t0, *w)[fcols].to_numpy(dtype=float), axis=1)))
+               for w in (before, after))
+    shock_type = classify_shock(pb[3], pa[3], mb, ma_)
     # Upstream is the side the shock propagates into: before the shock in time for a forward
     # shock, after it for a reverse shock.
     if shock_type.endswith("F"):
-        (b1, b1e, b2, b2e, p1, p1e, p2, p2e) = (bb, bb_e, ba, ba_e, pb, pb_e, pa, pa_e)
+        (b1, b1e, b2, b2e, p1, p1e, p2, p2e, m1, m2) = (bb, bb_e, ba, ba_e, pb, pb_e, pa, pa_e, mb, ma_)
         k_up, k_dn = (kbb, kpb), (kba, kpa)
     else:
-        (b1, b1e, b2, b2e, p1, p1e, p2, p2e) = (ba, ba_e, bb, bb_e, pa, pa_e, pb, pb_e)
+        (b1, b1e, b2, b2e, p1, p1e, p2, p2e, m1, m2) = (ba, ba_e, bb, bb_e, pa, pa_e, pb, pb_e, ma_, mb)
         k_up, k_dn = (kba, kpa), (kbb, kpb)
 
     def evaluate(b1_, b2_, p1_, p2_):
@@ -704,7 +708,7 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
         d = draws[m]
         nn = np.array([x[0] for x in d]) if d else np.zeros((0, 3))
         u1n = float(np.dot(n, p1[:3]) - vsh)  # upstream normal flow speed in the shock frame
-        waves = _upstream_waves(p1[3], p1[4], b1, tbn)
+        waves = _upstream_waves(p1[3], p1[4], m1, tbn)
         methods[m] = {
             "normal_gse": [float(x) for x in n],
             "normal_sigma": [float(x) for x in nn.std(axis=0)] if len(nn) else None,
@@ -717,13 +721,13 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
             "fast_mach": (abs(u1n) / waves["fast_kms"]) if waves["fast_kms"] else None,
         }
 
-    def side(b, be, p, pe, k):
-        return {"B_gse_nT": b.tolist(), "B_sigma_nT": be.tolist(), "B_magnitude_nT": float(np.linalg.norm(b)),
+    def side(b, be, bm, p, pe, k):
+        return {"B_gse_nT": b.tolist(), "B_sigma_nT": be.tolist(), "B_magnitude_nT": bm,
                 "V_gse_kms": p[:3].tolist(), "V_sigma_kms": pe[:3].tolist(),
                 "density_cm3": float(p[3]), "temperature_K": float(p[4]) if np.isfinite(p[4]) else None,
                 "field_samples": k[0], "plasma_samples": k[1]}
 
-    waves = _upstream_waves(p1[3], p1[4], b1, best[PREFERRED_METHOD][1] if PREFERRED_METHOD in best else 90.0)
+    waves = _upstream_waves(p1[3], p1[4], m1, best[PREFERRED_METHOD][1] if PREFERRED_METHOD in best else 90.0)
     density_ratio = float(p2[3] / p1[3])
     warnings = []
     if poor:
@@ -751,16 +755,18 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
         "shock_time_refined": bool(refine and t0 != t_guess),
         "shock_type": shock_type,
         "windows_minutes": {"before": list(before), "after": list(after)},
-        "upstream": side(b1, b1e, p1, p1e, k_up),
-        "downstream": side(b2, b2e, p2, p2e, k_dn),
+        "upstream": side(b1, b1e, m1, p1, p1e, k_up),
+        "downstream": side(b2, b2e, m2, p2, p2e, k_dn),
         "density_ratio": density_ratio,
-        "field_ratio": float(np.linalg.norm(b2) / np.linalg.norm(b1)),
+        "field_ratio": m2 / m1,
         "upstream_waves_kms": waves,
         "methods": methods,
         "preferred_method": PREFERRED_METHOD if PREFERRED_METHOD in methods else next(iter(methods), None),
         "warnings": warnings,
         "conventions": ("GSE. Normal points into the upstream plasma (n . dV > 0); shock speed along n in the "
-                        "spacecraft frame from mass flux conservation; theta_Bn from the upstream field. "
+                        "spacecraft frame from mass flux conservation (negative for a reverse shock, which moves "
+                        "away from the Sun while n points sunward; the IPShocks database lists its magnitude); "
+                        "theta_Bn from the upstream mean field; |B| the mean of the sample magnitudes. "
                         "Sound speed C_s = 0.12 sqrt(T + 1.28e5 K) km/s (OMNI definition, electrons not measured)."),
         "references": [
             "Schwartz, S. J. (1998), Shock and discontinuity normals, Mach numbers, and related parameters, "

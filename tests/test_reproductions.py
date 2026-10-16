@@ -128,14 +128,14 @@ def test_shue_1998_reproduces_the_paper_limit_and_the_january_1997_crossing():
     assert all(r(60.0, 18.0, th) < 6.6 for th in (0, 20, 30))
 
 
-@pytest.mark.parametrize("rule, w, me, mae", [("variable", 450.0, -8.5, 16.0), ("fixed", 425.0, -1.5, 13.5)])
+@pytest.mark.parametrize("rule, w, me, mae", [("variable", 450.0, -7.0, 16.4), ("fixed", 425.0, 0.5, 14.6)])
 def test_drag_based_model_on_the_calogovic_2021_sample(rule, w, me, mae):
     """Calogovic et al. (2021, Sol. Phys. 296, 114; inputs on figshare, CC BY 4.0): DBEMv3 on 146
     CME-ICME pairs, arrival = ICME start of the Richardson & Cane list. With gamma by speed
     (0.5/0.2/0.1e-7 /km below 600 / 600-1000 / above 1000 km/s, w 450) the paper gets ME -11.3 h,
-    MAE 17.3 h; with a fixed 0.3e-7 /km (w 425) -3.9 h, 14.5 h. HELIOS's 1D model on the 84 events
-    whose CME the bundled list names: -8.5 / 16.0 h and -1.5 / 13.5 h, the same ranking (the
-    fixed gamma does better), 1-3 h apart (84 of 146 events, 1D against their 2D cone ensemble)."""
+    MAE 17.3 h; with a fixed 0.3e-7 /km (w 425) -3.9 h, 14.5 h. HELIOS's 1D model on the 143 events
+    whose CME the bundled list names: -7.0 / 16.4 h and +0.5 / 14.6 h, the same ranking (the
+    fixed gamma does better), MAE within 1 h, ME 4 h later (1D against their 2D cone ensemble)."""
     import json
     import statistics
     events = json.loads((DATA / "calogovic2021_dbem_rc.json").read_text())["events"]
@@ -145,7 +145,7 @@ def test_drag_based_model_on_the_calogovic_2021_sample(rule, w, me, mae):
         k = C.calculate_cme_kinematics(20.0 - v0 * 600.0 / C.R_SUN_KM, 20.0, 10.0, t20, w, gamma * 1e-7)
         got = datetime.strptime(k["predicted_earth_arrival"], "%Y-%m-%d %H:%M:%S UTC")
         err.append((got - datetime.fromisoformat(arrival)).total_seconds() / 3600.0)
-    assert len(err) == 84
+    assert len(err) == 143
     assert statistics.mean(err) == pytest.approx(me, abs=0.1)
     assert statistics.mean(map(abs, err)) == pytest.approx(mae, abs=0.1)
 

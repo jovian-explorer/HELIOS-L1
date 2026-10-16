@@ -178,7 +178,9 @@
     return ` IPShocks (University of Helsinki, ${ip.catalog.licence}): ${ip.type} at ${ip.time} UTC (${ip.offset_seconds > 0 ? '+' : ''}${ip.offset_seconds} s), ` +
       `MX3 normal ${vec(ip.normal_gse, 2)}, ${fmt(ip.normal_angle_deg, 1)}° from the ${r.preferred_method} normal here; ` +
       `θBn ${fmt(ip.theta_bn_deg, 1)} ± ${fmt(ip.theta_bn_error_deg, 1)}° (here ${fmt(m.theta_bn_deg, 1)}), ` +
-      `V_sh ${fmt(ip.shock_speed_kms, 0)} ± ${fmt(ip.shock_speed_error_kms, 0)} km/s (here ${fmt(m.shock_speed_kms, 0)}), ` +
+      // The database lists the speed's magnitude; along the sunward normal of a reverse shock it is negative here.
+      `|V_sh| ${fmt(ip.shock_speed_kms, 0)} ± ${fmt(ip.shock_speed_error_kms, 0)} km/s (here ${fmt(Math.abs(m.shock_speed_kms), 0)}), ` +
+      `N2/N1 ${fmt(ip.density_ratio)} (here ${fmt(r.density_ratio)}), B2/B1 ${fmt(ip.field_ratio)} (here ${fmt(r.field_ratio)}), ` +
       `M_A ${fmt(ip.alfven_mach)} ± ${fmt(ip.alfven_mach_error)} (here ${fmt(m.alfven_mach)})` +
       (same ? ', same windows.' : `; their windows are ${theirs[0]} to ${theirs[1]} and +${theirs[2]} to +${theirs[3]} min.`);
   }

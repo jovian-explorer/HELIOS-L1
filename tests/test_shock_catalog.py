@@ -88,3 +88,40 @@ def test_shock_analysis_with_the_database_windows_reports_its_entry(monkeypatch,
     same_gap = client.get(base + "&exclude_minutes=1&refine=false").json()["result"]
     assert same_gap["windows_minutes"] == {"before": [-9, -1], "after": [1, 9]}
     assert client.get(base + "&exclude_after_minutes=16").status_code == 422
+
+
+@pytest.mark.parametrize("time, day, kind, listed", [
+    # The field turns inside the downstream window: |mean B| 2.1 nT, mean |B| 9.7 nT. The
+    # magnitude of the mean vector made this fast forward shock a slow one (B2/B1 0.31).
+    ("2000-08-05T04:45:05", "20000805", "FF", {"density_ratio": 1.52, "field_ratio": 1.42}),
+    # A reverse shock: the database lists the speed's magnitude (288 km/s); along the sunward normal it is negative.
+    ("2000-04-17T09:39:26", "20000417", "FR", {"density_ratio": 1.92, "field_ratio": 1.65}),
+])
+def test_ace_shocks_with_the_database_windows(monkeypatch, tmp_path, time, day, kind, listed):
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+    from helios.core.event_analysis import EventDataClient
+
+    served = {"AC_H0_MFI": f"ac_h0_mfi_{day}_shock", "AC_H0_SWE": f"ac_h0_swe_{day}_shock"}
+
+    async def fake(url, timeout=120.0):
+        ds = parse_qs(urlparse(url).query)["id"][0]
+        return _text(served[ds]) if ds in served else None
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
+    monkeypatch.setattr(server, "downloader", dl)
+    gaps = "exclude_minutes=1&exclude_after_minutes=2" if kind == "FF" else "exclude_minutes=2&exclude_after_minutes=1"
+    r = TestClient(server.app, base_url=LOCAL).get(
+        f"/api/analysis/shock?mission=ACE&time={time}&upstream_minutes=8&downstream_minutes=8&{gaps}&refine=false"
+    ).json()["result"]
+    ip, m = r["ipshocks"], r["methods"]["MX3"]
+    assert r["shock_type"] == ip["type"] == kind
+    assert r["density_ratio"] == pytest.approx(listed["density_ratio"], abs=0.06)
+    assert r["field_ratio"] == pytest.approx(listed["field_ratio"], abs=0.02)
+    assert ip["normal_angle_deg"] < 3.0
+    assert (m["shock_speed_kms"] > 0) == (kind == "FF")
+    assert abs(abs(m["shock_speed_kms"]) - ip["shock_speed_kms"]) < ip["shock_speed_error_kms"]
+    assert m["alfven_mach"] == pytest.approx(ip["alfven_mach"], rel=0.1)

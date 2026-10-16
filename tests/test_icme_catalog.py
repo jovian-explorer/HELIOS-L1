@@ -17,12 +17,13 @@ from helios.core import omni_statistics as om
 LOCAL = "http://127.0.0.1:8765"
 
 # Rows as on the page: header row, an ACE shock time '(A)', two magnetic clouds, a missing
-# CME cell, 'P'/'Q' Dst, a single-digit day, a speed jump with a reported shock 'S'.
+# CME cell, 'P'/'Q' Dst, a single-digit day, a speed jump with a reported shock 'S', a last cell
+# without </td> (as in the rows of 1996-1998 and 2001-2003 on the page).
 PAGE = """<html><body>Revised July  23, 2026 *<table>
 <tr><td>Disturbance Y/M/D (UT) (a)</td><td>ICME Plasma/Field Start, End Y/M/D (UT) (b)</td><td>x</td></tr>
 <tr><td>1997/11/06 2248</td><td>1997/11/07 0400</td><td>1997/11/09 1200</td><td>...</td><td>...</td><td>+11</td>
 <td>-21 (2 MCs)</td><td>Y</td><td>N</td><td>2</td><td>140 S</td><td>400</td><td>460</td><td>11</td><td>2</td><td>-110</td>
-<td>640</td><td>1997/11/04 0610 H</td></tr>
+<td>640</td><td> 1997/11/04 0610 H   </tr>
 <tr><td>1998/01/28 1600(A)</td><td>1998/01/29 1300</td><td>1998/01/31 0000</td><td>ns</td><td>nc</td><td>...</td><td>...</td>
 <td>SEP</td><td>..</td><td>3W</td><td>40</td><td>420</td><td>450</td><td>8</td><td>2H</td><td>-34 P</td><td>...</td></tr>
 <tr><td>2024/09/04 1200</td><td>2024/09/4 1400</td><td>2024/09/05 0300</td><td>...</td><td>...</td><td>...</td><td>...</td>
@@ -67,6 +68,10 @@ def test_bundled_snapshot_matches_the_published_list():
     # The ICME times are given to the nearest hour: twice the disturbance follows the start.
     late = [e["disturbance"] for e in ev if e["disturbance"] > e["icme_start"]]
     assert late == ["2007-01-14 12:48", "2011-10-07 02:47"]
+    # The associated CME column (380 entries, 'dg' for a LASCO data gap among them), also in
+    # the rows whose last cell is not closed: the 10 Jan 1997 cloud names the CME of 6 Jan.
+    assert sum(e["cme"] is not None for e in ev) == 380
+    assert next(e for e in ev if e["icme_start"] == "1997-01-10 04:00")["cme"] == "1997/01/06 1510 H"
 
 
 def test_locate_regions():

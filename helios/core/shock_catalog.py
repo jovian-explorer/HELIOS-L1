@@ -9,12 +9,14 @@ doi:10.1002/2015JA021138. A snapshot of the L1 rows is bundled
 (helios/data/ipshocks_l1.json, made with scripts/update_shock_catalog.py).
 
 Method of the database (E. Lumme et al., Database of Heliospheric Shock Waves, method
-documentation, 31 Oct 2019): 8-minute averages upstream ([t-9, t-1] min for a fast forward
+documentation, 31 Oct 2019 and 6 Sep 2024): 8-minute averages upstream ([t-9, t-1] min for a fast forward
 shock) and downstream ([t+2, t+10] min); the mixed-mode normal MX3 (magnetic coplanarity
 without velocity data); shock speed from mass flux; M_A = |V_up.n - V_sh| / V_A; the
 magnetosonic Mach number with V_ms = sqrt(V_A^2 + c_s^2), c_s from T_p plus a fixed
-T_e = 146277 K and gamma 5/3. Errors: the sample standard deviations of the window means,
-propagated.
+T_e = 146277 K and gamma 5/3 (the 2024 document says T_e = 2 T_p for shocks before August
+2015, but the listed values of those shocks fit 146277 K); |B| and the field ratio from the
+mean of the sample magnitudes; a reverse shock's speed listed as a magnitude. Errors: the
+sample standard deviations of the window means, propagated.
 """
 from __future__ import annotations
 

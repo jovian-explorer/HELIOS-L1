@@ -544,8 +544,8 @@
           <div class="flex items-center space-x-2.5">
             <i class="fa-solid fa-radiation text-amber-400 text-lg"></i>
             <div>
-              <h3 data-term="shock" class="font-tech font-bold text-sm text-slate-100">Interplanetary Shocks & CME Fronts (Rankine-Hugoniot Detection)</h3>
-              <p class="text-xs text-slate-400">Automated hydrodynamic jump condition analysis across bulk velocity, plasma density, and magnetic vectors.</p>
+              <h3 data-term="shock" class="font-tech font-bold text-sm text-slate-100">Interplanetary Shocks & CME Fronts (jump screen)</h3>
+              <p class="text-xs text-slate-400">Jumps in speed, density and field by the IPShocks criteria; normals, speeds and Mach numbers are in Event Analysis.</p>
             </div>
           </div>
           <span id="shock-count-badge" class="text-xs px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-hud font-bold">0 shocks detected</span>
@@ -1549,7 +1549,7 @@
               <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">NASA OMNI / CDAWEB &amp; CUSTOM CSV</span>
               <h3 class="font-tech font-bold text-lg text-slate-100">Custom Telemetry &amp; Spacecraft Ingestion Studio</h3>
             </div>
-            <p class="text-xs text-slate-400 mt-1">Ingest custom space weather time series from in-situ spacecraft, simulation outputs, or NASA OMNI archives: CSV, tab- or space-delimited text (OMNI YEAR DOY HR MN listings), JSON, and HELIOS-L1's own CSV / JSON exports. CDF and NetCDF files need to be listed as text first (e.g. the CDAWeb CSV/ASCII output). Real-time physical normalization, Akasofu Poynting flux calculation, magnetopause standoff, and Rankine-Hugoniot shock jump detection.</p>
+            <p class="text-xs text-slate-400 mt-1">Ingest custom space weather time series from in-situ spacecraft, simulation outputs, or NASA OMNI archives: CSV, tab- or space-delimited text (OMNI YEAR DOY HR MN listings), JSON, and HELIOS-L1's own CSV / JSON exports. CDF and NetCDF files need to be listed as text first (e.g. the CDAWeb CSV/ASCII output). Real-time physical normalization, Akasofu Poynting flux calculation, magnetopause standoff, and a screen for shock-like jumps (IPShocks criteria).</p>
           </div>
           <div class="flex items-center space-x-2">
             <input type="file" id="import-file-input" accept=".csv,.tsv,.txt,.dat,.asc,.lst,.json,text/csv,application/json" onchange="handleFileUpload(event)" class="hidden">
@@ -1637,7 +1637,7 @@
             <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
               <div class="text-[10px] text-slate-400 font-mono">Shocks Detected</div>
               <div class="text-lg font-bold text-purple-400 font-mono mt-0.5" id="import-kpi-shocks-count">0</div>
-              <div class="text-[10px] text-slate-500 font-mono">Rankine-Hugoniot</div>
+              <div class="text-[10px] text-slate-500 font-mono">IPShocks jump criteria</div>
             </div>
           </div>
 
@@ -1666,7 +1666,7 @@
               <div class="flex items-center justify-between border-b border-slate-800 pb-2">
                 <div class="font-bold text-xs text-slate-200 flex items-center space-x-2">
                   <i class="fa-solid fa-bolt text-amber-400"></i>
-                  <span>Rankine-Hugoniot Shock Front Analysis</span>
+                  <span>Shock-like jumps</span>
                 </div>
                 <span class="text-[10px] text-slate-400 font-mono" title="IPShocks database jump criteria (Kilpua et al. 2015): means 1-9 min before and 2-10 min after. A screen without the database's visual check; for shock normals, speeds and Mach numbers use Event Analysis.">ΔV ≥ 20 km/s, N2/N1 ≥ 1.2, B2/B1 ≥ 1.2</span>
               </div>

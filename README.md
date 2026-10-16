@@ -79,7 +79,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
    * Evaluates Archimedean magnetic spiral geometry ($r - r_0 = -\frac{V_{sw}}{\Omega_\odot} (\phi - \phi_0)$) and pitch angles ($\psi$).
    * Identifies the "well-connected" solar disk footpoint longitude for solar energetic particle (SEP) events.
 
-7. **NASA OMNI Ingestion Studio & Rankine-Hugoniot Shock Solver:**
+7. **NASA OMNI Ingestion Studio & Shock Screen:**
    * Ingests custom CSV and NASA OMNI high-resolution telemetry.
    * Four example intervals of OMNI 5-minute data, bundled for offline use: 10-11 May 2024, 15 July 2000, 17 March 2015 and the quiet day of 7 December 2019.
    * Screens the series for shock-like jumps with the criteria of the IPShocks database (Kilpua et al. 2015); shock normals, speeds and Mach numbers with uncertainties are in the event analysis (item 10).
