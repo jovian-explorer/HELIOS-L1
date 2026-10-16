@@ -35,7 +35,7 @@ from helios.core import cme_tracking, corona_link, event_catalogs, icme_catalog,
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
-from helios.core.event_analysis import (EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
+from helios.core.event_analysis import (EVENT_FRAMES, EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
                                         MC_CRITERIA, analyze_shock, coupling_with_errors, dehoffmann_teller,
                                         detect_magnetic_clouds,
                                         field_at_plasma_times, superposed_epoch,
@@ -703,11 +703,15 @@ async def get_storm_indices(
 # ----------------------------------------------------------------------------
 # Event analysis on native-cadence archive data (helios.core.event_analysis)
 # ----------------------------------------------------------------------------
-def _event_mission(mission: str) -> str:
+def _event_mission(mission: str, at_l1: bool = False) -> str:
+    """The EVENT_SOURCES key; `at_l1` for analyses that need a monitor upstream of the Earth."""
     key = mission.upper()
     if key not in EVENT_SOURCES:
         raise HTTPException(status_code=404, detail=f"No event analysis source for '{mission}'. "
                             f"Available: {', '.join(EVENT_SOURCES)}.")
+    if at_l1 and EVENT_FRAMES[key] != "GSE":
+        raise HTTPException(status_code=422, detail=f"{key} is not upstream of the Earth: this analysis needs "
+                            "WIND, ACE or DSCOVR.")
     return key
 
 
@@ -741,7 +745,7 @@ def _analysis_provenance(key: str, data: Dict[str, Any], t0: datetime, t1: datet
         "datasets": data.get("datasets", []),
         "requested_start": t0.strftime("%Y-%m-%d %H:%M:%S"),
         "requested_end": t1.strftime("%Y-%m-%d %H:%M:%S"),
-        "coordinates": "GSE",
+        "coordinates": EVENT_FRAMES.get(key, "GSE"),
         "time_standard": "UTC",
         "method": method,
         "parameters": parameters,
@@ -788,7 +792,7 @@ SHOCK_METHOD_TEXT = "Interplanetary shock normals (MC, VC, MX1-3) and mass flux 
 
 @app.get("/api/analysis/shock")
 async def analyse_shock(
-    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    mission: str = Query("WIND", description="WIND, ACE, DSCOVR, STEREO-A, SOLO or PSP"),
     time: str = Query(..., description="Approximate UTC shock time, ISO 8601"),
     upstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
     downstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
@@ -811,10 +815,11 @@ async def analyse_shock(
               "downstream_minutes": downstream_minutes, "exclude_minutes": exclude_minutes,
               "exclude_after_minutes": exclude_after_minutes, "refine": refine}
     prov = _analysis_provenance(key, data, t0, t1, SHOCK_METHOD_TEXT, params)
-    cat = await _icme_catalog()
-    result["icme_list"] = _icme_disturbance_near(cat["events"], result.get("shock_time"))
-    result["icme_catalog"] = _icme_meta(cat)
-    result["ipshocks"] = _ipshocks_match(key, result)
+    if EVENT_FRAMES[key] == "GSE":  # both lists are of shocks and ICMEs near the Earth
+        cat = await _icme_catalog()
+        result["icme_list"] = _icme_disturbance_near(cat["events"], result.get("shock_time"))
+        result["icme_catalog"] = _icme_meta(cat)
+        result["ipshocks"] = _ipshocks_match(key, result)
     body = {"provenance": prov, "result": result, "series": _event_series(data["field"], data["plasma"])}
     return _analysis_answer(body, download, f"HELIOS_shock_{key}_{tc:%Y%m%dT%H%M}")
 
@@ -854,7 +859,7 @@ async def analyse_timing(
     m = result["methods"][method]
 
     names = [s.strip().upper() for s in targets.split(",") if s.strip()]
-    names = [n for n in dict.fromkeys(names) if n in EVENT_SOURCES and n != key]
+    names = [n for n in dict.fromkeys(names) if n in EVENT_SOURCES and n != key and EVENT_SOURCES[n]["position"]]
     span = timedelta(minutes=90)
 
     async def one(name):
@@ -906,7 +911,7 @@ async def analyse_timing(
 
 @app.get("/api/analysis/fluxrope")
 async def analyse_flux_rope(
-    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    mission: str = Query("WIND", description="WIND, ACE, DSCOVR, STEREO-A, SOLO or PSP"),
     start: str = Query(..., description="UTC start of the magnetic cloud, ISO 8601"),
     end: str = Query(..., description="UTC end of the magnetic cloud, ISO 8601"),
     average_minutes: int = Query(30, ge=5, le=120, description="Field averages used in the fit"),
@@ -1126,7 +1131,7 @@ async def analyse_superposed_epoch(
 
 @app.get("/api/analysis/mva")
 async def analyse_mva(
-    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    mission: str = Query("WIND", description="WIND, ACE, DSCOVR, STEREO-A, SOLO or PSP"),
     start: str = Query(..., description="UTC start, ISO 8601"),
     end: str = Query(..., description="UTC end (exclusive), ISO 8601"),
     average_seconds: int = Query(0, ge=0, le=3600, description="0 = native cadence; otherwise block averages"),
@@ -1158,7 +1163,7 @@ async def analyse_mva(
 
 @app.get("/api/analysis/ht")
 async def analyse_dehoffmann_teller(
-    mission: str = Query("WIND", description="WIND, ACE or DSCOVR"),
+    mission: str = Query("WIND", description="WIND, ACE, DSCOVR, STEREO-A, SOLO or PSP"),
     start: str = Query(..., description="UTC start, ISO 8601"),
     end: str = Query(..., description="UTC end (exclusive), ISO 8601"),
     download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
@@ -1214,7 +1219,7 @@ async def analyse_coupling(
     errors propagated from the archive's speed and density uncertainties (WIND SWE) and the
     sampling interval of each mean.
     """
-    key = _event_mission(mission)
+    key = _event_mission(mission, at_l1=True)
     t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
     if t1 <= t0:
         raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
@@ -1248,7 +1253,7 @@ async def analyse_timeshift(
     for arrival times over up to 48 h, with the flat (dX/Vx) delay and, for WIND and ACE, the
     agreement with OMNI's own time shifts in the minutes OMNI took from the same spacecraft.
     """
-    key = _event_mission(mission)
+    key = _event_mission(mission, at_l1=True)
     t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
     if t1 <= t0:
         raise HTTPException(status_code=422, detail="'end' must be after 'start'.")

@@ -137,12 +137,12 @@
         `B2/B1 = ${fmt(r.field_ratio)}.` + (r.warnings.length ? ' Warnings: ' + r.warnings.join(' ') : '') + ipshocksText(r) +
         (r.icme_list ? ` Richardson & Cane ICME list: disturbance ${r.icme_list.disturbance} (${r.icme_list.disturbance_source}), ` +
           `${r.icme_list.delay_minutes} min after this shock; ICME ${r.icme_list.icme_start} to ${r.icme_list.icme_end}` +
-          `${r.icme_list.magnetic_cloud === 2 ? ', magnetic cloud' : ''}.` : ' No disturbance in the Richardson & Cane ICME list within 1 h before to 3 h after this shock.') +
+          `${r.icme_list.magnetic_cloud === 2 ? ', magnetic cloud' : ''}.` : ('icme_list' in r ? ' No disturbance in the Richardson & Cane ICME list within 1 h before to 3 h after this shock.' : '')) +
         coverageNote(body.provenance));
       const rows = Object.entries(r.methods).map(([k, v]) => [
         k + (k === pm ? ' *' : ''), vec(v.normal_gse), `${fmt(v.theta_bn_deg, 1)} ± ${fmt(v.theta_bn_sigma_deg, 1)}`,
         `${fmt(v.shock_speed_kms, 0)} ± ${fmt(v.shock_speed_sigma_kms, 0)}`, fmt(v.alfven_mach), fmt(v.fast_mach)]);
-      el('ea-shock-table').innerHTML = table(['Method', 'Normal (GSE)', 'θBn (°)', 'V_sh (km/s)', 'M_A', 'M_f'], rows) +
+      el('ea-shock-table').innerHTML = table(['Method', `Normal (${frameOf(body)})`, 'θBn (°)', 'V_sh (km/s)', 'M_A', 'M_f'], rows) +
         `<p class="text-[10px] text-slate-500 mt-1">${r.conventions} Upstream: ${fmt(r.upstream.density_cm3)} cm⁻³, ` +
         `|B| ${fmt(r.upstream.B_magnitude_nT)} nT (${r.upstream.plasma_samples} spectra); downstream ${fmt(r.downstream.density_cm3)} cm⁻³, ` +
         `|B| ${fmt(r.downstream.B_magnitude_nT)} nT (${r.downstream.plasma_samples} spectra). Data: ` +
@@ -169,9 +169,13 @@
     }
   };
 
+  // Frame of the vectors: GSE at L1; RTN used as (−R, −T, N) for STEREO-A, Solar Orbiter and PSP.
+  const frameOf = (body) => (body.provenance.coordinates === 'GSE' ? 'GSE' : 'RTN as −R, −T, N');
+
   // The IPShocks entry of the analysed shock (result.ipshocks) next to the values found here.
   function ipshocksText(r) {
     const ip = r.ipshocks, m = r.methods[r.preferred_method] || {};
+    if (!('ipshocks' in r)) return '';  // away from the Earth: the bundled lists are of L1 shocks
     if (!ip) return ' Not in the IPShocks database within 5 min.';
     const w = r.windows_minutes, theirs = ip.type === 'FR' ? [-10, -2, 1, 9] : [-9, -1, 2, 10];
     const same = w.before[0] === theirs[0] && w.before[1] === theirs[1] && w.after[0] === theirs[2] && w.after[1] === theirs[3];
@@ -253,7 +257,7 @@
       setStatus('ea-mva-status', `${r.n_vectors} vectors; λ2/λ3 = ${fmt(r.ratio_intermediate_to_min, 1)}, λ1/λ2 = ${fmt(r.ratio_max_to_intermediate, 1)}` +
         (r.ratio_intermediate_to_min !== null && r.ratio_intermediate_to_min < 10 ? ' (λ2/λ3 < 10: normal poorly determined)' : '') +
         `; <B>·n = ${fmt(r.mean_normal_field_nT)} ± ${fmt(r.mean_normal_field_error_nT)} nT (eq. 8.24).` + coverageNote(body.provenance));
-      el('ea-mva-table').innerHTML = table(['Direction', 'Eigenvalue (nT²)', 'Eigenvector (GSE)', 'Angular error (°)'], [
+      el('ea-mva-table').innerHTML = table(['Direction', 'Eigenvalue (nT²)', `Eigenvector (${frameOf(body)})`, 'Angular error (°)'], [
         ['Maximum', fmt(l[0], 3), vec(ev.max), `${fmt(er.max_toward_intermediate, 2)} (toward intermediate)`],
         ['Intermediate', fmt(l[1], 3), vec(ev.intermediate), ''],
         ['Minimum (normal)', fmt(l[2], 3), vec(ev.min), `${fmt(er.normal_toward_max, 2)} / ${fmt(er.normal_toward_intermediate, 2)} (toward maximum / intermediate)`],
@@ -279,7 +283,7 @@
         (r.walen ? `; Walén slope ${fmt(r.walen.slope, 2)} (|slope| ≈ 1: rotational, ≈ 0: tangential discontinuity)` : '') + '.' + coverageNote(body.provenance));
       const row = (name, e) => [name, vec(e.v_ht_kms, 1), e.error_axes.map(a => fmt(a.sigma_kms, 1)).join(' / '),
         `${fmt(e.normal_velocity_kms, 1)} ± ${fmt(e.normal_velocity_error_kms, 1)}`];
-      el('ea-ht-table').innerHTML = table(['Estimate', 'VHT (GSE, km/s)', 'Error semiaxes (km/s)', 'un along MVA normal (km/s)'], [
+      el('ea-ht-table').innerHTML = table(['Estimate', `VHT (${frameOf(body)}, km/s)`, 'Error semiaxes (km/s)', 'un along MVA normal (km/s)'], [
         row('Minimum D (eq. 9.10)', r.D), row('Minimum Q (eq. 9.14)', r.Q),
         ...(r.bootstrap ? [row(`Bootstrap, ${r.bootstrap.n_samples} resamples`, r.bootstrap)] : [])]);
       showDownload('ea-mva-download', url);
@@ -523,7 +527,7 @@
       const u = r.uncertainties || {};
       const pm = (v, d) => (v === undefined || v === null ? '' : ` ± ${fmt(v, d)}`);
       el('ea-mc-table').innerHTML = table(['Quantity', 'Value ± 1σ'], [
-        ['Axis longitude φA / latitude θA (GSE)', `${fmt(r.axis_longitude_deg, 1)}° / ${fmt(r.axis_latitude_deg, 1)}°${pm(u.axis_latitude_deg, 0)}°`],
+        [`Axis longitude φA / latitude θA (${frameOf(body)})`, `${fmt(r.axis_longitude_deg, 1)}° / ${fmt(r.axis_latitude_deg, 1)}°${pm(u.axis_latitude_deg, 0)}°`],
         ['Axis direction (error cone)', u.axis_cone_deg !== undefined ? `± ${fmt(u.axis_cone_deg, 0)}° (cone angle βCA ${fmt(u.cone_angle_beta_ca_deg, 0)}°)` : '---'],
         ['B0 (axial field)', `${fmt(r.b0_nT, 1)}${pm(u.b0_nT, 1)} nT`], ['Handedness', r.handedness],
         ['Closest approach', `${fmt(r.closest_approach_percent, 0)}${pm(u.closest_approach_percent, 0)} % of R0 at ${r.closest_approach_time} UTC`],
@@ -540,7 +544,7 @@
           borderWidth: 1.5, pointRadius: 0 });
       });
       drawChart('ea-mc-chart', { type: 'line', data: { datasets: ds },
-        options: { scales: { x: axis(`Hours from ${r.start} UTC`), y: axis('B (nT, GSE)') } } });
+        options: { scales: { x: axis(`Hours from ${r.start} UTC`), y: axis(`B (nT, ${frameOf(body)})`) } } });
       showDownload('ea-mc-download', url);
     } catch (e) {
       if (!current()) return;

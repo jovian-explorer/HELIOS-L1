@@ -5,7 +5,10 @@ normals and speeds, and minimum variance analysis of the magnetic field.
 Data come from NASA CDAWeb through HAPI (helios.core.archive.parse_hapi_csv), not from
 the 1-minute means used for display: WIND MFI 3-s field with SWE non-linear proton fits
 (92 s, GSE velocity vector), ACE MAG 16-s with SWEPAM 64-s Level 2, and the DSCOVR 1-s
-magnetometer with the Faraday cup (2016-2019). All vectors are GSE.
+magnetometer with the Faraday cup (2016-2019), all in GSE. STEREO-A, Solar Orbiter and
+Parker Solar Probe give RTN vectors; they are used as (-R, -T, N), the GSE axes of a
+spacecraft on the Sun-Earth line, so that the conventions below (a forward shock has
+n_x < 0, clouds move along -X) hold for them too (EVENT_FRAMES).
 
 Shock normals (Schwartz 1998, "Shock and discontinuity normals, Mach numbers, and
 related parameters", ISSI Scientific Report SR-001, ch. 10):
@@ -114,6 +117,30 @@ def _pos(name: str) -> Callable:
     return reduce
 
 
+def _rtn_field(name: str) -> Callable:
+    def reduce(df: pd.DataFrame) -> pd.DataFrame:  # RTN as (-R, -T, N)
+        return pd.DataFrame({"bx": -df[f"{name}_0"], "by": -df[f"{name}_1"], "bz": df[f"{name}_2"]}, index=df.index)
+    return reduce
+
+
+def _rtn_plasma(v: str, n: str, t: str, t_to_k: float = 1.0) -> Callable:
+    def reduce(df: pd.DataFrame) -> pd.DataFrame:  # RTN as (-R, -T, N); temperature in K
+        return pd.DataFrame({"vx": -df[f"{v}_0"], "vy": -df[f"{v}_1"], "vz": df[f"{v}_2"],
+                             "n": df[n], "t": df[t] * t_to_k}, index=df.index)
+    return reduce
+
+
+def _sta_plasma(df: pd.DataFrame) -> pd.DataFrame:
+    # PLASTIC speed and its RTN direction cosines, as (-R, -T, N).
+    v = df["Vp"]
+    return pd.DataFrame({"vx": -v * df["Vr_Over_V_RTN"], "vy": -v * df["Vt_Over_V_RTN"],
+                         "vz": v * df["Vn_Over_V_RTN"], "n": df["Np"], "t": df["Tp"]}, index=df.index)
+
+
+EV_TO_K = 11604.518
+RTN_FRAME = "RTN given as (-R, -T, N): the GSE axes for a spacecraft on the Sun-Earth line"
+
+
 def _ds(ds_id: str, params: List[str], reduce: Callable, label: str) -> Dict[str, Any]:
     return {"id": ds_id, "parameters": params, "reduce": reduce, "label": label}
 
@@ -140,7 +167,29 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
                       _vec_plasma("Np", "THERMAL_TEMP", "DQF"), "DSCOVR Faraday cup 1-min (2016-2019)"),
         "position": _ds("DSCOVR_ORBIT_PRE", ["GSE_POS"], _pos("GSE_POS"), "DSCOVR predicted orbit"),
     },
+    # Away from the Sun-Earth line: no position (no timing or time shift), RTN vectors.
+    "STEREO-A": {
+        "field": _ds("STA_L2_MAGPLASMA_1M", ["BFIELDRTN"], _rtn_field("BFIELDRTN"), "STEREO-A IMPACT/MAG 1-min (RTN)"),
+        "plasma": _ds("STA_L2_MAGPLASMA_1M", ["Np", "Vp", "Tp", "Vr_Over_V_RTN", "Vt_Over_V_RTN", "Vn_Over_V_RTN"],
+                      _sta_plasma, "STEREO-A PLASTIC protons 1-min (RTN)"),
+        "position": None,
+    },
+    "SOLO": {
+        "field": _ds("SOLO_L2_MAG-RTN-NORMAL-1-MINUTE", ["B_RTN"], _rtn_field("B_RTN"), "Solar Orbiter MAG 1-min (RTN)"),
+        "plasma": _ds("SOLO_L2_SWA-PAS-GRND-MOM", ["N", "V_RTN", "T"], _rtn_plasma("V_RTN", "N", "T", EV_TO_K),
+                      "Solar Orbiter SWA-PAS proton moments (RTN, about 4 s)"),
+        "position": None,
+    },
+    "PSP": {
+        "field": _ds("PSP_FLD_L2_MAG_RTN_1MIN", ["psp_fld_l2_mag_RTN_1min"], _rtn_field("psp_fld_l2_mag_RTN_1min"),
+                     "Parker Solar Probe FIELDS MAG 1-min (RTN)"),
+        "plasma": _ds("PSP_SWP_SPI_SF00_L3_MOM", ["DENS", "VEL_RTN_SUN", "TEMP"],
+                      _rtn_plasma("VEL_RTN_SUN", "DENS", "TEMP", EV_TO_K),
+                      "Parker Solar Probe SWEAP/SPAN-I proton moments (RTN; partial field of view)"),
+        "position": None,
+    },
 }
+EVENT_FRAMES = {k: ("GSE" if k in ("WIND", "ACE", "DSCOVR") else RTN_FRAME) for k in EVENT_SOURCES}
 
 
 class EventDataClient:

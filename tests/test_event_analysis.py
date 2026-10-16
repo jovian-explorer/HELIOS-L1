@@ -827,3 +827,57 @@ def test_superposed_epoch_onset_is_a_bin_edge():
     assert 0.0 in res["epoch_hours"] and res["epoch_hours"][0] == pytest.approx(-80 / 60)
     i0 = res["epoch_hours"].index(0.0)
     assert res["statistics"]["x"]["mean"][i0 - 1] == 0.0 and res["statistics"]["x"]["mean"][i0] == 1.0
+
+
+def _sta_client(monkeypatch, tmp_path, day):
+    """The API with STEREO-A 1-min field and plasma (one CDAWeb dataset) served from tests/data."""
+    from fastapi.testclient import TestClient
+    from urllib.parse import parse_qs, urlparse
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+
+    async def fake(url, timeout=120.0):
+        q = parse_qs(urlparse(url).query)
+        if q["id"][0] != "STA_L2_MAGPLASMA_1M":
+            return None
+        return _text(f"sta_magplasma_{'field' if 'BFIELDRTN' in q['parameters'][0] else 'plasma'}_{day}")
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
+    monkeypatch.setattr(server, "downloader", dl)
+    return TestClient(server.app, base_url=LOCAL)
+
+
+def test_stereo_a_shock_in_rtn_as_gse_axes(monkeypatch, tmp_path):
+    """
+    STEREO-A, 25 Jun 2012 20:55:59 (L. K. Jian's STEREO shock list: forward, B2/B1 2.27). RTN is
+    used as (-R, -T, N), so the forward shock's normal points sunward-negative as at L1, and the
+    answer names the frame. Timing and the time shift need a monitor upstream of the Earth.
+    """
+    client = _sta_client(monkeypatch, tmp_path, "20120625")
+    body = client.get("/api/analysis/shock?mission=STEREO-A&time=2012-06-25T20:55:59&upstream_minutes=8"
+                      "&downstream_minutes=8&exclude_after_minutes=2&refine=false").json()
+    r = body["result"]
+    assert body["provenance"]["coordinates"].startswith("RTN given as (-R, -T, N)")
+    assert r["shock_type"] == "FF" and r["field_ratio"] == pytest.approx(2.27, abs=0.05)
+    assert r["methods"]["MX3"]["normal_gse"][0] < -0.5 and r["upstream"]["V_gse_kms"][0] < -300
+    assert r["methods"]["MX3"]["shock_speed_kms"] > 0 and "ipshocks" not in r and "icme_list" not in r
+    assert client.get("/api/analysis/coupling?mission=STEREO-A&start=2012-06-25T20:30&end=2012-06-25T21:20").status_code == 422
+    assert client.get("/api/analysis/timing?reference=STEREO-A&time=2012-06-25T20:55:59").status_code == 422
+
+
+def test_stereo_a_2012_july_23(monkeypatch, tmp_path):
+    """
+    23-24 Jul 2012 at STEREO-A (Liu et al. 2014, Nat. Commun. 5, 3481): peak field 109 +- 1 nT in
+    the first ICME; the 1-min field peaks at 109.0 nT at 00:51:58 on 24 Jul. PLASTIC has no proton
+    moments across the event (beyond the detector ranges, as the paper says), so the shock
+    analysis has no plasma to work with.
+    """
+    from helios.core.archive import parse_hapi_csv
+    field = EVENT_SOURCES["STEREO-A"]["field"]["reduce"](parse_hapi_csv(_text("sta_magplasma_field_20120723")))
+    b = np.linalg.norm(field.to_numpy(float), axis=1)
+    assert round(b.max(), 1) == 109.0 and field.index[b.argmax()].strftime("%H:%M") == "00:51"
+    client = _sta_client(monkeypatch, tmp_path, "20120723")
+    r = client.get("/api/analysis/shock?mission=STEREO-A&time=2012-07-23T20:55:25")
+    assert r.status_code == 404 and "plasma" in r.json()["detail"]
