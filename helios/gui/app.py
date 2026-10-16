@@ -49,6 +49,14 @@ def _family(host: str) -> int:
 
 def check_existing_helios(host: str, port: int) -> bool:
     """Check if HELIOS-L1 is already running on the given host/port."""
+    # A port that can be bound has nobody listening: answer at once (on Windows a refused local
+    # connection takes about a second, which the launch paid once or twice).
+    with socket.socket(_family(host), socket.SOCK_STREAM) as s:
+        try:
+            s.bind((host.strip("[]"), port))
+            return False
+        except OSError:
+            pass
     try:
         req = urllib.request.Request(f"http://{_url_host(host)}:{port}/api/status", headers={"User-Agent": "HELIOS-Launcher"})
         with urllib.request.urlopen(req, timeout=1.2) as resp:

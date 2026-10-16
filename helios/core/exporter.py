@@ -6,10 +6,6 @@ import io
 import csv
 import threading
 from typing import Dict, List, Any
-import matplotlib
-matplotlib.use("Agg")  # Non-interactive backend
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import pandas as pd
 
 # Physical units of the telemetry fields (exports and metadata).
@@ -33,6 +29,14 @@ FIELD_UNITS: Dict[str, str] = {
 # pyplot keeps global state; charts are drawn in worker threads, one at a time.
 _PLOT_LOCK = threading.Lock()
 
+
+
+def _pyplot():
+    """matplotlib (Agg backend), imported on first use: it is 0.4 s of the app's start-up."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    return plt
 
 class DataExporter:
     """Exports space weather telemetry and scientific figures."""
@@ -78,6 +82,7 @@ class DataExporter:
         simulated, synthetic, imported; source and coverage) is printed under the title, so
         a saved PNG of model output cannot pass for measurements.
         """
+        plt = _pyplot()
         if not records:
             fig, ax = plt.subplots(figsize=(10, 6))
             ax.text(0.5, 0.5, "No data available", ha="center", va="center")
@@ -96,6 +101,7 @@ class DataExporter:
 
     @staticmethod
     def _overview_figure(df: pd.DataFrame, mission_name: str, provenance: Dict[str, Any] = None) -> bytes:
+        plt = _pyplot()
         fig, axes = plt.subplots(4, 1, figsize=(12, 10), sharex=True)
         fig.suptitle(f"HELIOS-L1 Scientific Telemetry: {mission_name}", fontsize=14, color="#7fa5cf", weight="bold")
         if provenance:
@@ -146,6 +152,7 @@ class DataExporter:
         ax4.grid(True, alpha=0.2)
 
         # Format X-axis dates
+        import matplotlib.dates as mdates
         axes[3].xaxis.set_major_formatter(mdates.DateFormatter("%m-%d %H:%M"))
         fig.autofmt_xdate()
         plt.tight_layout(rect=(0, 0, 1, 0.95))

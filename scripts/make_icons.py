@@ -292,13 +292,11 @@ def generate_clean_logo_and_icons(project_dir: Path):
     logo_512 = clean_badge.resize((512, 512), resample=Image.Resampling.LANCZOS)
     logo_256 = clean_badge.resize((256, 256), resample=Image.Resampling.LANCZOS)
 
-    # Save PNGs
-    for p in [
-        assets_dir / "helios_logo.png",
-        img_dir / "helios_logo.png",
-    ]:
-        logo_512.save(str(p), format="PNG")
-        print(f"[+] Clean PNG logo saved: {p}")
+    # Save PNGs: 512 px for the packaging assets; the page shows the logo at 40-96 px, so its
+    # copy is 192 px (102 KB at 512 px was the largest image of the first page load).
+    logo_512.save(str(assets_dir / "helios_logo.png"), format="PNG")
+    clean_badge.resize((192, 192), resample=Image.Resampling.LANCZOS).save(str(img_dir / "helios_logo.png"), format="PNG", optimize=True)
+    print(f"[+] Clean PNG logos saved: {assets_dir / 'helios_logo.png'}, {img_dir / 'helios_logo.png'}")
 
     # Generate multi-resolution ICO (standard Windows sizes: 16, 24, 32, 48, 64, 128, 256)
     icon_sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (24, 24), (16, 16)]

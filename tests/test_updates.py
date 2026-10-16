@@ -480,3 +480,15 @@ def test_spec_ships_the_data_files_libraries_read_at_run_time():
     from conftest import source_root
     spec = (source_root() / "packaging" / "helios.spec").read_text(encoding="utf-8")
     assert 'collect_data_files("cdflib")' in spec
+
+
+def test_every_release_refreshes_every_bundled_snapshot():
+    """Each scripts/update_*.py refreshes a bundled data snapshot; the release workflow runs
+    them all before building, so a monthly release ships current data."""
+    from conftest import source_root
+    root = source_root()
+    workflow = (root / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    step = workflow[workflow.index("Refresh the bundled data"):workflow.index("Stamp the build")]
+    for script in sorted((root / "scripts").glob("update_*.py")):
+        assert script.stem in step, f"{script.name} is not run by the release workflow"
+    assert workflow.index("Refresh the bundled data") < workflow.index("python packaging/build.py")

@@ -4,6 +4,7 @@ Bridges scientific backend engines with interactive frontend dashboard.
 """
 from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel, Field
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi import Depends, FastAPI, Query, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
@@ -112,6 +113,8 @@ MAX_IMPORT_BYTES = 64 * 1024 * 1024
 MAX_FORM_BYTES = 64 * 1024
 app.add_middleware(LocalRequestGuard, body_limits={"/api/custom/import": MAX_IMPORT_BYTES},
                    default_body_limit=MAX_FORM_BYTES)
+# Compressed answers: a day of 1-minute telemetry is 470 kB of JSON, about a tenth gzipped.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 downloader = DataDownloader()
 event_catalog_client = event_catalogs.Catalogs(lambda u: downloader.fetch_text(u), downloader.cache_dir)

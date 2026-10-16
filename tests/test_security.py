@@ -284,3 +284,17 @@ def test_ctrl_c_in_the_desktop_window_does_not_open_a_browser(monkeypatch):
     with pytest.raises(_Stop):
         launcher.launch_desktop(host="127.0.0.1", port=8798, headless=False)
     assert opened == ["http://127.0.0.1:8798"]
+
+
+def test_launcher_check_on_a_free_port_is_immediate():
+    """A port that can be bound has no HELIOS-L1 behind it: no HTTP probe (a refused local
+    connection took about a second on Windows, once or twice per start)."""
+    import socket
+    import time
+    from helios.gui import app as launcher
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    t = time.monotonic()
+    assert launcher.check_existing_helios("127.0.0.1", port) is False
+    assert time.monotonic() - t < 0.5

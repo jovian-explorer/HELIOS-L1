@@ -104,6 +104,15 @@ jobs:
           cache: pip
       - name: Install
         run: python -m pip install ".[build,solar]"
+      - name: Refresh the bundled data
+        # Every release ships the current solar cycle, ICME and shock lists and the events' OMNI
+        # data. A source that cannot be reached keeps the committed snapshot (a warning, not a
+        # failure); the scripts refuse to write a snapshot that does not parse.
+        shell: bash
+        run: |
+          for s in update_solar_cycle update_icme_catalog update_shock_catalog update_omni_events; do
+            python scripts/$s.py || echo "::warning::$s failed; the committed snapshot is shipped"
+          done
       - name: Stamp the build
         # a version tag is build 0 of its version; scheduled and manual releases are numbered
         shell: bash

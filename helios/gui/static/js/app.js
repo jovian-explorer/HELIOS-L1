@@ -151,8 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCharts();
   loadTelemetry();
   loadMissions();
-  loadEvents();
-  initOrbits();
+  initOrbits();  // the storms archive (loadEvents) loads when its tab is opened
   animateOrbits();
   initVisualizers();
   missionIncidentLogger = new MissionIncidentLogger();
