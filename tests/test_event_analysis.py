@@ -899,7 +899,8 @@ def test_timing_wind_to_solar_orbiter_20200419(monkeypatch, tmp_path):
     The CME of April 2020 in radial alignment (Davies et al. 2021, A&A 656, A2, Table 1): shock at Solar
     Orbiter (0.809 AU) on 19 Apr 05:06 UT, at Wind on 20 Apr 01:34. From the WIND shock (MX3 normal, 357 km/s)
     and the ephemeris positions, the planar shock reaches Solar Orbiter 19.3 h before Wind, at 05:18; the |B|
-    jump in the 1-min Solar Orbiter field is at 05:06:30, the published time.
+    jump in the 1-min Solar Orbiter field is at 05:06:30, the published time. The jump nearest the prediction
+    is taken: in a 180-min window the largest one is another structure, at 07:05.
     """
     from fastapi.testclient import TestClient
     from urllib.parse import parse_qs, urlparse
@@ -930,9 +931,23 @@ def test_timing_wind_to_solar_orbiter_20200419(monkeypatch, tmp_path):
     monkeypatch.setattr(server, "downloader", dl)
     monkeypatch.setattr(server, "_ephemeris_gse", eph)
     body = TestClient(server.app, base_url=LOCAL).get(
-        "/api/analysis/timing?reference=WIND&time=2020-04-20T01:34&targets=SOLO&search_minutes=30").json()
+        "/api/analysis/timing?reference=WIND&time=2020-04-20T01:34&targets=SOLO&search_minutes=180").json()
     assert body["reference"]["shock_time"].startswith("2020-04-20 01:33")
     t = body["targets"][0]
     assert t["status"] == "ok" and t["predicted_time"].startswith("2020-04-19 05:1")
     assert t["observed_time"].startswith("2020-04-19 05:06")
     assert -20 * 60 < t["residual_s"] < 0 and t["predicted_delay_s"] < -19 * 3600
+
+
+def test_psp_shock_of_2020_december_1():
+    """
+    Moestl et al. (2022, ApJL 924, L6, Table 1): the CME of 29 Nov 2020 reached Parker Solar Probe (0.804 AU,
+    HEEQ longitude -96.8 deg) at 02:22 UT on 1 Dec. The |B| jump in the 1-min PSP field is at 02:23:30, by
+    either search (the 1-min samples are centred half a minute after their start).
+    """
+    from helios.core.archive import parse_hapi_csv
+    from helios.core.event_analysis import refine_shock_time
+    field = EVENT_SOURCES["PSP"]["field"]["reduce"](parse_hapi_csv(_text("psp_mag1m_20201201")))
+    guess = pd.Timestamp("2020-12-01 02:22", tz="UTC")
+    for nearest in (False, True):
+        assert refine_shock_time(field, guess, 30, nearest=nearest).strftime("%H:%M:%S") == "02:23:30"

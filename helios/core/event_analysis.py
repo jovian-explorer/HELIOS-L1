@@ -580,11 +580,17 @@ def _window(df: Optional[pd.DataFrame], t0: pd.Timestamp, a_min: float, b_min: f
     return df[(df.index >= lo) & (df.index < hi)]
 
 
+JUMP_RATIO = 1.2  # |B| ratio of a shock in the IPShocks criteria
+
+
 def refine_shock_time(field: pd.DataFrame, guess: pd.Timestamp, search_minutes: float = 10.0,
-                      half_window_seconds: float = 60.0) -> Optional[pd.Timestamp]:
+                      half_window_seconds: float = 60.0, nearest: bool = False) -> Optional[pd.Timestamp]:
     """
     Time of the largest jump in |B| near `guess`: the sample that maximises the difference
-    between the mean |B| over the following and the preceding `half_window_seconds`.
+    between the mean |B| over the following and the preceding `half_window_seconds`. With
+    `nearest`, the jump closest to `guess` among the local maxima whose means differ by the
+    factor JUMP_RATIO (the predicted arrival in the timing: the largest jump of a wide window
+    can be another structure); None if there is none.
     """
     if field is None or field.empty:
         return None
@@ -599,7 +605,8 @@ def refine_shock_time(field: pd.DataFrame, guess: pd.Timestamp, search_minutes: 
     half_window_seconds = max(half_window_seconds, 3.5 * float(np.median(np.diff(secs))) if len(secs) > 1 else 0.0)
     csum = np.concatenate([[0.0], np.cumsum(vals)])
     lo_t, hi_t = (guess - pd.Timedelta(minutes=search_minutes)), (guess + pd.Timedelta(minutes=search_minutes))
-    best, best_i = -np.inf, None
+    jumps = np.full(len(t), np.nan)
+    ratios = np.full(len(t), np.nan)
     for i in range(len(t)):
         if t[i] < lo_t or t[i] > hi_t:
             continue
@@ -607,11 +614,20 @@ def refine_shock_time(field: pd.DataFrame, guess: pd.Timestamp, search_minutes: 
         c = np.searchsorted(secs, secs[i] + half_window_seconds, side="left")
         if i - a < 3 or c - i < 3:
             continue
-        jump = abs((csum[c] - csum[i]) / (c - i) - (csum[i] - csum[a]) / (i - a))
-        if jump > best:
-            best, best_i = jump, i
-    if best_i is None:
+        pre, post = (csum[i] - csum[a]) / (i - a), (csum[c] - csum[i]) / (c - i)
+        jumps[i] = abs(post - pre)
+        ratios[i] = max(post, pre) / max(min(post, pre), 1e-9)
+    if not np.isfinite(jumps).any():
         return None
+    if nearest:
+        cands = [i for i in np.flatnonzero(ratios >= JUMP_RATIO)
+                 if jumps[i] >= np.nanmax(jumps[max(0, np.searchsorted(secs, secs[i] - half_window_seconds)):
+                                               np.searchsorted(secs, secs[i] + half_window_seconds, side="right")])]
+        if not cands:
+            return None
+        best_i = int(min(cands, key=lambda i: abs(secs[i] - (guess - t[0]).total_seconds())))
+    else:
+        best_i = int(np.nanargmax(jumps))
     # The largest window difference can sit on the overshoot behind the ramp; the arrival is
     # where |B| first crosses half-way between the levels before and after.
     i = best_i
@@ -897,7 +913,7 @@ def timing_comparison(normal, speed_kms: float, t_ref: pd.Timestamp, r_ref_km,
     observed delay implies, V = n . dr / dt.
     """
     pred = predict_arrival(normal, speed_kms, t_ref, r_ref_km, r_target_km)
-    observed = refine_shock_time(target_field, pred["predicted_time"], search_minutes=search_minutes)
+    observed = refine_shock_time(target_field, pred["predicted_time"], search_minutes=search_minutes, nearest=True)
     out = {
         "predicted_time": pred["predicted_time"].strftime("%Y-%m-%d %H:%M:%S"),
         "predicted_delay_s": pred["delay_s"],
