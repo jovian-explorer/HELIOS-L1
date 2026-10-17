@@ -13,6 +13,7 @@ import pandas as pd
 from typing import Dict, List, Any, Optional
 
 from helios.core.science import PDYN_NPA_PER_CM3_KMS2, SpaceWeatherPhysics
+from helios.core.archive import parse_hapi_csv
 from helios.core.coordinates import gse_to_gsm
 
 class TelemetryImporter:
@@ -117,20 +118,14 @@ class TelemetryImporter:
             return df
         all_lines = text.splitlines()
         lines = [ln for ln in all_lines if ln.strip() and not ln.lstrip().startswith("#")]
-        if text.startswith("#{"):
-            # HAPI CSV with its header (CDAWeb and other HAPI servers, include=header): the
-            # column names and fill values are in the '#'-commented JSON header, the rows have none.
-            header = json.loads("".join(ln.lstrip()[1:] for ln in all_lines if ln.lstrip().startswith("#")))
-            names, fills = [], {}
-            for prm in header.get("parameters", []):
-                size = (prm.get("size") or [1])[0]
-                cols = [prm["name"]] if size == 1 else [f"{prm['name']}_{'xyz'[i] if size == 3 else i}" for i in range(size)]
-                names += cols
-                if prm.get("fill") not in (None, ""):
-                    fills.update({c: float(prm["fill"]) for c in cols})
-            df = pd.read_csv(io.StringIO("\n".join(lines)), header=None, names=names)
-            for c, f in fills.items():
-                df[c] = df[c].mask(pd.to_numeric(df[c], errors="coerce") == f)
+        if all_lines[0].lstrip("#").strip().startswith("{"):
+            # HAPI CSV with its '#'-commented JSON header (CDAWeb and other HAPI servers,
+            # include=header): names and fill values from the header, as for the archive.
+            df = parse_hapi_csv(text).reset_index()
+            for c in [c for c in df.columns if c.endswith("_0")]:
+                base = c[:-2]
+                if f"{base}_2" in df.columns and f"{base}_3" not in df.columns:
+                    df = df.rename(columns={f"{base}_{i}": f"{base}_{a}" for i, a in enumerate("xyz")})
             return df
         return pd.read_csv(io.StringIO("\n".join(lines)), sep=None, engine="python")
 

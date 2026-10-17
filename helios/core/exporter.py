@@ -83,12 +83,13 @@ class DataExporter:
         a saved PNG of model output cannot pass for measurements.
         """
         plt = _pyplot()
-        if not records:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.text(0.5, 0.5, "No data available", ha="center", va="center")
-            buf = io.BytesIO()
-            plt.savefig(buf, format="png")
-            plt.close(fig)
+        if not records:  # under the lock too: pyplot's current figure is global
+            with _PLOT_LOCK:
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.text(0.5, 0.5, "No data available", ha="center", va="center")
+                buf = io.BytesIO()
+                fig.savefig(buf, format="png")
+                plt.close(fig)
             return buf.getvalue()
 
         df = pd.DataFrame(records)

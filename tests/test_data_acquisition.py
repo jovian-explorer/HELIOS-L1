@@ -626,3 +626,25 @@ def test_goes_magnetometer_is_noaa_data(monkeypatch):
                      "data_source": "observed"}]
     off = asyncio.run(DataDownloader().get_telemetry_bundle("GOES_16"))  # conftest: no network
     assert off["records"] == [] and off["provenance"]["kind"] == "unavailable"
+
+
+def test_import_reads_hapi_header_written_with_a_space():
+    """A HAPI header written '# {' (a space after '#') is read as one too, by the archive's parser."""
+    from helios.core.importer import TelemetryImporter as T
+    hapi = ('# {\n#  "HAPI": "2.0",\n#  "parameters": [{"name": "Time"}, {"name": "flow_speed", "fill": "99999.9"}]\n# }\n'
+            "2024-05-20T00:00:00Z,450.2\n2024-05-20T00:01:00Z,99999.9\n")
+    assert [(r["time_tag"], r["speed"]) for r in T.parse_csv_or_text(hapi)["records"]] == [
+        ("2024-05-20 00:00:00", 450.2), ("2024-05-20 00:01:00", None)]
+
+
+def test_empty_overview_chart_waits_for_the_plot_lock():
+    """The 'no data' chart used pyplot outside the lock that the other charts hold."""
+    import threading
+    from helios.core import exporter
+    done = threading.Event()
+    with exporter._PLOT_LOCK:
+        th = threading.Thread(target=lambda: (exporter.DataExporter.generate_overview_chart([], "X"), done.set()))
+        th.start()
+        assert not done.wait(0.5)
+    th.join(30)
+    assert done.is_set()

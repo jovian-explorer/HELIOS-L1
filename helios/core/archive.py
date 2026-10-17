@@ -78,7 +78,7 @@ def parse_hapi_csv(text: str) -> pd.DataFrame:
         raise HapiError("HAPI response without header (request include=header)")
     header = json.loads("\n".join(line[1:] for line in header_lines))
     code = header.get("status", {}).get("code")
-    if code not in (1200, 1201):
+    if code not in (None, 1200, 1201):  # a saved file may come without the status
         raise HapiError(str(header.get("status")))
 
     names, fills = [], []

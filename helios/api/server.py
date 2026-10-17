@@ -871,6 +871,8 @@ async def analyse_timing(
         raise HTTPException(status_code=422, detail=f"The {method} normal is undefined for this shock.")
     t_ref = pd.Timestamp(result["shock_time"], tz="UTC")
     m = dict(result["methods"][method])
+    if m["shock_speed_kms"] is None:
+        raise HTTPException(status_code=422, detail="No density jump at the reference: the shock speed is undetermined.")
     if EVENT_FRAMES[key] == "GSE":
         r_ref = position_at(data["position"], t_ref)
     else:  # away from the Earth: position from the ephemeris, normal from (-R, -T, N) to GSE

@@ -951,3 +951,18 @@ def test_psp_shock_of_2020_december_1():
     guess = pd.Timestamp("2020-12-01 02:22", tz="UTC")
     for nearest in (False, True):
         assert refine_shock_time(field, guess, 30, nearest=nearest).strftime("%H:%M:%S") == "02:23:30"
+
+
+def test_shock_without_density_jump_has_no_speed():
+    """Equal mean densities on both sides gave an infinite mass-flux speed, which the API could not
+    serialise (HTTP 500); the speed and Mach numbers are now undetermined (None) and the answer says so."""
+    import json
+    t = pd.date_range("2020-01-01", periods=60, freq="min", tz="UTC")
+    step = lambda a, b: np.r_[np.full(30, a), np.full(30, b)]
+    field = pd.DataFrame({"bx": step(2.0, 4.0), "by": step(1.0, 5.0), "bz": step(-1.0, 2.0)}, index=t)
+    plasma = pd.DataFrame({"vx": step(-400.0, -450.0), "vy": step(0.0, 20.0), "vz": 0.0, "n": 5.0, "t": 1e5}, index=t)
+    r = analyze_shock(field, plasma, t[30], refine=False)
+    m = r["methods"]["MX3"]
+    assert m["shock_speed_kms"] is None and m["alfven_mach"] is None and m["fast_mach"] is None
+    assert any("undetermined" in w for w in r["warnings"])
+    json.dumps(r, allow_nan=False)

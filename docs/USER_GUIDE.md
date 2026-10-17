@@ -187,7 +187,7 @@ Paste or upload CSV, tab- or space-delimited text, JSON (record lists, NOAA SWPC
 
 The four example cards are OMNI 5-minute data (NASA CDAWeb) of 10-11 May 2024, 15 July 2000, 17 March 2015 and a quiet day, 7 December 2019, bundled for offline use.
 
-After import the tab shows the summary, the time series and a **shock screening**: each sample is compared with the one three samples earlier and a jump with ΔV ≥ 45 km/s, N2/N1 ≥ 1.5 and B2/B1 ≥ 1.35 is listed with a rough Mach proxy (1 + ΔV/70 km/s). This only finds candidates; use the shock analysis of Event Analysis for normals, speeds and Mach numbers.
+After import the tab shows the summary, the time series and a **shock screening**: the jump criteria of the IPShocks database (Kilpua et al. 2015): means over 1-9 min before and 2-10 min after each sample (at least three samples at coarser cadences), ΔV ≥ 20 km/s, N2/N1 ≥ 1.2, B2/B1 ≥ 1.2 and T2/T1 ≥ 1/1.2 where temperatures exist; candidates within 10 min are one shock. This only finds candidates; use the shock analysis of Event Analysis for normals, speeds and Mach numbers.
 
 ### 6.2 Event Analysis
 
@@ -283,7 +283,7 @@ Every record has a `data_source` and every API answer a `provenance` block:
 | `unavailable` | No data for this mission and window (Aditya-L1 always: its Level-2 data are on ISRO's PRADAN portal for registered users only; SOHO and STEREO-A when their feeds cannot be reached; WIND before the archive reaches the window). No values are shown; nothing is simulated in their place. |
 | `imported` | Rows from your file. |
 
-Missing values stay empty. Rows with a non-zero RTSW quality flag are dropped. When Kp cannot be fetched, a Bz-based estimate is used and labelled (`kp_source`).
+Missing values stay empty. Rows with a non-zero RTSW quality flag are dropped. When Kp cannot be fetched, the Newell et al. (2008) estimate from the solar wind is used and labelled (`kp_source`).
 
 ---
 

@@ -38,17 +38,6 @@ def probability_at(grid: np.ndarray, lat: float, lon: float) -> float:
     return float(grid[int(np.clip(round(lat), -90, 90)) + 90, int(round(lon)) % 360])
 
 
-def equatorward_edge(grid: np.ndarray, threshold: float, north: bool = True) -> List[Optional[int]]:
-    """Per longitude 0..359, the lowest |latitude| of the hemisphere where the probability
-    reaches `threshold` % (None where it never does)."""
-    rows = range(90 + MIN_ABS_LAT, 181) if north else range(90 - MIN_ABS_LAT, -1, -1)  # equatorward end outwards
-    out: List[Optional[int]] = []
-    for j in range(360):
-        hit = next((r for r in rows if grid[r, j] >= threshold), None)
-        out.append(None if hit is None else abs(hit - 90))
-    return out
-
-
 def cells(grid: np.ndarray, minimum: float = 1.0) -> List[List[int]]:
     """[lon, lat, %] of the cells at or above `minimum` (the map layer; zeros are left out)."""
     lat_i, lon_i = np.nonzero(grid >= minimum)

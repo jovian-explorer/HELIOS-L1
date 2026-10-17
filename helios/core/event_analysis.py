@@ -679,8 +679,13 @@ def shock_normals(b1, b2, v1, v2) -> Dict[str, np.ndarray]:
     return out
 
 
-def shock_speed(n, n1, n2, v1, v2) -> float:
-    """Shock speed along n in the spacecraft frame from mass flux conservation (km/s)."""
+def shock_speed(n, n1, n2, v1, v2) -> Optional[float]:
+    """
+    Shock speed along n in the spacecraft frame from mass flux conservation (km/s); None
+    when the densities on both sides are equal (no density jump: the speed is undetermined).
+    """
+    if not abs(n2 - n1) > 1e-6 * (abs(n1) + abs(n2)):
+        return None
     return float(np.dot(n, n2 * np.asarray(v2) - n1 * np.asarray(v1)) / (n2 - n1))
 
 
@@ -779,7 +784,9 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
     for m, (n, tbn, vsh) in best.items():
         d = draws[m]
         nn = np.array([x[0] for x in d]) if d else np.zeros((0, 3))
-        u1n = float(np.dot(n, p1[:3]) - vsh)  # upstream normal flow speed in the shock frame
+        # upstream normal flow speed in the shock frame (undetermined without a speed)
+        u1n = None if vsh is None else abs(float(np.dot(n, p1[:3]) - vsh))
+        speeds = [x[2] for x in d if x[2] is not None]
         waves = _upstream_waves(p1[3], p1[4], m1, tbn)
         methods[m] = {
             "normal_gse": [float(x) for x in n],
@@ -787,10 +794,10 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
             "theta_bn_deg": tbn,
             "theta_bn_sigma_deg": float(np.std([x[1] for x in d])) if d else None,
             "shock_speed_kms": vsh,
-            "shock_speed_sigma_kms": float(np.std([x[2] for x in d])) if d else None,
-            "upstream_normal_flow_kms": abs(u1n),
-            "alfven_mach": abs(u1n) / waves["alfven_kms"],
-            "fast_mach": (abs(u1n) / waves["fast_kms"]) if waves["fast_kms"] else None,
+            "shock_speed_sigma_kms": float(np.std(speeds)) if speeds and vsh is not None else None,
+            "upstream_normal_flow_kms": u1n,
+            "alfven_mach": None if u1n is None else u1n / waves["alfven_kms"],
+            "fast_mach": (u1n / waves["fast_kms"]) if u1n is not None and waves["fast_kms"] else None,
         }
 
     def side(b, be, bm, p, pe, k):
@@ -824,7 +831,10 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
         if spread > 20.0:
             warnings.append(f"The VC/MX normals differ from {PREFERRED_METHOD} by up to {spread:.0f} deg: "
                             "the normal is poorly constrained.")
-    if PREFERRED_METHOD in methods and abs(methods[PREFERRED_METHOD]["shock_speed_kms"]) > 3000.0:
+    vpref = methods.get(PREFERRED_METHOD, {}).get("shock_speed_kms")
+    if PREFERRED_METHOD in methods and vpref is None:
+        warnings.append("Equal densities on both sides: the mass-flux shock speed and the Mach numbers are undetermined.")
+    elif vpref is not None and abs(vpref) > 3000.0:
         warnings.append("Shock speed above 3000 km/s: the upstream and downstream states are not those of a shock.")
     return {
         "shock_time": t0.strftime("%Y-%m-%d %H:%M:%S"),

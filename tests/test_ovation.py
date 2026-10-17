@@ -24,6 +24,17 @@ def test_grid_and_probability_at_a_place():
     assert ovation.parse({"coordinates": "x"}) is None
 
 
+def _equatorward_edge(grid: np.ndarray, threshold: float, north: bool = True) -> list:
+    """Per longitude 0..359, the lowest |latitude| of the hemisphere where the probability
+    reaches `threshold` % (None where it never does)."""
+    rows = range(90 + ovation.MIN_ABS_LAT, 181) if north else range(90 - ovation.MIN_ABS_LAT, -1, -1)  # equatorward end outwards
+    out = []
+    for j in range(360):
+        hit = next((r for r in rows if grid[r, j] >= threshold), None)
+        out.append(None if hit is None else abs(hit - 90))
+    return out
+
+
 def test_starkov_lies_poleward_of_the_ovation_edge_in_quiet_time():
     """The comparison of the user guide: every 15 deg of longitude in the north, the Starkov
     equatorward boundary minus the lowest latitude where OVATION reaches 5 % (3 %): +2.4 deg
@@ -33,7 +44,7 @@ def test_starkov_lies_poleward_of_the_ovation_edge_in_quiet_time():
     lons = np.arange(0, 360, 15)
     starkov = np.interp(lons, [a for a, _ in pts], [b for _, b in pts], period=360)
     for threshold, mean in ((5, 2.44), (3, 4.14)):
-        edge = ovation.equatorward_edge(g, threshold, north=True)
+        edge = _equatorward_edge(g, threshold, north=True)
         d = np.array([starkov[i] - edge[lo] for i, lo in enumerate(lons) if edge[lo] is not None])
         assert len(d) >= 23 and d.mean() == pytest.approx(mean, abs=0.05) and d.std() == pytest.approx(4.6, abs=0.1)
 
