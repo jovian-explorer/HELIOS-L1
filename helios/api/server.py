@@ -35,7 +35,7 @@ from helios.core import cme_tracking, corona_link, event_catalogs, icme_catalog,
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
-from helios.core.event_analysis import (EVENT_FRAMES, EVENT_SOURCES, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
+from helios.core.event_analysis import (EVENT_FRAMES, EVENT_SOURCES, local_to_gse, predict_arrival, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
                                         MC_CRITERIA, analyze_shock, coupling_with_errors, dehoffmann_teller,
                                         detect_magnetic_clouds,
                                         field_at_plasma_times, superposed_epoch,
@@ -824,6 +824,22 @@ async def analyse_shock(
     return _analysis_answer(body, download, f"HELIOS_shock_{key}_{tc:%Y%m%dT%H%M}")
 
 
+def _ephemeris_gse(name: str, t: pd.Timestamp):
+    """
+    (GSE position in km, position from the Sun in GSE axes, the Sun's ecliptic longitude) of a
+    spacecraft away from the Earth from its SPICE ephemeris; None without one (no orbit model).
+    """
+    engine = get_spice_engine()
+    iso = t.strftime("%Y-%m-%dT%H:%M:%S")
+    sc_ = engine.get_spacecraft_state(EVENT_SOURCES[name]["ephemeris"], iso)
+    earth = engine.get_spacecraft_state("EARTH", iso)
+    if not (sc_.get("available") and sc_.get("is_spice_verified") and earth.get("available")):
+        return None
+    g = sc_["gse_coordinates"]
+    r = np.array([g["x_km"], g["y_km"], g["z_km"]], dtype=float)
+    return r, r - np.array([earth["heliocentric"]["distance_km"], 0.0, 0.0]),         earth["heliocentric"]["ecliptic_longitude_deg"] + 180.0
+
+
 @app.get("/api/analysis/timing")
 async def analyse_timing(
     reference: str = Query("WIND", description="Spacecraft whose shock normal and speed are used"),
@@ -834,7 +850,8 @@ async def analyse_timing(
     downstream_minutes: float = Query(10.0, ge=1.0, le=60.0),
     exclude_minutes: float = Query(1.0, ge=0.0, le=15.0),
     exclude_after_minutes: Optional[float] = Query(None, ge=0.0, le=15.0, description="Gap after the shock, if different"),
-    search_minutes: float = Query(20.0, ge=2.0, le=60.0, description="Search for the observed jump around the prediction"),
+    search_minutes: float = Query(20.0, ge=2.0, le=360.0, description="Search for the observed jump around the "
+                                  "prediction (widen it for spacecraft far apart)"),
     download: bool = Query(False, description="Answer as a JSON file with the full provenance"),
 ):
     """
@@ -853,19 +870,40 @@ async def analyse_timing(
     if method not in result["methods"]:
         raise HTTPException(status_code=422, detail=f"The {method} normal is undefined for this shock.")
     t_ref = pd.Timestamp(result["shock_time"], tz="UTC")
-    r_ref = position_at(data["position"], t_ref)
+    m = dict(result["methods"][method])
+    if EVENT_FRAMES[key] == "GSE":
+        r_ref = position_at(data["position"], t_ref)
+    else:  # away from the Earth: position from the ephemeris, normal from (-R, -T, N) to GSE
+        eph = await run_in_workers(_ephemeris_gse, key, t_ref)
+        r_ref = None if eph is None else eph[0]
+        if eph is not None:
+            m["normal_gse"] = local_to_gse(m["normal_gse"], eph[1], eph[2]).tolist()
     if r_ref is None:
         raise HTTPException(status_code=422, detail=f"No {key} position near the shock time.")
-    m = result["methods"][method]
 
     names = [s.strip().upper() for s in targets.split(",") if s.strip()]
-    names = [n for n in dict.fromkeys(names) if n in EVENT_SOURCES and n != key and EVENT_SOURCES[n]["position"]]
-    span = timedelta(minutes=90)
+    names = [n for n in dict.fromkeys(names) if n in EVENT_SOURCES and n != key]
+    span = timedelta(minutes=90) + timedelta(minutes=search_minutes)
+
+    async def position(name, tdata, t):
+        if EVENT_FRAMES[name] == "GSE":
+            return position_at(tdata["position"], t)
+        eph = await run_in_workers(_ephemeris_gse, name, t)
+        return None if eph is None else eph[0]
 
     async def one(name):
-        tdata = await downloader.events.fetch(name, (t_ref - span).to_pydatetime(), (t_ref + span).to_pydatetime())
+        # Data around the predicted arrival: far from the reference it can be a day away.
+        tc_ = t_ref
+        for _ in range(3):
+            tdata = await downloader.events.fetch(name, (tc_ - span).to_pydatetime(), (tc_ + span).to_pydatetime())
+            r = await position(name, tdata, tc_)
+            if r is None:
+                break
+            t_pred = predict_arrival(m["normal_gse"], m["shock_speed_kms"], t_ref, r_ref, r)["predicted_time"]
+            if abs((t_pred - tc_).total_seconds()) < 600:
+                break
+            tc_ = t_pred.floor("s")
         entry = {"spacecraft": name, "datasets": tdata["datasets"]}
-        r = position_at(tdata["position"], t_ref)
         if r is None or tdata["field"] is None:
             if r is None and tdata["field"] is None:
                 entry["status"] = "no data for this interval" + (" (CDAWeb not reached)" if tdata["offline"] else "")
@@ -904,7 +942,9 @@ async def analyse_timing(
                  "IPShocks database, planar timing between WIND and ACE (219 shocks seen by both, 1998-2021) is off by "
                  "81 s on median for spacecraft less than 50 R_E apart across the Sun-Earth line, 137 s at 50-100 R_E, "
                  "222 s at 100-200 R_E and 581 s further apart. IPShocks: the shock listed at that spacecraft within "
-                 "the search window."),
+                 "the search window. STEREO-A, Solar Orbiter and Parker Solar Probe: positions from the SPICE "
+                 "ephemeris (JPL Horizons), their normal turned from (-R, -T, N) to GSE; from STEREO-A to WIND "
+                 "(270-2500 R_E apart, 2023) the IPShocks arrivals were 2-47 min from the prediction, 27 min on median."),
     }
     return _analysis_answer(body, download, f"HELIOS_timing_{key}_{tc:%Y%m%dT%H%M}")
 

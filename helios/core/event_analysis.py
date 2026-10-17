@@ -131,10 +131,14 @@ def _rtn_plasma(v: str, n: str, t: str, t_to_k: float = 1.0) -> Callable:
 
 
 def _sta_plasma(df: pd.DataFrame) -> pd.DataFrame:
-    # PLASTIC speed and its RTN direction cosines, as (-R, -T, N).
+    # PLASTIC speed and its RTN direction cosines, as (-R, -T, N). Without the cosines (none
+    # since December 2019) the flow is taken as radial, as the IPShocks database does for STEREO.
     v = df["Vp"]
-    return pd.DataFrame({"vx": -v * df["Vr_Over_V_RTN"], "vy": -v * df["Vt_Over_V_RTN"],
-                         "vz": v * df["Vn_Over_V_RTN"], "n": df["Np"], "t": df["Tp"]}, index=df.index)
+    radial = df["Vr_Over_V_RTN"].isna() & v.notna()
+    return pd.DataFrame({"vx": -v * df["Vr_Over_V_RTN"].where(~radial, 1.0),
+                         "vy": -v * df["Vt_Over_V_RTN"].where(~radial, 0.0),
+                         "vz": v * df["Vn_Over_V_RTN"].where(~radial, 0.0), "n": df["Np"], "t": df["Tp"],
+                         "radial_flow": radial.astype(float).where(v.notna())}, index=df.index)
 
 
 EV_TO_K = 11604.518
@@ -167,18 +171,19 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
                       _vec_plasma("Np", "THERMAL_TEMP", "DQF"), "DSCOVR Faraday cup 1-min (2016-2019)"),
         "position": _ds("DSCOVR_ORBIT_PRE", ["GSE_POS"], _pos("GSE_POS"), "DSCOVR predicted orbit"),
     },
-    # Away from the Sun-Earth line: no position (no timing or time shift), RTN vectors.
+    # Away from the Sun-Earth line: RTN vectors; positions from the SPICE ephemeris
+    # (helios.core.spice_engine) for the timing, no time shift or coupling.
     "STEREO-A": {
         "field": _ds("STA_L2_MAGPLASMA_1M", ["BFIELDRTN"], _rtn_field("BFIELDRTN"), "STEREO-A IMPACT/MAG 1-min (RTN)"),
         "plasma": _ds("STA_L2_MAGPLASMA_1M", ["Np", "Vp", "Tp", "Vr_Over_V_RTN", "Vt_Over_V_RTN", "Vn_Over_V_RTN"],
                       _sta_plasma, "STEREO-A PLASTIC protons 1-min (RTN)"),
-        "position": None,
+        "position": None, "ephemeris": "STEREO_A",
     },
     "SOLO": {
         "field": _ds("SOLO_L2_MAG-RTN-NORMAL-1-MINUTE", ["B_RTN"], _rtn_field("B_RTN"), "Solar Orbiter MAG 1-min (RTN)"),
         "plasma": _ds("SOLO_L2_SWA-PAS-GRND-MOM", ["N", "V_RTN", "T"], _rtn_plasma("V_RTN", "N", "T", EV_TO_K),
                       "Solar Orbiter SWA-PAS proton moments (RTN, about 4 s)"),
-        "position": None,
+        "position": None, "ephemeris": "SOLAR_ORBITER",
     },
     "PSP": {
         "field": _ds("PSP_FLD_L2_MAG_RTN_1MIN", ["psp_fld_l2_mag_RTN_1min"], _rtn_field("psp_fld_l2_mag_RTN_1min"),
@@ -186,7 +191,7 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
         "plasma": _ds("PSP_SWP_SPI_SF00_L3_MOM", ["DENS", "VEL_RTN_SUN", "TEMP"],
                       _rtn_plasma("VEL_RTN_SUN", "DENS", "TEMP", EV_TO_K),
                       "Parker Solar Probe SWEAP/SPAN-I proton moments (RTN; partial field of view)"),
-        "position": None,
+        "position": None, "ephemeris": "PARKER_SOLAR_PROBE",
     },
 }
 EVENT_FRAMES = {k: ("GSE" if k in ("WIND", "ACE", "DSCOVR") else RTN_FRAME) for k in EVENT_SOURCES}
@@ -590,6 +595,8 @@ def refine_shock_time(field: pd.DataFrame, guess: pd.Timestamp, search_minutes: 
     t = mag.index
     vals = mag.to_numpy()
     secs = (t - t[0]).total_seconds().to_numpy()
+    # At least three samples on each side: 1-min data (STEREO-A, Solar Orbiter, PSP) need 3.5 min.
+    half_window_seconds = max(half_window_seconds, 3.5 * float(np.median(np.diff(secs))) if len(secs) > 1 else 0.0)
     csum = np.concatenate([[0.0], np.cumsum(vals)])
     lo_t, hi_t = (guess - pd.Timedelta(minutes=search_minutes)), (guess + pd.Timedelta(minutes=search_minutes))
     best, best_i = -np.inf, None
@@ -782,6 +789,11 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
     if poor:
         warnings.append(f"{poor} of {kpb + kpa} plasma spectra carry the WIND SWE flag 'poor peak identification' "
                         "(fit_flag 1); they are used, as in the CfA shock database.")
+    if "radial_flow" in plasma.columns:
+        nrad = int(_window(plasma, t0, *before)["radial_flow"].sum() + _window(plasma, t0, *after)["radial_flow"].sum())
+        if nrad:
+            warnings.append(f"{nrad} of {kpb + kpa} plasma samples have the speed only: the flow is taken as radial "
+                            "(as the IPShocks database does for STEREO), so the VC and mixed-mode normals lean radial.")
     if density_ratio < 1.2:
         warnings.append(f"Density jump {density_ratio:.2f} is too small for a reliable mass-flux shock speed.")
     if min(k_up[1], k_dn[1]) < 3:
@@ -837,6 +849,31 @@ def position_at(position: Optional[pd.DataFrame], t: pd.Timestamp) -> Optional[n
     if secs[0] > 3600 or secs[-1] < -3600:
         return None  # no sample within an hour of t
     return np.array([float(np.interp(0.0, secs, position[c].to_numpy(dtype=float))) for c in ("x", "y", "z")])
+
+
+# Sun's rotation pole (IAU: RA 286.13 deg, Dec 63.87 deg, J2000 equator) in ecliptic J2000
+# coordinates, for the RTN axes of the spacecraft away from the Earth.
+_ALPHA, _DELTA, _EPS = (math.radians(x) for x in (286.13, 63.87, 23.4392911))
+SUN_POLE_ECLIPTIC = np.array([math.cos(_DELTA) * math.cos(_ALPHA),
+                              math.cos(_DELTA) * math.sin(_ALPHA) * math.cos(_EPS) + math.sin(_DELTA) * math.sin(_EPS),
+                              -math.cos(_DELTA) * math.sin(_ALPHA) * math.sin(_EPS) + math.sin(_DELTA) * math.cos(_EPS)])
+
+
+def local_to_gse(v, r_sun_gse_km, sun_longitude_deg: float) -> np.ndarray:
+    """
+    A vector given as (-R, -T, N) at a spacecraft (EVENT_FRAMES) in GSE. `r_sun_gse_km` is the
+    spacecraft's position from the Sun in GSE axes, `sun_longitude_deg` the Sun's geocentric
+    ecliptic longitude (the direction of GSE X); T = pole x R, N = R x T.
+    """
+    lam = math.radians(sun_longitude_deg)
+    pole = np.array([SUN_POLE_ECLIPTIC @ [math.cos(lam), math.sin(lam), 0.0],
+                     SUN_POLE_ECLIPTIC @ [-math.sin(lam), math.cos(lam), 0.0], SUN_POLE_ECLIPTIC[2]])
+    r = np.asarray(r_sun_gse_km, dtype=float) / np.linalg.norm(r_sun_gse_km)
+    t = np.cross(pole, r)
+    t /= np.linalg.norm(t)
+    n = np.cross(r, t)
+    v = np.asarray(v, dtype=float)
+    return -v[0] * r - v[1] * t + v[2] * n
 
 
 def predict_arrival(normal, speed_kms: float, t_ref: pd.Timestamp, r_ref_km, r_km) -> Dict[str, Any]:

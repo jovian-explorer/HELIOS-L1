@@ -219,7 +219,8 @@
     const q = shockQuery();
     const ref = el('ea-shock-mission').value;
     q.set('reference', ref);
-    q.set('targets', ['WIND', 'ACE', 'DSCOVR'].filter(s => s !== ref).join(','));
+    q.set('targets', ['WIND', 'ACE', 'DSCOVR', 'STEREO-A', 'SOLO', 'PSP'].filter(s => s !== ref).join(','));
+    q.set('search_minutes', el('ea-timing-search').value || 20);
     const url = `/api/analysis/timing?${q}`;
     el('ea-timing-table').innerHTML = '<p class="text-slate-400">Fetching data for the other spacecraft...</p>';
     try {

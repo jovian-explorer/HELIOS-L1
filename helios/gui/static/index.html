@@ -1930,6 +1930,7 @@
           <div><label class="ea-label">Gap after (blank: same)</label><input id="ea-shock-gap-after" type="number" min="0" max="15" step="0.5" class="ea-input w-20" value=""></div>
           <label class="flex items-center gap-1 text-slate-300" title="Move the shock time to the largest |B| jump within 10 minutes"><input id="ea-shock-refine" type="checkbox" checked> refine time</label>
           <button onclick="eaRunShock()" class="ea-btn">Analyse shock</button>
+          <div><label class="ea-label" title="Window around the predicted arrival in which the |B| jump is searched; widen it for spacecraft far apart (the largest jump in the window is taken)">Timing search (min)</label><input id="ea-timing-search" type="number" min="2" max="360" step="1" class="ea-input w-20" value="20"></div>
           <button onclick="eaRunTiming()" class="ea-btn">Timing with the other spacecraft</button>
           <a id="ea-shock-download" class="ea-link hidden" href="#">Save JSON</a>
         </div>
@@ -1938,6 +1939,7 @@
           <button class="ea-chip" onclick="eaShockPreset('WIND','2015-03-17T04:00',28,24,1)">WIND 17 Mar 2015</button>
           <button class="ea-chip" onclick="eaShockPreset('WIND','2014-02-27T15:50',13,5,1)">WIND 27 Feb 2014 (timing to ACE)</button>
           <button class="ea-chip" onclick="eaShockPreset('WIND','2015-06-22T18:08',10,8,2)">WIND 22 Jun 2015</button>
+          <button class="ea-chip" onclick="eaShockPreset('WIND','2020-04-20T01:34',10,10,1); document.getElementById('ea-timing-search').value = 30">WIND 20 Apr 2020 (timing to Solar Orbiter at 0.8 AU)</button>
         </div>
         <div id="ea-shock-status" class="text-xs text-slate-400"></div>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">

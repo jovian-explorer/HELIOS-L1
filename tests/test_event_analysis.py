@@ -853,7 +853,7 @@ def test_stereo_a_shock_in_rtn_as_gse_axes(monkeypatch, tmp_path):
     """
     STEREO-A, 25 Jun 2012 20:55:59 (L. K. Jian's STEREO shock list: forward, B2/B1 2.27). RTN is
     used as (-R, -T, N), so the forward shock's normal points sunward-negative as at L1, and the
-    answer names the frame. Timing and the time shift need a monitor upstream of the Earth.
+    answer names the frame. The time shift and the coupling functions need a monitor upstream of the Earth.
     """
     client = _sta_client(monkeypatch, tmp_path, "20120625")
     body = client.get("/api/analysis/shock?mission=STEREO-A&time=2012-06-25T20:55:59&upstream_minutes=8"
@@ -864,7 +864,6 @@ def test_stereo_a_shock_in_rtn_as_gse_axes(monkeypatch, tmp_path):
     assert r["methods"]["MX3"]["normal_gse"][0] < -0.5 and r["upstream"]["V_gse_kms"][0] < -300
     assert r["methods"]["MX3"]["shock_speed_kms"] > 0 and "ipshocks" not in r and "icme_list" not in r
     assert client.get("/api/analysis/coupling?mission=STEREO-A&start=2012-06-25T20:30&end=2012-06-25T21:20").status_code == 422
-    assert client.get("/api/analysis/timing?reference=STEREO-A&time=2012-06-25T20:55:59").status_code == 422
 
 
 def test_stereo_a_2012_july_23(monkeypatch, tmp_path):
@@ -881,3 +880,59 @@ def test_stereo_a_2012_july_23(monkeypatch, tmp_path):
     client = _sta_client(monkeypatch, tmp_path, "20120723")
     r = client.get("/api/analysis/shock?mission=STEREO-A&time=2012-07-23T20:55:25")
     assert r.status_code == 404 and "plasma" in r.json()["detail"]
+
+
+def test_rtn_axes_in_gse():
+    """(-R, -T, N) at a spacecraft on the Sun-Earth line are the GSE axes, up to the 7.25 deg tilt of the
+    solar equator for N; the axes are orthonormal for any position."""
+    from helios.core.event_analysis import local_to_gse
+    r_sun = np.array([-1.496e8, 0.0, 0.0])  # at the Earth, from the Sun, in GSE axes
+    for lam in (0.0, 75.0, 200.0, 345.0):
+        x, y, z = (local_to_gse(v, r_sun, lam) for v in np.eye(3))
+        assert np.allclose(x, [1, 0, 0]) and abs(np.dot(y, z)) < 1e-12 and np.allclose(np.cross(x, y), z)
+        assert _angle(z, [0, 0, 1]) < 7.3 and _angle(y, [0, 1, 0]) < 7.3
+    assert _angle(local_to_gse([1, 0, 0], [1e8, 1e8, 0.0], 30.0), [-1, -1, 0]) < 1e-9
+
+
+def test_timing_wind_to_solar_orbiter_20200419(monkeypatch, tmp_path):
+    """
+    The CME of April 2020 in radial alignment (Davies et al. 2021, A&A 656, A2, Table 1): shock at Solar
+    Orbiter (0.809 AU) on 19 Apr 05:06 UT, at Wind on 20 Apr 01:34. From the WIND shock (MX3 normal, 357 km/s)
+    and the ephemeris positions, the planar shock reaches Solar Orbiter 19.3 h before Wind, at 05:18; the |B|
+    jump in the 1-min Solar Orbiter field is at 05:06:30, the published time.
+    """
+    from fastapi.testclient import TestClient
+    from urllib.parse import parse_qs, urlparse
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+
+    served = {"WI_H0_MFI@1": "wi_h0_mfi3s_20200420", "WI_H1_SWE": "wi_h1_swe_20200420",
+              "WI_H0_MFI@0": "wi_h0_mfi1m_pos_20200420", "SOLO_L2_MAG-RTN-NORMAL-1-MINUTE": "solo_mag1m_20200419"}
+
+    async def fake(url, timeout=120.0):
+        ds = parse_qs(urlparse(url).query)["id"][0]
+        return _text(served[ds]) if ds in served else None
+
+    # Recorded from the SPICE ephemeris (JPL Horizons): Solar Orbiter's GSE position (km), its position
+    # from the Sun in GSE axes, and the Sun's ecliptic longitude.
+    t_a, t_b = pd.Timestamp("2020-04-19 05:00", tz="UTC"), pd.Timestamp("2020-04-20 01:30", tz="UTC")
+    a = np.array([29637709.0, 8188046.0, 3453553.0])
+    b = np.array([30364236.0, 7651853.0, 3462126.0])
+
+    def eph(name, t):
+        f = (t - t_a) / (t_b - t_a)
+        r = a + f * (b - a)
+        return r, r - np.array([150267742.0, 0.0, 0.0]), 389.3
+
+    dl = DataDownloader()
+    dl.fetch_text = fake
+    dl.events = EventDataClient(lambda url: dl.fetch_text(url), tmp_path)
+    monkeypatch.setattr(server, "downloader", dl)
+    monkeypatch.setattr(server, "_ephemeris_gse", eph)
+    body = TestClient(server.app, base_url=LOCAL).get(
+        "/api/analysis/timing?reference=WIND&time=2020-04-20T01:34&targets=SOLO&search_minutes=30").json()
+    assert body["reference"]["shock_time"].startswith("2020-04-20 01:33")
+    t = body["targets"][0]
+    assert t["status"] == "ok" and t["predicted_time"].startswith("2020-04-19 05:1")
+    assert t["observed_time"].startswith("2020-04-19 05:06")
+    assert -20 * 60 < t["residual_s"] < 0 and t["predicted_delay_s"] < -19 * 3600
