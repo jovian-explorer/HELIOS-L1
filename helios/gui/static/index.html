@@ -336,9 +336,9 @@
             <span class="text-xs text-slate-400 font-hud">km/s</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
-            <div id="bar-speed" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 45%"></div>
+            <div id="bar-speed" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div id="metric-speed-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal slow wind</div>
+          <div id="metric-speed-status" class="text-[10px] mt-1 text-slate-400 font-medium">Waiting for data</div>
           <div class="flex items-center justify-between gap-x-2 text-[10px] text-slate-500 pt-1.5 mt-1.5 border-t border-slate-800/80 font-hud">
             <span>MIN <b id="stat-speed-min" class="text-slate-300">--</b></span>
             <span>AVG <b id="stat-speed-avg" class="text-slate-300">--</b></span>
@@ -361,9 +361,9 @@
             <span data-term="nT" class="text-xs text-slate-400 font-hud">nT</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
-            <div id="bar-bz" class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 50%"></div>
+            <div id="bar-bz" class="bg-rose-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div id="metric-bz-status" class="text-[10px] mt-1 text-emerald-400 font-medium">Northward (Shielded)</div>
+          <div id="metric-bz-status" class="text-[10px] mt-1 text-emerald-400 font-medium">Waiting for data</div>
           <div class="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-800/80">
             <div class="flex items-center space-x-1.5">
               <svg id="clock-angle-svg" width="20" height="20" viewBox="0 0 32 32" class="shrink-0" title="IMF Clock Angle &theta; = atan2(By, Bz) in GSM coordinates">
@@ -375,10 +375,10 @@
               </svg>
               <div>
                 <div class="text-[9px] text-slate-500 font-mono tracking-tighter">Clock &theta;</div>
-                <div id="metric-clock-angle" class="text-[11px] font-hud font-bold text-slate-200">0&deg; (N)</div>
+                <div id="metric-clock-angle" class="text-[11px] font-hud font-bold text-slate-200">--</div>
               </div>
             </div>
-            <span id="metric-reconnect-badge" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">CLOSED</span>
+            <span id="metric-reconnect-badge" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30">NO DATA</span>
           </div>
           <div class="flex items-center justify-between gap-x-2 text-[10px] text-slate-500 pt-1 mt-1 border-t border-slate-800/80 font-hud">
             <span>MIN <b id="stat-bz-min" class="text-slate-300">--</b></span>
@@ -402,9 +402,9 @@
             <span data-term="nT" class="text-xs text-slate-400 font-hud">nT</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
-            <div id="bar-bt" class="bg-sky-500 h-full rounded-full transition-all duration-500" style="width: 30%"></div>
+            <div id="bar-bt" class="bg-sky-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div id="metric-bt-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal background</div>
+          <div id="metric-bt-status" class="text-[10px] mt-1 text-slate-400 font-medium">Waiting for data</div>
           <div class="flex items-center justify-between gap-x-2 text-[10px] text-slate-500 pt-1.5 mt-1.5 border-t border-slate-800/80 font-hud">
             <span>MIN <b id="stat-bt-min" class="text-slate-300">--</b></span>
             <span>AVG <b id="stat-bt-avg" class="text-slate-300">--</b></span>
@@ -427,9 +427,9 @@
             <span class="text-xs text-slate-400 font-hud">cm⁻³</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
-            <div id="bar-density" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 25%"></div>
+            <div id="bar-density" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div id="metric-density-status" class="text-[10px] mt-1 text-slate-400 font-medium">Nominal plasma</div>
+          <div id="metric-density-status" class="text-[10px] mt-1 text-slate-400 font-medium">Waiting for data</div>
           <div class="flex items-center justify-between gap-x-2 text-[10px] text-slate-500 pt-1.5 mt-1.5 border-t border-slate-800/80 font-hud">
             <span>MIN <b id="stat-density-min" class="text-slate-300">--</b></span>
             <span>AVG <b id="stat-density-avg" class="text-slate-300">--</b></span>
@@ -452,9 +452,9 @@
             <span data-term="nPa" class="text-xs text-slate-400 font-hud">nPa</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
-            <div id="bar-pdyn" class="bg-orange-500 h-full rounded-full transition-all duration-500" style="width: 20%"></div>
+            <div id="bar-pdyn" class="bg-orange-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div id="metric-pdyn-status" class="text-[10px] mt-1 text-slate-400 font-medium">Standard compression</div>
+          <div id="metric-pdyn-status" class="text-[10px] mt-1 text-slate-400 font-medium">Waiting for data</div>
           <div class="flex items-center justify-between gap-x-2 text-[10px] text-slate-500 pt-1.5 mt-1.5 border-t border-slate-800/80 font-hud">
             <span>MIN <b id="stat-pdyn-min" class="text-slate-300">--</b></span>
             <span>AVG <b id="stat-pdyn-avg" class="text-slate-300">--</b></span>
@@ -477,9 +477,9 @@
             <span class="text-xs text-slate-400 font-hud">min</span>
           </div>
           <div class="w-full bg-slate-900/80 h-1.5 rounded-full mt-2 overflow-hidden border border-slate-700/40">
-            <div id="bar-delay" class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: 75%"></div>
+            <div id="bar-delay" class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
-          <div id="metric-delay-status" class="text-[10px] mt-1 text-slate-400 font-medium">Early warning buffer</div>
+          <div id="metric-delay-status" class="text-[10px] mt-1 text-slate-400 font-medium">Until this wind reaches Earth</div>
           <div class="flex items-center justify-between gap-x-2 text-[10px] text-slate-500 pt-1.5 mt-1.5 border-t border-slate-800/80 font-hud">
             <span>MIN <b id="stat-delay-min" class="text-slate-300">--</b></span>
             <span>AVG <b id="stat-delay-avg" class="text-slate-300">--</b></span>
@@ -548,7 +548,7 @@
               <p class="text-xs text-slate-400">Jumps in speed, density and field by the IPShocks criteria; normals, speeds and Mach numbers are in Event Analysis.</p>
             </div>
           </div>
-          <span id="shock-count-badge" class="text-xs px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-hud font-bold">0 shocks detected</span>
+          <span id="shock-count-badge" class="text-xs px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-hud font-bold">waiting for data</span>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs border-collapse">
@@ -698,8 +698,8 @@
             <span id="baseline-empirical-lag" class="text-cyan-400 font-bold font-hud text-sm">-- min</span>
           </div>
           <div class="bg-space-950/80 px-3 py-1.5 rounded-lg border border-slate-700/60">
-            <span class="text-slate-400 block text-[10px]">FIDELITY &amp; COHERENCE</span>
-            <span id="baseline-fidelity-score" class="text-emerald-400 font-bold font-hud text-sm">--% HIGH</span>
+            <span class="text-slate-400 block text-[10px]" title="Observed lag minus the delay expected from the spacecraft separation along the Sun-Earth line">OBSERVED − EXPECTED</span>
+            <span id="baseline-lag-discrepancy" class="text-slate-200 font-bold font-hud text-sm">-- min</span>
           </div>
         </div>
       </div>
@@ -963,7 +963,7 @@
             <i class="fa-solid fa-bolt text-amber-400"></i>
           </div>
           <div id="aurora-power-gw" class="text-3xl font-hud font-semibold text-amber-300">--- GW</div>
-          <div class="text-[11px] text-slate-400 mt-1">Estimated from Kp (Zhang &amp; Paxton 2008): 16.82 e<sup>0.32 Kp</sup> - 4.86 GW, linear to 300 GW at Kp 9 above Kp 7. An order of magnitude: about twice NOAA's OVATION value in a quiet-day comparison (user guide).</div>
+          <div class="text-[11px] text-slate-400 mt-1">Estimated from Kp with the TIE-GCM relation attributed to Zhang &amp; Paxton (2008): 16.82 e<sup>0.32 Kp</sup> - 4.86 GW, linear to 300 GW at Kp 9 above Kp 7. An order of magnitude: about twice NOAA's OVATION value in a quiet-day comparison (user guide).</div>
         </div>
         <div class="metric-card">
           <div class="text-slate-400 text-xs font-semibold mb-1 flex items-center justify-between">
@@ -2239,7 +2239,7 @@
             <i class="fa-solid fa-bolt text-cyan-400"></i>
           </div>
           <div id="forecast-newell-val" class="text-2xl font-hud font-semibold text-cyan-300">---</div>
-          <div id="forecast-newell-state" class="text-[10px] text-slate-400 mt-1">Calculating coupling...</div>
+          <div id="forecast-newell-state" class="text-[10px] text-slate-400 mt-1">Waiting for data</div>
         </div>
 
         <div class="metric-card">
@@ -2308,9 +2308,9 @@
               <i class="fa-solid fa-tower-broadcast text-sky-400"></i>
               <span data-term="GIC">Power Grid & GIC Risks</span>
             </div>
-            <span id="hazard-gic-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
+            <span id="hazard-gic-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-500/30 text-slate-400">--</span>
           </div>
-          <p id="hazard-gic-desc" class="text-xs text-slate-400 leading-relaxed">No high-latitude transmission line fluctuations anticipated.</p>
+          <p id="hazard-gic-desc" class="text-xs text-slate-400 leading-relaxed">Waiting for the forecast.</p>
         </div>
 
         <div id="hazard-aviation" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
@@ -2319,9 +2319,9 @@
               <i class="fa-solid fa-plane-departure text-amber-400"></i>
               <span data-term="D-RAP">Polar Aviation & HF Radio</span>
             </div>
-            <span id="hazard-aviation-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
+            <span id="hazard-aviation-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-500/30 text-slate-400">--</span>
           </div>
-          <p id="hazard-aviation-desc" class="text-xs text-slate-400 leading-relaxed">Normal trans-polar communications and navigational accuracy.</p>
+          <p id="hazard-aviation-desc" class="text-xs text-slate-400 leading-relaxed">Waiting for the forecast.</p>
         </div>
 
         <div id="hazard-satellite" class="bg-space-800/80 p-4 rounded-xl border border-slate-800 space-y-2">
@@ -2330,9 +2330,9 @@
               <i class="fa-solid fa-satellite text-rose-400"></i>
               <span>Satellite Charging & Drag</span>
             </div>
-            <span id="hazard-satellite-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-400">NOMINAL</span>
+            <span id="hazard-satellite-level" class="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-500/30 text-slate-400">--</span>
           </div>
-          <p id="hazard-satellite-desc" class="text-xs text-slate-400 leading-relaxed">Standard orbit ephemeris and downlink nominal.</p>
+          <p id="hazard-satellite-desc" class="text-xs text-slate-400 leading-relaxed">Waiting for the forecast.</p>
         </div>
       </div>
     </section>

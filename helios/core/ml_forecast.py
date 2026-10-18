@@ -105,7 +105,7 @@ class SpaceWeatherForecaster:
         available; this model does not compute probabilities.
         """
         if not telemetry_records:
-            return {"status": "error", "message": "No telemetry data provided"}
+            return {"status": "error", "message": "No solar wind data could be loaded (the real-time feed was not reached)"}
 
         # Newest record with the drivers present (the last row is often a partial gap).
         latest = next((r for r in reversed(telemetry_records)

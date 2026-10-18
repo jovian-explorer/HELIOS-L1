@@ -272,7 +272,9 @@ class SpiceEphemerisEngine:
         except ValueError:
             pass
         else:
-            if not math.isfinite(et):  # 'nan' / 'inf' gave NaN positions and a 500
+            # 'nan' / 'inf' gave NaN positions and a 500; beyond the year 9999 (ET 3e11) dates
+            # cannot be written as ISO text and gave a 500 too.
+            if not (math.isfinite(et) and -6.3e10 < et < 2.5e11):
                 raise ValueError(f"Unrecognised epoch {epoch!r}; use ISO 8601 UTC, e.g. 2026-10-04T12:00:00")
             return et
 

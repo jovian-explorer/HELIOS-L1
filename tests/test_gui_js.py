@@ -436,6 +436,31 @@ console.log(JSON.stringify(out));
     assert south["oval"] == "the oval is not loaded yet" and south["sky"].startswith("daylight")
 
 
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_aurora_outlook_with_ovation_uses_the_distance_to_the_aurora():
+    # Reproduction: below 10 % every place read "may still be seen low on the horizon" (London
+    # with the aurora at 65-75 N included).
+    src = (APP_JS.parent / "aurora.js").read_text(encoding="utf-8")
+    script = "const window = {}; const document = {getElementById: () => null};\n" + src + """
+const a = Object.create(AuroralMapRenderer.prototype);
+a.mapTime = new Date();a.mapIsNow = true; a.showOvation = true;
+a.magPoleNorth = { lat: 80.8, lon: -72.8 };
+const cells = [];
+for (let lo = 0; lo < 360; lo++) for (let la = 65; la <= 75; la++) cells.push([lo, la, 30]);
+a.setOvation({ cells, forecast_time: new Date().toISOString() });
+const out = [];
+for (const [lat, lon] of [[69.6, 18.9], [60, 19], [51.5, -0.1], [-45, 170]]) { a.home = { lat, lon }; out.push(a.homeOutlook().oval); }
+console.log(JSON.stringify(out));
+"""
+    res = subprocess.run([NODE], input=script, capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert res.returncode == 0, res.stderr
+    tromso, near, london, south = json.loads(res.stdout)
+    assert "30 % probability" in tromso and "overhead" in tromso
+    assert "5° of latitude poleward: aurora possible low on the northern horizon" in near
+    assert "14° of latitude poleward: aurora unlikely" in london
+    assert "no 10 % region poleward of you" in south
+
+
 def test_every_data_term_on_the_page_is_in_the_glossary():
     import re
     js = (APP_JS.parent / "glossary.js").read_text(encoding="utf-8")
@@ -599,3 +624,22 @@ def test_no_handler_is_called_with_an_empty_argument():
     so the Night Shadow checkbox did nothing."""
     page = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
     assert not re.findall(r'on(?:click|change|input)="[^"]*\(\'\'\s*,', page)
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_dashboard_status_text_follows_the_value():
+    # Reproduction: the |B|, density and pressure cards kept a fixed "Nominal background",
+    # "Nominal plasma", "Standard compression", also at 50 nT in a storm or without data.
+    src = APP_JS.read_text(encoding="utf-8")
+    const = re.search(r"^const OMNI_TYPICAL = .*?;$", src, re.M).group(0)
+    script = const + "\n" + _extract("typicalText") + """
+console.log(JSON.stringify([typicalText('bt', 50), typicalText('bt', 3.2), typicalText('density', 6),
+                            typicalText('dynamic_pressure', null)]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, encoding="utf-8", timeout=30)
+    assert res.returncode == 0, res.stderr
+    storm, quiet, dens, missing = json.loads(res.stdout)
+    assert storm == "Above 95 % of hours" and quiet == "Below usual (median 5.1 nT)"
+    assert dens.startswith("Above usual (median 4.9") and missing == "No value in the latest record"
+    html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
+    assert "Nominal background" not in html and ">CLOSED<" not in html

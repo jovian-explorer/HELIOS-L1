@@ -140,7 +140,12 @@ class AuroralMapRenderer {
   }
 
   setHome(lat, lon) {
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90) return;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90) {
+      // An empty or out-of-range entry used to do nothing at all.
+      const el = typeof document !== 'undefined' && document.getElementById('aurora-home-note');
+      if (el) el.textContent = 'Enter a latitude from -90 to 90 (north positive) and a longitude (east positive), e.g. 51.5 and -0.1 for London.';
+      return;
+    }
     lon = ((lon + 540) % 360) - 180;
     this.home = { lat, lon };
     try { localStorage.setItem('helios-aurora-home', JSON.stringify(this.home)); } catch (e) { /* not kept */ }
@@ -166,8 +171,23 @@ class AuroralMapRenderer {
     if (this.ovationLive()) {
       const p = this.ovationAt(h.lat, h.lon);
       const t = String(this.ovation.forecastTime || '').replace('T', ' ').slice(0, 16);
-      return { sky, oval: `NOAA OVATION nowcast for ${t} UTC: ${p} % probability of aurora at your place` +
-        (p >= 10 ? '' : ' (aurora further poleward may still be seen low on the horizon)') };
+      // Below 10 % the distance to the nearest 10 % cell poleward decides, as for the drawn oval
+      // (seen low in the sky from up to ~7 deg away). Every place below 10 % used to read
+      // "may still be seen low on the horizon", London at Kp 2 included.
+      let where = 'aurora overhead when the sky is dark';
+      if (p < 10) {
+        const step = h.lat >= 0 ? 1 : -1;
+        let edge = null;
+        for (let la = Math.round(h.lat) + step; Math.abs(la) <= 90 && edge === null; la += step) {
+          if (this.ovationAt(la, h.lon) >= 10) edge = la;
+        }
+        const gap = edge === null ? null : Math.abs(edge - h.lat);
+        const side = h.lat >= 0 ? 'northern' : 'southern';
+        where = gap === null ? 'no 10 % region poleward of you: aurora unlikely'
+          : `the 10 % region is ${gap.toFixed(0)}° of latitude poleward: ` +
+            (gap <= 7 ? `aurora possible low on the ${side} horizon` : 'aurora unlikely');
+      }
+      return { sky, oval: `NOAA OVATION nowcast for ${t} UTC: ${p} % probability of aurora at your place; ${where}` };
     }
     const hemi = this.ovalBoundaries && this.ovalBoundaries[h.lat >= 0 ? 'north' : 'south'];
     if (!hemi || !hemi.equatorward || !hemi.equatorward.length) return { sky, oval: 'the oval is not loaded yet' };

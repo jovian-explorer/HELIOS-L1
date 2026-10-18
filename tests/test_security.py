@@ -168,6 +168,13 @@ def test_non_finite_query_numbers_are_422_not_500(url):
     assert r.status_code == 422 and "finite" in r.json()["detail"]
 
 
+@pytest.mark.parametrize("epoch", ["1e12", "3e11", "-1e11"])
+def test_epochs_beyond_year_9999_are_422_not_500(epoch):
+    # Reproduction: a bare ET of 3e11 s (year 11506) passed the check and failed when written as ISO text (500).
+    r = TestClient(server.app, base_url=LOCAL, raise_server_exceptions=False).get("/api/orbits", params={"epoch": epoch})
+    assert r.status_code == 422
+
+
 @pytest.mark.parametrize("body", ['{"dt_minutes": NaN}', '{"r2_rsun": Infinity}', '{"dt_minutes": 0}',
                                   '{"r1_rsun": 6, "r2_rsun": 3}', '{"launch_time_iso": "yesterday"}'])
 def test_invalid_cme_inputs_are_422(body):

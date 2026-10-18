@@ -321,14 +321,6 @@ class SatelliteComparator:
             spatial_baseline.update(v_sw_assumed_kms=None, position_source_a=None, position_source_b=None,
                                     position_unknown=position_unknown or "No ephemeris for one of the spacecraft at this time.")
 
-        # Cross-calibration fidelity & coherence index (0 - 100%)
-        r = metrics.get("correlation_r") or 0.0
-        rmse = metrics.get("rmse", 0.0)
-        mean_mag = float(np.mean(np.abs(arr_a))) if len(arr_a) > 0 else 1.0
-        rel_err = min(1.0, rmse / max(1.0, mean_mag))
-        fidelity = max(5.0, min(100.0, (max(0.0, r)**2 * 60.0 + (1.0 - rel_err) * 40.0)))
-        metrics["fidelity_index_pct"] = round(fidelity, 1)
-
         # Discrepancy between theoretical transit delay and observed empirical lag
         optimal_lag = lag_analysis.get("optimal_lag_minutes", 0.0)
         theory_lag = spatial_baseline["theoretical_delay_min"]

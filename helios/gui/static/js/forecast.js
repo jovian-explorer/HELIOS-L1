@@ -59,6 +59,12 @@ async function loadMLForecast() {
     console.error('Error loading ML forecast:', err);
     const notes = document.getElementById('forecast-assumptions');
     if (notes) notes.innerHTML = `<div class="text-rose-400">Forecast unavailable: ${escapeHtml(err.message)}</div>`;
+    // No forecast: no hazard level either (the cards used to keep a "NOMINAL" page default).
+    for (const id of ['hazard-gic', 'hazard-aviation', 'hazard-satellite']) {
+      updateHazardCard(id, { risk_level: 'NO DATA', color: '#8b8f96', advisory: 'No forecast without solar wind data.' });
+    }
+    const state = document.getElementById('forecast-newell-state');
+    if (state) state.innerText = 'No solar wind data';
   }
 }
 

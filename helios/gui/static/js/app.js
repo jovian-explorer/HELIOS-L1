@@ -1194,7 +1194,8 @@ function updateFeedStatus(data, latency = 0) {
     badgeText.className = 'text-sky-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-sky-400';
   } else {
-    badgeText.innerText = 'No data for this spacecraft and interval';
+    badgeText.innerText = /could not be reached|reached here/.test(prov.description || '')
+      ? 'No data: the feed could not be reached' : 'No data for this spacecraft and interval';
     badgeText.className = 'text-amber-300 font-mono text-[11px]';
     badgeDot.className = 'w-2 h-2 rounded-full bg-amber-400';
   }
@@ -1341,32 +1342,35 @@ function updateTelemetryUI(data) {
   setStatText('pdyn', pdynStats);
   setStatText('delay', delStats);
 
-  // Dynamic KPI Mini-Progress Bars
-  const barSpeed = document.getElementById('bar-speed');
-  if (barSpeed && latest.speed) barSpeed.style.width = `${Math.min(100, Math.max(10, (latest.speed / 800) * 100))}%`;
-
-  const barBz = document.getElementById('bar-bz');
-  if (barBz && latest.bz_gsm !== undefined) {
-    const bzPct = Math.min(100, Math.max(5, ((latest.bz_gsm + 20) / 40) * 100));
-    barBz.style.width = `${bzPct}%`;
+  // KPI bars (a rough visual scale) and plain-word status: empty when the latest record has no
+  // value (the bars kept their page-load widths and the cards a fixed "Nominal ..." text, also in
+  // a storm or without data).
+  const setBar = (id, v, full, minPct) => {
+    const el = document.getElementById(id);
+    if (el) el.style.width = v == null ? '0%' : `${Math.min(100, Math.max(minPct, (v / full) * 100))}%`;
+  };
+  setBar('bar-speed', latest.speed, 800, 10);
+  setBar('bar-bz', latest.bz_gsm == null ? null : latest.bz_gsm + 20, 40, 5);
+  setBar('bar-bt', latest.bt, 35, 10);
+  setBar('bar-density', latest.density, 40, 10);
+  setBar('bar-pdyn', latest.dynamic_pressure, 15, 10);
+  setBar('bar-delay', latest.l1_travel_time_min, 60, 15);
+  for (const [key, id] of [['bt', 'metric-bt-status'], ['density', 'metric-density-status'],
+                           ['dynamic_pressure', 'metric-pdyn-status']]) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerText = typicalText(key, latest[key]);
+      el.title = 'Compared with hourly OMNI solar wind 1995-2024 (median and 95th percentile)';
+    }
   }
+  const delayStatus = document.getElementById('metric-delay-status');
+  if (delayStatus) delayStatus.innerText = latest.l1_travel_time_min == null ? 'No speed in the latest record' : 'Until this wind reaches Earth';
 
-  const barBt = document.getElementById('bar-bt');
-  if (barBt && latest.bt) barBt.style.width = `${Math.min(100, Math.max(10, (latest.bt / 35) * 100))}%`;
-
-  const barDensity = document.getElementById('bar-density');
-  if (barDensity && latest.density) barDensity.style.width = `${Math.min(100, Math.max(10, (latest.density / 40) * 100))}%`;
-
-  const barPdyn = document.getElementById('bar-pdyn');
-  if (barPdyn && latest.dynamic_pressure) barPdyn.style.width = `${Math.min(100, Math.max(10, (latest.dynamic_pressure / 15) * 100))}%`;
-
-  const barDelay = document.getElementById('bar-delay');
-  if (barDelay && latest.l1_travel_time_min) barDelay.style.width = `${Math.min(100, Math.max(15, (latest.l1_travel_time_min / 60) * 100))}%`;
-
-  // Update IMF Clock Angle & Reconnection Compass Needle
-  const by = latest.by_gsm !== undefined ? latest.by_gsm : 0;
-  const bz = latest.bz_gsm !== undefined ? latest.bz_gsm : 0;
-  let clockTheta = Math.round(Math.atan2(by, bz) * (180 / Math.PI));
+  // IMF clock angle and reconnection badge: only with a measured By and Bz (missing values
+  // used to be taken as 0, showing "0° (N), CLOSED" without data).
+  const by = latest.by_gsm, bz = latest.bz_gsm;
+  const haveClock = typeof by === 'number' && typeof bz === 'number';
+  let clockTheta = haveClock ? Math.round(Math.atan2(by, bz) * (180 / Math.PI)) : 0;
   if (clockTheta < 0) clockTheta += 360;
 
   const needle = document.getElementById('clock-angle-needle');
@@ -1375,22 +1379,17 @@ function updateTelemetryUI(data) {
 
   if (needle) {
     needle.setAttribute('transform', `rotate(${clockTheta} 16 16)`);
+    needle.style.display = haveClock ? '' : 'none';
   }
   if (clockText) {
-    let dir = 'N';
-    if (clockTheta > 337.5 || clockTheta <= 22.5) dir = 'N';
-    else if (clockTheta > 22.5 && clockTheta <= 67.5) dir = 'NE';
-    else if (clockTheta > 67.5 && clockTheta <= 112.5) dir = 'E';
-    else if (clockTheta > 112.5 && clockTheta <= 157.5) dir = 'SE';
-    else if (clockTheta > 157.5 && clockTheta <= 202.5) dir = 'S';
-    else if (clockTheta > 202.5 && clockTheta <= 247.5) dir = 'SW';
-    else if (clockTheta > 247.5 && clockTheta <= 292.5) dir = 'W';
-    else if (clockTheta > 292.5 && clockTheta <= 337.5) dir = 'NW';
-
-    clockText.innerText = `${clockTheta}° (${dir})`;
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    clockText.innerText = haveClock ? `${clockTheta}° (${dirs[Math.round(clockTheta / 45) % 8]})` : '--';
   }
   if (recBadge) {
-    if (bz < -5) {
+    if (!haveClock) {
+      recBadge.innerText = 'NO DATA';
+      recBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30';
+    } else if (bz < -5) {
       recBadge.innerText = 'RECONNECTING';
       recBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/25 text-rose-400 border border-rose-500/40 ';
     } else if (bz < 0) {
@@ -1453,7 +1452,7 @@ function updateTelemetryUI(data) {
     chartMagnetosphere.update();
   }
 
-  updateShocksTable(data.detected_shocks || []);
+  updateShocksTable(data.detected_shocks || [], (data.records || []).length > 0);
 }
 
 // ---- Predicted L1 arrivals drawn on the L1 time series (dashboard and archive views) ----
@@ -1516,12 +1515,27 @@ const arrivalMarkerPlugin = {
 };
 if (typeof Chart !== 'undefined') Chart.register(arrivalMarkerPlugin);
 
-function updateShocksTable(shocks) {
+// Hourly OMNI 1995-2024 (OMNI2_H0_MRG1HR, 262 000 hours with data): median and 95th
+// percentile of |B|, proton density and flow pressure (OMNI's 2.0e-6 n V^2, as on the cards).
+const OMNI_TYPICAL = { bt: [5.1, 11.2, 'nT'], density: [4.9, 15.4, 'cm⁻³'], dynamic_pressure: [1.6, 4.5, 'nPa'] };
+
+function typicalText(key, v) {
+  const [median, p95, unit] = OMNI_TYPICAL[key];
+  if (typeof v !== 'number') return 'No value in the latest record';
+  if (v >= p95) return 'Above 95 % of hours';
+  return `${v >= median ? 'Above' : 'Below'} usual (median ${median} ${unit})`;
+}
+
+function updateShocksTable(shocks, hasData = true) {
   const badge = document.getElementById('shock-count-badge');
   const tbody = document.getElementById('shocks-table-body');
   if (!badge || !tbody) return;
 
-  badge.innerText = `${shocks.length} shock${shocks.length === 1 ? '' : 's'} detected`;
+  badge.innerText = hasData ? `${shocks.length} shock${shocks.length === 1 ? '' : 's'} detected` : 'no data';
+  if (!hasData) {
+    tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">No solar wind data to screen for shocks.</td></tr>`;
+    return;
+  }
   if (shocks.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">No shocks detected in this window (IPShocks jump criteria).</td></tr>`;
     return;
@@ -1588,7 +1602,7 @@ async function runComparison() {
     const vecGseEl = document.getElementById('baseline-vec-gse');
     const theoryDelayEl = document.getElementById('baseline-theory-delay');
     const empLagEl = document.getElementById('baseline-empirical-lag');
-    const fidelityEl = document.getElementById('baseline-fidelity-score');
+    const discEl = document.getElementById('baseline-lag-discrepancy');
 
     if (distKmEl) distKmEl.innerText = `${base.distance_km != null ? base.distance_km.toLocaleString() : '---'} km`;
     if (distReEl) distReEl.innerText = `${base.distance_re != null ? base.distance_re : '--'} R_E`;
@@ -1597,10 +1611,11 @@ async function runComparison() {
     if (vecGseEl) vecGseEl.title = base.position_unknown ? '' : `Positions: A from ${base.position_source_a || 'model orbit'}; B from ${base.position_source_b || 'model orbit'}`;
     if (theoryDelayEl) theoryDelayEl.innerText = `${base.theoretical_delay_min != null ? (base.theoretical_delay_min > 0 ? `+${base.theoretical_delay_min}` : base.theoretical_delay_min) : '--'} min`;
     if (empLagEl) empLagEl.innerText = `${comp.lag_analysis?.optimal_lag_minutes !== undefined ? (comp.lag_analysis.optimal_lag_minutes > 0 ? `+${comp.lag_analysis.optimal_lag_minutes}` : comp.lag_analysis.optimal_lag_minutes) : '--'} min`;
-    if (fidelityEl) {
-      const score = m.fidelity_index_pct !== undefined ? m.fidelity_index_pct : 88.5;
-      fidelityEl.innerText = `${score}% ${score >= 80 ? 'HIGH' : (score >= 60 ? 'MOD' : 'LOW')}`;
-      fidelityEl.className = `font-bold font-hud text-sm ${score >= 80 ? 'text-emerald-400' : (score >= 60 ? 'text-amber-400' : 'text-rose-400')}`;
+    if (discEl) {
+      // The server's note when the expected delay is beyond the lag search (e.g. STEREO-A vs L1) was never shown.
+      discEl.innerText = base.note ? 'outside the lag search' : (base.lag_discrepancy_min != null
+        ? `${base.lag_discrepancy_min > 0 ? '+' : ''}${base.lag_discrepancy_min} min` : '-- min');
+      discEl.title = base.note || '';
     }
 
     renderCompOverlayChart(comp);
@@ -2506,7 +2521,7 @@ async function loadEvents() {
           <div class="text-[11px] font-bold text-slate-200 leading-snug">${ev.title}</div>
         </div>
         <div class="mt-2 text-[10px] text-slate-500 font-mono flex items-center justify-between border-t border-slate-800/60 pt-1">
-          <span>Benchmark</span>
+          <span>Replay</span>
           <i class="fa-solid fa-chevron-right text-[9px] text-slate-500"></i>
         </div>
       </div>
@@ -2553,7 +2568,7 @@ async function selectEvent(eventId) {
     const fmt = (v, unit) => (v === null || v === undefined ? `--- ${unit}` : `${v} ${unit}`);
     document.getElementById('event-peak-kp').innerText = meta.peak_kp;
     document.getElementById('event-min-bz').innerText = fmt(ext.min_bz, 'nT');
-    document.getElementById('event-peak-v').innerText = fmt(ext.peak_speed, 'km/s');
+    document.getElementById('event-peak-v').innerText = fmt(ext.peak_speed == null ? null : Math.round(ext.peak_speed), 'km/s');
     document.getElementById('event-peak-pdyn').innerText = fmt(ext.peak_dyn_pressure, 'nPa');
 
     const sevBadge = document.getElementById('event-severity-badge');
@@ -3719,7 +3734,7 @@ function renderUserGuideTab(container) {
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
               <span class="font-bold text-emerald-300">Dynamic Ram Pressure (P_dyn)</span>
               <p class="text-slate-400 text-[11px]">
-                P_dyn = 1.6726 × 10⁻⁶ · Np · V_sw² (nPa). Governs the physical compression of Earth's dayside magnetopause cavity. Nominal background is 1.5 - 2.5 nPa; CME shock fronts frequently exceed 20 - 60 nPa.
+                P_dyn = 2.0 × 10⁻⁶ · Np · V_sw² (nPa; OMNI's definition, protons plus 5 % alpha particles). It sets how far the solar wind pushes in Earth's dayside magnetopause. Hourly OMNI 1995-2024: median 1.6 nPa, 95 % of hours below 4.5 nPa; in the May 2024 storm the 5-minute values reached 58 nPa.
               </p>
             </div>
             <div class="bg-space-950 p-3 rounded-lg border border-slate-800 space-y-1">
