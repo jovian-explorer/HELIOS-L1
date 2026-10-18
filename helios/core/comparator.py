@@ -135,7 +135,8 @@ class SatelliteComparator:
         theoretical_delay_min returned by compute_spatial_baseline.
         """
         if len(series_a) < max_lags * 2 or len(series_b) < max_lags * 2:
-            return {"lags_minutes": [], "correlation": [], "optimal_lag_minutes": 0.0, "max_correlation": 0.0}
+            return {"lags_minutes": [], "correlation": [], "optimal_lag_minutes": None, "max_correlation": None,
+                    "note": f"no lag: fewer than {2 * max_lags} samples on the time grid"}
 
         # Missing samples (NaN) keep their place on the time grid, so a shift of L samples is
         # always L * dt minutes.
@@ -153,6 +154,13 @@ class SatelliteComparator:
             if ok.sum() > 2 and np.std(x[ok]) > 0 and np.std(y[ok]) > 0:
                 corr[k] = np.corrcoef(x[ok], y[ok])[0, 1]
         sub_lags, sub_corr = lags, corr
+        if not np.any(corr):
+            # A constant series (no variation at any lag): there is no peak; argmax used to report
+            # the first lag of the search, -120 min, as the measured delay.
+            return {"lags_minutes": [float(l * dt_minutes) for l in lags], "correlation": [None] * len(lags),
+                    "optimal_lag_minutes": None, "max_correlation": None,
+                    "lag_convention": "positive = B observes later than A",
+                    "note": "no lag: one of the series does not vary"}
 
         best_idx = np.argmax(sub_corr)
         optimal_lag_min = float(sub_lags[best_idx] * dt_minutes)
@@ -322,9 +330,10 @@ class SatelliteComparator:
                                     position_unknown=position_unknown or "No ephemeris for one of the spacecraft at this time.")
 
         # Discrepancy between theoretical transit delay and observed empirical lag
-        optimal_lag = lag_analysis.get("optimal_lag_minutes", 0.0)
+        optimal_lag = lag_analysis.get("optimal_lag_minutes")
         theory_lag = spatial_baseline["theoretical_delay_min"]
-        spatial_baseline["lag_discrepancy_min"] = None if theory_lag is None else round(optimal_lag - theory_lag, 1)
+        spatial_baseline["lag_discrepancy_min"] = (None if theory_lag is None or optimal_lag is None
+                                                   else round(optimal_lag - theory_lag, 1))
         reach = max((abs(x) for x in lag_analysis.get("lags_minutes", [])), default=0.0)
         if theory_lag is not None and abs(theory_lag) > reach:
             # e.g. STEREO-A against an L1 monitor: the same solar wind reaches them days apart
@@ -399,7 +408,7 @@ class SatelliteComparator:
                     lag_val = 0.0 if r_val is not None else None
                     grid = aligned.asfreq("5min")
                     lag = cls.cross_correlation_lag(grid["val_a"].to_numpy(), grid["val_b"].to_numpy(), max_lags=12)
-                    if r_val is not None and lag["correlation"] and lag["max_correlation"] > r_val:
+                    if r_val is not None and lag.get("max_correlation") is not None and lag["max_correlation"] > r_val:
                         r_val, lag_val = lag["max_correlation"], lag["optimal_lag_minutes"]
                 else:  # no common data: nothing to show, not r = 0
                     r_val = None

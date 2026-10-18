@@ -221,7 +221,7 @@
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Active Spacecraft</label>
             <select id="telemetry-satellite-select" onchange="loadTelemetry()" class="rounded-lg px-3.5 py-1.5 text-xs font-semibold">
-              <option value="DSCOVR">DSCOVR (Sun-Earth L1)</option>
+              <option value="DSCOVR">NOAA real-time L1 stream</option>
               <option value="ACE">ACE (Sun-Earth L1)</option>
               <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
               <option value="WIND">WIND (L1 Baseline)</option>
@@ -600,7 +600,7 @@
           <div>
             <label class="text-[11px] text-slate-400 font-bold block mb-1">Primary Spacecraft (A)</label>
             <select id="comp-sat-a" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400">
-              <option value="DSCOVR">DSCOVR (L1)</option>
+              <option value="DSCOVR">NOAA real-time L1 stream</option>
               <option value="ACE">ACE (L1)</option>
               <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
               <option value="WIND">WIND (L1 Baseline)</option>
@@ -613,7 +613,7 @@
             <select id="comp-sat-b" class="bg-space-700 text-slate-200 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-1 focus:ring-sky-400">
               <option value="ADITYA_L1">Aditya-L1 (ISRO, L1), no public data</option>
               <option value="ACE" selected>ACE (L1)</option>
-              <option value="DSCOVR">DSCOVR (L1)</option>
+              <option value="DSCOVR">NOAA real-time L1 stream</option>
               <option value="WIND">WIND (L1 Baseline)</option>
               <option value="SOHO">SOHO (L1, speed and density)</option>
             </select>
@@ -1792,7 +1792,7 @@
           <div>
             <label class="text-[10px] font-mono font-bold text-slate-400 block mb-0.5">Spacecraft</label>
             <select id="turbulence-sat-select" onchange="loadSpectralAnalysis()" class="rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-space-950 border border-slate-700 text-slate-200">
-              <option value="DSCOVR">DSCOVR (L1)</option>
+              <option value="DSCOVR">NOAA real-time L1 stream</option>
               <option value="ACE">ACE (L1)</option>
               <option value="WIND">WIND (Baseline)</option>
             </select>
@@ -2219,7 +2219,7 @@
           <div>
             <label class="text-[10px] text-slate-400 font-bold block mb-1">Observation Telemetry Source</label>
             <select id="forecast-satellite-select" onchange="loadMLForecast()" class="rounded-lg px-3 py-1.5 text-xs font-semibold">
-              <option value="DSCOVR">DSCOVR (L1 Primary)</option>
+              <option value="DSCOVR">NOAA real-time L1 stream</option>
               <option value="ACE">ACE (L1 Secondary)</option>
               <option value="WIND">WIND (Baseline)</option>
             </select>

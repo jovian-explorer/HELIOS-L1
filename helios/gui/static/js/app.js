@@ -1216,6 +1216,12 @@ function sonifyCurrentTelemetry() {
   window.soundEngine?.sonifySolarWind(latest.speed, latest.bz_gsm, latest.density);
 }
 
+// Menu entry of NOAA's operational real-time stream, with the spacecraft that supplied it.
+function liveStreamLabel(sources) {
+  const s = (sources || []).filter(Boolean);
+  return s.length ? `NOAA real-time L1 (${s.join('/')})` : 'NOAA real-time L1 stream';
+}
+
 function updateTelemetryUI(data) {
   const mission = data.mission;
   const latest = data.latest || {};
@@ -1244,8 +1250,16 @@ function updateTelemetryUI(data) {
     noteEl.innerText = '';
   }
 
-  document.getElementById('sat-name-full').innerText = mission.full_name;
-  document.getElementById('sat-agency-orbit').innerText = `${mission.agency} • ${mission.location}`;
+  // The "DSCOVR" view is NOAA's operational real-time stream: name the spacecraft that supplied it
+  // (SOLAR1 since 2025) in the menu and the card, as the header does, instead of DSCOVR's own card.
+  const prov = data.provenance || {};
+  const stream = mission.name === 'DSCOVR';  // archive intervals carry no mission name
+  const option = document.querySelector('#telemetry-satellite-select option[value="DSCOVR"]');
+  if (option && stream) option.innerText = liveStreamLabel(prov.kind === 'observed' ? prov.source_spacecraft : []);
+  document.getElementById('sat-name-full').innerText = stream ? 'NOAA SWPC Real-Time Solar Wind (operational L1 stream)' : mission.full_name;
+  document.getElementById('sat-agency-orbit').innerText = stream
+    ? `Supplied by ${(prov.source_spacecraft || []).join(', ') || 'the operational spacecraft'} • Sun-Earth L1`
+    : `${mission.agency} • ${mission.location}`;
 
   // Update Top Alert Badges
   const gBadge = document.getElementById('noaa-g-badge');
@@ -1515,6 +1529,33 @@ const arrivalMarkerPlugin = {
 };
 if (typeof Chart !== 'undefined') Chart.register(arrivalMarkerPlugin);
 
+// True when any dataset of a chart holds a finite value (numbers, or {x, y} / {y} points).
+function chartHasData(datasets) {
+  return (datasets || []).some(ds => (ds.data || []).some(v => {
+    const y = (v !== null && typeof v === 'object') ? v.y : v;
+    return typeof y === 'number' && Number.isFinite(y);
+  }));
+}
+
+// "No data" across an empty chart: offline or for an interval without data the charts showed bare
+// axes from 0 to 1, which read as a measured flat zero.
+const noDataPlugin = {
+  id: 'noData',
+  afterDraw(chart) {
+    if (chartHasData(chart.data.datasets)) return;
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+    ctx.save();
+    ctx.fillStyle = '#9a9ea5';
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('No data to show', (chartArea.left + chartArea.right) / 2, (chartArea.top + chartArea.bottom) / 2);
+    ctx.restore();
+  }
+};
+if (typeof Chart !== 'undefined') Chart.register(noDataPlugin);
+
 // Hourly OMNI 1995-2024 (OMNI2_H0_MRG1HR, 262 000 hours with data): median and 95th
 // percentile of |B|, proton density and flow pressure (OMNI's 2.0e-6 n V^2, as on the cards).
 const OMNI_TYPICAL = { bt: [5.1, 11.2, 'nT'], density: [4.9, 15.4, 'cm⁻³'], dynamic_pressure: [1.6, 4.5, 'nPa'] };
@@ -1587,7 +1628,10 @@ async function runComparison() {
     document.getElementById('stat-rmse').innerText = m.rmse;
     document.getElementById('stat-bias').innerText = (m.bias > 0 ? `+${m.bias}` : `${m.bias}`);
     const lagCi = comp.lag_analysis?.lag_ci95_minutes;
-    document.getElementById('stat-lag').innerText = `${comp.lag_analysis?.optimal_lag_minutes || 0} min`;
+    // No lag when a series does not vary or is too short (it read "0 min", or -120 min, the edge of the search).
+    const lagMin = comp.lag_analysis?.optimal_lag_minutes;
+    const noLag = lagMin === null || lagMin === undefined;
+    document.getElementById('stat-lag').innerText = noLag ? (comp.lag_analysis?.note?.includes('vary') ? 'no lag (no variation)' : 'no lag') : `${lagMin} min`;
     document.getElementById('stat-lag').title = lagCi ? `95 % interval ${lagCi[0]} to ${lagCi[1]} min (${comp.lag_analysis.lag_uncertainty_method})` : '';
     const lagCiEl = document.getElementById('stat-lag-ci');
     if (lagCiEl) lagCiEl.innerText = lagCi ? `95 %: ${lagCi[0]} to ${lagCi[1]} min` : '';
@@ -1610,7 +1654,8 @@ async function runComparison() {
       : `ΔX: ${base.dx_km || 0}, ΔY: ${base.dy_km || 0}, ΔZ: ${base.dz_km || 0}`;
     if (vecGseEl) vecGseEl.title = base.position_unknown ? '' : `Positions: A from ${base.position_source_a || 'model orbit'}; B from ${base.position_source_b || 'model orbit'}`;
     if (theoryDelayEl) theoryDelayEl.innerText = `${base.theoretical_delay_min != null ? (base.theoretical_delay_min > 0 ? `+${base.theoretical_delay_min}` : base.theoretical_delay_min) : '--'} min`;
-    if (empLagEl) empLagEl.innerText = `${comp.lag_analysis?.optimal_lag_minutes !== undefined ? (comp.lag_analysis.optimal_lag_minutes > 0 ? `+${comp.lag_analysis.optimal_lag_minutes}` : comp.lag_analysis.optimal_lag_minutes) : '--'} min`;
+    if (empLagEl) empLagEl.innerText = noLag ? 'no lag' : `${lagMin > 0 ? `+${lagMin}` : lagMin} min`;
+    if (empLagEl) empLagEl.title = comp.lag_analysis?.note || '';
     if (discEl) {
       // The server's note when the expected delay is beyond the lag search (e.g. STEREO-A vs L1) was never shown.
       discEl.innerText = base.note ? 'outside the lag search' : (base.lag_discrepancy_min != null

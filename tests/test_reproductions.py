@@ -173,3 +173,46 @@ def test_icme_averages_reproduce_kilpua_2017_table_1():
     assert np.mean([e["v_icme_kms"] for e in mc if e["v_icme_kms"]]) == pytest.approx(452, abs=5)
     off = [e for e in mc if all(isinstance(x, (int, float)) for x in (e["magnetic_cloud_offsets_h"] or [None]))]
     assert np.mean([hours(e) - e["magnetic_cloud_offsets_h"][0] + e["magnetic_cloud_offsets_h"][1] for e in off]) == pytest.approx(20.8, abs=0.5)
+
+
+def _lineups():
+    import json
+    return json.loads((DATA / "icmecat_lineups.json").read_text(encoding="utf-8"))
+
+
+def test_spacecraft_positions_reproduce_moestl_2022_table_1():
+    """Moestl et al. (2022, ApJL 924, L6, Table 1; arXiv:2109.07200): R and HEEQ longitude of 22 in situ ICME
+    arrivals at Wind, STEREO-A, PSP and Solar Orbiter (2020-2021). HELIOS-L1's SPICE positions
+    (scripts/icmecat_lineups.py) at the listed times: Wind and STEREO-A within 0.0005 AU and 0.06 deg;
+    PSP and Solar Orbiter within 0.0034 AU and 0.45 deg, because the table, like ICMECAT, gives their
+    position at the start of the magnetic obstacle: at those ICMECAT times within 0.0001 AU and 0.005 deg."""
+    from helios.core.event_analysis import heeq_position
+    d = _lineups()
+    for row in d["table1"] + d["icmecat_mo_start"]:
+        r, lon, _ = heeq_position(row["r_sun_gse_km"], row["sun_longitude_deg"])
+        inner = row["spacecraft"] in ("PSP", "SolarOrbiter") and "id" not in row
+        tol_r, tol_lon = (0.0035, 0.46) if inner else ((0.0001, 0.006) if "id" in row else (0.0005, 0.06))
+        assert abs(r - row["r_au"]) <= tol_r and abs(lon - row["lon_heeq"]) <= tol_lon, row["time"]
+    assert len(d["table1"]) == 22 and len(d["icmecat_mo_start"]) == 4
+
+
+def test_icme_arrivals_from_psp_and_solar_orbiter_lineups_in_icmecat():
+    """HELIO4CAST ICMECAT v2.3 (figshare doi:10.6084/m9.figshare.6356420): 23 ICMEs seen first by PSP or
+    Solar Orbiter inside 0.9 AU and then by Wind or STEREO-A within 10 deg of longitude (the one candidate
+    with a transit speed of 250-1000 km/s). From the inner ICME start and mean ICME speed to the outer
+    spacecraft (SPICE distances): constant speed arrives 2.7 h late on average, mean absolute error 4.3 h;
+    the drag-based model with the app's defaults (gamma 0.2e-7 /km, w 450 km/s) 2.0 h late, 4.5 h (15 of
+    23 within 6 h). The mean ICME speed is below that of its leading edge, hence the late bias."""
+    import statistics
+    from helios.core.constants import AU_KM
+    from helios.core.coronagraph import DBM_GAMMA_PER_KM, DBM_W_KMS, dbm_transit_seconds
+    bal, dbm = [], []
+    for p in _lineups()["pairs"]:
+        obs = (datetime.fromisoformat(p["outer_start"]) - datetime.fromisoformat(p["inner_start"])).total_seconds()
+        r1, r2, v = p["inner_r_au"] * AU_KM, p["outer_r_au"] * AU_KM, p["inner_speed_kms"]
+        bal.append(((r2 - r1) / v - obs) / 3600.0)
+        dbm.append((dbm_transit_seconds(r1, v, DBM_W_KMS, DBM_GAMMA_PER_KM, r2) - obs) / 3600.0)
+    assert len(dbm) == 23
+    assert statistics.mean(bal) == pytest.approx(2.7, abs=0.05) and statistics.mean(map(abs, bal)) == pytest.approx(4.3, abs=0.05)
+    assert statistics.mean(dbm) == pytest.approx(2.0, abs=0.05) and statistics.mean(map(abs, dbm)) == pytest.approx(4.5, abs=0.05)
+    assert sum(abs(e) <= 6 for e in dbm) == 15

@@ -799,3 +799,15 @@ def test_storm_precipitation_edge_is_the_starkov_diffuse_boundary():
         return e.mean(), float(np.sqrt((e * e).mean()))
     oval, diffuse = err("equatorward"), err("diffuse")
     assert oval[0] > 8.5 and abs(diffuse[0]) < 1.0 and diffuse[1] < 4.0
+
+
+def test_cross_correlation_of_a_constant_series_has_no_lag():
+    # Reproduction: with a constant series every lag gave r = 0 and argmax picked the first lag of the
+    # search, reported as a measured delay of -120 min.
+    import numpy as np
+    from helios.core.comparator import SatelliteComparator
+    rng = np.random.default_rng(3)
+    res = SatelliteComparator.cross_correlation_lag(np.full(200, 4.0), rng.normal(size=200), max_lags=24, dt_minutes=5.0)
+    assert res["optimal_lag_minutes"] is None and res["max_correlation"] is None and "not vary" in res["note"]
+    short = SatelliteComparator.cross_correlation_lag(np.arange(10.0), np.arange(10.0), max_lags=24)
+    assert short["optimal_lag_minutes"] is None and "fewer than 48 samples" in short["note"]

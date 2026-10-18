@@ -902,6 +902,23 @@ def local_to_gse(v, r_sun_gse_km, sun_longitude_deg: float) -> np.ndarray:
     return -v[0] * r - v[1] * t + v[2] * n
 
 
+def heeq_position(r_sun_gse_km, sun_longitude_deg: float) -> Tuple[float, float, float]:
+    """
+    (distance in AU, HEEQ longitude, HEEQ latitude in degrees) of a position from the Sun given in GSE
+    axes (as for local_to_gse): Z the solar rotation axis, X the Sun-Earth line projected on the solar
+    equator. Checked against the positions in Moestl et al. (2022, ApJL 924, L6), Table 1.
+    """
+    lam = math.radians(sun_longitude_deg)
+    z = np.array([SUN_POLE_ECLIPTIC @ [math.cos(lam), math.sin(lam), 0.0],
+                  SUN_POLE_ECLIPTIC @ [-math.sin(lam), math.cos(lam), 0.0], SUN_POLE_ECLIPTIC[2]])
+    x = np.array([-1.0, 0.0, 0.0]) + z[0] * z  # Sun -> Earth is -X in GSE axes
+    x /= np.linalg.norm(x)
+    r = np.asarray(r_sun_gse_km, dtype=float)
+    d = float(np.linalg.norm(r))
+    return (d / AU_KM, math.degrees(math.atan2(float(r @ np.cross(z, x)), float(r @ x))),
+            math.degrees(math.asin(float(r @ z) / d)))
+
+
 def predict_arrival(normal, speed_kms: float, t_ref: pd.Timestamp, r_ref_km, r_km) -> Dict[str, Any]:
     """
     Arrival time of a planar shock with unit normal n moving at V_sh along n (spacecraft

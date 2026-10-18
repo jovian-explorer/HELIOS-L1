@@ -20,6 +20,38 @@ DBM_W_KMS = 450.0
 DBM_START_RSUN = 20.0
 
 
+def dbm_distance(t_sec: float, r0_km: float, v0_kms: float, w_kms: float, gamma: float) -> float:
+    """Drag-based model (Vrsnak et al. 2013): heliocentric distance (km) t seconds after r0 at speed v0."""
+    u0 = v0_kms - w_kms
+    if abs(u0) < 1e-4:
+        return r0_km + w_kms * t_sec
+    s = 1.0 if u0 > 0 else -1.0
+    return r0_km + w_kms * t_sec + s / gamma * math.log(max(1e-12, 1.0 + gamma * abs(u0) * t_sec))
+
+
+def dbm_speed(t_sec: float, v0_kms: float, w_kms: float, gamma: float) -> float:
+    """Drag-based model speed (km/s) t seconds after the start at v0."""
+    u0 = v0_kms - w_kms
+    if abs(u0) < 1e-4:
+        return w_kms
+    return w_kms + u0 / max(1e-12, 1.0 + gamma * abs(u0) * t_sec)
+
+
+def dbm_transit_seconds(r0_km: float, v0_kms: float, w_kms: float, gamma: float, target_km: float) -> float:
+    """Time (s) for the drag-based model started at r0 with v0 to reach target_km (Newton-Raphson, 100 km)."""
+    if target_km <= r0_km:
+        return 0.0
+    t = (target_km - r0_km) / max(300.0, (v0_kms + w_kms) / 2.0)
+    for _ in range(25):
+        f = dbm_distance(t, r0_km, v0_kms, w_kms, gamma) - target_km
+        if abs(f) < 100.0:
+            break
+        t -= f / max(100.0, dbm_speed(t, v0_kms, w_kms, gamma))
+        if t < 0:
+            t = 3600.0
+    return max(0.0, t)
+
+
 class CoronagraphAnalyzer:
     """Manages solar coronagraph feeds and CME expansion kinematics."""
 
@@ -144,51 +176,15 @@ class CoronagraphAnalyzer:
         start_rsun = max(r2_rsun, DBM_START_RSUN)
         t_coast = (start_rsun - r2_rsun) * cls.R_SUN_KM / v_initial_kms
         r0_km = start_rsun * cls.R_SUN_KM
-        u0 = v_initial_kms - w
-
-        def dbm_r(t_sec: float) -> float:
-            """Heliocentric distance R(t) from Sun in km."""
-            if abs(u0) < 1e-4:
-                return r0_km + w * t_sec
-            if u0 > 0:
-                return r0_km + w * t_sec + (1.0 / gamma) * math.log(1.0 + gamma * u0 * t_sec)
-            else:
-                arg = max(1e-12, 1.0 + gamma * abs(u0) * t_sec)
-                return r0_km + w * t_sec - (1.0 / gamma) * math.log(arg)
-
-        def dbm_v(t_sec: float) -> float:
-            """Kinematic expansion velocity v(t) in km/s."""
-            if abs(u0) < 1e-4:
-                return w
-            if u0 > 0:
-                return w + u0 / (1.0 + gamma * u0 * t_sec)
-            else:
-                denom = max(1e-12, 1.0 + gamma * abs(u0) * t_sec)
-                return w - abs(u0) / denom
+        dbm_v = lambda t_sec: dbm_speed(t_sec, v_initial_kms, w, gamma)
 
         def dbm_accel(t_sec: float) -> float:
             """Aerodynamic acceleration a(t) in m/s^2."""
-            v = dbm_v(t_sec)
-            rel = v - w
+            rel = dbm_v(t_sec) - w
             return -gamma * rel * abs(rel) * 1000.0  # convert km/s^2 to m/s^2
 
         def solve_dbm_transit_sec(target_dist_km: float) -> float:
-            """Solves for transit time t such that R(t) = target_dist_km via Newton-Raphson."""
-            if target_dist_km <= r0_km:
-                return 0.0
-            # Initial guess based on mean velocity
-            v_mean = max(300.0, (v_initial_kms + w) / 2.0)
-            t = (target_dist_km - r0_km) / v_mean
-            for _ in range(25):
-                r_val = dbm_r(t)
-                v_val = max(100.0, dbm_v(t))
-                f = r_val - target_dist_km
-                if abs(f) < 100.0:  # within 100 km
-                    break
-                t = t - f / v_val
-                if t < 0:
-                    t = 3600.0
-            return max(0.0, t)
+            return dbm_transit_seconds(r0_km, v_initial_kms, w, gamma, target_dist_km)
 
         # Solve transit to Sun-Earth L1 and Earth
         t_sec_l1 = solve_dbm_transit_sec(cls.L1_DIST_KM)

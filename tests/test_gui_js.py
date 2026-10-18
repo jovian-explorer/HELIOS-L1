@@ -643,3 +643,31 @@ console.log(JSON.stringify([typicalText('bt', 50), typicalText('bt', 3.2), typic
     assert dens.startswith("Above usual (median 4.9") and missing == "No value in the latest record"
     html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
     assert "Nominal background" not in html and ">CLOSED<" not in html
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_empty_charts_are_marked_no_data():
+    # Reproduction: offline the dashboard charts showed bare 0-1 axes with no word that nothing was measured.
+    script = _extract("chartHasData") + """
+console.log(JSON.stringify([chartHasData([{data: [null, null]}, {data: []}]), chartHasData([]),
+  chartHasData([{data: [null, 3.5]}]), chartHasData([{data: [{x: 1, y: null}, {x: 2, y: -4}]}]),
+  chartHasData([{data: [NaN, '7']}])]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout) == [False, False, True, True, False]
+    assert "Chart.register(noDataPlugin)" in APP_JS.read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_live_stream_menu_names_the_supplying_spacecraft():
+    # The menus offered "DSCOVR (Sun-Earth L1)" for NOAA's operational stream, which SOLAR1 supplies
+    # (the header said "NOAA RTSW SOLAR1" next to it).
+    script = _extract("liveStreamLabel") + """
+console.log(JSON.stringify([liveStreamLabel(['SOLAR1']), liveStreamLabel(['DSCOVR', 'SOLAR1']), liveStreamLabel([])]));
+"""
+    res = subprocess.run([NODE, "-e", script], capture_output=True, text=True, timeout=30)
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout) == ["NOAA real-time L1 (SOLAR1)", "NOAA real-time L1 (DSCOVR/SOLAR1)", "NOAA real-time L1 stream"]
+    html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
+    assert "DSCOVR (Sun-Earth L1)" not in html and html.count('<option value="DSCOVR">NOAA real-time L1 stream</option>') == 5

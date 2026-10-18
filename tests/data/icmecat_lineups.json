@@ -1,0 +1,559 @@
+{
+ "sources": {
+  "table1": "Moestl et al. (2022), ApJL 924, L6, Table 1 (arXiv:2109.07200)",
+  "icmecat": "HELIO4CAST ICMECAT, doi:10.6084/m9.figshare.6356420 (MIT licence)",
+  "positions": "HELIOS-L1 SPICE ephemeris (JPL Horizons), 2026-10-18"
+ },
+ "table1": [
+  {
+   "time": "2020-04-19 05:06",
+   "spacecraft": "SolarOrbiter",
+   "r_au": 0.808,
+   "lon_heeq": -4.0,
+   "r_sun_gse_km": [
+    -120626659.5,
+    8185485.0,
+    3453598.4
+   ],
+   "sun_longitude_deg": 389.33
+  },
+  {
+   "time": "2020-04-20 01:34",
+   "spacecraft": "Wind",
+   "r_au": 0.996,
+   "lon_heeq": 0.2,
+   "r_sun_gse_km": [
+    -148998789.2,
+    -486410.1,
+    16104.8
+   ],
+   "sun_longitude_deg": 390.17
+  },
+  {
+   "time": "2020-05-28 12:45",
+   "spacecraft": "SolarOrbiter",
+   "r_au": 0.564,
+   "lon_heeq": 28.2,
+   "r_sun_gse_km": [
+    -74640892.2,
+    -39875346.9,
+    1886829.1
+   ],
+   "sun_longitude_deg": 427.37
+  },
+  {
+   "time": "2020-05-29 21:20",
+   "spacecraft": "Wind",
+   "r_au": 1.005,
+   "lon_heeq": -0.2,
+   "r_sun_gse_km": [
+    -150354484.4,
+    385917.9,
+    -37858.4
+   ],
+   "sun_longitude_deg": 428.67
+  },
+  {
+   "time": "2020-06-03 07:54",
+   "spacecraft": "STEREO-A",
+   "r_au": 0.965,
+   "lon_heeq": -71.5,
+   "r_sun_gse_km": [
+    -45479046.6,
+    137009410.6,
+    -172728.1
+   ],
+   "sun_longitude_deg": 432.93
+  },
+  {
+   "time": "2020-06-25 11:39",
+   "spacecraft": "PSP",
+   "r_au": 0.523,
+   "lon_heeq": 19.9,
+   "r_sun_gse_km": [
+    -73163126.5,
+    -26118626.9,
+    -2783723.0
+   ],
+   "sun_longitude_deg": 454.1
+  },
+  {
+   "time": "2020-06-30 01:12",
+   "spacecraft": "Wind",
+   "r_au": 1.007,
+   "lon_heeq": -0.2,
+   "r_sun_gse_km": [
+    -150631320.8,
+    657092.8,
+    -27840.4
+   ],
+   "sun_longitude_deg": 458.45
+  },
+  {
+   "time": "2020-07-09 14:17",
+   "spacecraft": "STEREO-A",
+   "r_au": 0.962,
+   "lon_heeq": -68.0,
+   "r_sun_gse_km": [
+    -52765104.4,
+    133817828.4,
+    27687.1
+   ],
+   "sun_longitude_deg": 467.54
+  },
+  {
+   "time": "2020-07-13 20:18",
+   "spacecraft": "Wind",
+   "r_au": 1.006,
+   "lon_heeq": -0.2,
+   "r_sun_gse_km": [
+    -150503095.9,
+    542168.3,
+    458.8
+   ],
+   "sun_longitude_deg": 471.6
+  },
+  {
+   "time": "2020-08-19 21:11",
+   "spacecraft": "STEREO-A",
+   "r_au": 0.958,
+   "lon_heeq": -64.6,
+   "r_sun_gse_km": [
+    -61359277.5,
+    129483438.8,
+    237184.2
+   ],
+   "sun_longitude_deg": 507.05
+  },
+  {
+   "time": "2020-09-12 10:23",
+   "spacecraft": "PSP",
+   "r_au": 0.473,
+   "lon_heeq": 13.0,
+   "r_sun_gse_km": [
+    -69301392.8,
+    -15900680.1,
+    -4034029.8
+   ],
+   "sun_longitude_deg": 529.83
+  },
+  {
+   "time": "2020-10-05 06:52",
+   "spacecraft": "Wind",
+   "r_au": 0.991,
+   "lon_heeq": 0.2,
+   "r_sun_gse_km": [
+    -148238900.1,
+    -627562.7,
+    -9732.4
+   ],
+   "sun_longitude_deg": 192.21
+  },
+  {
+   "time": "2020-11-01 11:54",
+   "spacecraft": "Wind",
+   "r_au": 0.984,
+   "lon_heeq": 0.1,
+   "r_sun_gse_km": [
+    -147206042.2,
+    -187423.0,
+    -65154.1
+   ],
+   "sun_longitude_deg": 219.24
+  },
+  {
+   "time": "2020-12-01 02:22",
+   "spacecraft": "PSP",
+   "r_au": 0.804,
+   "lon_heeq": -96.8,
+   "r_sun_gse_km": [
+    14164141.1,
+    119212767.9,
+    -6886637.2
+   ],
+   "sun_longitude_deg": 249.06
+  },
+  {
+   "time": "2020-12-01 07:28",
+   "spacecraft": "STEREO-A",
+   "r_au": 0.959,
+   "lon_heeq": -57.6,
+   "r_sun_gse_km": [
+    -76601532.3,
+    121372119.5,
+    122589.7
+   ],
+   "sun_longitude_deg": 249.28
+  },
+  {
+   "time": "2020-12-03 18:04",
+   "spacecraft": "STEREO-A",
+   "r_au": 0.96,
+   "lon_heeq": -57.5,
+   "r_sun_gse_km": [
+    -76806560.5,
+    121282426.7,
+    109510.4
+   ],
+   "sun_longitude_deg": 251.75
+  },
+  {
+   "time": "2021-02-15 18:58",
+   "spacecraft": "Wind",
+   "r_au": 0.977,
+   "lon_heeq": 0.1,
+   "r_sun_gse_km": [
+    -146154273.3,
+    -258669.3,
+    78335.1
+   ],
+   "sun_longitude_deg": 327.03
+  },
+  {
+   "time": "2021-02-23 10:34",
+   "spacecraft": "STEREO-A",
+   "r_au": 0.967,
+   "lon_heeq": -55.7,
+   "r_sun_gse_km": [
+    -81725161.0,
+    119303973.8,
+    -289614.0
+   ],
+   "sun_longitude_deg": 334.75
+  },
+  {
+   "time": "2021-02-24 04:08",
+   "spacecraft": "Wind",
+   "r_au": 0.979,
+   "lon_heeq": 0.2,
+   "r_sun_gse_km": [
+    -146465722.5,
+    -420733.5,
+    68318.0
+   ],
+   "sun_longitude_deg": 335.48
+  },
+  {
+   "time": "2021-03-26 18:00",
+   "spacecraft": "Wind",
+   "r_au": 0.989,
+   "lon_heeq": 0.2,
+   "r_sun_gse_km": [
+    -147891212.7,
+    -638635.8,
+    -2332.3
+   ],
+   "sun_longitude_deg": 366.01
+  },
+  {
+   "time": "2021-04-04 21:52",
+   "spacecraft": "Wind",
+   "r_au": 0.992,
+   "lon_heeq": 0.2,
+   "r_sun_gse_km": [
+    -148332663.1,
+    -570313.9,
+    -27140.1
+   ],
+   "sun_longitude_deg": 375.05
+  },
+  {
+   "time": "2021-04-06 01:27",
+   "spacecraft": "STEREO-A",
+   "r_au": 0.967,
+   "lon_heeq": -54.4,
+   "r_sun_gse_km": [
+    -85000953.3,
+    117073804.4,
+    -304920.8
+   ],
+   "sun_longitude_deg": 376.18
+  }
+ ],
+ "icmecat_mo_start": [
+  {
+   "time": "2020-12-01 03:13",
+   "spacecraft": "PSP",
+   "id": "ICME_PSP_MOESTL_20201201_01",
+   "r_au": 0.8037,
+   "lon_heeq": -96.85,
+   "r_sun_gse_km": [
+    14190525.7,
+    119193423.9,
+    -6886386.7
+   ],
+   "sun_longitude_deg": 249.1
+  },
+  {
+   "time": "2020-09-12 13:33",
+   "spacecraft": "PSP",
+   "id": "ICME_PSP_MOESTL_20200912_01",
+   "r_au": 0.4735,
+   "lon_heeq": 13.01,
+   "r_sun_gse_km": [
+    -68899630.4,
+    -15947223.3,
+    -4007462.1
+   ],
+   "sun_longitude_deg": 529.96
+  },
+  {
+   "time": "2020-06-25 15:59",
+   "spacecraft": "PSP",
+   "id": "ICME_PSP_MOESTL_20200625_01",
+   "r_au": 0.5228,
+   "lon_heeq": 19.91,
+   "r_sun_gse_km": [
+    -73538992.9,
+    -26453997.3,
+    -2820483.2
+   ],
+   "sun_longitude_deg": 454.27
+  },
+  {
+   "time": "2020-04-19 08:59",
+   "spacecraft": "SolarOrbiter",
+   "id": "ICME_SOLO_MOESTL_20200419_01",
+   "r_au": 0.8076,
+   "lon_heeq": -3.98,
+   "r_sun_gse_km": [
+    -120496437.8,
+    8085615.4,
+    3455329.3
+   ],
+   "sun_longitude_deg": 389.49
+  }
+ ],
+ "pairs": [
+  {
+   "inner": "ICME_SOLO_MOESTL_20241108_01",
+   "outer": "ICME_Wind_MOESTL_20241109_01",
+   "inner_start": "2024-11-08 18:59",
+   "outer_start": "2024-11-09 22:00",
+   "inner_speed_kms": 379.8,
+   "dlon_deg": 5.3,
+   "inner_r_au": 0.72048,
+   "outer_r_au": 0.98122
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20240915_01",
+   "outer": "ICME_Wind_MOESTL_20240916_01",
+   "inner_start": "2024-09-15 14:32",
+   "outer_start": "2024-09-16 22:56",
+   "inner_speed_kms": 596.9,
+   "dlon_deg": 1.9,
+   "inner_r_au": 0.48904,
+   "outer_r_au": 0.99659
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20240826_01",
+   "outer": "ICME_Wind_MOESTL_20240827_01",
+   "inner_start": "2024-08-26 02:34",
+   "outer_start": "2024-08-27 07:30",
+   "inner_speed_kms": 315.8,
+   "dlon_deg": -0.9,
+   "inner_r_au": 0.71696,
+   "outer_r_au": 1.00118
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20240809_01",
+   "outer": "ICME_Wind_MOESTL_20240810_01",
+   "inner_start": "2024-08-09 11:51",
+   "outer_start": "2024-08-10 12:02",
+   "inner_speed_kms": 421.5,
+   "dlon_deg": -7.6,
+   "inner_r_au": 0.73732,
+   "outer_r_au": 1.00361
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20240803_01",
+   "outer": "ICME_Wind_MOESTL_20240804_02",
+   "inner_start": "2024-08-03 21:08",
+   "outer_start": "2024-08-04 21:24",
+   "inner_speed_kms": 379.5,
+   "dlon_deg": -9.8,
+   "inner_r_au": 0.71491,
+   "outer_r_au": 1.00417
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20240729_02",
+   "outer": "ICME_STEREO_A_MOESTL_20240731_01",
+   "inner_start": "2024-07-29 16:02",
+   "outer_start": "2024-07-31 01:04",
+   "inner_speed_kms": 446.1,
+   "dlon_deg": 9.4,
+   "inner_r_au": 0.68001,
+   "outer_r_au": 0.95589
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20240729_01",
+   "outer": "ICME_STEREO_A_MOESTL_20240729_01",
+   "inner_start": "2024-07-29 01:01",
+   "outer_start": "2024-07-29 19:23",
+   "inner_speed_kms": 451.6,
+   "dlon_deg": 9.2,
+   "inner_r_au": 0.67485,
+   "outer_r_au": 0.9558
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20240713_01",
+   "outer": "ICME_STEREO_A_MOESTL_20240717_01",
+   "inner_start": "2024-07-13 22:28",
+   "outer_start": "2024-07-17 00:45",
+   "inner_speed_kms": 294.9,
+   "dlon_deg": 7.3,
+   "inner_r_au": 0.47317,
+   "outer_r_au": 0.95502
+  },
+  {
+   "inner": "ICME_SOLO_MOESTL_20240323_01",
+   "outer": "ICME_STEREO_A_MOESTL_20240324_01",
+   "inner_start": "2024-03-23 13:32",
+   "outer_start": "2024-03-24 14:23",
+   "inner_speed_kms": 837.8,
+   "dlon_deg": -0.6,
+   "inner_r_au": 0.38655,
+   "outer_r_au": 0.96167
+  },
+  {
+   "inner": "ICME_SOLO_MOESTL_20240318_01",
+   "outer": "ICME_Wind_MOESTL_20240321_01",
+   "inner_start": "2024-03-18 16:56",
+   "outer_start": "2024-03-21 02:02",
+   "inner_speed_kms": 356.8,
+   "dlon_deg": 3.6,
+   "inner_r_au": 0.45192,
+   "outer_r_au": 0.9877
+  },
+  {
+   "inner": "ICME_SOLO_MOESTL_20231201_01",
+   "outer": "ICME_Wind_MOESTL_20231201_01",
+   "inner_start": "2023-12-01 02:27",
+   "outer_start": "2023-12-01 08:52",
+   "inner_speed_kms": 496.3,
+   "dlon_deg": 9.9,
+   "inner_r_au": 0.84569,
+   "outer_r_au": 0.97651
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20230917_02",
+   "outer": "ICME_Wind_MOESTL_20230919_01",
+   "inner_start": "2023-09-17 13:52",
+   "outer_start": "2023-09-19 14:30",
+   "inner_speed_kms": 550.1,
+   "dlon_deg": -3.5,
+   "inner_r_au": 0.40099,
+   "outer_r_au": 0.99596
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20230917_02",
+   "outer": "ICME_STEREO_A_MOESTL_20230919_01",
+   "inner_start": "2023-09-17 13:52",
+   "outer_start": "2023-09-19 00:52",
+   "inner_speed_kms": 550.1,
+   "dlon_deg": -0.4,
+   "inner_r_au": 0.40099,
+   "outer_r_au": 0.96018
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20230910_01",
+   "outer": "ICME_Wind_MOESTL_20230912_01",
+   "inner_start": "2023-09-10 10:05",
+   "outer_start": "2023-09-12 10:24",
+   "inner_speed_kms": 385.8,
+   "dlon_deg": -0.3,
+   "inner_r_au": 0.53978,
+   "outer_r_au": 0.99768
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20230910_01",
+   "outer": "ICME_STEREO_A_MOESTL_20230912_01",
+   "inner_start": "2023-09-10 10:05",
+   "outer_start": "2023-09-12 07:05",
+   "inner_speed_kms": 385.8,
+   "dlon_deg": 2.1,
+   "inner_r_au": 0.53978,
+   "outer_r_au": 0.95956
+  },
+  {
+   "inner": "ICME_SOLO_MOESTL_20220311_01",
+   "outer": "ICME_Wind_MOESTL_20220313_01",
+   "inner_start": "2022-03-11 19:53",
+   "outer_start": "2022-03-13 10:04",
+   "inner_speed_kms": 554.8,
+   "dlon_deg": -9.7,
+   "inner_r_au": 0.44037,
+   "outer_r_au": 0.98462
+  },
+  {
+   "inner": "ICME_SOLO_MOESTL_20220308_01",
+   "outer": "ICME_Wind_MOESTL_20220310_01",
+   "inner_start": "2022-03-08 14:46",
+   "outer_start": "2022-03-10 16:12",
+   "inner_speed_kms": 417.9,
+   "dlon_deg": -2.7,
+   "inner_r_au": 0.48089,
+   "outer_r_au": 0.98376
+  },
+  {
+   "inner": "ICME_SOLO_MOESTL_20220307_01",
+   "outer": "ICME_Wind_MOESTL_20220310_01",
+   "inner_start": "2022-03-07 22:26",
+   "outer_start": "2022-03-10 16:12",
+   "inner_speed_kms": 293.3,
+   "dlon_deg": -1.4,
+   "inner_r_au": 0.48955,
+   "outer_r_au": 0.98376
+  },
+  {
+   "inner": "ICME_SOLO_MOESTL_20211030_01",
+   "outer": "ICME_Wind_MOESTL_20211031_01",
+   "inner_start": "2021-10-30 22:01",
+   "outer_start": "2021-10-31 09:32",
+   "inner_speed_kms": 402.4,
+   "dlon_deg": 2.0,
+   "inner_r_au": 0.81907,
+   "outer_r_au": 0.98441
+  },
+  {
+   "inner": "ICME_SOLO_MOESTL_20211014_01",
+   "outer": "ICME_Wind_MOESTL_20211016_01",
+   "inner_start": "2021-10-14 23:12",
+   "outer_start": "2021-10-16 00:08",
+   "inner_speed_kms": 323.5,
+   "dlon_deg": 9.9,
+   "inner_r_au": 0.71365,
+   "outer_r_au": 0.9885
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20210926_01",
+   "outer": "ICME_STEREO_A_MOESTL_20210927_01",
+   "inner_start": "2021-09-26 08:55",
+   "outer_start": "2021-09-27 01:46",
+   "inner_speed_kms": 371.8,
+   "dlon_deg": 3.3,
+   "inner_r_au": 0.77993,
+   "outer_r_au": 0.95653
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20210912_01",
+   "outer": "ICME_STEREO_A_MOESTL_20210913_01",
+   "inner_start": "2021-09-12 15:53",
+   "outer_start": "2021-09-13 16:58",
+   "inner_speed_kms": 355.5,
+   "dlon_deg": -2.8,
+   "inner_r_au": 0.721,
+   "outer_r_au": 0.95628
+  },
+  {
+   "inner": "ICME_PSP_MOESTL_20191013_01",
+   "outer": "ICME_STEREO_A_WINSLOW_20191014_01",
+   "inner_start": "2019-10-13 19:03",
+   "outer_start": "2019-10-14 07:44",
+   "inner_speed_kms": 525.6,
+   "dlon_deg": -7.7,
+   "inner_r_au": 0.80636,
+   "outer_r_au": 0.95627
+  }
+ ]
+}
