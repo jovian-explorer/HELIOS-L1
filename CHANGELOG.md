@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Interface and robustness
+- Lineup arrival check also started from ICMECAT's mean sheath speed (17 of 23 pairs): the late bias stays (drag-based model +2.6 h against +2.2 h with the mean ICME speed on the same pairs; the two speeds differ by 1 km/s on average), so the app's drag-based model guidance is unchanged.
 - BepiColombo positions from its JPL Horizons ephemeris (NAIF −121, the route of the other spacecraft; heliocentric, not labelled as an L1 craft). Its five arrivals in Möstl et al. (2022) Table 1 agree like PSP's and Solar Orbiter's (within 0.0001 AU and 0.005° at the ICMECAT magnetic obstacle start). It adds no clean ICME lineup: it has no public plasma speed to start from, and as the outer spacecraft no pair passes the criteria.
 - Lineup arrival check with the ambient wind measured at the outer spacecraft (24 h before its ICME start, OMNI or STEREO-A PLASTIC; 22 of 23 pairs, mean 398 km/s): the drag-based model's late bias grows from +1.8 to +2.9 h on the same pairs (MAE 4.4 → 4.6 h), so the fixed 450 km/s is not the cause; the mean ICME speed being below that of the leading edge is.
 - Storm forecast: when the forecast fails the chart is cleared and says "No data to show" (it stayed blank, or kept an earlier trajectory).

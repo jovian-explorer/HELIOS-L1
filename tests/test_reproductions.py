@@ -207,7 +207,10 @@ def test_icme_arrivals_from_psp_and_solar_orbiter_lineups_in_icmecat():
     ambient wind measured at the outer spacecraft (mean speed over the 24 h before its ICME start, OMNI or
     STEREO-A PLASTIC; 22 pairs, mean 398 km/s) instead of 450 km/s the bias grows, +2.9 h against +1.8 h
     on the same pairs (MAE 4.6 h against 4.4 h): the ambient wind is not what makes the arrivals late.
-    BepiColombo (no public plasma speed) gives no lineup that passes the criteria as the outer spacecraft."""
+    BepiColombo (no public plasma speed) gives no lineup that passes the criteria as the outer spacecraft.
+    Starting from the mean sheath speed (17 pairs where ICMECAT has one; on average only 1 km/s above the
+    mean ICME speed) does not remove it either: DBM +2.6 h against +2.2 h on the same pairs, constant
+    speed +3.7 h against +3.2 h."""
     import statistics
     from helios.core.constants import AU_KM
     from helios.core.coronagraph import DBM_GAMMA_PER_KM, DBM_W_KMS, dbm_transit_seconds
@@ -231,3 +234,12 @@ def test_icme_arrivals_from_psp_and_solar_orbiter_lineups_in_icmecat():
     assert statistics.mean(err["fixed"]) == pytest.approx(1.8, abs=0.05) and statistics.mean(err["measured"]) == pytest.approx(2.9, abs=0.05)
     assert statistics.mean(map(abs, err["measured"])) == pytest.approx(4.55, abs=0.05)
     assert not any("Bepi" in p["outer"] for p in _lineups()["pairs"])
+    sheath = [p for p in _lineups()["pairs"] if p["inner_sheath_speed_kms"]]
+
+    def late(speed):
+        return statistics.mean((dbm_transit_seconds(p["inner_r_au"] * AU_KM, speed(p), DBM_W_KMS, DBM_GAMMA_PER_KM,
+                                                    p["outer_r_au"] * AU_KM) - (datetime.fromisoformat(p["outer_start"])
+                                - datetime.fromisoformat(p["inner_start"])).total_seconds()) / 3600.0 for p in sheath)
+    assert len(sheath) == 17
+    assert late(lambda p: p["inner_speed_kms"]) == pytest.approx(2.2, abs=0.05)
+    assert late(lambda p: p["inner_sheath_speed_kms"]) == pytest.approx(2.6, abs=0.05)

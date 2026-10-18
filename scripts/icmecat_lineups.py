@@ -10,7 +10,8 @@ Build tests/data/icmecat_lineups.json, the inputs of two reproductions in tests/
   one ICME at Wind, STEREO-A or BepiColombo within 10 deg of HEEQ longitude whose start implies a transit speed of
   250-1000 km/s (pairs with two such candidates are left out), with the SPICE distances of both
   spacecraft at the ICME starts and the mean measured solar wind speed at the outer spacecraft in the
-  24 h before its ICME start (OMNI for Wind, PLASTIC for STEREO-A; none for BepiColombo).
+  24 h before its ICME start (OMNI for Wind, PLASTIC for STEREO-A; none for BepiColombo), and the
+  inner ICME's mean sheath speed where ICMECAT has one.
 
     python scripts/icmecat_lineups.py              # latest ICMECAT version on figshare
     python scripts/icmecat_lineups.py icmecat.csv  # a downloaded HELIO4CAST_ICMECAT_v*.csv
@@ -122,6 +123,7 @@ def lineups(rows):
             pairs.append({"inner": a["icmecat_id"], "outer": b["icmecat_id"],
                           "inner_start": when(a).strftime("%Y-%m-%d %H:%M"), "outer_start": when(b).strftime("%Y-%m-%d %H:%M"),
                           "inner_speed_kms": num(a, "icme_speed_mean"), "dlon_deg": round(dlon, 1),
+                          "inner_sheath_speed_kms": num(a, "sheath_speed_mean") if np.isfinite(num(a, "sheath_speed_mean")) else None,
                           "inner_r_au": round(float(np.linalg.norm(ra)) / AU_KM, 5),
                           "outer_r_au": round(float(np.linalg.norm(rb)) / AU_KM, 5),
                           "outer_upstream_speed_kms": upstream_speed(craft, when(b))})

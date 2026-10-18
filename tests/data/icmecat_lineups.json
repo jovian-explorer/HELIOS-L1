@@ -457,6 +457,7 @@
    "outer_start": "2024-11-09 22:00",
    "inner_speed_kms": 379.8,
    "dlon_deg": 5.3,
+   "inner_sheath_speed_kms": null,
    "inner_r_au": 0.72048,
    "outer_r_au": 0.98122,
    "outer_upstream_speed_kms": 397.9
@@ -468,6 +469,7 @@
    "outer_start": "2024-09-16 22:56",
    "inner_speed_kms": 596.9,
    "dlon_deg": 1.9,
+   "inner_sheath_speed_kms": 616.9,
    "inner_r_au": 0.48904,
    "outer_r_au": 0.99659,
    "outer_upstream_speed_kms": 454.1
@@ -479,6 +481,7 @@
    "outer_start": "2024-08-27 07:30",
    "inner_speed_kms": 315.8,
    "dlon_deg": -0.9,
+   "inner_sheath_speed_kms": 293.5,
    "inner_r_au": 0.71696,
    "outer_r_au": 1.00118,
    "outer_upstream_speed_kms": 280.2
@@ -490,6 +493,7 @@
    "outer_start": "2024-08-10 12:02",
    "inner_speed_kms": 421.5,
    "dlon_deg": -7.6,
+   "inner_sheath_speed_kms": 440.5,
    "inner_r_au": 0.73732,
    "outer_r_au": 1.00361,
    "outer_upstream_speed_kms": 380.4
@@ -501,6 +505,7 @@
    "outer_start": "2024-08-04 21:24",
    "inner_speed_kms": 379.5,
    "dlon_deg": -9.8,
+   "inner_sheath_speed_kms": null,
    "inner_r_au": 0.71491,
    "outer_r_au": 1.00417,
    "outer_upstream_speed_kms": null
@@ -512,6 +517,7 @@
    "outer_start": "2024-07-31 01:04",
    "inner_speed_kms": 446.1,
    "dlon_deg": 9.4,
+   "inner_sheath_speed_kms": null,
    "inner_r_au": 0.68001,
    "outer_r_au": 0.95589,
    "outer_upstream_speed_kms": 493.8
@@ -523,6 +529,7 @@
    "outer_start": "2024-07-29 19:23",
    "inner_speed_kms": 451.6,
    "dlon_deg": 9.2,
+   "inner_sheath_speed_kms": 470.6,
    "inner_r_au": 0.67485,
    "outer_r_au": 0.9558,
    "outer_upstream_speed_kms": 470.2
@@ -534,6 +541,7 @@
    "outer_start": "2024-07-17 00:45",
    "inner_speed_kms": 294.9,
    "dlon_deg": 7.3,
+   "inner_sheath_speed_kms": 308.8,
    "inner_r_au": 0.47317,
    "outer_r_au": 0.95502,
    "outer_upstream_speed_kms": 308.2
@@ -545,6 +553,7 @@
    "outer_start": "2024-03-24 14:23",
    "inner_speed_kms": 837.8,
    "dlon_deg": -0.6,
+   "inner_sheath_speed_kms": 954.0,
    "inner_r_au": 0.38655,
    "outer_r_au": 0.96167,
    "outer_upstream_speed_kms": 475.2
@@ -556,6 +565,7 @@
    "outer_start": "2024-03-21 02:02",
    "inner_speed_kms": 356.8,
    "dlon_deg": 3.6,
+   "inner_sheath_speed_kms": 353.8,
    "inner_r_au": 0.45192,
    "outer_r_au": 0.9877,
    "outer_upstream_speed_kms": 336.6
@@ -567,6 +577,7 @@
    "outer_start": "2023-12-01 08:52",
    "inner_speed_kms": 496.3,
    "dlon_deg": 9.9,
+   "inner_sheath_speed_kms": 499.7,
    "inner_r_au": 0.84569,
    "outer_r_au": 0.97651,
    "outer_upstream_speed_kms": 376.2
@@ -578,6 +589,7 @@
    "outer_start": "2023-09-19 14:30",
    "inner_speed_kms": 550.1,
    "dlon_deg": -3.5,
+   "inner_sheath_speed_kms": null,
    "inner_r_au": 0.40099,
    "outer_r_au": 0.99596,
    "outer_upstream_speed_kms": 585.8
@@ -589,6 +601,7 @@
    "outer_start": "2023-09-19 00:52",
    "inner_speed_kms": 550.1,
    "dlon_deg": -0.4,
+   "inner_sheath_speed_kms": null,
    "inner_r_au": 0.40099,
    "outer_r_au": 0.96018,
    "outer_upstream_speed_kms": 527.0
@@ -600,6 +613,7 @@
    "outer_start": "2023-09-12 10:24",
    "inner_speed_kms": 385.8,
    "dlon_deg": -0.3,
+   "inner_sheath_speed_kms": 331.5,
    "inner_r_au": 0.53978,
    "outer_r_au": 0.99768,
    "outer_upstream_speed_kms": 380.4
@@ -611,6 +625,7 @@
    "outer_start": "2023-09-12 07:05",
    "inner_speed_kms": 385.8,
    "dlon_deg": 2.1,
+   "inner_sheath_speed_kms": 331.5,
    "inner_r_au": 0.53978,
    "outer_r_au": 0.95956,
    "outer_upstream_speed_kms": 378.3
@@ -622,6 +637,7 @@
    "outer_start": "2022-03-13 10:04",
    "inner_speed_kms": 554.8,
    "dlon_deg": -9.7,
+   "inner_sheath_speed_kms": 606.7,
    "inner_r_au": 0.44037,
    "outer_r_au": 0.98462,
    "outer_upstream_speed_kms": 360.1
@@ -633,6 +649,7 @@
    "outer_start": "2022-03-10 16:12",
    "inner_speed_kms": 417.9,
    "dlon_deg": -2.7,
+   "inner_sheath_speed_kms": 383.4,
    "inner_r_au": 0.48089,
    "outer_r_au": 0.98376,
    "outer_upstream_speed_kms": 346.0
@@ -644,6 +661,7 @@
    "outer_start": "2022-03-10 16:12",
    "inner_speed_kms": 293.3,
    "dlon_deg": -1.4,
+   "inner_sheath_speed_kms": 308.2,
    "inner_r_au": 0.48955,
    "outer_r_au": 0.98376,
    "outer_upstream_speed_kms": 346.0
@@ -655,6 +673,7 @@
    "outer_start": "2021-10-31 09:32",
    "inner_speed_kms": 402.4,
    "dlon_deg": 2.0,
+   "inner_sheath_speed_kms": 429.5,
    "inner_r_au": 0.81907,
    "outer_r_au": 0.98441,
    "outer_upstream_speed_kms": 347.8
@@ -666,6 +685,7 @@
    "outer_start": "2021-10-16 00:08",
    "inner_speed_kms": 323.5,
    "dlon_deg": 9.9,
+   "inner_sheath_speed_kms": 312.5,
    "inner_r_au": 0.71365,
    "outer_r_au": 0.9885,
    "outer_upstream_speed_kms": 360.1
@@ -677,6 +697,7 @@
    "outer_start": "2021-09-27 01:46",
    "inner_speed_kms": 371.8,
    "dlon_deg": 3.3,
+   "inner_sheath_speed_kms": 383.2,
    "inner_r_au": 0.77993,
    "outer_r_au": 0.95653,
    "outer_upstream_speed_kms": 377.3
@@ -688,6 +709,7 @@
    "outer_start": "2021-09-13 16:58",
    "inner_speed_kms": 355.5,
    "dlon_deg": -2.8,
+   "inner_sheath_speed_kms": null,
    "inner_r_au": 0.721,
    "outer_r_au": 0.95628,
    "outer_upstream_speed_kms": 401.1
@@ -699,6 +721,7 @@
    "outer_start": "2019-10-14 07:44",
    "inner_speed_kms": 525.6,
    "dlon_deg": -7.7,
+   "inner_sheath_speed_kms": 424.4,
    "inner_r_au": 0.80636,
    "outer_r_au": 0.95627,
    "outer_upstream_speed_kms": 375.1
