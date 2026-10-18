@@ -181,19 +181,20 @@ def _lineups():
 
 
 def test_spacecraft_positions_reproduce_moestl_2022_table_1():
-    """Moestl et al. (2022, ApJL 924, L6, Table 1; arXiv:2109.07200): R and HEEQ longitude of 22 in situ ICME
-    arrivals at Wind, STEREO-A, PSP and Solar Orbiter (2020-2021). HELIOS-L1's SPICE positions
-    (scripts/icmecat_lineups.py) at the listed times: Wind and STEREO-A within 0.0005 AU and 0.06 deg;
-    PSP and Solar Orbiter within 0.0034 AU and 0.45 deg, because the table, like ICMECAT, gives their
-    position at the start of the magnetic obstacle: at those ICMECAT times within 0.0001 AU and 0.005 deg."""
+    """Moestl et al. (2022, ApJL 924, L6, Table 1; arXiv:2109.07200): R and HEEQ longitude of 27 in situ ICME
+    arrivals at Wind, STEREO-A, PSP, Solar Orbiter and BepiColombo (2020-2021). HELIOS-L1's SPICE positions
+    (scripts/icmecat_lineups.py; BepiColombo from its Horizons ephemeris, NAIF -121) at the listed times:
+    Wind and STEREO-A within 0.0005 AU and 0.06 deg; PSP, Solar Orbiter and BepiColombo within 0.0035 AU
+    and 0.7 deg, because the table, like ICMECAT, gives their position at the start of the magnetic
+    obstacle: at those ICMECAT times (9 ICMEs) within 0.0001 AU and 0.005 deg."""
     from helios.core.event_analysis import heeq_position
     d = _lineups()
     for row in d["table1"] + d["icmecat_mo_start"]:
         r, lon, _ = heeq_position(row["r_sun_gse_km"], row["sun_longitude_deg"])
-        inner = row["spacecraft"] in ("PSP", "SolarOrbiter") and "id" not in row
-        tol_r, tol_lon = (0.0035, 0.46) if inner else ((0.0001, 0.006) if "id" in row else (0.0005, 0.06))
+        inner = row["spacecraft"] in ("PSP", "SolarOrbiter", "BepiColombo") and "id" not in row
+        tol_r, tol_lon = (0.0035, 0.7) if inner else ((0.0001, 0.006) if "id" in row else (0.0005, 0.06))
         assert abs(r - row["r_au"]) <= tol_r and abs(lon - row["lon_heeq"]) <= tol_lon, row["time"]
-    assert len(d["table1"]) == 22 and len(d["icmecat_mo_start"]) == 4
+    assert len(d["table1"]) == 27 and len(d["icmecat_mo_start"]) == 9
 
 
 def test_icme_arrivals_from_psp_and_solar_orbiter_lineups_in_icmecat():
@@ -202,7 +203,11 @@ def test_icme_arrivals_from_psp_and_solar_orbiter_lineups_in_icmecat():
     with a transit speed of 250-1000 km/s). From the inner ICME start and mean ICME speed to the outer
     spacecraft (SPICE distances): constant speed arrives 2.7 h late on average, mean absolute error 4.3 h;
     the drag-based model with the app's defaults (gamma 0.2e-7 /km, w 450 km/s) 2.0 h late, 4.5 h (15 of
-    23 within 6 h). The mean ICME speed is below that of its leading edge, hence the late bias."""
+    23 within 6 h). The mean ICME speed is below that of its leading edge, hence the late bias. With the
+    ambient wind measured at the outer spacecraft (mean speed over the 24 h before its ICME start, OMNI or
+    STEREO-A PLASTIC; 22 pairs, mean 398 km/s) instead of 450 km/s the bias grows, +2.9 h against +1.8 h
+    on the same pairs (MAE 4.6 h against 4.4 h): the ambient wind is not what makes the arrivals late.
+    BepiColombo (no public plasma speed) gives no lineup that passes the criteria as the outer spacecraft."""
     import statistics
     from helios.core.constants import AU_KM
     from helios.core.coronagraph import DBM_GAMMA_PER_KM, DBM_W_KMS, dbm_transit_seconds
@@ -216,3 +221,13 @@ def test_icme_arrivals_from_psp_and_solar_orbiter_lineups_in_icmecat():
     assert statistics.mean(bal) == pytest.approx(2.7, abs=0.05) and statistics.mean(map(abs, bal)) == pytest.approx(4.3, abs=0.05)
     assert statistics.mean(dbm) == pytest.approx(2.0, abs=0.05) and statistics.mean(map(abs, dbm)) == pytest.approx(4.5, abs=0.05)
     assert sum(abs(e) <= 6 for e in dbm) == 15
+    measured = [p for p in _lineups()["pairs"] if p["outer_upstream_speed_kms"]]
+    err = {}
+    for name, w in (("fixed", lambda p: DBM_W_KMS), ("measured", lambda p: p["outer_upstream_speed_kms"])):
+        err[name] = [(dbm_transit_seconds(p["inner_r_au"] * AU_KM, p["inner_speed_kms"], w(p), DBM_GAMMA_PER_KM,
+                                          p["outer_r_au"] * AU_KM) - (datetime.fromisoformat(p["outer_start"])
+                      - datetime.fromisoformat(p["inner_start"])).total_seconds()) / 3600.0 for p in measured]
+    assert len(measured) == 22 and statistics.mean(p["outer_upstream_speed_kms"] for p in measured) == pytest.approx(398.1, abs=0.1)
+    assert statistics.mean(err["fixed"]) == pytest.approx(1.8, abs=0.05) and statistics.mean(err["measured"]) == pytest.approx(2.9, abs=0.05)
+    assert statistics.mean(map(abs, err["measured"])) == pytest.approx(4.55, abs=0.05)
+    assert not any("Bepi" in p["outer"] for p in _lineups()["pairs"])

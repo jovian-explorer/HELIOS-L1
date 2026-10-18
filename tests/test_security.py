@@ -97,7 +97,7 @@ def test_interface_requests_still_work(client, restore_settings):
 CSV = "time_tag,speed,density\n2024-05-10 00:00,400,5\n2024-05-10 00:01,410,6\n"
 
 
-@pytest.mark.parametrize("name", ["..\..\AppData\Roaming\evil.bat", "../../etc/x", 'a"; filename=x.exe',
+@pytest.mark.parametrize("name", [r"..\..\AppData\Roaming\evil.bat", "../../etc/x", 'a"; filename=x.exe',
                                   "probe\r\nX-Injected: 1", "日本の探査機"])
 def test_download_names_from_request_values_are_sanitised(client, name):
     # Reproduction: import a file with this mission name, then export it. The name went

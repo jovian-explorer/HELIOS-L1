@@ -65,6 +65,8 @@ async function loadMLForecast() {
     }
     const state = document.getElementById('forecast-newell-state');
     if (state) state.innerText = 'No solar wind data';
+    // An empty chart, marked "No data to show" (the canvas stayed blank, or kept an earlier trajectory).
+    renderForecastChart([], []);
   }
 }
 

@@ -94,18 +94,15 @@ class SatelliteComparator:
         mae = float(np.mean(np.abs(diff)))
         bias = float(np.mean(diff))
 
-        # Pearson r
-        corr_matrix = np.corrcoef(series_a, series_b)
-        # A constant series has no correlation: None, not 0 (which reads as "measured to disagree").
-        r = float(corr_matrix[0, 1]) if not np.isnan(corr_matrix[0, 1]) else None
-        r2 = float(r ** 2) if r is not None else None
+        # Pearson r with a 95 % interval allowing for autocorrelation; None for a constant series
+        # (not 0, which reads as "measured to disagree"; np.corrcoef warned and gave NaN).
+        corr = correlation(series_a, series_b)
+        r = corr["r"]
+        r2 = r ** 2 if r is not None else None
+        # Linear calibration A = slope * B + intercept: undefined when B does not vary (the fit
+        # was "poorly conditioned" and its numbers meaningless).
+        slope, intercept = (np.polyfit(series_b, series_a, 1) if np.std(series_b) > 0 else (None, None))
 
-        # Linear regression calibration: A = slope * B + intercept
-        p = np.polyfit(series_b, series_a, 1)
-        slope = float(p[0])
-        intercept = float(p[1])
-
-        corr = correlation(series_a, series_b)  # 95 % interval allowing for autocorrelation
         return {
             "correlation_r": round(r, 4) if r is not None else None,
             "correlation_ci95": [round(v, 4) for v in corr["ci95"]] if corr["ci95"] else None,
@@ -114,8 +111,8 @@ class SatelliteComparator:
             "rmse": round(rmse, 3),
             "mae": round(mae, 3),
             "bias": round(bias, 3),
-            "slope": round(slope, 4),
-            "intercept": round(intercept, 3)
+            "slope": round(float(slope), 4) if slope is not None else None,
+            "intercept": round(float(intercept), 3) if intercept is not None else None
         }
 
     @staticmethod

@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.3", "pillow>=9.5"]
+dev = ["pytest>=7.3", "pillow>=9.5", "httpx2>=2.0"]  # httpx2: the client of starlette.testclient (httpx there is deprecated)
 build = ["pyinstaller>=6.0"]
 solar = ["sunpy[net]>=6.0", "sunkit-magex>=1.0"]
 

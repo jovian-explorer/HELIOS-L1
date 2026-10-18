@@ -1637,7 +1637,7 @@ async function runComparison() {
     if (lagCiEl) lagCiEl.innerText = lagCi ? `95 %: ${lagCi[0]} to ${lagCi[1]} min` : '';
     const rCiEl = document.getElementById('stat-r-ci');
     if (rCiEl) rCiEl.innerText = m.correlation_ci95 ? `95 %: ${m.correlation_ci95[0]} to ${m.correlation_ci95[1]}` : (m.n_eff !== undefined ? 'too few independent samples' : '');
-    document.getElementById('stat-fit').innerText = `A = ${m.slope}*B ${m.intercept >= 0 ? '+' : ''}${m.intercept}`;
+    document.getElementById('stat-fit').innerText = m.slope == null ? 'n/a (B does not vary)' : `A = ${m.slope}*B ${m.intercept >= 0 ? '+' : ''}${m.intercept}`;
 
     // Update Spatial Baseline & Phase Delay HUD
     const base = comp.spatial_baseline || {};

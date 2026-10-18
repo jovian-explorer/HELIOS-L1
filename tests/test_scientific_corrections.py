@@ -811,3 +811,15 @@ def test_cross_correlation_of_a_constant_series_has_no_lag():
     assert res["optimal_lag_minutes"] is None and res["max_correlation"] is None and "not vary" in res["note"]
     short = SatelliteComparator.cross_correlation_lag(np.arange(10.0), np.arange(10.0), max_lags=24)
     assert short["optimal_lag_minutes"] is None and "fewer than 48 samples" in short["note"]
+
+
+def test_comparator_metrics_of_a_constant_series_are_undefined_without_warnings():
+    # A constant B made np.corrcoef divide by zero and np.polyfit warn "poorly conditioned"; the fit
+    # numbers it returned were shown as a calibration.
+    import warnings
+    import numpy as np
+    from helios.core.comparator import SatelliteComparator
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        m = SatelliteComparator.compute_metrics(np.linspace(1.0, 5.0, 50), np.full(50, 3.0))
+    assert m["correlation_r"] is None and m["slope"] is None and m["intercept"] is None and m["rmse"] > 0

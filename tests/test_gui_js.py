@@ -284,7 +284,7 @@ def test_tailwind_css_is_built_and_current():
     assert "tailwindcss v3.4.17 | MIT License" in css
     assert f"inputs-sha256: {build_css.inputs_digest()}" in css, \
         "css/tailwind.css is out of date: run python scripts/build_css.py"
-    for cls in (".bg-space-950", ".border-amber-900\/40", ".gap-x-2", ".space-x-3\.5"):
+    for cls in (".bg-space-950", r".border-amber-900\/40", ".gap-x-2", r".space-x-3\.5"):
         assert cls in css
 
 
@@ -671,3 +671,10 @@ console.log(JSON.stringify([liveStreamLabel(['SOLAR1']), liveStreamLabel(['DSCOV
     assert json.loads(res.stdout) == ["NOAA real-time L1 (SOLAR1)", "NOAA real-time L1 (DSCOVR/SOLAR1)", "NOAA real-time L1 stream"]
     html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")
     assert "DSCOVR (Sun-Earth L1)" not in html and html.count('<option value="DSCOVR">NOAA real-time L1 stream</option>') == 5
+
+
+def test_failed_forecast_clears_the_chart():
+    # When the forecast failed the chart area stayed blank, or kept the previous trajectory.
+    src = (APP_JS.parent / "forecast.js").read_text(encoding="utf-8")
+    catch = src[src.index("} catch (err) {", src.index("async function loadMLForecast")):]
+    assert "renderForecastChart([], [])" in catch[:catch.index("\n}\n")]

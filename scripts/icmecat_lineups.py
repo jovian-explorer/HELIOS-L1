@@ -3,13 +3,14 @@ Build tests/data/icmecat_lineups.json, the inputs of two reproductions in tests/
 
 * the spacecraft positions of the multipoint ICME list of Moestl et al. (2022, ApJL 924, L6, Table 1;
   arXiv:2109.07200): HELIOS-L1's SPICE positions (GSE vectors from the Sun and the Sun's longitude)
-  at each in situ arrival at Parker Solar Probe, Solar Orbiter, STEREO-A and Wind;
-  and, for the PSP and Solar Orbiter rows, at the magnetic obstacle start of the same ICMEs in ICMECAT;
+  at each in situ arrival at Parker Solar Probe, Solar Orbiter, BepiColombo, STEREO-A and Wind;
+  and, for the PSP, Solar Orbiter and BepiColombo rows, at the magnetic obstacle start of the same ICMEs in ICMECAT;
 * ICME lineups in the HELIO4CAST ICMECAT (Moestl et al. 2017, 2020; figshare doi:10.6084/m9.figshare.6356420,
   MIT licence): every ICME at PSP or Solar Orbiter inside 0.9 AU with a mean ICME speed, paired with the
-  one ICME at Wind or STEREO-A within 10 deg of HEEQ longitude whose start implies a transit speed of
+  one ICME at Wind, STEREO-A or BepiColombo within 10 deg of HEEQ longitude whose start implies a transit speed of
   250-1000 km/s (pairs with two such candidates are left out), with the SPICE distances of both
-  spacecraft at the ICME starts.
+  spacecraft at the ICME starts and the mean measured solar wind speed at the outer spacecraft in the
+  24 h before its ICME start (OMNI for Wind, PLASTIC for STEREO-A; none for BepiColombo).
 
     python scripts/icmecat_lineups.py              # latest ICMECAT version on figshare
     python scripts/icmecat_lineups.py icmecat.csv  # a downloaded HELIO4CAST_ICMECAT_v*.csv
@@ -21,7 +22,7 @@ import io
 import json
 import sys
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -34,10 +35,18 @@ from helios.core.spice_engine import get_spice_engine  # noqa: E402
 
 ARTICLE = "https://api.figshare.com/v2/articles/6356420"
 OUT = ROOT / "tests" / "data" / "icmecat_lineups.json"
-EPHEMERIS = {"PSP": "PARKER_SOLAR_PROBE", "SolarOrbiter": "SOLAR_ORBITER", "STEREO-A": "STEREO_A", "Wind": "WIND"}
+EPHEMERIS = {"PSP": "PARKER_SOLAR_PROBE", "SolarOrbiter": "SOLAR_ORBITER", "STEREO-A": "STEREO_A", "Wind": "WIND",
+             "BepiColombo": "BEPICOLOMBO"}
+# Solar wind upstream of the outer spacecraft (HELIOS-L1 archive): OMNI for Wind, PLASTIC for STEREO-A;
+# BepiColombo has no public solar wind speed.
+UPSTREAM = {"Wind": "OMNI", "STEREO-A": "STEREO_A"}
+UPSTREAM_HOURS = 24
 # Moestl et al. (2022), Table 1: in situ arrivals at the spacecraft HELIOS-L1 has an ephemeris for
 # (time UT, ICMECAT spacecraft name, R in AU, HEEQ longitude in deg).
 TABLE1 = [("2020-04-19 05:06", "SolarOrbiter", 0.808, -4.0), ("2020-04-20 01:34", "Wind", 0.996, 0.2),
+          ("2020-04-20 03:09", "BepiColombo", 1.011, -1.3), ("2020-05-29 15:27", "BepiColombo", 0.977, -5.2),
+          ("2020-06-29 09:44", "BepiColombo", 0.881, -3.9), ("2020-10-08 10:27", "BepiColombo", 0.694, 79.5),
+          ("2020-10-10 04:07", "BepiColombo", 0.698, 80.4),
           ("2020-05-28 12:45", "SolarOrbiter", 0.564, 28.2), ("2020-05-29 21:20", "Wind", 1.005, -0.2),
           ("2020-06-03 07:54", "STEREO-A", 0.965, -71.5), ("2020-06-25 11:39", "PSP", 0.523, 19.9),
           ("2020-06-30 01:12", "Wind", 1.007, -0.2), ("2020-07-09 14:17", "STEREO-A", 0.962, -68.0),
@@ -62,6 +71,22 @@ def position(craft: str, t: datetime):
     return [round(float(x), 1) for x in r], round(earth["heliocentric"]["ecliptic_longitude_deg"] + 180.0, 5)
 
 
+def upstream_speed(craft: str, t: datetime):
+    """Mean measured solar wind speed (km/s) at the outer spacecraft in the UPSTREAM_HOURS before the ICME
+    start; None without data for at least half of them."""
+    import asyncio
+    from helios.core.archive import ArchiveClient
+    from helios.core.downloader import DataDownloader
+    mission = UPSTREAM.get(craft)
+    if mission is None:
+        return None
+    t = t.replace(tzinfo=timezone.utc)
+    dl = DataDownloader()
+    res = asyncio.run(ArchiveClient(dl.fetch_text, dl.cache_dir).fetch_mission(mission, t - timedelta(hours=UPSTREAM_HOURS), t))
+    v = res["frame"]["speed"].dropna() if "speed" in res["frame"] else []
+    return round(float(v.mean()), 1) if len(v) >= 30 * UPSTREAM_HOURS else None
+
+
 def icmecat_rows(path=None):
     if path:
         text = Path(path).read_text(encoding="utf-8")
@@ -78,10 +103,10 @@ def lineups(rows):
     when = lambda r: datetime.strptime(r["icme_start_time"], "%Y-%m-%dT%H:%MZ")
     inner = [r for r in rows if r["sc_insitu"] in ("PSP", "SolarOrbiter") and num(r, "mo_sc_heliodistance") < 0.9
              and np.isfinite(num(r, "icme_speed_mean"))]
-    outer = [r for r in rows if r["sc_insitu"] in ("Wind", "STEREO-A")]
+    outer = [r for r in rows if r["sc_insitu"] in ("Wind", "STEREO-A", "BepiColombo")]
     pairs = []
     for a in inner:
-        for craft in ("Wind", "STEREO-A"):
+        for craft in ("Wind", "STEREO-A", "BepiColombo"):
             cands = []
             for b in (b for b in outer if b["sc_insitu"] == craft):
                 dlon = (num(b, "mo_sc_long_heeq") - num(a, "mo_sc_long_heeq") + 180.0) % 360.0 - 180.0
@@ -98,7 +123,8 @@ def lineups(rows):
                           "inner_start": when(a).strftime("%Y-%m-%d %H:%M"), "outer_start": when(b).strftime("%Y-%m-%d %H:%M"),
                           "inner_speed_kms": num(a, "icme_speed_mean"), "dlon_deg": round(dlon, 1),
                           "inner_r_au": round(float(np.linalg.norm(ra)) / AU_KM, 5),
-                          "outer_r_au": round(float(np.linalg.norm(rb)) / AU_KM, 5)})
+                          "outer_r_au": round(float(np.linalg.norm(rb)) / AU_KM, 5),
+                          "outer_upstream_speed_kms": upstream_speed(craft, when(b))})
     return pairs
 
 
@@ -115,7 +141,7 @@ def main():
     mo_start = []
     for r in rows:
         start = r["icme_start_time"].replace("T", " ").rstrip("Z")
-        if r["sc_insitu"] in ("PSP", "SolarOrbiter") and any(start == t and r["sc_insitu"] == c for t, c, _, _ in TABLE1):
+        if r["sc_insitu"] in ("PSP", "SolarOrbiter", "BepiColombo") and any(start == t and r["sc_insitu"] == c for t, c, _, _ in TABLE1):
             tm = datetime.strptime(r["mo_start_time"], "%Y-%m-%dT%H:%MZ")
             v, sun_lon = position(r["sc_insitu"], tm)
             mo_start.append({"time": tm.strftime("%Y-%m-%d %H:%M"), "spacecraft": r["sc_insitu"], "id": r["icmecat_id"],

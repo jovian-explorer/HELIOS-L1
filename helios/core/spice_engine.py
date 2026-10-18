@@ -134,8 +134,9 @@ EPHEMERIS_ONLY = {
     "WIND": ("WIND", "Sun-Earth L1 Lissajous orbit"), "SOHO": ("SOHO", "Sun-Earth L1 halo orbit"),
     "ADITYA_L1": ("Aditya-L1", "Sun-Earth L1 halo orbit"), "SWFO_L1": ("SWFO-L1 (SOLAR-1)", "Sun-Earth L1 orbit"),
     "IMAP": ("IMAP", "Sun-Earth L1 orbit"), "GOES_16": ("GOES-16", "Geostationary Orbit"),
+    "BEPICOLOMBO": ("BepiColombo", "Heliocentric cruise to Mercury"),
 }
-ALIASES = {"PSP": "PARKER_SOLAR_PROBE", "PARKER": "PARKER_SOLAR_PROBE", "SOLO": "SOLAR_ORBITER",
+ALIASES = {"BEPI": "BEPICOLOMBO", "PSP": "PARKER_SOLAR_PROBE", "PARKER": "PARKER_SOLAR_PROBE", "SOLO": "SOLAR_ORBITER",
            "STEREOA": "STEREO_A", "STEREO": "STEREO_A", "ADITYAL1": "ADITYA_L1", "ADITYA": "ADITYA_L1",
            "GOES16": "GOES_16", "GOES": "GOES_19", "GOES19": "GOES_19", "GOES_EAST": "GOES_19",
            "GOES18": "GOES_18", "GOES_WEST": "GOES_18", "SOLAR1": "SWFO_L1", "SOLAR_1": "SWFO_L1",
@@ -526,7 +527,7 @@ class SpiceEphemerisEngine:
         gse_pos_km = np.zeros(3)
         gse_vel_kms = np.zeros(3)
         geocentric = target_id in ("MOON", "GOES_16", "GOES_18", "GOES_19")
-        l1_craft = target_id in EPHEMERIS_ONLY and not geocentric
+        l1_craft = "L1" in EPHEMERIS_ONLY.get(target_id, ("", ""))[1]  # not BepiColombo (heliocentric)
         if target_id == "EARTH":
             display_name, orbit_type, primary_body = "Earth", "Planetary Orbit", "SUN"
             pos_km, vel_kms = pos_earth, vel_earth

@@ -35,7 +35,7 @@ NAIF_IDS: Dict[str, str] = {
     "EARTH": "399", "MOON": "301", "MERCURY": "199", "VENUS": "299", "MARS": "4",
     "PARKER_SOLAR_PROBE": "-96", "SOLAR_ORBITER": "-144", "STEREO_A": "-234",
     "DSCOVR": "-78", "ACE": "-92", "WIND": "-8", "SOHO": "-21", "ADITYA_L1": "-156",
-    "SWFO_L1": "-231", "IMAP": "-43",
+    "SWFO_L1": "-231", "IMAP": "-43", "BEPICOLOMBO": "-121",
     "GOES_16": "-141866", "GOES_18": "-151850", "GOES_19": "-160133",
 }
 PLANETARY = {"399", "301", "199", "299", "4"}
