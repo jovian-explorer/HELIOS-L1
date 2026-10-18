@@ -31,7 +31,7 @@ from helios.config import (
     get_system_settings, update_system_settings, run_in_workers, NOAA_SWPC_ENDPOINTS
 )
 from helios import config as helios_config
-from helios.core import cme_tracking, corona_link, event_catalogs, icme_catalog, occultation, pfss_model, shock_catalog, solar_images
+from helios.core import cme_tracking, corona_link, event_catalogs, icme_catalog, occultation, pfss_model, replay, shock_catalog, solar_images
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
 from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
@@ -509,6 +509,24 @@ async def get_archive_catalog():
             for key, src in ARCHIVE_SOURCES.items()
         },
     }
+
+
+@app.get("/api/replay")
+async def get_replay(start: str = Query(..., description="UTC start, ISO 8601"),
+                     end: str = Query(..., description="UTC end (exclusive), ISO 8601")):
+    """Event replay: solar wind speed and |B| of WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter and Parker
+    Solar Probe on one time grid, their Earth-fixed HEE positions, and each one's first speed jump of 100 km/s."""
+    t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
+    if t1 <= t0:
+        raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
+    if t1 - t0 > timedelta(hours=replay.MAX_HOURS):
+        raise HTTPException(status_code=422, detail=f"Replays are limited to {replay.MAX_HOURS} hours.")
+    out = await replay.measurements(downloader, t0, t1)
+    for c in out["craft"]:
+        c["first_speed_jump"] = replay.first_jump(out["times"], c["speed_kms"])
+    out["positions"] = await asyncio.to_thread(replay.positions, get_spice_engine(), t0, t1)
+    out["frame"] = "HEE (X Sun to Earth, Z ecliptic north), AU; positions from the SPICE ephemeris (JPL Horizons)"
+    return out
 
 
 @app.get("/api/archive/{mission_id}")

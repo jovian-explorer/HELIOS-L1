@@ -1541,6 +1541,36 @@
     <!-- ========================================================================= -->
     <!-- TAB 7: CUSTOM INGESTION & OMNI STUDIO -->
     <!-- ========================================================================= -->
+    <section id="tab-replay" class="tab-content hidden space-y-6">
+      <div class="bg-space-800/80 p-5 rounded-xl border border-slate-800 space-y-3">
+        <div>
+          <h3 class="font-bold text-sm text-slate-200">Event Replay: where the spacecraft were and what each measured</h3>
+          <p class="text-[11px] text-slate-300">In plain words: watch a disturbance pass the spacecraft one after another. The map shows the Sun, Earth and the solar wind spacecraft as seen from above the ecliptic, turning with Earth; the plots below show the solar wind speed and magnetic field strength each one measured, with a line at the time on the map.</p>
+        </div>
+        <div class="flex flex-wrap items-end gap-3 text-xs">
+          <label class="flex flex-col text-slate-400">Start (UTC)
+            <input type="datetime-local" id="replay-start" class="bg-space-900 text-slate-200 border border-slate-700 rounded px-2 py-1">
+          </label>
+          <label class="flex flex-col text-slate-400">End (UTC, at most 72 h later)
+            <input type="datetime-local" id="replay-end" class="bg-space-900 text-slate-200 border border-slate-700 rounded px-2 py-1">
+          </label>
+          <button onclick="loadReplay()" class="px-3 py-1.5 rounded-lg bg-sky-600 text-white font-bold">Load</button>
+          <button onclick="loadReplay('jan2026')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Storm of 18-20 Jan 2026</button>
+          <button id="replay-play" onclick="toggleReplayPlay()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Play</button>
+          <button onclick="saveReplayPng()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Save plots as PNG</button>
+        </div>
+        <input type="range" id="replay-slider" min="0" max="0" value="0" oninput="setReplayIndex(parseInt(this.value, 10))" class="w-full" aria-label="Replay time">
+        <p id="replay-note" class="text-xs text-slate-400">Choose an interval or the January 2026 storm. Data: NASA CDAWeb (WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter, Parker Solar Probe); positions from JPL Horizons (SPICE).</p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="h-96 w-full bg-space-900/60 rounded-lg border border-slate-800"><canvas id="replay-canvas" class="w-full h-full block"></canvas></div>
+          <div class="space-y-2">
+            <div class="h-48 w-full"><canvas id="chart-replay-speed"></canvas></div>
+            <div class="h-48 w-full"><canvas id="chart-replay-bt"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="tab-import" class="tab-content hidden space-y-6">
       <!-- Ingestion Studio Control Panel -->
       <div class="glass-panel p-6 space-y-5">
@@ -3479,6 +3509,7 @@
   <script src="/static/js/forecast.js"></script>
   <script src="/static/js/event_analysis.js"></script>
   <script src="/static/js/statistics.js"></script>
+  <script src="/static/js/replay.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>

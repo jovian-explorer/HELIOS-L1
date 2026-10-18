@@ -78,6 +78,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 6. **Heliospheric Parker Spiral Field Modeling:**
    * Evaluates Archimedean magnetic spiral geometry ($r - r_0 = -\frac{V_{sw}}{\Omega_\odot} (\phi - \phi_0)$) and pitch angles ($\psi$).
    * Identifies the "well-connected" solar disk footpoint longitude for solar energetic particle (SEP) events.
+   * **Event replay** (up to 72 h): WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter and Parker Solar Probe on a map in the Earth-fixed HEE frame (JPL Horizons positions) moving with a time slider or *Play*, next to the solar wind speed and |B| each measured (NASA CDAWeb) with a time cursor; one click for the storm of 18-20 January 2026, whose shock passed Solar Orbiter about 7 hours before L1; the plots save as PNG (`GET /api/replay`).
 
 7. **NASA OMNI Ingestion Studio & Shock Screen:**
    * Ingests custom CSV and NASA OMNI high-resolution telemetry.
