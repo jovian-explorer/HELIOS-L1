@@ -243,3 +243,31 @@ def test_icme_arrivals_from_psp_and_solar_orbiter_lineups_in_icmecat():
     assert len(sheath) == 17
     assert late(lambda p: p["inner_speed_kms"]) == pytest.approx(2.2, abs=0.05)
     assert late(lambda p: p["inner_sheath_speed_kms"]) == pytest.approx(2.6, abs=0.05)
+
+
+def test_icme_lineups_started_from_the_shock_speed_measured_at_the_inner_spacecraft():
+    """The 8 lineup pairs whose inner ICME starts with a clear fast forward shock in HELIOS-L1's own shock
+    analysis of the PSP or Solar Orbiter field and plasma (density and |B| ratios >= 1.2, three or more
+    plasma samples a side; scripts/icmecat_lineups.py). Where the IPShocks database (doi:10.5281/zenodo.19730292)
+    lists the Solar Orbiter shock the speeds agree within its errors (538 +- 27, 756 +- 52, 393 +- 60 km/s).
+    Drag-based model with the app's defaults to the outer spacecraft: from the mean ICME speed 5.0 h late
+    (mean absolute error 5.0 h); from the shock speed along the normal 3.7 h late but MAE 5.8 h; from the
+    radial speed of the planar front (shock speed / |n_R|) 1.4 h late, MAE 4.5 h. The shock speed removes
+    part of the late bias; the scatter stays."""
+    import statistics
+    from helios.core.constants import AU_KM
+    from helios.core.coronagraph import DBM_GAMMA_PER_KM, DBM_W_KMS, dbm_transit_seconds
+    pairs = [p for p in _lineups()["pairs"] if p["inner_shock_speed_kms"]]
+    assert len(pairs) == 8
+    v = {p["inner_start"][:10]: p["inner_shock_speed_kms"] for p in pairs}
+    for day, (listed, err) in {"2023-12-01": (538.1, 27.5), "2022-03-11": (755.9, 51.7), "2021-10-30": (392.7, 59.7)}.items():
+        assert abs(v[day] - listed) <= err
+
+    def errors(speed):
+        return [(dbm_transit_seconds(p["inner_r_au"] * AU_KM, speed(p), DBM_W_KMS, DBM_GAMMA_PER_KM, p["outer_r_au"] * AU_KM)
+                 - (datetime.fromisoformat(p["outer_start"]) - datetime.fromisoformat(p["inner_start"])).total_seconds())
+                / 3600.0 for p in pairs]
+    for speed, me, mae in ((lambda p: p["inner_speed_kms"], 5.0, 5.0), (lambda p: p["inner_shock_speed_kms"], 3.7, 5.8),
+                           (lambda p: p["inner_shock_speed_kms"] / p["inner_shock_normal_r"], 1.4, 4.5)):
+        e = errors(speed)
+        assert statistics.mean(e) == pytest.approx(me, abs=0.05) and statistics.mean(map(abs, e)) == pytest.approx(mae, abs=0.05)

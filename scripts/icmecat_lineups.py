@@ -11,7 +11,9 @@ Build tests/data/icmecat_lineups.json, the inputs of two reproductions in tests/
   250-1000 km/s (pairs with two such candidates are left out), with the SPICE distances of both
   spacecraft at the ICME starts and the mean measured solar wind speed at the outer spacecraft in the
   24 h before its ICME start (OMNI for Wind, PLASTIC for STEREO-A; none for BepiColombo), and the
-  inner ICME's mean sheath speed where ICMECAT has one.
+  inner ICME's mean sheath speed where ICMECAT has one, and the shock speed and normal that HELIOS-L1's
+  Event Analysis measures at the inner ICME start (PSP SPAN-I or Solar Orbiter SWA-PAS; kept only for a fast
+  forward shock with density and |B| ratios of at least 1.2 and three or more plasma samples on each side).
 
     python scripts/icmecat_lineups.py              # latest ICMECAT version on figshare
     python scripts/icmecat_lineups.py icmecat.csv  # a downloaded HELIO4CAST_ICMECAT_v*.csv
@@ -88,6 +90,29 @@ def upstream_speed(craft: str, t: datetime):
     return round(float(v.mean()), 1) if len(v) >= 30 * UPSTREAM_HOURS else None
 
 
+def inner_shock(craft: str, t: datetime):
+    """(shock speed in km/s, radial component of the normal) of a clear fast forward shock at the inner ICME
+    start from HELIOS-L1's Event Analysis on the spacecraft's own field and plasma; (None, None) otherwise."""
+    import asyncio
+    import pandas as pd
+    from helios.core.downloader import DataDownloader
+    from helios.core.event_analysis import analyze_shock
+    t = t.replace(tzinfo=timezone.utc)
+    d = asyncio.run(DataDownloader().events.fetch({"PSP": "PSP", "SolarOrbiter": "SOLO"}[craft],
+                                                   t - timedelta(hours=2), t + timedelta(hours=2)))
+    if d["field"] is None or d["plasma"] is None:
+        return None, None
+    try:
+        a = analyze_shock(d["field"], d["plasma"], pd.Timestamp(t))
+    except ValueError:  # too few samples
+        return None, None
+    m = a["methods"][a["preferred_method"]]
+    if (a["shock_type"] != "FF" or min(a["density_ratio"], a["field_ratio"]) < 1.2 or m["shock_speed_kms"] is None
+            or min(a["upstream"]["plasma_samples"], a["downstream"]["plasma_samples"]) < 3):
+        return None, None
+    return round(m["shock_speed_kms"], 1), round(abs(m["normal_gse"][0]), 3)
+
+
 def icmecat_rows(path=None):
     if path:
         text = Path(path).read_text(encoding="utf-8")
@@ -120,13 +145,15 @@ def lineups(rows):
             b, dlon = cands[0]
             ra, _ = position(a["sc_insitu"], when(a))
             rb, _ = position(craft, when(b))
+            v_sh, n_r = inner_shock(a["sc_insitu"], when(a))
             pairs.append({"inner": a["icmecat_id"], "outer": b["icmecat_id"],
                           "inner_start": when(a).strftime("%Y-%m-%d %H:%M"), "outer_start": when(b).strftime("%Y-%m-%d %H:%M"),
                           "inner_speed_kms": num(a, "icme_speed_mean"), "dlon_deg": round(dlon, 1),
                           "inner_sheath_speed_kms": num(a, "sheath_speed_mean") if np.isfinite(num(a, "sheath_speed_mean")) else None,
                           "inner_r_au": round(float(np.linalg.norm(ra)) / AU_KM, 5),
                           "outer_r_au": round(float(np.linalg.norm(rb)) / AU_KM, 5),
-                          "outer_upstream_speed_kms": upstream_speed(craft, when(b))})
+                          "outer_upstream_speed_kms": upstream_speed(craft, when(b)),
+                          "inner_shock_speed_kms": v_sh, "inner_shock_normal_r": n_r})
     return pairs
 
 
