@@ -85,6 +85,14 @@ def test_aurora_map_label_uses_the_server_boundary():
     assert "b.equatorward_midnight_lat" in APP_JS.read_text(encoding="utf-8")
 
 
+def test_aurora_regions_note_follows_the_data():
+    """The visibility card kept its generic sentence when the oval could not be drawn (offline: 503), and gave
+    no horizon latitude; it now says why and where the aurora is low on the horizon (7 deg, as for OVATION)."""
+    src = APP_JS.read_text(encoding="utf-8")
+    assert "regNote.innerText = `No oval to show: ${apiErrorText(data, res)}`" in src
+    assert "(b.equatorward_midnight_lat - 7).toFixed(1)" in src
+
+
 def test_drap_power_loss_text_is_computed():
     src = APP_JS.read_text(encoding="utf-8")
     html = (APP_JS.parent.parent / "index.html").read_text(encoding="utf-8")

@@ -175,6 +175,12 @@ def test_weak_jump_and_short_windows_are_flagged():
     assert any("Density jump" in w or "poorly constrained" in w for w in res["warnings"])
     with pytest.raises(ValueError):
         analyze_shock(field, plasma, "2015-03-17 03:45", 0.5, 0.5, refine=False)
+    # Coarse plasma (as PSP SPAN-I away from perihelion): the warning names the window that holds three samples.
+    res = analyze_shock(field, plasma.iloc[::3], "2015-03-17 04:00:04", 10, 10, refine=False)
+    assert any(w.endswith("min hold three).") for w in res["warnings"] if w.startswith("Fewer than 3"))
+    dense = plasma.copy()
+    dense.loc[dense.index > pd.Timestamp("2015-03-17 04:00:04", tz="UTC"), "n"] *= 5
+    assert any("factor 4" in w for w in analyze_shock(field, dense, "2015-03-17 04:00:04", 10, 10, refine=False)["warnings"])
 
 
 def test_minimum_variance_recovers_known_frame_and_errors():

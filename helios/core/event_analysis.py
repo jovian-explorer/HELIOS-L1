@@ -819,8 +819,15 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
                             "(as the IPShocks database does for STEREO), so the VC and mixed-mode normals lean radial.")
     if density_ratio < 1.2:
         warnings.append(f"Density jump {density_ratio:.2f} is too small for a reliable mass-flux shock speed.")
+    elif density_ratio > 4.0:
+        warnings.append(f"Density jump {density_ratio:.1f}: more than the factor 4 a shock can compress (adiabatic "
+                        "index 5/3); the plasma moments are suspect.")
     if min(k_up[1], k_dn[1]) < 3:
-        warnings.append("Fewer than 3 plasma samples on one side: the averages rest on very few spectra.")
+        # Coarse plasma (Parker Solar Probe away from perihelion: about 3.7 min) needs wider windows.
+        cadence = plasma.index.to_series().diff().median().total_seconds() / 60.0 if len(plasma) > 1 else 0.0
+        warnings.append("Fewer than 3 plasma samples on one side: the averages rest on very few spectra"
+                        + (f" (plasma every {cadence:.1f} min; windows of {math.ceil(3.5 * cadence)} min hold three)."
+                           if 3.5 * cadence > min(upstream_minutes, downstream_minutes) else "."))
     if PREFERRED_METHOD in methods:
         # The methods that use the velocity jump (VC, MX1-3) should agree; the magnetic
         # coplanarity normal alone degenerates for quasi-perpendicular and quasi-parallel

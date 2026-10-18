@@ -1805,8 +1805,10 @@ async function loadAuroralForecast() {
     const data = await res.json();
     if (!current()) return;
     const noteEl = document.getElementById('aurora-oval-note');
+    const regNote = document.getElementById('aurora-regions-note');
     if (!res.ok) {
       if (noteEl) noteEl.innerText = apiErrorText(data, res);
+      if (regNote) regNote.innerText = `No oval to show: ${apiErrorText(data, res)}`;
       return;
     }
     const b = data.boundaries;
@@ -1826,9 +1828,9 @@ async function loadAuroralForecast() {
     document.getElementById('aurora-power-gw').innerText = b.hemispheric_power_gw !== null && b.hemispheric_power_gw !== undefined ? `${b.hemispheric_power_gw} GW` : '--- GW';
     document.getElementById('aurora-flank-lat').innerText = `${b.equatorward_flanks_lat}°`;
 
-    const regNote = document.getElementById('aurora-regions-note');
     if (regNote && b.equatorward_midnight_lat !== undefined) {
-      regNote.innerText = `Equatorward boundary of the oval at magnetic midnight: ${b.equatorward_midnight_lat}° corrected geomagnetic latitude (Starkov 1994).` + (b.model_limit ? ` ${b.model_limit}` : '');
+      // Aurora 120 km up stands 5° above the horizon from about 7° of latitude away (user guide, OVATION).
+      regNote.innerText = `Equatorward boundary of the oval at magnetic midnight: ${b.equatorward_midnight_lat}° corrected geomagnetic latitude (Starkov 1994). Overhead there; low on the poleward horizon down to about ${(b.equatorward_midnight_lat - 7).toFixed(1)}°.` + (b.model_limit ? ` ${b.model_limit}` : '');
     }
 
     if (chartDst && data.dst_evolution) {
