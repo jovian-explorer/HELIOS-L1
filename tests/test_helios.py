@@ -117,10 +117,6 @@ def test_auroral_model(omni_l1):
     assert "dst_predicted_nt" in dst_sim[-1]
 
 def test_coronagraph_kinematics():
-    feeds = CoronagraphAnalyzer.get_coronagraph_feeds()
-    assert "SOHO_LASCO_C2" in feeds
-    assert "SOHO_LASCO_C3" in feeds
-
     # Test CME moving from 2.5 to 6.0 R_sun in 30 minutes
     kin = CoronagraphAnalyzer.calculate_cme_kinematics(r1_rsun=2.5, r2_rsun=6.0, dt_minutes=30.0)
     assert kin["initial_speed_kms"] > 1000.0
@@ -179,8 +175,6 @@ def test_api_endpoints(omni_l1):
     assert "boundaries" in res.json()
 
     # 6. Coronagraph
-    res = client.get("/api/coronagraph/feeds")
-    assert res.status_code == 200
     kin_res = client.post("/api/coronagraph/kinematics", json={"r1_rsun": 2.0, "r2_rsun": 5.0, "dt_minutes": 25.0})
     assert kin_res.status_code == 200
     assert kin_res.json()["initial_speed_kms"] > 0
@@ -319,9 +313,9 @@ def test_scientific_references_and_data_provenance():
         assert r["doi_url"] is None or r["doi_url"].startswith("https://doi.org/")
 
     # 2. Data Providers catalog
-    prov_res = client.get("/api/providers")
+    prov_res = client.get("/api/references")
     assert prov_res.status_code == 200
-    provs = prov_res.json()["providers"]
+    provs = prov_res.json()["data_providers"]
     assert len(provs) >= 6
     prov_ids = [p["id"] for p in provs]
     assert "NOAA_SWPC" in prov_ids
@@ -335,35 +329,12 @@ def test_scientific_references_and_data_provenance():
         assert "terms_of_use" in p
         assert "url" in p
 
-    # 3. Parameter definitions handbook
-    param_res = client.get("/api/parameters")
-    assert param_res.status_code == 200
-    params = param_res.json()["parameters"]
-    assert "speed" in params
-    assert "bz_gsm" in params
-    assert "bt" in params
-    assert "density" in params
-    assert "pdyn" in params
-    assert "epsilon" in params
-    assert "standoff" in params
-    assert "polar_cap_potential" in params
-    assert "ae_index" in params
-
-    # 4. Individual parameter detail and aliases
-    speed_res = client.get("/api/parameters/speed")
-    assert speed_res.status_code == 200
-    assert speed_res.json()["unit"] == "km/s"
-
-    bz_res = client.get("/api/parameters/bz_gsm")
-    assert bz_res.status_code == 200
-    assert bz_res.json()["unit"] == "nT"
-
-    alias_res = client.get("/api/parameters/rmp")
-    assert alias_res.status_code == 200
-    assert "Subsolar Magnetopause" in alias_res.json()["name"]
-
-    not_found = client.get("/api/parameters/unknown_param_xyz")
-    assert not_found.status_code == 404
+    # 3. Parameter definitions handbook (part of /api/references)
+    params = prov_res.json()["parameter_definitions"]
+    for key in ("speed", "bz_gsm", "bt", "density", "pdyn", "epsilon", "standoff", "polar_cap_potential", "ae_index"):
+        assert key in params
+    assert params["speed"]["unit"] == "km/s" and params["bz_gsm"]["unit"] == "nT"
+    assert client.get("/api/parameters").status_code == 404  # removed: the same table is in /api/references
 
 def test_solar_cycle_progression():
     from helios.core.solar_cycle import SolarCycleEngine
@@ -769,7 +740,7 @@ def test_parker_and_gic_inputs_are_validated():
     from fastapi.testclient import TestClient
     from helios.api.server import app
     c = TestClient(app, base_url=LOCAL)
-    assert c.get("/api/parker/spiral?speed_kms=0").status_code == 422  # used to answer a fixed 45 deg
+    assert c.get("/api/parker_spiral?speed_kms=0").status_code == 422  # used to answer a fixed 45 deg
     r = c.get("/api/gic/hazard?db_dt=100&geology=granit")
     assert r.status_code == 422 and "precambrian_shield" in r.json()["detail"]
     assert c.get("/api/gic/hazard?db_dt=-5").status_code == 422

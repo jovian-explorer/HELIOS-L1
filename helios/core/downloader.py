@@ -28,7 +28,7 @@ from helios.core.cache import cached_text
 from helios.core.science import SpaceWeatherPhysics
 from helios.core.aurora_model import AuroralModel
 from helios.core.coverage import describe as describe_coverage, records_coverage
-from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER, INDEX_COLUMNS, ArchiveClient, frame_to_records
+from helios.core.archive import ARCHIVE_SOURCES, AWAY_FROM_L1, HAPI_SERVER, INDEX_COLUMNS, ArchiveClient, frame_to_records
 from helios.core.omni_statistics import OmniHourlyClient
 from helios.core.event_analysis import EventDataClient
 
@@ -362,7 +362,7 @@ class DataDownloader:
     async def get_archive_bundle(self, mission_id: str, start: datetime, end: datetime,
                                  cadence_minutes: int = 1) -> Dict[str, Any]:
         """
-        Archive records for [start, end) from CDAWeb (WIND, ACE, DSCOVR, SOHO, STEREO-A, OMNI), as 1-minute
+        Archive records for [start, end) from CDAWeb (WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter, PSP, OMNI), as 1-minute
         means or `cadence_minutes` block averages. provenance["kind"] is "observed", or
         "unavailable" when the archive has nothing for the interval (or cannot be reached).
         """
@@ -370,8 +370,8 @@ class DataDownloader:
         if mission_id not in ARCHIVE_SOURCES:
             raise KeyError(mission_id)
         name = MISSIONS.get(mission_id, {}).get("name", mission_id)
-        # No L1-to-Earth travel time for OMNI (already at the bow shock) or STEREO-A (not at L1)
-        dist = None if mission_id in ("OMNI", "STEREO_A") else MISSIONS.get(mission_id, {}).get("orbit_distance_km", 1500000)
+        # No L1-to-Earth travel time for OMNI (already at the bow shock) or spacecraft away from L1
+        dist = None if mission_id == "OMNI" or mission_id in AWAY_FROM_L1 else MISSIONS.get(mission_id, {}).get("orbit_distance_km", 1500000)
         if start.tzinfo is None:
             start = start.replace(tzinfo=timezone.utc)
         if end.tzinfo is None:

@@ -123,7 +123,7 @@ async function loadReplay(preset) {
   const note = document.getElementById('replay-note');
   if (!start || !end) { note.innerText = 'Choose a start and an end (UTC).'; return; }
   if (replayTimer) toggleReplayPlay();
-  note.innerText = 'Loading the spacecraft data and positions (the first time for an interval can take a minute: Solar Orbiter sends plasma moments every 4 s)...';
+  note.innerText = 'Loading the spacecraft data and positions (the first time for an interval takes up to a minute: Solar Orbiter sends plasma moments every 4 s, and the ephemerides of a new month are downloaded; afterwards the days are cached)...';
   const res = await fetch(`/api/replay?start=${encodeURIComponent(start + 'Z')}&end=${encodeURIComponent(end + 'Z')}`);
   const data = await res.json();
   if (!res.ok) { note.innerText = apiErrorText(data, res); return; }

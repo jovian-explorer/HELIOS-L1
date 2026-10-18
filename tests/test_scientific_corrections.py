@@ -412,16 +412,6 @@ def test_custom_latest_is_not_an_error_before_any_import(monkeypatch):
     assert res.status_code == 200 and res.json()["status"] == "empty" and res.json()["total_records"] == 0
 
 
-def test_coronagraph_feeds_are_labelled_by_the_instrument_that_made_them():
-    """The '/SDO AIA' feeds were GOES SUVI images (at dead URLs) and 'Aditya VELC' showed LASCO C2."""
-    from helios.core.coronagraph import CoronagraphAnalyzer
-    feeds = CoronagraphAnalyzer.get_coronagraph_feeds()
-    assert "SDO_AIA_193" not in feeds
-    assert feeds["GOES_SUVI_195"]["url"].endswith("/suvi/primary/195/latest.png")
-    assert feeds["GOES_SUVI_304"]["url"].endswith("/suvi/primary/304/latest.png")
-    assert feeds["ADITYA_VELC"]["url"] is None and "PRADAN" in feeds["ADITYA_VELC"]["status"]
-
-
 def test_aditya_l1_states_why_it_is_simulated():
     """ISSDC PRADAN needs a registered login: Aditya-L1 stays simulated and says why."""
     from helios.config import MISSIONS

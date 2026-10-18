@@ -29,5 +29,16 @@ def test_grid_means_and_interval_limit():
     assert replay.on_grid(s, grid, 10) == [1.0, 6.5, None]
     from fastapi.testclient import TestClient
     from helios.api import server
-    r = TestClient(server.app, base_url="http://127.0.0.1:8765").get("/api/replay?start=2026-01-18T00:00&end=2026-01-21T00:01")
-    assert r.status_code == 422 and "72 hours" in r.json()["detail"]
+    r = TestClient(server.app, base_url="http://127.0.0.1:8765").get("/api/replay?start=2026-01-01T00:00&end=2026-01-15T00:01")
+    assert r.status_code == 422 and "14 days" in r.json()["detail"]
+
+
+def test_solar_orbiter_archive_source_gives_speed_and_kelvin():
+    """Solar Orbiter and PSP are archive missions for the replay (1-min means, cached by day): |V| and T in K."""
+    from helios.core.archive import ARCHIVE_SOURCES, EV_TO_K
+    mag, plasma = (g[0]["reduce"] for g in ARCHIVE_SOURCES["SOLO"]["groups"])
+    idx = pd.date_range("2026-01-19", periods=1, tz="UTC")
+    p = plasma(pd.DataFrame({"N": [5.0], "V_RTN_0": [300.0], "V_RTN_1": [400.0], "V_RTN_2": [0.0], "T": [10.0]}, index=idx))
+    assert p["speed"].iloc[0] == 500.0 and p["temperature"].iloc[0] == pytest.approx(10 * EV_TO_K)
+    assert mag(pd.DataFrame({"B_RTN_0": [3.0], "B_RTN_1": [0.0], "B_RTN_2": [-4.0]}, index=idx))["bt"].iloc[0] == 5.0
+    assert replay.step_minutes(pd.Timestamp("2026-01-18"), pd.Timestamp("2026-01-21")) == 10

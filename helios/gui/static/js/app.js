@@ -2603,7 +2603,7 @@ async function selectEvent(eventId) {
       activeCard.classList.add('border-sky-400', 'bg-space-800', 'ring-1', 'ring-sky-400/50');
     }
 
-    const res = await fetch(`/api/event/${eventId}`);
+    const res = await fetch(`/api/events/${eventId}`);
     const ev = await res.json();
     if (seq !== eventSelectSeq) return;
     const meta = ev.metadata;
@@ -3872,7 +3872,7 @@ function renderUserGuideTab(container) {
                 <strong class="text-sky-300">Coronal field (PFSS), Parker Spiral tab.</strong> A potential field source surface model (sunkit-magex, the successor of pfsspy; Stansby et al. 2020) of a GONG (default), ADAPT (realization 0) or HMI synoptic map (HMI comes from JSOC, which asks for a registered e-mail address). The source surface is at 2.5 R☉ unless changed. The wind now at Earth is mapped back ballistically at the speed given (Neugebauer et al. 1998): it left the source surface at the sub-Earth Carrington longitude plus Ω(1 AU − r_ss)/V (54° at 450 km/s), and the field line traced down from there is its solar source: open field from a coronal hole or the edge of an active region (|B_r| ≥ 50 G at the footpoint), with its polarity and its angular distance from the heliospheric current sheet (B_r = 0 on the source surface, red). Any point between 1 R☉ and r_ss can be traced too (open or closed, footpoint, class). The map is the latest one before the time given; the first computation downloads it (10-30 s). SunPy and sunkit-magex are optional (pip install "helios-l1[solar]").
               </p>
               <p class="text-[11px] text-slate-400 leading-relaxed mt-2">
-                <strong class="text-sky-300">Event Replay tab.</strong> Up to 72 hours: WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter and Parker Solar Probe on a map in the Earth-fixed HEE frame (JPL Horizons positions; Earth to the right, its motion up) that moves with the slider or Play, next to the speed and |B| each measured (NASA CDAWeb) with a time cursor. Spacecraft without data are grey. The storm of 18-20 January 2026 is one click: its shock passed Solar Orbiter (0.75 AU) at 12:03 UT on 19 January and L1 about seven hours later.
+                <strong class="text-sky-300">Event Replay tab.</strong> Up to 14 days: WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter and Parker Solar Probe on a map in the Earth-fixed HEE frame (JPL Horizons positions; Earth to the right, its motion up) that moves with the slider or Play, next to the speed and |B| each measured (NASA CDAWeb) with a time cursor. Spacecraft without data are grey. The storm of 18-20 January 2026 is one click: its shock passed Solar Orbiter (0.75 AU) at 12:03 UT on 19 January and L1 about seven hours later.
               </p>
             </div>
           </div>

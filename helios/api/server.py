@@ -34,7 +34,7 @@ from helios import config as helios_config
 from helios.core import cme_tracking, corona_link, event_catalogs, icme_catalog, occultation, pfss_model, replay, shock_catalog, solar_images
 from helios.core.coverage import frame_coverage, describe as describe_coverage
 from helios.core.downloader import DataDownloader, UnknownEventError, infer_cadence_seconds, regular_series
-from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER
+from helios.core.archive import ARCHIVE_SOURCES, HAPI_SERVER, NO_GSE_FIELD
 from helios.core.event_analysis import (EVENT_FRAMES, EVENT_SOURCES, local_to_gse, predict_arrival, MAX_EVENT_HOURS, SEA_PARAMETERS, SHOCK_METHODS,
                                         MC_CRITERIA, analyze_shock, coupling_with_errors, dehoffmann_teller,
                                         detect_magnetic_clouds,
@@ -394,55 +394,6 @@ async def get_scientific_references():
         "parameter_definitions": PARAMETER_DEFINITIONS
     }
 
-@app.get("/api/providers")
-async def get_data_providers():
-    """Returns global space weather data observatories and their open science licenses."""
-    return {
-        "status": "success",
-        "total_providers": len(DATA_PROVIDERS),
-        "providers": list(DATA_PROVIDERS.values())
-    }
-
-@app.get("/api/parameters")
-async def get_parameter_catalog():
-    """Returns dictionary of all physical space weather parameters with formulas and units."""
-    return {
-        "status": "success",
-        "total_parameters": len(PARAMETER_DEFINITIONS),
-        "parameters": PARAMETER_DEFINITIONS
-    }
-
-@app.get("/api/parameters/{param_id}")
-async def get_parameter_detail(param_id: str):
-    p_id = param_id.lower()
-    if p_id in PARAMETER_DEFINITIONS:
-        return PARAMETER_DEFINITIONS[p_id]
-    alias_map = {
-        "v_sw": "speed",
-        "vsw": "speed",
-        "velocity": "speed",
-        "bz": "bz_gsm",
-        "b_z": "bz_gsm",
-        "imf_bz": "bz_gsm",
-        "b_t": "bt",
-        "total_b": "bt",
-        "np": "density",
-        "n_p": "density",
-        "proton_density": "density",
-        "p_dyn": "pdyn",
-        "pressure": "pdyn",
-        "rmp": "standoff",
-        "r_mp": "standoff",
-        "magnetopause": "standoff",
-        "akasofu": "epsilon",
-        "poynting": "epsilon",
-        "propagation_delay": "speed"
-    }
-    if p_id in alias_map:
-        return PARAMETER_DEFINITIONS[alias_map[p_id]]
-    raise HTTPException(status_code=404, detail=f"Parameter '{param_id}' not found in scientific handbook.")
-
-
 @app.get("/api/telemetry/{mission_id}")
 async def get_telemetry(mission_id: str, span_days: int = Query(1, ge=1, le=7)):
     mission_key = mission_id.upper()
@@ -514,17 +465,18 @@ async def get_archive_catalog():
 @app.get("/api/replay")
 async def get_replay(start: str = Query(..., description="UTC start, ISO 8601"),
                      end: str = Query(..., description="UTC end (exclusive), ISO 8601")):
-    """Event replay: solar wind speed and |B| of WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter and Parker
+    """Event replay (up to 14 days): solar wind speed and |B| of WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter and Parker
     Solar Probe on one time grid, their Earth-fixed HEE positions, and each one's first speed jump of 100 km/s."""
     t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
     if t1 <= t0:
         raise HTTPException(status_code=422, detail="'end' must be after 'start'.")
-    if t1 - t0 > timedelta(hours=replay.MAX_HOURS):
-        raise HTTPException(status_code=422, detail=f"Replays are limited to {replay.MAX_HOURS} hours.")
-    out = await replay.measurements(downloader, t0, t1)
+    if t1 - t0 > timedelta(days=replay.MAX_DAYS):
+        raise HTTPException(status_code=422, detail=f"Replays are limited to {replay.MAX_DAYS} days.")
+    out, pos = await asyncio.gather(replay.measurements(downloader.archive, t0, t1),
+                                    asyncio.to_thread(replay.positions, get_spice_engine(), t0, t1))
     for c in out["craft"]:
         c["first_speed_jump"] = replay.first_jump(out["times"], c["speed_kms"])
-    out["positions"] = await asyncio.to_thread(replay.positions, get_spice_engine(), t0, t1)
+    out["positions"] = pos
     out["frame"] = "HEE (X Sun to Earth, Z ecliptic north), AU; positions from the SPICE ephemeris (JPL Horizons)"
     return out
 
@@ -1016,10 +968,10 @@ async def detect_clouds(
     /api/analysis/fluxrope as its start and end.
     """
     key = mission.upper()
-    with_field = [k for k in ARCHIVE_SOURCES if k not in ("SOHO", "STEREO_A")]  # no GSE field vector
+    with_field = [k for k in ARCHIVE_SOURCES if k not in NO_GSE_FIELD]
     if key not in with_field:
         raise HTTPException(status_code=404, detail=f"No archive field vector for '{mission}' (SOHO has no "
-                            f"magnetometer, STEREO-A's is in RTN). Available: {', '.join(with_field)}.")
+                            f"magnetometer; STEREO-A, Solar Orbiter and PSP give RTN). Available: {', '.join(with_field)}.")
     t0, t1 = _parse_utc(start, "start"), _parse_utc(end, "end")
     if t1 - t0 < timedelta(hours=8):
         raise HTTPException(status_code=422, detail="The interval must be at least 8 hours long.")
@@ -1911,7 +1863,6 @@ async def get_events():
         {"id": "quiet_baseline", "title": "Quiet Sun Solar Wind Baseline", "severity": "Quiet G0 (Kp 1-)", "icon": "fa-sun", "badge_color": "#529b6e"}
     ]
 
-@app.get("/api/event/{event_id}")
 @app.get("/api/events/{event_id}")
 async def get_event(event_id: str):
     try:
@@ -2438,10 +2389,6 @@ async def post_l1_link(req: L1LinkRequest):
     return out
 
 
-@app.get("/api/coronagraph/feeds")
-async def get_coronagraph_feeds():
-    return CoronagraphAnalyzer.get_coronagraph_feeds()
-
 @app.post("/api/coronagraph/kinematics")
 async def calculate_cme_kinematics(req: CMEKinematicsRequest):
     try:
@@ -2460,7 +2407,6 @@ async def calculate_cme_kinematics(req: CMEKinematicsRequest):
     return res
 
 @app.get("/api/parker_spiral")
-@app.get("/api/parker/spiral")
 async def get_parker_spiral(speed_kms: float = Query(450.0, ge=150.0, le=3000.0, description="Solar wind speed (km/s)")):
     pitch = ParkerSpiralModel.spiral_pitch_angle(speed_kms)
     footpoint = ParkerSpiralModel.magnetic_footpoint_longitude(speed_kms)

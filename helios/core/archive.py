@@ -191,6 +191,25 @@ def _stereo_a(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+EV_TO_K = 11604.518
+
+
+def _rtn_moments(v: str, n: str, t: str, t_to_k: float = 1.0) -> Callable:
+    """Speed, density and temperature (K) from RTN proton moments (Solar Orbiter, PSP): no vectors,
+    as for STEREO-A, since RTN is not GSE."""
+    def reduce(df: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame({"speed": np.sqrt(df[f"{v}_0"] ** 2 + df[f"{v}_1"] ** 2 + df[f"{v}_2"] ** 2),
+                             "density": df[n], "temperature": df[t] * t_to_k}, index=df.index)
+    return reduce
+
+
+def _rtn_magnitude(name: str) -> Callable:
+    def reduce(df: pd.DataFrame) -> pd.DataFrame:
+        return pd.DataFrame({"bt": np.sqrt(df[f"{name}_0"] ** 2 + df[f"{name}_1"] ** 2 + df[f"{name}_2"] ** 2)},
+                            index=df.index)
+    return reduce
+
+
 def _omni(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
     out["bt"] = df["F"]
@@ -207,6 +226,10 @@ def _omni(df: pd.DataFrame) -> pd.DataFrame:
 def _dataset(ds_id: str, params: List[str], reduce: Callable, level: str, label: str) -> Dict[str, Any]:
     return {"id": ds_id, "parameters": params, "reduce": reduce, "level": level, "label": label}
 
+
+# Missions away from L1 (no L1-to-Earth travel time) and missions without a GSE field vector.
+AWAY_FROM_L1 = ("STEREO_A", "SOLO", "PSP")
+NO_GSE_FIELD = ("SOHO",) + AWAY_FROM_L1
 
 # Per mission: instrument groups, each an ordered list of datasets (preferred first).
 ARCHIVE_SOURCES: Dict[str, Dict[str, Any]] = {
@@ -256,6 +279,27 @@ ARCHIVE_SOURCES: Dict[str, Dict[str, Any]] = {
         "groups": [
             [_dataset("STA_L2_MAGPLASMA_1M", ["BTOTAL", "Np", "Vp", "Tp"], _stereo_a,
                       "Level 2", "STEREO-A IMPACT/MAG and PLASTIC 1-min (|B| only: the vector is in RTN)")],
+        ],
+    },
+    # Away from the Sun-Earth line (event replay; Event Analysis reads the native cadence): 1-min means,
+    # |B| and speed only.
+    "SOLO": {
+        "spacecraft": "SOLAR_ORBITER",
+        "groups": [
+            [_dataset("SOLO_L2_MAG-RTN-NORMAL-1-MINUTE", ["B_RTN"], _rtn_magnitude("B_RTN"), "Level 2",
+                      "Solar Orbiter MAG 1-min (|B| only: the vector is in RTN)")],
+            [_dataset("SOLO_L2_SWA-PAS-GRND-MOM", ["N", "V_RTN", "T"], _rtn_moments("V_RTN", "N", "T", EV_TO_K),
+                      "Level 2", "Solar Orbiter SWA-PAS proton moments (about 4 s, as 1-min means)")],
+        ],
+    },
+    "PSP": {
+        "spacecraft": "PARKER_SOLAR_PROBE",
+        "groups": [
+            [_dataset("PSP_FLD_L2_MAG_RTN_1MIN", ["psp_fld_l2_mag_RTN_1min"], _rtn_magnitude("psp_fld_l2_mag_RTN_1min"),
+                      "Level 2", "Parker Solar Probe FIELDS MAG 1-min (|B| only: the vector is in RTN)")],
+            [_dataset("PSP_SWP_SPI_SF00_L3_MOM", ["DENS", "VEL_RTN_SUN", "TEMP"],
+                      _rtn_moments("VEL_RTN_SUN", "DENS", "TEMP", EV_TO_K), "Level 3",
+                      "Parker Solar Probe SWEAP/SPAN-I proton moments (partial field of view)")],
         ],
     },
     "OMNI": {

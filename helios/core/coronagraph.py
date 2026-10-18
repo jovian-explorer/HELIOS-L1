@@ -53,65 +53,11 @@ def dbm_transit_seconds(r0_km: float, v0_kms: float, w_kms: float, gamma: float,
 
 
 class CoronagraphAnalyzer:
-    """Manages solar coronagraph feeds and CME expansion kinematics."""
+    """CME expansion kinematics."""
 
     R_SUN_KM = R_SUN_KM
     AU_KM = AU_KM
     L1_DIST_KM = AU_KM - 1496000.0  # ~1.481e8 km from Sun
-
-    @classmethod
-    def get_coronagraph_feeds(cls) -> Dict[str, Dict[str, Any]]:
-        """Returns direct URLs and metadata for active solar coronagraph and EUV imagers."""
-        return {
-            "SOHO_LASCO_C2": {
-                "name": "SOHO / LASCO C2",
-                "instrument": "White Light Coronagraph (2.0 to 6.0 R_sun)",
-                "mission": "SOHO (ESA/NASA)",
-                "location": "Sun-Earth L1",
-                "purpose": "Inner corona CME formation and initial ejection kinematics",
-                "url": "https://services.swpc.noaa.gov/images/animations/lasco-c2/latest.jpg",
-                "color_map": "Red / Orange Coronagraph"
-            },
-            "SOHO_LASCO_C3": {
-                "name": "SOHO / LASCO C3",
-                "instrument": "Wide Angle Coronagraph (3.7 to 32.0 R_sun)",
-                "mission": "SOHO (ESA/NASA)",
-                "location": "Sun-Earth L1",
-                "purpose": "Interplanetary CME propagation, halo CME wavefronts, and shock fronts",
-                "url": "https://services.swpc.noaa.gov/images/animations/lasco-c3/latest.jpg",
-                "color_map": "Deep Blue Coronagraph"
-            },
-            "GOES_SUVI_195": {
-                "name": "GOES / SUVI 195 Å",
-                "instrument": "Solar Ultraviolet Imager (Fe XII ~1.5 MK)",
-                "mission": "GOES-R series (NOAA/NASA)",
-                "location": "Geostationary",
-                "purpose": "Coronal holes (high speed solar wind sources) and coronal dimmings",
-                "url": "https://services.swpc.noaa.gov/images/animations/suvi/primary/195/latest.png",
-                "color_map": "Bronze EUV"
-            },
-            "GOES_SUVI_304": {
-                "name": "GOES / SUVI 304 Å",
-                "instrument": "Solar Ultraviolet Imager (He II ~50,000 K chromosphere & transition region)",
-                "mission": "GOES-R series (NOAA/NASA)",
-                "location": "Geostationary",
-                "purpose": "Solar filament eruptions and prominence liftoffs",
-                "url": "https://services.swpc.noaa.gov/images/animations/suvi/primary/304/latest.png",
-                "color_map": "Red/Orange EUV"
-            },
-            "ADITYA_VELC": {
-                "name": "Aditya-L1 / VELC",
-                "instrument": "Visible Emission Line Coronagraph (1.05 to 3.0 R_sun)",
-                "mission": "Aditya-L1 (ISRO)",
-                "location": "Sun-Earth L1 Halo",
-                "purpose": "High-cadence inner coronal spectroscopy and CME inception dynamics",
-                # ISSDC PRADAN serves VELC data only to registered users; there is no public
-                # real-time image (this entry used to show the LASCO C2 image under the VELC name).
-                "url": None,
-                "status": "No public real-time image feed (ISSDC PRADAN requires a registered login)",
-                "color_map": "Green Line 530.3 nm Coronal"
-            }
-        }
 
     @classmethod
     def gopalswamy_2001_arrival(cls, speed_kms: float, r0_km: float = 0.0) -> Dict[str, Any]:

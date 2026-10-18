@@ -335,7 +335,7 @@ class TestTab6ParkerSpiralCIR:
         psi = arctan(0.9525) = 43.6 deg ~ 45 deg.
         Footpoint offset Delta_phi = 0.9525 rad = 54.6 deg West.
         """
-        res = client.get("/api/parker/spiral?speed_kms=450")
+        res = client.get("/api/parker_spiral?speed_kms=450")
         assert res.status_code == 200
         data = res.json()
         pitch = data.get("spiral_pitch_angle_deg") or data.get("pitch_angle_1au_deg")
@@ -344,7 +344,7 @@ class TestTab6ParkerSpiralCIR:
         assert 45.0 < fp < 65.0
 
         # Faster wind (1000 km/s CME) -> straighter spiral (smaller pitch angle, closer footpoint)
-        res_fast = client.get("/api/parker/spiral?speed_kms=1000")
+        res_fast = client.get("/api/parker_spiral?speed_kms=1000")
         data_fast = res_fast.json()
         pitch_fast = data_fast.get("spiral_pitch_angle_deg") or data_fast.get("pitch_angle_1au_deg")
         assert pitch_fast < pitch

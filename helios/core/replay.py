@@ -2,29 +2,30 @@
 Event replay: where the solar wind spacecraft were (Earth-fixed HEE frame) and what each measured
 (solar wind speed and |B|) over an interval, on one time grid.
 
-Data: the archive loaders (WIND, ACE, DSCOVR, SOHO, STEREO-A; 1-min) and the Event Analysis sources
-(Solar Orbiter, Parker Solar Probe; their own cadence), all NASA CDAWeb. Positions: the SPICE
-ephemeris (JPL Horizons), a few epochs per interval; the client interpolates between them.
+Data: the archive loaders (1-min means of NASA CDAWeb data, cached by day; Solar Orbiter's 4-s plasma
+moments too). Positions: the SPICE ephemeris (JPL Horizons) at a few epochs; the client interpolates.
 """
-import math
-from datetime import datetime, timedelta
+import asyncio
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
 from helios.core.constants import AU_KM
 
-MAX_HOURS = 72  # as Event Analysis (Solar Orbiter's plasma moments come every 4 s)
-POSITION_EPOCHS = 12
-POINTS = 432  # about 10-min means over 72 h
-# (label, archive mission or None, Event Analysis mission or None, ephemeris id)
-CRAFT = [("WIND", "WIND", None, "WIND"), ("ACE", "ACE", None, "ACE"), ("DSCOVR", "DSCOVR", None, "DSCOVR"),
-         ("SOHO", "SOHO", None, "SOHO"), ("STEREO-A", "STEREO_A", None, "STEREO_A"),
-         ("Solar Orbiter", None, "SOLO", "SOLAR_ORBITER"), ("Parker Solar Probe", None, "PSP", "PARKER_SOLAR_PROBE")]
+MAX_DAYS = 14
+POSITION_EPOCHS = 24
+POINTS = 432  # 10-min means over 72 h
+# (label, archive mission, ephemeris id)
+CRAFT = [("WIND", "WIND", "WIND"), ("ACE", "ACE", "ACE"), ("DSCOVR", "DSCOVR", "DSCOVR"), ("SOHO", "SOHO", "SOHO"),
+         ("STEREO-A", "STEREO_A", "STEREO_A"), ("Solar Orbiter", "SOLO", "SOLAR_ORBITER"),
+         ("Parker Solar Probe", "PSP", "PARKER_SOLAR_PROBE")]
 
 
 def step_minutes(start: datetime, end: datetime) -> int:
-    return max(1, math.ceil((end - start).total_seconds() / 60.0 / POINTS))
+    """The shortest round step giving at most POINTS steps: 10 min for 72 h, 60 min for 14 days."""
+    need = (end - start).total_seconds() / 60.0 / POINTS
+    return next(m for m in (1, 2, 5, 10, 15, 20, 30, 60) if m >= need)
 
 
 def on_grid(series: Optional[pd.Series], grid: pd.DatetimeIndex, minutes: int) -> List[Optional[float]]:
@@ -54,38 +55,21 @@ def positions(engine, start: datetime, end: datetime) -> Dict[str, Any]:
         earth = engine.get_spacecraft_state("EARTH", iso)
         d = earth["heliocentric"]["distance_km"] / AU_KM if earth.get("available", True) else 1.0
         out["earth_au"].append(round(d, 5))
-        for label, _, _, eph in CRAFT:
+        for label, _, eph in CRAFT:
             out["craft"].setdefault(label, []).append(hee_au(engine, eph, iso, d))
     return out
 
 
-async def measurements(downloader, start: datetime, end: datetime) -> Dict[str, Any]:
-    """Speed and |B| of each spacecraft on one grid, with the datasets used."""
+async def measurements(archive, start: datetime, end: datetime) -> Dict[str, Any]:
+    """Speed and |B| of each spacecraft on one grid, with the datasets used (all fetched at once)."""
     minutes = step_minutes(start, end)
     grid = pd.date_range(pd.Timestamp(start), pd.Timestamp(end), freq=f"{minutes}min", inclusive="left")
+    results = await asyncio.gather(*(archive.fetch_mission(m, start, end) for _, m, _ in CRAFT))
     craft = []
-    for label, arch, event, _ in CRAFT:
-        speed = bt = None
-        datasets: List[str] = []
-        if arch:
-            res = await downloader.archive.fetch_mission(arch, start, end)
-            f = res["frame"]
-            if not f.empty:
-                speed = f.get("speed")
-                bt = f["bt"] if "bt" in f else None
-                if bt is None and {"bx_gse", "by_gse", "bz_gse"} <= set(f.columns):
-                    bt = (f["bx_gse"] ** 2 + f["by_gse"] ** 2 + f["bz_gse"] ** 2) ** 0.5
-            datasets = [d["id"] for d in res["datasets"]]
-        else:
-            res = await downloader.events.fetch(event, start, end)
-            p, f = res["plasma"], res["field"]
-            if p is not None:
-                speed = (p["vx"] ** 2 + p["vy"] ** 2 + p["vz"] ** 2) ** 0.5
-            if f is not None:
-                bt = (f["bx"] ** 2 + f["by"] ** 2 + f["bz"] ** 2) ** 0.5
-            datasets = [d["id"] for d in res["datasets"]]
-        craft.append({"name": label, "speed_kms": on_grid(speed, grid, minutes), "bt_nt": on_grid(bt, grid, minutes),
-                      "datasets": datasets})
+    for (label, _, _), res in zip(CRAFT, results):
+        f = res["frame"]
+        craft.append({"name": label, "speed_kms": on_grid(f.get("speed"), grid, minutes),
+                      "bt_nt": on_grid(f.get("bt"), grid, minutes), "datasets": [d["id"] for d in res["datasets"]]})
     return {"step_minutes": minutes, "times": [t.strftime("%Y-%m-%dT%H:%M:%SZ") for t in grid], "craft": craft}
 
 

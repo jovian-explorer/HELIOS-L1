@@ -39,7 +39,7 @@ import numpy as np
 import pandas as pd
 
 from helios.core.lepping_errors import lepping_uncertainties
-from helios.core.archive import (BOLTZMANN_J_K, PROTON_MASS_KG, HapiError, hapi_data_url, parse_hapi_csv,
+from helios.core.archive import (BOLTZMANN_J_K, EV_TO_K, PROTON_MASS_KG, HapiError, hapi_data_url, parse_hapi_csv,
                                  thermal_speed_to_kelvin)
 from helios.core.constants import AU_KM
 from helios.core.cache import cached_text
@@ -141,7 +141,6 @@ def _sta_plasma(df: pd.DataFrame) -> pd.DataFrame:
                          "radial_flow": radial.astype(float).where(v.notna())}, index=df.index)
 
 
-EV_TO_K = 11604.518
 RTN_FRAME = "RTN given as (-R, -T, N): the GSE axes for a spacecraft on the Sun-Earth line"
 
 
