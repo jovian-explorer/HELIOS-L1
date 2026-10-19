@@ -21,12 +21,16 @@ date-released: 2026-10-12
 abstract: >-
   HELIOS-L1 is a desktop application for space weather. It reads live solar wind
   measurements from the spacecraft at the Sun-Earth L1 point (NOAA RTSW) and archived
-  data from NASA CDAWeb, OMNI, GFZ and NOAA SWPC, and runs published models on them:
-  NOAA storm scales, magnetopause and bow shock positions, ring current (Dst) models,
-  the auroral oval, CME arrival (drag-based model), shock normals, minimum variance,
+  data from NASA CDAWeb (WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter, Parker Solar
+  Probe), NOAA NCEI (DSCOVR plasma), OMNI, GFZ and NOAA SWPC, and runs published models
+  on them: NOAA storm scales, magnetopause and bow shock positions, ring current (Dst)
+  models, the auroral oval and NOAA's OVATION Prime aurora nowcast, CME arrival
+  (drag-based model), shock normals and multi-spacecraft timing, minimum variance,
   de Hoffmann-Teller and flux rope fits, superposed epoch analysis, OMNI statistics
-  since 1963, PFSS coronal fields and radio occultation geometry with SPICE. Every
-  result lists its data sources and can be exported. Builds for Windows, macOS and Linux.
+  since 1963, PFSS coronal fields and radio occultation geometry with SPICE. An event
+  replay shows up to seven spacecraft on an Earth-fixed map with their measurements.
+  Every result lists its data sources and can be exported. Builds for Windows, macOS
+  and Linux.
 repository-code: "https://github.com/jovian-explorer/HELIOS-L1"
 keywords:
   - space weather

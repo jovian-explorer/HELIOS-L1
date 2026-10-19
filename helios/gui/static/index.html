@@ -2676,7 +2676,7 @@
             <i class="fa-solid fa-download"></i>
             <span>Download HTML</span>
           </button>
-          <button onclick="window.print()" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition">
+          <button onclick="printBulletin()" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition">
             <i class="fa-solid fa-print"></i>
             <span>Print / PDF</span>
           </button>
@@ -3121,14 +3121,13 @@
             </div>
             <p class="text-[11px] text-slate-300 leading-relaxed">
               <strong>HELIOS-L1</strong> (<em>Heliophysical Exploration, Lagrange-1 Interplanetary Observation &amp; Space-weather Suite</em>)
-              is a desktop application for solar wind and space weather analysis: live data from NOAA, archives from NASA CDAWeb
+              is a desktop application for solar wind and space weather analysis: live data from NOAA, archives from NASA CDAWeb, NOAA NCEI
               and other public sources, and published models, computed locally by a Python (FastAPI) engine and drawn with
               HTML5 Canvas. Data are downloaded when online and cached, so loaded intervals keep working offline.
             </p>
             <p class="text-[11px] text-slate-400 leading-relaxed">
-              During extreme solar storm events (such as severe G5 coronal mass ejection impacts causing terrestrial power grid tripping,
-              high-frequency radio blackouts, and trans-oceanic communications latency), HELIOS-L1 functions 100% offline with zero reliance
-              on remote cloud APIs, third-party CDNs, or external tracking services.
+              Without a network connection the cached intervals, the bundled event data and all models keep working; live values need
+              NOAA's feeds. Nothing is loaded from CDNs and nothing is tracked.
             </p>
           </div>
         </div>
@@ -3149,7 +3148,7 @@
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-sky-400 block">DSCOVR (NOAA)</strong>
-              <span>Live NOAA RTSW stream; MAG and FC archive (CDAWeb)</span>
+              <span>Live NOAA RTSW stream; MAG archive (CDAWeb); FC plasma from CDAWeb to June 2019, then NOAA NCEI</span>
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-emerald-400 block">ACE (NASA)</strong>
@@ -3161,19 +3160,23 @@
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-rose-400 block">Parker Solar Probe</strong>
-              <span>Position (orbit model)</span>
+              <span>FIELDS MAG and SWEAP/SPAN-I archive (CDAWeb); position (JPL Horizons)</span>
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-teal-400 block">Solar Orbiter (ESA)</strong>
-              <span>EUI images; position (orbit model)</span>
+              <span>MAG and SWA-PAS archive (CDAWeb); EUI images; position (JPL Horizons)</span>
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
               <strong class="text-purple-400 block">SOHO (ESA/NASA)</strong>
               <span>LASCO C2/C3 images; proton monitor speed and density</span>
             </div>
             <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
-              <strong class="text-pink-400 block">GOES-16 (NOAA)</strong>
-              <span>X-rays, protons and magnetometer (NOAA)</span>
+              <strong class="text-sky-400 block">STEREO-A (NASA)</strong>
+              <span>Live beacon solar wind; MAG and PLASTIC archive (CDAWeb); EUVI/COR images; position</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <strong class="text-pink-400 block">GOES (NOAA)</strong>
+              <span>X-rays and &ge;10 MeV protons; GOES-19 magnetometer (NOAA)</span>
             </div>
           </div>
         </div>
@@ -3188,10 +3191,10 @@
             <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
               <div class="font-bold text-amber-300 flex items-center space-x-1.5">
                 <i class="fa-solid fa-satellite text-[10px]"></i>
-                <span>Satellite Orbit &amp; Avionics Protection</span>
+                <span>Satellite Operations</span>
               </div>
               <p class="text-slate-400 leading-relaxed">
-                Tracks Solar Energetic Particle (SEP) proton events (&gt;10 MeV, &gt;100 MeV) to safeguard satellite electronics against Single Event Upsets (SEUs), latch-ups, and payload sensor degradation. Models thermospheric neutral density enhancements to predict orbital drag and prevent premature LEO satellite re-entry.
+                NOAA's G, S and R scales from Kp, GOES &ge;10 MeV protons and X-rays; the magnetopause stand-off, with an alert when it moves inside geostationary orbit (6.6 R<sub>E</sub>) and GEO satellites meet the magnetosheath.
               </p>
             </div>
             <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
@@ -3209,16 +3212,16 @@
                 <span>Trans-Polar Aviation &amp; HF Radio (D-RAP)</span>
               </div>
               <p class="text-slate-400 leading-relaxed">
-                Evaluates ionospheric D-region absorption spectra (A(f) &prop; f<sup>-1.5</sup>) across 5–30 MHz for Polar Cap Absorption (PCA) events, enabling commercial trans-polar airlines to reroute flights and prevent loss of emergency high-frequency communications.
+                D-region absorption on the sunlit side from the GOES X-ray flux (NOAA D-RAP: A(f) = (HAF/f)<sup>1.5</sup> dB, 5–30 MHz): which HF frequencies a flare blacks out. Polar cap absorption by solar protons is not modelled.
               </p>
             </div>
             <div class="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
               <div class="font-bold text-emerald-300 flex items-center space-x-1.5">
                 <i class="fa-solid fa-location-crosshairs text-[10px]"></i>
-                <span>GNSS &amp; NavIC Scintillation Forecasting</span>
+                <span>Aurora &amp; Storm Research</span>
               </div>
               <p class="text-slate-400 leading-relaxed">
-                Analyzes auroral electrojet currents and equatorial plasma bubble triggers that induce Total Electron Content (TEC) rapid fluctuations, forecasting satellite navigation loss-of-lock and positioning degradation for aviation, defense, and maritime operations.
+                NOAA's OVATION Prime aurora nowcast; event replays of up to 14 days with seven spacecraft on an Earth-fixed map; shock, timing, minimum variance and flux-rope analyses on WIND, ACE, DSCOVR, STEREO-A, Solar Orbiter and Parker Solar Probe data; OMNI statistics since 1963.
               </p>
             </div>
           </div>
@@ -3236,8 +3239,8 @@
               <span class="text-slate-400">Closed-form MHD drag: dv/dt = -&Gamma;(v - w)|v - w| with Newton-Raphson L1/Earth transit inversion.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <strong class="text-amber-300 block">Vis-Viva &amp; Keplerian Ephemeris</strong>
-              <span class="text-slate-400">Exact Vis-Viva orbital speed: v(r) = &radic;(&mu;(2/r - 1/a)) strictly bounding PSP perihelion to 190.8 km/s (9.86 R☉).</span>
+              <strong class="text-amber-300 block">JPL Horizons ephemerides (SPICE)</strong>
+              <span class="text-slate-400">Spacecraft and planet positions from JPL Horizons / NAIF kernels read with SPICE (within 1 km of Horizons), in GSE, GSM and the Earth-fixed HEE frame.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
               <strong class="text-emerald-300 block">Shue (1998) Magnetopause &amp; Chao (2002) Bow Shock</strong>

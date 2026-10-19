@@ -90,6 +90,7 @@ class ScientificReportGenerator:
   table {{ width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }}
   th {{ background: #24272b; color: #9a9ea5; text-align: left; padding: 8px; border: 1px solid #43464c; }}
   .footer {{ margin-top: 24px; border-top: 1px solid #24272b; padding-top: 12px; font-size: 11px; color: #888c94; }}
+  @media print {{ body {{ background: #fff; color: #000; padding: 0; }} .container, .card, th {{ background: none; box-shadow: none; border-color: #999; }} .card-value {{ color: #000; }} }}
 </style>
 </head>
 <body>

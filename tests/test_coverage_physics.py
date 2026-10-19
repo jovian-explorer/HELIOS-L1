@@ -249,3 +249,32 @@ def test_drag_based_model_defaults_on_observed_cme_arrivals():
     assert len(err) == 44
     assert statistics.mean(err) == pytest.approx(-6.9, abs=0.1)
     assert statistics.mean(map(abs, err)) == pytest.approx(14.4, abs=0.1)
+
+
+def test_overview_png_of_real_records_shows_the_four_panels_and_the_provenance(omni_l1, monkeypatch):
+    """The PNG export of measured records (bundled OMNI 5-min means, 10-12 May 2024): four panels with the
+    data drawn, the provenance line under the title (cut at 150 characters; amber when not observed), and
+    columns that are missing in every record (None) leave their panel empty instead of failing."""
+    import io
+    import matplotlib.image as mpimg
+    import matplotlib.pyplot as plt
+    from helios.core.exporter import DataExporter
+    figures = []
+    real_close = plt.close
+    monkeypatch.setattr(plt, "close", lambda fig=None: (figures.append(fig), real_close(fig)))
+    recs = [dict(r) for r in omni_l1[:288]]
+    png = DataExporter.generate_overview_chart(recs, "DSCOVR", {"kind": "observed", "description": "OMNI " + "x" * 200})
+    img = mpimg.imread(io.BytesIO(png))
+    assert img.shape[0] > 1000 and img.shape[1] > 1200
+    fig = figures[-1]
+    axes = fig.get_axes()
+    assert [a.get_ylabel() for a in axes] == ["B Field [nT]", "Speed [km/s]", "Density [cm⁻³]", "Pressure [nPa]"]
+    speed = axes[1].get_lines()[0].get_ydata()
+    assert len(speed) == 288 and float(np.nanmax(speed)) == max(r["speed"] for r in recs if r.get("speed") is not None)
+    line = next(t.get_text() for t in fig.texts if t.get_text().startswith("Data:"))
+    assert line.startswith("Data: OBSERVED. OMNI") and len(line) == 150 and line.endswith("...")
+    for r in recs:
+        r["density"] = None
+    DataExporter.generate_overview_chart(recs, "DSCOVR", {"kind": "synthetic", "description": "test"})
+    fig = figures[-1]
+    assert next(t for t in fig.texts if t.get_text().startswith("Data:")).get_color() == "#d2aa57" and np.isnan(np.asarray(fig.get_axes()[2].get_lines()[0].get_ydata(), float)).all()

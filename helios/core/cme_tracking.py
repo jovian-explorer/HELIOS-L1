@@ -26,7 +26,7 @@ tracking and height-time fits, with a projection correction to the radial speed.
   by Vrsnak et al. 2007, A&A 469, 339, doi:10.1051/0004-6361:20077175). The correction
   v = v_pos / sin(psi) is not given for psi < 20 deg (near-halo events), where it diverges.
   The observer longitude is 0 for SOHO and SDO and the angle of STEREO-A or Solar Orbiter
-  from Earth (ecliptic longitude difference of the orbit model; the solar equator's tilt of
+  from Earth (ecliptic longitude difference from the SPICE ephemeris; the solar equator's tilt of
   7 deg is ignored).
 """
 from __future__ import annotations
@@ -207,7 +207,7 @@ def projection(speed_pos_kms: float, source_lon_deg: float, source_lat_deg: floa
 
 
 def observer_longitude(instrument: str, when: datetime) -> Dict[str, Any]:
-    """Stonyhurst-like longitude of the instrument's spacecraft (deg west of Earth), from the orbit model."""
+    """Stonyhurst-like longitude of the instrument's spacecraft (deg west of Earth), from the SPICE ephemeris."""
     craft = next((v for k, v in OBSERVERS.items() if instrument.startswith(k)), "SOHO")
     if craft in ("SOHO", "SDO"):
         return {"spacecraft": craft, "longitude_deg": 0.0, "source": "Earth's direction (L1 / geosynchronous)"}

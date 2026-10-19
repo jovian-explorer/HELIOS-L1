@@ -11,10 +11,10 @@ HELIOS-L1 is a free desktop app for space weather: the stream of particles and m
 ## What can I do with it?
 
 * **See the solar wind right now** and what it means: speed, density and magnetic field at L1, the NOAA storm scales (G, S, R), and how hard Earth's magnetic shield is being pushed.
-* **Check whether the aurora may be visible from where you are**: the map shows the auroral oval for the current solar wind, the day-night line, and the darkness of the sky at aurora observatories.
+* **Check whether the aurora may be visible from where you are**: the map shows NOAA's OVATION Prime nowcast of visible aurora (and the Starkov oval for past times or offline), the day-night line, and the darkness of the sky at aurora observatories; "your place" gives the probability there.
 * **Follow a solar eruption (CME) to Earth**: coronagraph images of the Sun, the eruption's speed, and its predicted arrival time.
-* **Replay famous storms** (Bastille Day 2000, Halloween 2003, May 2024) with the real data.
-* **Do research**: shock normals, flux-rope fits, minimum variance and de Hoffmann-Teller analysis, superposed epochs, OMNI statistics from 1963, PFSS coronal fields, radio occultation geometry. Every result lists its data sources and can be saved as CSV or JSON.
+* **Replay famous storms** (Bastille Day 2000, Halloween 2003, May 2024) with the real data, and **watch a solar wind disturbance travel** past up to seven spacecraft (WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter, Parker Solar Probe) on a map with a time slider (event replay, up to 14 days).
+* **Do research**: shock normals, multi-spacecraft timing, flux-rope fits, minimum variance and de Hoffmann-Teller analysis on WIND, ACE, DSCOVR, STEREO-A, Solar Orbiter and Parker Solar Probe data, superposed epochs, OMNI statistics from 1963, PFSS coronal fields, radio occultation geometry. Every result lists its data sources and can be saved as CSV or JSON (charts as PNG, the bulletin as HTML or PDF).
 
 New to the subject? Press `U` for the user guide, `P` for the formulas and the papers they come from, and `?` for the keyboard shortcuts.
 
@@ -37,7 +37,8 @@ New to the subject? Press `U` for the user guide, `P` for the formulas and the p
 * **OMNI** (*NASA*): solar wind time-shifted to Earth's bow shock and geomagnetic indices, 1963 to the present, for history, statistics and model checks.
 
 ### Elsewhere
-* **STEREO-A** (*NASA*): live solar wind speed, density and field magnitude from its space weather beacon (STEREO Science Center), and the archive from CDAWeb (`STA_L2_MAGPLASMA_1M`); about 70° ahead of Earth on its orbit, so no GSM components or travel time to Earth.
+* **STEREO-A** (*NASA*): live solar wind speed, density and field magnitude from its space weather beacon (STEREO Science Center), and the archive from CDAWeb (`STA_L2_MAGPLASMA_1M`); about 70° ahead of Earth on its orbit, so no GSM components or travel time to Earth. The archive also feeds the event replay and Event Analysis.
+* **Solar Orbiter** (*ESA*) and **Parker Solar Probe** (*NASA*): archive magnetic field and proton moments from CDAWeb (Solar Orbiter MAG and SWA-PAS; PSP FIELDS and SWEAP/SPAN-I, whose moments without counts or flagged bad are left out) for the archive panel, the event replay and Event Analysis, with their RTN vectors labelled as such.
 * **GOES** (*NOAA*): X-ray flux (flare class, R scale, D-RAP) and ≥10 MeV protons (S scale), live from NOAA. GOES measures no solar wind, so it has no solar wind view.
 * **SDO, SOHO, STEREO-A, Solar Orbiter** (*NASA/ESA*): solar and coronagraph images for any date (Helioviewer Project) and their science FITS files (SunPy). STEREO-A's position is used to correct CME speeds seen from off the Sun-Earth line.
 * **Positions:** every spacecraft (the L1 fleet, GOES-19, Parker Solar Probe, Solar Orbiter, STEREO-A) and the planets from JPL Horizons ephemerides read with SPICE (within 1 km of Horizons), for now or for the end of a loaded archive interval; a spacecraft without an ephemeris for the time is shown without a position. Any spacecraft with a SPICE kernel for the radio occultation tool.
@@ -78,7 +79,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 6. **Heliospheric Parker Spiral Field Modeling:**
    * Evaluates Archimedean magnetic spiral geometry ($r - r_0 = -\frac{V_{sw}}{\Omega_\odot} (\phi - \phi_0)$) and pitch angles ($\psi$).
    * Identifies the "well-connected" solar disk footpoint longitude for solar energetic particle (SEP) events.
-   * **Event replay** (up to 14 days): WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter and Parker Solar Probe on a map in the Earth-fixed HEE frame (JPL Horizons positions) moving with a time slider or *Play*, next to the solar wind speed and |B| each measured (NASA CDAWeb) with a time cursor; one click for the storm of 18-20 January 2026, whose shock passed Solar Orbiter about 7 hours before L1; the plots save as PNG (`GET /api/replay`).
+   * **Event replay** (up to 14 days): WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter and Parker Solar Probe on a map in the Earth-fixed HEE frame (JPL Horizons positions) moving with a time slider or *Play*, next to the solar wind speed and |B| each measured (NASA CDAWeb; DSCOVR plasma after June 2019 from NOAA NCEI) with a time cursor; one click for the storm of 18-20 January 2026, whose shock passed Solar Orbiter about 7 hours before L1; the plots save as PNG (`GET /api/replay`).
 
 7. **NASA OMNI Ingestion Studio & Shock Screen:**
    * Ingests custom CSV and NASA OMNI high-resolution telemetry.
@@ -119,7 +120,7 @@ HELIOS-L1 implements rigorous magnetohydrodynamic (MHD) and space physics formul
 11. **Operator User Guide & Scientific Literature Handbook (Hotkeys 'U' & 'P'):**
     * Full 6-chapter interactive operator manual embedded with real-time keyword search.
     * Complete directory of peer-reviewed formulas with direct DOI cross-references, data provider provenance (NOAA, NASA, ISRO, ESA, GFZ, WDC), and open science licenses.
-    * Published results reproduced with HELIOS-L1's own tools on the same data (user guide, section 7, "Reproductions of published results"; `tests/test_reproductions.py`): the DBM tools paper's CME of 3 April 2010, the WIND magnetic cloud table's flux-rope fits, the Richardson & Cane ICME means and Dst minima, the limits of Shue et al. (1998), the drag-based model evaluation of Čalogović et al. (2021) and the ICME averages of Kilpua et al. (2017).
+    * Published results reproduced with HELIOS-L1's own tools on the same data (user guide, section 7, "Reproductions of published results"; `tests/test_reproductions.py`): the DBM tools paper's CME of 3 April 2010, the WIND magnetic cloud table's flux-rope fits, the Richardson & Cane ICME means and Dst minima, the limits of Shue et al. (1998), the drag-based model evaluation of Čalogović et al. (2021), the ICME averages of Kilpua et al. (2017), the IPShocks database, the Solar Orbiter shock timing of Davies et al. (2021) and the multipoint ICME positions of Möstl et al. (2022).
 
 ---
 
@@ -129,7 +130,7 @@ Every telemetry record carries a `data_source` field and every API response a `p
 
 | `data_source` | Meaning |
 |---|---|
-| `observed` | Measured values: the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`) or the NASA CDAWeb archive (HAPI). |
+| `observed` | Measured values: the NOAA SWPC Real-Time Solar Wind (RTSW) 1-minute feeds (`json/rtsw/rtsw_mag_1m.json`, `rtsw_wind_1m.json`) or the NASA CDAWeb archive (HAPI), or NOAA's DSCOVR archive at NCEI. |
 | `unavailable` | No data for the mission and window (Aditya-L1 always: its Level-2 data are on ISSDC PRADAN, https://pradan.issdc.gov.in/al1/, for registered users only, with no public API; SOHO and STEREO-A when their feeds cannot be reached; WIND before the archive reaches the window). No values are shown; nothing is simulated in their place. |
 | `imported` | Rows from a user file in the Custom Ingestion tab. |
 
@@ -145,6 +146,10 @@ Every telemetry record carries a `data_source` field and every API response a `p
   | WIND | `WI_H0_MFI@0` (1-min), then `WI_K0_MFI` | `WI_H1_SWE` (non-linear fits), then `WI_K0_SWE` |
   | ACE | `AC_H0_MFI` (Level 2), then `AC_K1_MFI` | `AC_H0_SWE` (Level 2, ends 2024-07), then `AC_K0_SWE` |
   | DSCOVR | `DSCOVR_H0_MAG` (1-s, GSE; rotated to GSM) | `DSCOVR_H1_FC` (to June 2019), then NOAA NCEI f1m (1-min, below) |
+  | SOHO | none (no magnetometer) | `SOHO_CELIAS-PM_5MIN` |
+  | STEREO-A | `STA_L2_MAGPLASMA_1M` (RTN; the field magnitude is used) | same |
+  | Solar Orbiter | `SOLO_L2_MAG-RTN-NORMAL-1-MINUTE` | `SOLO_L2_SWA-PAS-GRND-MOM` |
+  | Parker Solar Probe | `PSP_FLD_L2_MAG_RTN_1MIN` | `PSP_SWP_SPI_SF00_L3_MOM` (partial field of view) |
   | OMNI | `OMNI_HRO_1MIN` (time-shifted to the bow shock nose) | same |
 
   Preliminary key-parameter datasets only extend the definitive ones past their last sample, and the provenance lists every dataset used with its level and coverage. Any interval of up to 31 days, from the dashboard (Observation Horizon, Archive Interval) or `GET /api/archive/WIND?start=2024-05-10T00:00&end=2024-05-12T00:00` (add `&format=csv` for a file, `&cadence_minutes=5` for block averages). Data are cached per day as 1-minute means; a DSCOVR magnetometer day is about 7 MB to download the first time. DSCOVR plasma after June 2019 is not on CDAWeb: it is read from NOAA's archive at NCEI (`archive.data.noaa.gov/satellite-spaceweather`, product f1m, one gzipped netCDF file per day, about 40 kB), with minutes NOAA flags as of reduced quality removed (in fast wind the unflagged speeds read 30-70 % below WIND's).

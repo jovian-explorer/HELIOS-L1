@@ -70,3 +70,52 @@ def test_every_view_opens_offline_without_errors(server_url):
             problems.append("references: almost no text")
         browser.close()
     assert not problems, "\n".join(problems)
+
+
+def _browser(p):
+    try:
+        return p.chromium.launch()
+    except sync_api.Error as exc:
+        if os.environ.get("CI"):
+            raise
+        pytest.skip(f"Chromium for Playwright is not installed: {exc}")
+
+
+def test_bulletin_keeps_its_styles_to_itself_and_prints_alone(server_url):
+    """The bulletin is a full HTML document with its own <style> (body padding, .grid of three columns, ...).
+    Shown in the window it must not restyle the app, and "Print / PDF" must print the bulletin only (not the
+    dashboard behind the dialog, cut at the dialog's height), dark text on white paper."""
+    with sync_api.sync_playwright() as p:
+        browser = _browser(p)
+        page = browser.new_page(viewport={"width": 1280, "height": 900})
+        page.goto(server_url, wait_until="networkidle")
+        probe = """(() => { const g = [...document.querySelectorAll('main .grid')].find(e => e.offsetParent);
+                      return [getComputedStyle(document.body).padding, getComputedStyle(g).gridTemplateColumns]; })()"""
+        before = page.evaluate(probe)
+        page.evaluate("openBulletinModal()")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(500)
+        assert page.evaluate(probe) == before
+        frame = page.frame_locator("#bulletin-content iframe")
+        assert "Space Weather Scientific Bulletin" in frame.locator("h1").inner_text()
+        # The iframe is as tall as its document (no inner scrollbar) and prints itself, not the app.
+        heights = page.evaluate("""(() => { const f = document.querySelector('#bulletin-content iframe');
+                                      return [f.offsetHeight, f.contentDocument.documentElement.scrollHeight]; })()""")
+        assert abs(heights[0] - heights[1]) <= 2, heights
+        page.evaluate("""window.__printed = [];
+            window.print = () => window.__printed.push('app');
+            document.querySelector('#bulletin-content iframe').contentWindow.print = () => window.__printed.push('bulletin');
+            0;""")  # not a function value: Playwright would call it
+        page.get_by_role("button", name="Print / PDF").click()
+        assert page.evaluate("window.__printed") == ["bulletin"]
+        page.evaluate("setBulletinViewFormat('md')")
+        assert "HELIOS-L1" in frame.locator("pre").inner_text()
+        # The PDF of the bulletin alone: one A4 page, black body text on white with background graphics off.
+        doc = browser.new_page()
+        doc.goto(server_url + "/api/report/html?mission_id=DSCOVR", wait_until="networkidle")
+        doc.emulate_media(media="print")
+        assert doc.evaluate("[getComputedStyle(document.body).color, getComputedStyle(document.body).backgroundColor]") == \
+            ["rgb(0, 0, 0)", "rgb(255, 255, 255)"]
+        pdf = doc.pdf(format="A4")
+        assert pdf[:5] == b"%PDF-" and len(re.findall(rb"/Type\s*/Page[^s]", pdf)) == 1
+        browser.close()
