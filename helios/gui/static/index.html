@@ -285,7 +285,7 @@
               <option value="OMNI">OMNI 1-min (bow shock nose)</option>
               <option value="WIND">WIND (MFI + SWE)</option>
               <option value="ACE">ACE (MAG + SWEPAM)</option>
-              <option value="DSCOVR">DSCOVR (MAG; plasma 2016-2019)</option>
+              <option value="DSCOVR">DSCOVR (MAG; plasma from 2016)</option>
               <option value="SOHO">SOHO (CELIAS proton monitor, no field)</option>
               <option value="STEREO_A">STEREO-A (|B| and PLASTIC; not at L1)</option>
             </select>
@@ -1560,7 +1560,7 @@
           <button onclick="saveReplayPng()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Save plots as PNG</button>
         </div>
         <input type="range" id="replay-slider" min="0" max="0" value="0" oninput="setReplayIndex(parseInt(this.value, 10))" class="w-full" aria-label="Replay time">
-        <p id="replay-note" class="text-xs text-slate-400">Choose an interval or the January 2026 storm. Data: NASA CDAWeb (WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter, Parker Solar Probe); positions from JPL Horizons (SPICE).</p>
+        <p id="replay-note" class="text-xs text-slate-400">Choose an interval or the January 2026 storm. Data: NASA CDAWeb (WIND, ACE, DSCOVR, SOHO, STEREO-A, Solar Orbiter, Parker Solar Probe) and NOAA NCEI (DSCOVR plasma after June 2019); positions from JPL Horizons (SPICE).</p>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="h-96 w-full bg-space-900/60 rounded-lg border border-slate-800"><canvas id="replay-canvas" class="w-full h-full block"></canvas></div>
           <div class="space-y-2">

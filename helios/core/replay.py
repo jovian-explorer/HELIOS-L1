@@ -2,8 +2,8 @@
 Event replay: where the solar wind spacecraft were (Earth-fixed HEE frame) and what each measured
 (solar wind speed and |B|) over an interval, on one time grid.
 
-Data: the archive loaders (1-min means of NASA CDAWeb data, cached by day; Solar Orbiter's 4-s plasma
-moments too). Positions: the SPICE ephemeris (JPL Horizons) at a few epochs; the client interpolates.
+Data: the archive loaders (1-min means of NASA CDAWeb data, and of NOAA NCEI DSCOVR plasma after June 2019,
+cached by day; Solar Orbiter's 4-s plasma moments too). Positions: the SPICE ephemeris (JPL Horizons) at a few epochs; the client interpolates.
 """
 import asyncio
 from datetime import datetime

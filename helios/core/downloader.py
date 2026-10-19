@@ -272,7 +272,7 @@ class DataDownloader:
         self.cache_ttl = cache_ttl_seconds
         self.cache_dir = CACHE_DIR
         # The lambda looks fetch_text up at call time, so it can be replaced (tests, offline mode).
-        self.archive = ArchiveClient(lambda url: self.fetch_text(url), self.cache_dir)
+        self.archive = ArchiveClient(lambda url: self.fetch_text(url), self.cache_dir, lambda url: self.fetch_bytes(url))
         self.events = EventDataClient(lambda url: self.fetch_text(url), self.cache_dir)
         self.omni_hourly = OmniHourlyClient(lambda url: self.fetch_text(url), self.cache_dir)
 

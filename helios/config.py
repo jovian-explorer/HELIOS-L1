@@ -504,7 +504,7 @@ MISSIONS: Dict[str, Dict[str, Any]] = {
 # with "active": true marking the spacecraft NOAA uses operationally. They cover ~24 h.
 # What HELIOS-L1 itself reads for each mission (the catalogue lists the instruments on board)
 HELIOS_USE: Dict[str, str] = {
-    "DSCOVR": "Live NOAA real-time solar wind (the operational stream); magnetometer and Faraday cup archive from NASA CDAWeb.",
+    "DSCOVR": "Live NOAA real-time solar wind (the operational stream); magnetometer and Faraday cup archive from NASA CDAWeb (plasma after June 2019 from NOAA NCEI).",
     "ACE": "Live NOAA real-time rows tagged ACE; MAG and SWEPAM archive from NASA CDAWeb.",
     "ADITYA_L1": "Nothing: no public data (ISSDC PRADAN needs a registered login), so its view says so and shows no values.",
     "WIND": "MFI and SWE archive from NASA CDAWeb (event analyses at the instruments' own cadence).",

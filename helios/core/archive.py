@@ -4,7 +4,8 @@ Archive solar wind data from NASA CDAWeb through its HAPI server
 
 Covers WIND (MFI, SWE), ACE (MAG, SWEPAM), OMNI (1-min HRO, time-shifted to the bow
 shock nose) and the DSCOVR science archive (magnetometer from 2015, Faraday cup
-2016-2019). Dataset IDs and parameter names were checked against the live HAPI catalog.
+2016-2019; later Faraday cup data come from NOAA's NCEI archive, see core.ncei). Dataset
+IDs and parameter names were checked against the live HAPI catalog.
 
 * Every instrument has an ordered list of datasets: the definitive (Level 2 / H*) one
   first, then preliminary key-parameter (K*) data that reach closer to the present.
@@ -23,6 +24,7 @@ import io
 import json
 import math
 import os
+import struct
 import time
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -31,6 +33,7 @@ from urllib.parse import urlencode
 import numpy as np
 import pandas as pd
 
+from helios.core import ncei
 from helios.core.coordinates import gse_to_gsm
 from helios.config import run_in_workers
 
@@ -264,7 +267,11 @@ ARCHIVE_SOURCES: Dict[str, Dict[str, Any]] = {
             [_dataset("DSCOVR_H0_MAG", ["B1F1", "B1GSE", "FLAG1"], _mag("B1F1", None, "B1GSE", "FLAG1"),
                       "Level 2", "DSCOVR MAG 1-s")],
             [_dataset("DSCOVR_H1_FC", ["DQF", "V_GSE", "Np", "THERMAL_TEMP"], _dscovr_fc,
-                      "Level 2", "DSCOVR Faraday cup 1-min (2016-2019)")],
+                      "Level 2", "DSCOVR Faraday cup 1-min (CDAWeb, 2016 to June 2019)"),
+             dict(_dataset("NCEI_DSCOVR_F1M", ["proton_speed", "proton_density", "proton_temperature", "overall_quality", "reduced_proton_quality_flag"],
+                           lambda df: df, "definitive",
+                           "DSCOVR Faraday cup 1-min, NOAA NCEI archive (f1m, from June 2019)"),
+                  fetch=ncei.fetch_f1m_day, parse=ncei.f1m_frame)],
         ],
     },
     "SOHO": {
@@ -349,14 +356,19 @@ def _frame_from_json(obj: Dict[str, Any]) -> pd.DataFrame:
     return df
 
 
+async def _no_bytes(url: str) -> None:
+    return None
+
+
 class ArchiveClient:
     """
     Fetches and caches CDAWeb HAPI data. `fetch_text(url)` is an async callable that
     returns the response body, or None on any network / HTTP failure.
     """
 
-    def __init__(self, fetch_text: Callable, cache_dir: str):
+    def __init__(self, fetch_text: Callable, cache_dir: str, fetch_bytes: Optional[Callable] = None):
         self.fetch_text = fetch_text
+        self.fetch_bytes = fetch_bytes or _no_bytes
         self.cache_dir = os.path.join(str(cache_dir), "hapi")
         os.makedirs(self.cache_dir, exist_ok=True)
 
@@ -390,17 +402,20 @@ class ArchiveClient:
             if cached is not None and self._cache_is_fresh(path, day, not cached.empty):
                 return cached
 
-        text = await self.fetch_text(hapi_data_url(spec["id"], spec["parameters"], day, day + timedelta(days=1)))
-        if text is None:
+        if "fetch" in spec:  # not CDAWeb (NCEI files)
+            payload = await spec["fetch"](self.fetch_text, self.fetch_bytes, day)
+        else:
+            payload = await self.fetch_text(hapi_data_url(spec["id"], spec["parameters"], day, day + timedelta(days=1)))
+        if payload is None:
             return cached  # offline: stale cache, or None
         def decode():
-            raw = parse_hapi_csv(text)
+            raw = spec.get("parse", parse_hapi_csv)(payload)
             return to_minute_means(spec["reduce"](raw)) if not raw.empty else pd.DataFrame()
 
         try:
             # A DSCOVR magnetometer day is 86,400 rows: decode it in a worker thread.
             frame = await run_in_workers(decode)
-        except (HapiError, KeyError, ValueError):
+        except (HapiError, KeyError, ValueError, OSError, EOFError, struct.error):  # OSError, EOFError: bad gzip
             return cached
         if not frame.empty:
             # HAPI can return a sample just before time.min (WIND SWE, 17 March 1997 starts with

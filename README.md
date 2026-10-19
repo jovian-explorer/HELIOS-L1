@@ -29,7 +29,7 @@ New to the subject? Press `U` for the user guide, `P` for the formulas and the p
 ## 🛰️ Spacecraft and what HELIOS-L1 uses from each
 
 ### At the Sun-Earth L1 point (~1.5 million km sunward)
-* **DSCOVR / NOAA operational stream** (*NOAA*): live 1-minute solar wind and field from NOAA's Real-Time Solar Wind feed; the spacecraft actually supplying it (e.g. SOLAR1) is named. Archive: DSCOVR magnetometer and Faraday cup data from NASA CDAWeb (plasma 2016-2019 only).
+* **DSCOVR / NOAA operational stream** (*NOAA*): live 1-minute solar wind and field from NOAA's Real-Time Solar Wind feed; the spacecraft actually supplying it (e.g. SOLAR1) is named. Archive: DSCOVR magnetometer from NASA CDAWeb; Faraday cup plasma from CDAWeb to June 2019, then from NOAA's own archive at NCEI (1-minute f1m files).
 * **ACE** (*NASA*): live RTSW rows tagged ACE; archive MAG and SWEPAM (Level 2 and key parameters) from CDAWeb.
 * **WIND** (*NASA*): archive MFI and SWE from CDAWeb, at the instruments' own cadence for the event analyses.
 * **SOHO** (*ESA/NASA*): live solar wind speed and density from the CELIAS/MTOF Proton Monitor (University of Maryland, the last two days; SOHO has no magnetometer), the archive from CDAWeb (`SOHO_CELIAS-PM_5MIN`), and LASCO C2/C3 coronagraph images (NOAA, Helioviewer).
@@ -144,10 +144,10 @@ Every telemetry record carries a `data_source` field and every API response a `p
   |---|---|---|
   | WIND | `WI_H0_MFI@0` (1-min), then `WI_K0_MFI` | `WI_H1_SWE` (non-linear fits), then `WI_K0_SWE` |
   | ACE | `AC_H0_MFI` (Level 2), then `AC_K1_MFI` | `AC_H0_SWE` (Level 2, ends 2024-07), then `AC_K0_SWE` |
-  | DSCOVR | `DSCOVR_H0_MAG` (1-s, GSE; rotated to GSM) | `DSCOVR_H1_FC` (2016-2019 only) |
+  | DSCOVR | `DSCOVR_H0_MAG` (1-s, GSE; rotated to GSM) | `DSCOVR_H1_FC` (to June 2019), then NOAA NCEI f1m (1-min, below) |
   | OMNI | `OMNI_HRO_1MIN` (time-shifted to the bow shock nose) | same |
 
-  Preliminary key-parameter datasets only extend the definitive ones past their last sample, and the provenance lists every dataset used with its level and coverage. Any interval of up to 31 days, from the dashboard (Observation Horizon, Archive Interval) or `GET /api/archive/WIND?start=2024-05-10T00:00&end=2024-05-12T00:00` (add `&format=csv` for a file, `&cadence_minutes=5` for block averages). Data are cached per day as 1-minute means; a DSCOVR magnetometer day is about 7 MB to download the first time.
+  Preliminary key-parameter datasets only extend the definitive ones past their last sample, and the provenance lists every dataset used with its level and coverage. Any interval of up to 31 days, from the dashboard (Observation Horizon, Archive Interval) or `GET /api/archive/WIND?start=2024-05-10T00:00&end=2024-05-12T00:00` (add `&format=csv` for a file, `&cadence_minutes=5` for block averages). Data are cached per day as 1-minute means; a DSCOVR magnetometer day is about 7 MB to download the first time. DSCOVR plasma after June 2019 is not on CDAWeb: it is read from NOAA's archive at NCEI (`archive.data.noaa.gov/satellite-spaceweather`, product f1m, one gzipped netCDF file per day, about 40 kB), with minutes NOAA flags as of reduced quality removed (in fast wind the unflagged speeds read 30-70 % below WIND's).
 * **Historical events:** OMNI 5-minute data from NASA CDAWeb, or the same data bundled with HELIOS-L1 when CDAWeb cannot be reached (the quiet baseline is 6-8 December 2019); March 1989 has only SYM-H (no spacecraft measured the solar wind), Carrington 1859 has no time series (no measurements exist).
 * **Gaps:** missing or fill values stay empty (null); derived quantities are empty when an input is missing. Rows with a non-zero RTSW quality flag are discarded.
 * **Indices:** NOAA G/R/S scales use the latest observed planetary Kp, GOES 0.1–0.8 nm X-ray flux and ≥10 MeV proton flux. When Kp cannot be fetched, the Newell et al. (2008) estimate from the solar wind is used and labelled as such (`kp_source`).

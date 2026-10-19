@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 
 from helios.core.archive import ArchiveClient, HapiError, parse_hapi_csv, ARCHIVE_SOURCES
+from helios.core.ncei import NCEI_BUCKET, f1m_frame, read_netcdf3
 from helios.core.coordinates import gse_to_gsm
 from helios.core.downloader import DataDownloader
 
@@ -31,6 +32,9 @@ RECORDED = {
     "DSCOVR_H0_MAG": ("2018-05-10", "dscovr_h0_mag_20180510.csv"),
 }
 NO_DATA = (DATA / "wi_h1_swe_nodata.csv").read_text()
+# NOAA NCEI DSCOVR f1m file of 19 Jan 2026 and its S3 listing, recorded from archive.data.noaa.gov.
+NCEI_F1M = DATA.parent / "ncei" / "oe_f1m_dscovr_s20260119000000_e20260119235959_p20260120020420_pub.nc.gz"
+NCEI_LISTING = (DATA.parent / "ncei" / "listing_20260119.xml").read_text()
 
 
 def _utc(s):
@@ -42,6 +46,11 @@ def _downloader(tmp_path, served=RECORDED, log=None):
     dl = DataDownloader()
 
     async def fake_text(url, timeout=120.0):
+        if url.startswith(NCEI_BUCKET):  # NCEI S3 listing: the recorded day, nothing otherwise
+            day = parse_qs(urlparse(url).query)["prefix"][0][-8:]
+            if log is not None:
+                log.append(("NCEI_DSCOVR_F1M", day))
+            return NCEI_LISTING if day == "20260119" else "<ListBucketResult></ListBucketResult>"
         q = parse_qs(urlparse(url).query)
         ds, day = q["id"][0], q["time.min"][0][:10]
         if log is not None:
@@ -50,8 +59,11 @@ def _downloader(tmp_path, served=RECORDED, log=None):
             return (DATA / served[ds][1]).read_text()
         return NO_DATA
 
+    async def fake_bytes(url, timeout=120.0):
+        return NCEI_F1M.read_bytes() if url.endswith(NCEI_F1M.name) else None
+
     dl.fetch_text = fake_text
-    dl.archive = ArchiveClient(lambda url: dl.fetch_text(url), tmp_path)
+    dl.archive = ArchiveClient(lambda url: dl.fetch_text(url), tmp_path, fake_bytes)
     return dl
 
 
@@ -320,3 +332,37 @@ def test_soho_and_stereo_a_archive_sources():
     assert list(out.columns) == ["bt", "speed", "density", "temperature"]
     out = soho["reduce"](pd.DataFrame({"V_p": [455.0], "N_p": [7.0]}, index=idx))
     assert list(out.columns) == ["speed", "density"]
+
+
+def test_ncei_dscovr_f1m_netcdf_and_noaa_quality_flags():
+    """NOAA's f1m file (netCDF-3, read without a netCDF library): 1440 minutes, 293 kept. NOAA's
+    reduced-quality flag and isolated good minutes drop the sheath of 19 Jan 2026, where the unflagged
+    speeds read about 400-500 km/s against WIND's 1000-1150 km/s."""
+    import gzip
+    raw = read_netcdf3(gzip.decompress(NCEI_F1M.read_bytes()))
+    assert raw["proton_speed"][0].shape == (1440,) and raw["time"][1]["units"].startswith("milliseconds since 1970")
+    f = f1m_frame(NCEI_F1M.read_bytes())
+    assert len(f) == 1440 and f["speed"].notna().sum() == 293
+    shock = f.loc["2026-01-19 18:57":"2026-01-19 18:58"]
+    assert shock["speed"].tolist() == pytest.approx([500.3, 539.5], abs=0.05)
+    assert shock["density"].tolist() == pytest.approx([9.43, 21.06], abs=0.005)
+    # 19:02 has overall_quality 2, 19:05 (389 km/s) the reduced-quality flag; WIND: 1020 km/s at 19:06.
+    assert f.loc["2026-01-19 19:00":"2026-01-19 20:00", "speed"].isna().all()
+    assert raw["overall_quality"][0][19 * 60 + 2] == 2 and raw["reduced_proton_quality_flag"][0][19 * 60 + 5] == 1
+    assert f1m_frame(b"").empty
+    with pytest.raises(ValueError):
+        read_netcdf3(b"HDF5....")
+
+
+def test_dscovr_plasma_after_2019_comes_from_ncei(tmp_path):
+    """CDAWeb's DSCOVR_H1_FC has no data in 2026: the NCEI f1m dataset fills the plasma group."""
+    log = []
+    dl = _downloader(tmp_path, log=log)
+    res = asyncio.run(dl.archive.fetch_mission("DSCOVR", _utc("2026-01-19 18:50"), _utc("2026-01-19 19:10")))
+    ids = [d["id"] for d in res["datasets"]]
+    assert ids == ["NCEI_DSCOVR_F1M"] and "NCEI" in res["datasets"][0]["label"]
+    assert ("DSCOVR_H1_FC", "2026-01-19") in log and ("NCEI_DSCOVR_F1M", "20260119") in log
+    assert res["frame"].loc["2026-01-19 18:58", "speed"] == pytest.approx(539.5)
+    # Another day: NCEI lists no file -> empty, not unreachable.
+    res = asyncio.run(dl.archive.fetch_mission("DSCOVR", _utc("2026-08-01"), _utc("2026-08-02")))
+    assert res["frame"].empty and not res["offline"]
