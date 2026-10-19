@@ -384,7 +384,8 @@ class DataDownloader:
 
         if records:
             used = "; ".join(f"{d['id']} ({d['label']}, {d['level']})" for d in res["datasets"])
-            description = (f"NASA CDAWeb archive via HAPI: {used}. "
+            ncei = any(d["id"].startswith("NCEI") for d in res["datasets"])
+            description = (f"NASA CDAWeb archive via HAPI{' and NOAA NCEI DSCOVR archive' if ncei else ''}: {used}. "
                            + ("1-minute means." if cadence_minutes <= 1 else f"{cadence_minutes}-minute means."))
             if mission_id == "OMNI":
                 description += " OMNI values are time-shifted to the bow shock nose."

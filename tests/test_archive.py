@@ -363,6 +363,8 @@ def test_dscovr_plasma_after_2019_comes_from_ncei(tmp_path):
     assert ids == ["NCEI_DSCOVR_F1M"] and "NCEI" in res["datasets"][0]["label"]
     assert ("DSCOVR_H1_FC", "2026-01-19") in log and ("NCEI_DSCOVR_F1M", "20260119") in log
     assert res["frame"].loc["2026-01-19 18:58", "speed"] == pytest.approx(539.5)
+    b = asyncio.run(dl.get_archive_bundle("DSCOVR", _utc("2026-01-19 18:50"), _utc("2026-01-19 19:10")))
+    assert "NOAA NCEI" in b["provenance"]["description"]
     # Another day: NCEI lists no file -> empty, not unreachable.
     res = asyncio.run(dl.archive.fetch_mission("DSCOVR", _utc("2026-08-01"), _utc("2026-08-02")))
     assert res["frame"].empty and not res["offline"]
