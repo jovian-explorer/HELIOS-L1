@@ -88,16 +88,17 @@ def test_bulletin_keeps_its_styles_to_itself_and_prints_alone(server_url):
     with sync_api.sync_playwright() as p:
         browser = _browser(p)
         page = browser.new_page(viewport={"width": 1280, "height": 900})
-        page.goto(server_url, wait_until="networkidle")
+        # "load", not "networkidle": in CI the dashboard (live-data retries) need not go quiet within 30 s.
+        page.goto(server_url, wait_until="load")
+        page.wait_for_function("typeof openBulletinModal === 'function' && document.querySelector('main .grid')")
         probe = """(() => { const g = [...document.querySelectorAll('main .grid')].find(e => e.offsetParent);
                       return [getComputedStyle(document.body).padding, getComputedStyle(g).gridTemplateColumns]; })()"""
         before = page.evaluate(probe)
         page.evaluate("openBulletinModal()")
-        page.wait_for_load_state("networkidle")
-        page.wait_for_timeout(500)
-        assert page.evaluate(probe) == before
         frame = page.frame_locator("#bulletin-content iframe")
-        assert "Space Weather Scientific Bulletin" in frame.locator("h1").inner_text()
+        assert "Space Weather Scientific Bulletin" in frame.locator("h1").inner_text()  # waits for the frame
+        page.wait_for_function("document.querySelector('#bulletin-content iframe').style.height")
+        assert page.evaluate(probe) == before
         # The iframe is as tall as its document (no inner scrollbar) and prints itself, not the app.
         heights = page.evaluate("""(() => { const f = document.querySelector('#bulletin-content iframe');
                                       return [f.offsetHeight, f.contentDocument.documentElement.scrollHeight]; })()""")
@@ -112,7 +113,7 @@ def test_bulletin_keeps_its_styles_to_itself_and_prints_alone(server_url):
         assert "HELIOS-L1" in frame.locator("pre").inner_text()
         # The PDF of the bulletin alone: one A4 page, black body text on white with background graphics off.
         doc = browser.new_page()
-        doc.goto(server_url + "/api/report/html?mission_id=DSCOVR", wait_until="networkidle")
+        doc.goto(server_url + "/api/report/html?mission_id=DSCOVR", wait_until="load")
         doc.emulate_media(media="print")
         assert doc.evaluate("[getComputedStyle(document.body).color, getComputedStyle(document.body).backgroundColor]") == \
             ["rgb(0, 0, 0)", "rgb(255, 255, 255)"]
