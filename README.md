@@ -298,5 +298,5 @@ HELIOS-L1 is free software under the MIT licence (`LICENSE`). The third-party co
 ```bash
 python -m pytest
 ```
-The suite covers the physics models, telemetry pipeline, SPICE ephemeris engine and the REST API. The workflow `.github/workflows/ci.yml` runs it on Windows, macOS and Linux for every push to `main` and every pull request, on a copy of the tests against the installed package.
+The suite covers the physics models, telemetry pipeline, SPICE ephemeris engine and the REST API. The workflow `.github/workflows/ci.yml` runs it on Windows, macOS and Linux for every push to `main` and every pull request, on a copy of the tests against the installed package. A browser smoke test (`tests/test_browser_smoke.py`) opens every view of the app offline in headless Chromium and fails on any page or console error or an empty view; it runs in its own CI job on Linux and locally once Playwright is installed (`pip install playwright && python -m playwright install chromium`), and is skipped otherwise.
 

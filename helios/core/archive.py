@@ -206,6 +206,22 @@ def _rtn_moments(v: str, n: str, t: str, t_to_k: float = 1.0) -> Callable:
     return reduce
 
 
+# PSP SPAN-I QUALITY_FLAG bits that mark a bad measurement (CDF notes of PSP_SWP_SPI_SF00_L3_MOM): 0 counter
+# overflow, 3 spoiler test, 8 over-deflection, 10 bad energy table, 11 MCP test. The other bits are modes.
+SPAN_I_BAD_BITS = (1 << 0) | (1 << 3) | (1 << 8) | (1 << 10) | (1 << 11)
+
+
+def span_i_valid(df: pd.DataFrame) -> pd.DataFrame:
+    """PSP SPAN-I partial moments that were measured. Without counts in the field of view the L3 file gives
+    DENS = 0.0 (not its NaN fill) with no velocity or temperature: such samples, flagged ones and
+    non-positive densities and temperatures (1-count moments) become missing values."""
+    bad = (df["CNTS"].fillna(0) <= 0) | ((df["QUALITY_FLAG"].fillna(0).astype(np.int64) & SPAN_I_BAD_BITS) != 0)
+    df = df.mask(bad, np.nan)
+    df["DENS"] = df["DENS"].where(df["DENS"] > 0)
+    df["TEMP"] = df["TEMP"].where(df["TEMP"] > 0)
+    return df
+
+
 def _rtn_magnitude(name: str) -> Callable:
     def reduce(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame({"bt": np.sqrt(df[f"{name}_0"] ** 2 + df[f"{name}_1"] ** 2 + df[f"{name}_2"] ** 2)},
@@ -304,8 +320,8 @@ ARCHIVE_SOURCES: Dict[str, Dict[str, Any]] = {
         "groups": [
             [_dataset("PSP_FLD_L2_MAG_RTN_1MIN", ["psp_fld_l2_mag_RTN_1min"], _rtn_magnitude("psp_fld_l2_mag_RTN_1min"),
                       "Level 2", "Parker Solar Probe FIELDS MAG 1-min (|B| only: the vector is in RTN)")],
-            [_dataset("PSP_SWP_SPI_SF00_L3_MOM", ["DENS", "VEL_RTN_SUN", "TEMP"],
-                      _rtn_moments("VEL_RTN_SUN", "DENS", "TEMP", EV_TO_K), "Level 3",
+            [_dataset("PSP_SWP_SPI_SF00_L3_MOM", ["CNTS", "QUALITY_FLAG", "DENS", "VEL_RTN_SUN", "TEMP"],  # HAPI order
+                      lambda df: _rtn_moments("VEL_RTN_SUN", "DENS", "TEMP", EV_TO_K)(span_i_valid(df)), "Level 3",
                       "Parker Solar Probe SWEAP/SPAN-I proton moments (partial field of view)")],
         ],
     },

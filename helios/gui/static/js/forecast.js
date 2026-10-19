@@ -19,7 +19,7 @@ async function loadMLForecast() {
     const res = await fetch(`/api/forecast/ml?mission_id=${sat}`);
     const data = await res.json().catch(() => ({}));
     if (!current()) return;
-    if (!res.ok) throw new Error(apiErrorText(data, res));
+    if (!res.ok) throw Object.assign(new Error(apiErrorText(data, res)), { answered: true });
 
     // 1. Current Coupling & Indicators
     const c = data.current_coupling;
@@ -56,7 +56,8 @@ async function loadMLForecast() {
 
   } catch (err) {
     if (!current()) return;
-    console.error('Error loading ML forecast:', err);
+    // The server's explained refusal (offline: no solar wind data) is shown below; only a fault is an error.
+    if (!err.answered) console.error('Error loading ML forecast:', err);
     const notes = document.getElementById('forecast-assumptions');
     if (notes) notes.innerHTML = `<div class="text-rose-400">Forecast unavailable: ${escapeHtml(err.message)}</div>`;
     // No forecast: no hazard level either (the cards used to keep a "NOMINAL" page default).

@@ -142,3 +142,68 @@ def test_mars_express_with_the_pfss_field_outside_conjunction():
         assert not a["blocked_by_sun"] and 10.8 < a["impact_rsun"] < 11.3
         assert 0.2 < a["rm_rad_m2"] < 0.5 and b["rm_rad_m2"] < 0  # opposite sign to the default Parker polarity
         assert a["faraday_rotation_deg"] == pytest.approx(math.degrees(a["rm_rad_m2"] * lam2), abs=0.002)
+
+
+class _FakeSpice:
+    """SPICE stand-in: the station at the origin, the Sun 1 AU along +x, J2000 = IAU_SUN, one spacecraft."""
+
+    def __init__(self, sc_pos, sc_vel=(0.0, 0.0, 0.0), light_time=1000.0):
+        self.state, self.lt = list(sc_pos) + list(sc_vel), light_time
+
+    def spkezr(self, target, et, frame, abcorr, observer):
+        return self.state, self.lt
+
+    def spkpos(self, target, et, frame, abcorr, observer):
+        return [oc.AU_KM, 0.0, 0.0], 0.0
+
+    def pxform(self, a, b, et):
+        return np.eye(3)
+
+
+@pytest.mark.parametrize("h_rsun", [5.0, 30.0])
+def test_ray_geometry_impact_parameter_elongation_and_closest_point(monkeypatch, h_rsun):
+    """Spacecraft beyond the Sun at (2 AU, 2h, 0): the ray crosses x = 1 AU at y = h, so (L = sqrt(AU^2 + h^2))
+    impact parameter AU h / L, elongation atan(h / AU), closest point d = AU^2 / L along the ray, at heliographic
+    longitude 90 deg + atan(h / AU) and latitude 0, east of the Sun on the sky (position angle 90 deg: solar north
+    up, east to the left seen from the station). The same spacecraft at (2 AU, 0, 2h) is above the Sun: position
+    angle 0, latitude 90 deg - atan(h / AU). Range rate: the velocity component along the ray."""
+    au, h = oc.AU_KM, h_rsun * R
+    ll = math.hypot(au, h)
+    u = np.array([2 * au, 2 * h, 0.0]) / (2 * ll)
+    monkeypatch.setattr(oc, "_spice", lambda: _FakeSpice([2 * au, 2 * h, 0.0], 10.0 * u + [0.0, 0.0, 3.0], 1500.0))
+    g = oc.ray_geometry("SC", "DSS-63", 0.0)
+    assert g["impact_km"] == pytest.approx(au * h / ll, rel=1e-9)
+    assert g["impact_rsun"] == pytest.approx(au * h / ll / R, rel=1e-9)
+    assert g["elongation_deg"] == pytest.approx(math.degrees(math.atan(h / au)), rel=1e-9)
+    assert g["d_km"] == pytest.approx(au ** 2 / ll, rel=1e-12) and g["closest_on_ray"]
+    assert g["closest_lon"] == pytest.approx(90.0 + math.degrees(math.atan(h / au)), abs=1e-9)
+    assert g["closest_lat"] == pytest.approx(0.0, abs=1e-9) and g["closest_pa"] == pytest.approx(90.0, abs=1e-9)
+    assert g["range_km"] == pytest.approx(2 * ll) and g["range_rate_kms"] == pytest.approx(10.0)
+    assert g["light_time_s"] == 1500.0
+
+    monkeypatch.setattr(oc, "_spice", lambda: _FakeSpice([2 * au, 0.0, 2 * h]))
+    g = oc.ray_geometry("SC", "DSS-63", 0.0)
+    assert g["closest_pa"] % 360.0 == pytest.approx(0.0, abs=1e-9)
+    assert g["closest_lat"] == pytest.approx(90.0 - math.degrees(math.atan(h / au)), abs=1e-6)
+    # A spacecraft between the station and the Sun: the closest approach lies beyond it, not on the ray.
+    monkeypatch.setattr(oc, "_spice", lambda: _FakeSpice([0.5 * au, 2 * h, 0.0]))
+    assert not oc.ray_geometry("SC", "DSS-63", 0.0)["closest_on_ray"]
+
+
+def test_source_surface_field_is_carried_along_the_spiral():
+    """With a source-surface B_r, B_r = B_ss (r_ss / r)^2 at the footpoint of the spiral through the point, and
+    B_phi = -B_r Omega r cos(lat) / V, as the Parker field; the footpoint is Omega (r - r_ss) / V west."""
+    seen = []
+
+    def ss_br(lon_deg, lat_deg):
+        seen.append((np.array(lon_deg), np.array(lat_deg)))
+        return np.where(np.asarray(lon_deg) > 180.0, -2e-9, 2e-9)
+
+    field = oc.parker_field(ss_br=ss_br, wind_kms=400.0, rss=2.5)
+    x = np.array([[10 * R, 0.0, 0.0], [0.0, 0.0, 20 * R]])
+    b = field(x)
+    lon_foot = np.degrees(oc.OMEGA_SUN * (10 * R - 2.5 * R) / 400.0) % 360.0
+    assert seen[0][0][0] == pytest.approx(lon_foot) and seen[0][1].tolist() == pytest.approx([0.0, 90.0])
+    br = 2e-9 * (2.5 / 10.0) ** 2
+    assert b[0] == pytest.approx([br, -br * oc.OMEGA_SUN * 10 * R / 400.0, 0.0], rel=1e-12)
+    assert b[1][2] == pytest.approx(2e-9 * (2.5 / 20.0) ** 2) and abs(b[1][0]) + abs(b[1][1]) < 1e-25

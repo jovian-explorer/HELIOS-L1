@@ -972,3 +972,50 @@ def test_shock_without_density_jump_has_no_speed():
     assert m["shock_speed_kms"] is None and m["alfven_mach"] is None and m["fast_mach"] is None
     assert any("undetermined" in w for w in r["warnings"])
     json.dumps(r, allow_nan=False)
+
+
+def test_dscovr_shock_after_2019_reads_ncei_plasma_and_names_the_flagged_sheath(monkeypatch, tmp_path):
+    """23 April 2023 (IPShocks: WIND 17:01:17 UT, FF, N2/N1 2.96, 518.5 +- 55.6 km/s). CDAWeb's DSCOVR_H1_FC ends in
+    June 2019, so the plasma comes from NOAA's NCEI f1m file, with the archive's quality rules. NOAA flags every
+    minute from 16:59 to 17:31 UT (reduced proton quality; the flow direction is frozen at vy = 1.5 km/s from
+    17:06), so the default 10-min downstream window holds no plasma: the 422 says why. With a 40-min window the
+    analysis runs on the unflagged minutes from 17:32 UT and the warning gives the flagged count."""
+    from fastapi.testclient import TestClient
+    from helios.api import server
+    from helios.core.downloader import DataDownloader
+    from helios.core.ncei import NCEI_BUCKET
+
+    ncei_dir = Path(__file__).parent / "data" / "ncei"
+    f1m = ncei_dir / "oe_f1m_dscovr_s20230423000000_e20230423235959_p20230424022343_pub.nc.gz"
+    nodata = (Path(__file__).parent / "data" / "hapi" / "wi_h1_swe_nodata.csv").read_text()
+
+    async def fake_text(url, timeout=120.0):
+        if url.startswith(NCEI_BUCKET):
+            day = parse_qs(urlparse(url).query)["prefix"][0][-8:]
+            return (ncei_dir / "listing_20230423.xml").read_text() if day == "20230423" else None
+        ds = parse_qs(urlparse(url).query)["id"][0]
+        return _text("dscovr_h0_mag_20230423") if ds == "DSCOVR_H0_MAG" else nodata
+
+    async def fake_bytes(url, timeout=120.0):
+        return f1m.read_bytes() if url.endswith(f1m.name) else None
+
+    dl = DataDownloader()
+    dl.fetch_text, dl.fetch_bytes = fake_text, fake_bytes
+    dl.events = EventDataClient(lambda u: dl.fetch_text(u), tmp_path, lambda u: dl.fetch_bytes(u))
+    monkeypatch.setattr(server, "downloader", dl)
+    client = TestClient(server.app, base_url=LOCAL)
+
+    r = client.get("/api/analysis/shock?mission=dscovr&time=2023-04-23T17:00")
+    assert r.status_code == 422, r.text
+    assert "flagged by NOAA" in r.json()["detail"] and "10 of 10" in r.json()["detail"]
+
+    r = client.get("/api/analysis/shock?mission=dscovr&time=2023-04-23T17:00&downstream_minutes=40")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    res = body["result"]
+    assert abs((pd.Timestamp(res["shock_time"]) - pd.Timestamp("2023-04-23 17:00")).total_seconds()) <= 120
+    assert res["shock_type"] == "FF" and res["downstream"]["plasma_samples"] == 7
+    flagged = [w for w in res["warnings"] if "flagged by NOAA" in w]
+    assert len(flagged) == 1 and "33 of 40" in flagged[0]
+    ids = [d["id"] for d in body["provenance"]["datasets"]]
+    assert "NCEI_DSCOVR_F1M" in ids and "DSCOVR_H1_FC" not in ids

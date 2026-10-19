@@ -32,14 +32,16 @@ import hashlib
 import math
 import os
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 from helios.core.lepping_errors import lepping_uncertainties
-from helios.core.archive import (BOLTZMANN_J_K, EV_TO_K, PROTON_MASS_KG, HapiError, hapi_data_url, parse_hapi_csv,
+from helios.core import ncei
+from helios.core.archive import (BOLTZMANN_J_K, EV_TO_K, PROTON_MASS_KG, ArchiveClient, HapiError, hapi_data_url,
+                                 parse_hapi_csv, span_i_valid,
                                  thermal_speed_to_kelvin)
 from helios.core.constants import AU_KM
 from helios.core.cache import cached_text
@@ -168,6 +170,11 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
         "field": _ds("DSCOVR_H0_MAG", ["B1GSE", "FLAG1"], _field("B1GSE", "FLAG1"), "DSCOVR MAG 1-s"),
         "plasma": _ds("DSCOVR_H1_FC", ["DQF", "V_GSE", "Np", "THERMAL_TEMP"],
                       _vec_plasma("Np", "THERMAL_TEMP", "DQF"), "DSCOVR Faraday cup 1-min (2016-2019)"),
+        # After June 2019 (CDAWeb's FC ends): NOAA NCEI f1m, with the archive's quality rules (core.ncei).
+        "plasma_ncei": {"id": "NCEI_DSCOVR_F1M_EVENT", "parameters": ["proton_vx_gse", "proton_vy_gse", "proton_vz_gse",
+                        "proton_density", "proton_temperature", "noaa_flagged"], "reduce": lambda df: df,
+                        "fetch": ncei.fetch_f1m_day, "parse": ncei.f1m_event_frame,
+                        "label": "DSCOVR Faraday cup 1-min, NOAA NCEI archive (f1m, from June 2019)"},
         "position": _ds("DSCOVR_ORBIT_PRE", ["GSE_POS"], _pos("GSE_POS"), "DSCOVR predicted orbit"),
     },
     # Away from the Sun-Earth line: RTN vectors; positions from the SPICE ephemeris
@@ -187,12 +194,13 @@ EVENT_SOURCES: Dict[str, Dict[str, Dict[str, Any]]] = {
     "PSP": {
         "field": _ds("PSP_FLD_L2_MAG_RTN_1MIN", ["psp_fld_l2_mag_RTN_1min"], _rtn_field("psp_fld_l2_mag_RTN_1min"),
                      "Parker Solar Probe FIELDS MAG 1-min (RTN)"),
-        "plasma": _ds("PSP_SWP_SPI_SF00_L3_MOM", ["DENS", "VEL_RTN_SUN", "TEMP"],
-                      _rtn_plasma("VEL_RTN_SUN", "DENS", "TEMP", EV_TO_K),
+        "plasma": _ds("PSP_SWP_SPI_SF00_L3_MOM", ["CNTS", "QUALITY_FLAG", "DENS", "VEL_RTN_SUN", "TEMP"],
+                      lambda df: _rtn_plasma("VEL_RTN_SUN", "DENS", "TEMP", EV_TO_K)(span_i_valid(df)),
                       "Parker Solar Probe SWEAP/SPAN-I proton moments (RTN; partial field of view)"),
         "position": None, "ephemeris": "PARKER_SOLAR_PROBE",
     },
 }
+NCEI_FROM = datetime(2019, 6, 27, tzinfo=timezone.utc)  # CDAWeb's DSCOVR_H1_FC ends 27 June 2019
 EVENT_FRAMES = {k: ("GSE" if k in ("WIND", "ACE", "DSCOVR") else RTN_FRAME) for k in EVENT_SOURCES}
 
 
@@ -203,10 +211,22 @@ class EventDataClient:
     after the interval ended. `fetch_text(url)` returns the body or None.
     """
 
-    def __init__(self, fetch_text: Callable, cache_dir: str):
+    def __init__(self, fetch_text: Callable, cache_dir: str, fetch_bytes: Optional[Callable] = None):
         self.fetch_text = fetch_text
         self.cache_dir = os.path.join(str(cache_dir), "hapi_events")
         os.makedirs(self.cache_dir, exist_ok=True)
+        self.days = ArchiveClient(fetch_text, cache_dir, fetch_bytes)  # 1-min day files (NCEI DSCOVR plasma)
+
+    async def _day_files(self, spec: Dict[str, Any], start: datetime, end: datetime):
+        """A day-file dataset (NCEI f1m): (frame or None, provenance record, whether the archive answered)."""
+        frame, failed = await self.days.fetch_dataset(spec, start, end)
+        if frame is None or frame.empty:
+            return None, None, frame is not None
+        record = {"role": "plasma", "id": spec["id"].replace("_EVENT", ""), "label": spec["label"],
+                  "url": ncei.NCEI_BUCKET, "n_samples": int(len(frame)),
+                  "coverage_start": frame.index[0].strftime("%Y-%m-%d %H:%M:%S.000"),
+                  "coverage_end": frame.index[-1].strftime("%Y-%m-%d %H:%M:%S.000")}
+        return frame, record, True
 
     async def _get(self, url: str, end: datetime) -> Optional[str]:
         path = os.path.join(self.cache_dir, hashlib.sha1(url.encode("utf-8")).hexdigest()[:20] + ".csv")
@@ -262,6 +282,18 @@ class EventDataClient:
             if frame is not None:
                 out[kind] = frame
                 out["datasets"].append(record)
+        if out["plasma"] is None and "plasma_ncei" in src and _utc(end) > NCEI_FROM:
+            frame, record, reached = await self._day_files(
+                src["plasma_ncei"], max(_utc(start), _utc(NCEI_FROM)).to_pydatetime(), _utc(end).to_pydatetime())
+            out["offline"] = out["offline"] and not reached
+            if frame is not None:
+                flagged = frame["noaa_flagged"] > 0
+                # Minutes the quality rules removed: Event Analysis says how many fall in its windows.
+                out["plasma_flagged"] = frame.index[flagged]
+                good = frame.loc[~flagged].drop(columns="noaa_flagged")
+                if not good.empty:
+                    out["plasma"] = good
+                    out["datasets"].append(dict(record, n_samples=int(len(good))))
         if isinstance(src["position"], str) and src["position"] in raw:
             try:
                 out["position"] = src["position_reduce"](raw[src["position"]]).dropna().sort_index()
@@ -720,13 +752,15 @@ def classify_shock(n_before: float, n_after: float, b_before: float, b_after: fl
 def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
                   upstream_minutes: float = 10.0, downstream_minutes: float = 10.0,
                   exclude_minutes: float = 1.0, refine: bool = True, n_draws: int = 400,
-                  seed: int = 1, exclude_after_minutes: Optional[float] = None) -> Dict[str, Any]:
+                  seed: int = 1, exclude_after_minutes: Optional[float] = None,
+                  flagged_times: Optional[pd.DatetimeIndex] = None) -> Dict[str, Any]:
     """
     Normals, theta_Bn, shock speed, jump ratios and upstream Mach numbers of a shock at
     `shock_time` from field and plasma frames (GSE). Averaging windows are taken on each
     side, `exclude_minutes` away from the shock (`exclude_after_minutes` after it, when given:
     the IPShocks database leaves out 1 min before and 2 min after). Uncertainties come from `n_draws` Monte
-    Carlo draws of the window means within their standard errors.
+    Carlo draws of the window means within their standard errors. `flagged_times`: plasma samples removed by
+    quality rules (DSCOVR NCEI minutes NOAA flags), counted per window and named in the warnings.
     """
     t_guess = _utc(shock_time)
     t0 = refine_shock_time(field, t_guess) if refine else None
@@ -743,9 +777,17 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
     poor = 0
     if "poor_fit" in plasma.columns:
         poor = int(_window(plasma, t0, *before)["poor_fit"].sum() + _window(plasma, t0, *after)["poor_fit"].sum())
+    flag_note = ""
+    if flagged_times is not None and len(flagged_times):
+        flags = pd.DataFrame({"flagged": 1.0}, index=flagged_times)
+        nfb, nfa = len(_window(flags, t0, *before)), len(_window(flags, t0, *after))
+        if nfb or nfa:
+            flag_note = (f"DSCOVR plasma flagged by NOAA and not used: {nfb} of {nfb + kpb} minutes before the shock, "
+                         f"{nfa} of {nfa + kpa} after it (the archive's rules: NOAA's quality flags; in storm sheaths of "
+                         "2024-2026 such minutes read 0.28-0.55 of WIND's speeds). Compare with WIND or ACE.")
     if min(kbb, kba) < 3 or min(kpb, kpa) < 2:
         raise ValueError("Not enough field or plasma samples in the upstream/downstream windows "
-                         f"(field {kbb}/{kba}, plasma {kpb}/{kpa}).")
+                         f"(field {kbb}/{kba}, plasma {kpb}/{kpa})." + (" " + flag_note if flag_note else ""))
 
     # |B| of each side is the mean of the sample magnitudes, as in the IPShocks database: the
     # magnitude of the mean vector drops where the field turns within a window (ACE, 5 Aug
@@ -816,6 +858,8 @@ def analyze_shock(field: pd.DataFrame, plasma: pd.DataFrame, shock_time,
         if nrad:
             warnings.append(f"{nrad} of {kpb + kpa} plasma samples have the speed only: the flow is taken as radial "
                             "(as the IPShocks database does for STEREO), so the VC and mixed-mode normals lean radial.")
+    if flag_note:
+        warnings.append(flag_note)
     if density_ratio < 1.2:
         warnings.append(f"Density jump {density_ratio:.2f} is too small for a reliable mass-flux shock speed.")
     elif density_ratio > 4.0:

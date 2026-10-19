@@ -110,17 +110,31 @@ def f1m_frame(nc_gz: bytes) -> pd.DataFrame:
     Both matter: in fast wind (above about 650 km/s) the speeds NOAA leaves at overall_quality 0 read
     30-70 % below WIND's (storms of 2024-2026); the reduced-quality flag marks those minutes (and 30 %
     of the good ones) except single minutes of about 270 km/s inside long flagged stretches."""
+    return _f1m(nc_gz, (("speed", "proton_speed"), ("density", "proton_density"),
+                        ("temperature", "proton_temperature")))
+
+
+def f1m_event_frame(nc_gz: bytes) -> pd.DataFrame:
+    """Event Analysis columns of one f1m file (GSE velocity vx, vy, vz in km/s, n in cm^-3, t in K) with the
+    quality rules of `f1m_frame`, plus `noaa_flagged` (1.0) on the minutes with values that those rules removed."""
+    return _f1m(nc_gz, (("vx", "proton_vx_gse"), ("vy", "proton_vy_gse"), ("vz", "proton_vz_gse"),
+                        ("n", "proton_density"), ("t", "proton_temperature")), flagged_column=True)
+
+
+def _f1m(nc_gz: bytes, columns, flagged_column: bool = False) -> pd.DataFrame:
     if not nc_gz:
         return pd.DataFrame()
     v = read_netcdf3(gzip.decompress(nc_gz))
     index = pd.to_datetime(v["time"][0], unit="ms", utc=True)
-    good = pd.Series((v["overall_quality"][0] == 0) & (v["reduced_proton_quality_flag"][0] == 0)
-                     & (v["proton_speed"][0] > -99999.0))
+    measured = v["proton_speed"][0] > -99999.0
+    good = pd.Series((v["overall_quality"][0] == 0) & (v["reduced_proton_quality_flag"][0] == 0) & measured)
     good = (good & (good.astype(float).rolling(5, center=True, min_periods=1).sum() >= 3)).to_numpy()
     out = pd.DataFrame(index=index)
-    for col, var in (("speed", "proton_speed"), ("density", "proton_density"), ("temperature", "proton_temperature")):
+    for col, var in columns:
         x = v[var][0].astype(float)
         out[col] = np.where(good & (x > -99999.0), x, np.nan)
+    if flagged_column:
+        out["noaa_flagged"] = (measured & ~good).astype(float)
     out.index.name = "time"
     return out
 

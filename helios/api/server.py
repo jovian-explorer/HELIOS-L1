@@ -751,7 +751,8 @@ async def _run_shock(key: str, tc: datetime, upstream_minutes: float, downstream
         raise HTTPException(status_code=503 if data["offline"] else 404, detail=msg)
     try:
         result = await run_in_workers(analyze_shock, data["field"], data["plasma"], tc, upstream_minutes,
-                                      downstream_minutes, exclude_minutes, refine, exclude_after_minutes=gap_after)
+                                      downstream_minutes, exclude_minutes, refine, exclude_after_minutes=gap_after,
+                                      flagged_times=data.get("plasma_flagged"))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return data, result, t0, t1

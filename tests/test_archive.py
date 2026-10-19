@@ -368,3 +368,30 @@ def test_dscovr_plasma_after_2019_comes_from_ncei(tmp_path):
     # Another day: NCEI lists no file -> empty, not unreachable.
     res = asyncio.run(dl.archive.fetch_mission("DSCOVR", _utc("2026-08-01"), _utc("2026-08-02")))
     assert res["frame"].empty and not res["offline"]
+
+
+def test_psp_span_i_moments_without_counts_or_flagged_are_missing():
+    """PSP SPAN-I L3 partial moments (CDAWeb, recorded 19 Oct 2026). With no counts in the partial field of
+    view the file gives DENS = 0.0 (not a fill value) with velocity and temperature NaN: 75 of 386 samples on
+    1 Dec 2020 and 485 of 551 on 19 Jan 2026. Those, the samples whose QUALITY_FLAG marks a bad measurement
+    (counter overflow, spoiler test, over-deflection, bad energy table, MCP test) and non-positive temperatures
+    (1-count moments) must be missing, not 0, in the archive and in Event Analysis."""
+    import gzip
+    import pandas as pd
+    from helios.core.event_analysis import EVENT_SOURCES
+    raw = parse_hapi_csv(gzip.decompress((DATA / "events" / "psp_spi_20201201_20260119.csv.gz").read_bytes()).decode())
+    no_counts = raw["CNTS"] == 0
+    assert no_counts.sum() == 399 and (raw.loc[no_counts, "DENS"] == 0).all()
+    spec = ARCHIVE_SOURCES["PSP"]["groups"][1][0]
+    out = spec["reduce"](raw)
+    assert out.loc[no_counts].isna().all().all()
+    assert (out["density"].dropna() > 0).all() and (out["temperature"].dropna() > 0).all()
+    good = out.loc["2020-12-01 02:31:39"].iloc[0]
+    assert good["density"] == pytest.approx(1.3658e-2) and good["speed"] == pytest.approx(467.64, abs=0.01)
+    # A sample flagged with a bad-measurement bit (bit 8, over-deflection) is dropped as a whole.
+    flagged = raw.iloc[[0]].copy()
+    flagged["QUALITY_FLAG"] = 12352 | 256
+    assert spec["reduce"](flagged).isna().all().all()
+    ev = EVENT_SOURCES["PSP"]["plasma"]["reduce"](raw)
+    assert ev.loc[no_counts].isna().all().all() and (ev["n"].dropna() > 0).all() and (ev["t"].dropna() > 0).all()
+    assert ev.loc["2020-12-01 02:31:39", "n"].iloc[0] == pytest.approx(1.3658e-2)
