@@ -290,8 +290,8 @@ HELIOS-L1 is free software under the MIT licence (`LICENSE`). The third-party co
 
 ## 👨‍🔬 Creator & Lead Architect
 
-* **Mr. Keshav Aggarwal**
-  * **Current Affiliation:** Student visitor, Space Physics Laboratory (SPL), Vikram Sarabhai Space Centre (VSSC), Indian Space Research Organisation (ISRO), Thiruvananthapuram.
+* **Keshav Aggarwal**
+  * **Current Affiliation:** Student Visitor, Space Physics Laboratory (SPL), Vikram Sarabhai Space Centre (VSSC), Indian Space Research Organisation (ISRO), Thiruvananthapuram.
   * **Doctoral Education:** Ph.D. in Astronomy and Space Engineering, Department of Astronomy, Astrophysics and Space Engineering (DAASE), Indian Institute of Technology (IIT) Indore (Thesis Submitted).
   * **Fellowship:** Prime Minister's Research Fellow (PMRF).
   * **Research Focus:** Planetary/exoplanetary atmospheres, ionospheres, planetary radio occultation, solar-planetary space weather interactions across MOM, Chandrayaan-2, Chandrayaan-3, Akatsuki, and Aditya-L1.

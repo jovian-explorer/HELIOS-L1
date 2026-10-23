@@ -1,6 +1,6 @@
 """
 HELIOS-L1 NASA JPL NAIF SPICE Ephemeris Engine
-Author: HELIOS-L1 Scientific Suite (Lead: Dr. Keshav Aggarwal)
+Author: HELIOS-L1 Scientific Suite (Lead: Keshav Aggarwal)
 Standards: NASA JPL CSPICE / SPICE Toolkit (CSPICE_N0067)
 
 Provides sovereign, 100% offline, high-precision orbital ephemeris calculations
