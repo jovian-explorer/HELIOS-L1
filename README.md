@@ -282,6 +282,19 @@ assets/            application icon used for the Windows build
 
 ---
 
+## Release history
+
+Dates are in UTC and are taken from the git history, the GitHub releases and the Zenodo archive of each version.
+
+| Date | Event |
+|---|---|
+| 20 September 2026 | Development began (first commit). |
+| 29 September 2026 | GitHub repository created. |
+| 1 October 2026 | Version 0.0.1, the first pre-release build, made before the repository was public. |
+| 12 October 2026 | Repository made public with version 0.1.0, a public pre-release ([10.5281/zenodo.23322368](https://doi.org/10.5281/zenodo.23322368)). |
+
+Changes made since version 0.1.0 are listed in [CHANGELOG.md](CHANGELOG.md).
+
 ## Licence
 
 HELIOS-L1 is free software under the MIT licence (`LICENSE`). The third-party code, fonts and data it bundles (Chart.js, Tailwind CSS, Font Awesome, NAIF kernels, the Richardson & Cane ICME list, the IPShocks database) keep their own licences, listed in `THIRD_PARTY_LICENSES.md`; both files are included in the standalone app.
