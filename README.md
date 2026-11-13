@@ -288,7 +288,8 @@ Dates are in UTC and are taken from the git history, the GitHub releases and the
 
 | Date | Event |
 |---|---|
-| 20 September 2026 | Development began (first commit). |
+| Early 2026 | Development began. |
+| 20 September 2026 | First commit to the git repository. |
 | 29 September 2026 | GitHub repository created. |
 | 1 October 2026 | Version 0.0.1, the first pre-release build, made before the repository was public. |
 | 12 October 2026 | Repository made public with version 0.1.0, a public pre-release ([10.5281/zenodo.23322368](https://doi.org/10.5281/zenodo.23322368)). |
